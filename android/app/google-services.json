@@ -1,0 +1,458 @@
+{
+  "project_info": {
+    "project_number": "853860056867",
+    "firebase_url": "https://apps-2ba2f.firebaseio.com",
+    "project_id": "apps-2ba2f",
+    "storage_bucket": "apps-2ba2f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:6e3310e6f12ca380d69696",
+        "android_client_info": {
+          "package_name": "br.com.fyzer.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:6b46d6e46e9b5718d69696",
+        "android_client_info": {
+          "package_name": "br.com.music.wlisten.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-lpajme88kgtk1ro6p70fnm43cb57falf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten.app",
+            "certificate_hash": "a24f664a5ea17968b474dd2b092911245d28342c"
+          }
+        },
+        {
+          "client_id": "853860056867-q2q2posegkj16mqe0pd9jjt8vdoiromb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten.app",
+            "certificate_hash": "8b97d89ab28209a31f8dca684ecbc78a4469cc8b"
+          }
+        },
+        {
+          "client_id": "853860056867-q7ofotqm57if9fnst71fo1vtppgei17r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten.app",
+            "certificate_hash": "4f15edc98c9d7d0028ea6bbe169ec44bbdaf2b24"
+          }
+        },
+        {
+          "client_id": "853860056867-v87l5p8cg6t6qtfqi8mc5sj28188cq5j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten.app",
+            "certificate_hash": "76dcebb389777992ca97016010202a8031114348"
+          }
+        },
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:2c3507ea920da9d7d69696",
+        "android_client_info": {
+          "package_name": "br.com.music.wlisten2.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-2hraimmemhss1kkdrmr7geifjs63h3pa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten2.app",
+            "certificate_hash": "a24f664a5ea17968b474dd2b092911245d28342c"
+          }
+        },
+        {
+          "client_id": "853860056867-6t60bgkukqfu4dilltfc4qvlksjhhbpo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten2.app",
+            "certificate_hash": "76dcebb389777992ca97016010202a8031114348"
+          }
+        },
+        {
+          "client_id": "853860056867-9iidqm3d7486ro2q5a5pr7cs7vmeke8m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten2.app",
+            "certificate_hash": "481b2da784370bdb92f2a45573ee5d137a0f14fb"
+          }
+        },
+        {
+          "client_id": "853860056867-qbjhlma1licf25lllchntg8rsci2te9s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.music.wlisten2.app",
+            "certificate_hash": "52c9ef0a25388d54e7463ff56cf03620f5804797"
+          }
+        },
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:274396a167ae3190d69696",
+        "android_client_info": {
+          "package_name": "br.com.podclick.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:c5074f445eed41ead69696",
+        "android_client_info": {
+          "package_name": "br.com.snapdark.apps.fyzer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-0rtuthnpbhopia4de8v14etdtrgmmg5r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.apps.fyzer",
+            "certificate_hash": "d0254e2efad30d34ab95e0d3320e2c2cd950a294"
+          }
+        },
+        {
+          "client_id": "853860056867-3ofq1j81udgcej48qe8arm7v8g18pohb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.apps.fyzer",
+            "certificate_hash": "8b97d89ab28209a31f8dca684ecbc78a4469cc8b"
+          }
+        },
+        {
+          "client_id": "853860056867-ickqiisd2gq9v6biadaqph7dgm0v615q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.apps.fyzer",
+            "certificate_hash": "a24f664a5ea17968b474dd2b092911245d28342c"
+          }
+        },
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:1f329cd76001997ed69696",
+        "android_client_info": {
+          "package_name": "br.com.snapdark.apps.iuu"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:8624e98faafe11bbd69696",
+        "android_client_info": {
+          "package_name": "br.com.snapdark.apps.iuu2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:cbe471c1efcdefc5d69696",
+        "android_client_info": {
+          "package_name": "br.com.snapdark.apps.pixilate"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:509cbf6a54ad9f53d69696",
+        "android_client_info": {
+          "package_name": "br.com.snapdark.apps.studyai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:ba86a92cb3332402d69696",
+        "android_client_info": {
+          "package_name": "br.com.snapdark.apps.viny"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-j77nt911p52hor8njcuu3474rf8ape2h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.apps.viny",
+            "certificate_hash": "0ebc1e25ec7ab7e56b23374884632da7e8b083f6"
+          }
+        },
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853860056867:android:dec0fddb5505fc6d",
+        "android_client_info": {
+          "package_name": "br.com.snapdark.fyzer.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853860056867-5aatpq8k6ikdj5ure5ttdt8p3mg649sf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.fyzer.app",
+            "certificate_hash": "29f048ddd693bf3cfa128ef63eaa5e6adec9fbbd"
+          }
+        },
+        {
+          "client_id": "853860056867-93vgjglgeulu2kn0oic2k45fc6q8sire.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.fyzer.app",
+            "certificate_hash": "fb119f8563848f0498e755ffc8430d25b14a97c5"
+          }
+        },
+        {
+          "client_id": "853860056867-eb5qe56bqf2i4d3ddjor3m8gcscr4p5o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.fyzer.app",
+            "certificate_hash": "ea7272355bb88e487f4d4131d888e63dfadad9e5"
+          }
+        },
+        {
+          "client_id": "853860056867-pv6fmkqb11spnj6jr8h4d44u5nc50948.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.fyzer.app",
+            "certificate_hash": "c5a7a72744d32091f30ba3c2e0a9c99fcae4b229"
+          }
+        },
+        {
+          "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo4gl-lpGgqqlGTirC0_vYdGKp67EePZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853860056867-c6bg2o0vldjri7biq55v7fakvs1mcrhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

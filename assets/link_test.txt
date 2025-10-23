@@ -1,0 +1,27 @@
+# Teste de Formatação de Links e Código
+
+## Links no estilo Markdown
+Visite o [Google](https://www.google.com) para pesquisas.
+Aqui está o link para o [Flutter](https://flutter.dev) com documentação.
+
+## URLs Diretas
+https://github.com
+https://pub.dev
+
+## Código Inline
+Use `print("Hello World")` para exibir texto no console.
+Em HTML, você pode usar a tag `<a href="https://example.com">Link</a>` para criar links.
+
+## Mistura de formatação
+Este texto tem **negrito** e um [link](https://example.com) no mesmo parágrafo.
+Aqui temos *itálico* e https://dart.dev juntos.
+Veja este código `int sum(int a, int b) => a + b;` em linha com texto normal.
+
+## Texto com formatação e links
+**[Link em negrito](https://flutter.dev)**
+*[Link em itálico](https://material.io)*
+Código `print("Em negrito: **texto**")` com formatação dentro do código.
+
+## Formatação complexa
+Este é um **texto em negrito com `código inline` dentro dele**
+Este é um *texto em itálico com `código inline` dentro dele* 
