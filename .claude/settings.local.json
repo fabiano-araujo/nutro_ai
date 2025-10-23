@@ -1,11 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flutter pub get:*)",
-      "Bash(flutter pub run:*)",
-      "Bash(dir:*)"
+      "Bash(*)"
     ],
-    "deny": [],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(sudo rm *)",
+      "Bash(format *)"
+    ],
     "ask": []
   }
 }
