@@ -107,6 +107,10 @@ class AITutorScreenState extends State<AITutorScreen>
   // Para animação do ícone pulsante
   late AnimationController _animationController;
 
+  // Controle de visibilidade do NutritionCard
+  bool _showNutritionCard = true;
+  double _lastScrollOffset = 0.0;
+
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
 
@@ -155,6 +159,9 @@ class AITutorScreenState extends State<AITutorScreen>
       duration: Duration(milliseconds: 1000),
       vsync: this,
     )..repeat(reverse: true);
+
+    // Adicionar listener para controlar a visibilidade do NutritionCard
+    _scrollController.addListener(_handleScroll);
 
     bool isFromTool = false;
     String toolType = 'chat';
@@ -365,6 +372,9 @@ class AITutorScreenState extends State<AITutorScreen>
     // Liberar recursos do anúncio
     _interstitialAd?.dispose();
 
+    // Remover listener do scroll
+    _scrollController.removeListener(_handleScroll);
+
     _messageController.dispose();
     _scrollController.dispose();
     _animationController.dispose();
@@ -415,6 +425,29 @@ class AITutorScreenState extends State<AITutorScreen>
         curve: Curves.easeOut,
       );
     }
+  }
+
+  // Método para controlar a visibilidade do NutritionCard baseado no scroll
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final currentOffset = _scrollController.offset;
+    final scrollDelta = currentOffset - _lastScrollOffset;
+
+    // Detectar direção do scroll (threshold de 5 pixels para evitar mudanças muito sensíveis)
+    if (scrollDelta > 5 && _showNutritionCard) {
+      // Rolando para baixo - esconder card
+      setState(() {
+        _showNutritionCard = false;
+      });
+    } else if (scrollDelta < -5 && !_showNutritionCard) {
+      // Rolando para cima - mostrar card
+      setState(() {
+        _showNutritionCard = true;
+      });
+    }
+
+    _lastScrollOffset = currentOffset;
   }
 
   // --- Métodos removidos (agora no controller) ---
@@ -835,8 +868,14 @@ class AITutorScreenState extends State<AITutorScreen>
                     },
                   ),
 
-                  // Nutrition card (sempre visível)
-                  NutritionCard(),
+                  // Nutrition card (com animação de visibilidade)
+                  AnimatedSize(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: _showNutritionCard
+                        ? NutritionCard()
+                        : SizedBox.shrink(),
+                  ),
 
                   // Lista de mensagens
                   Expanded(

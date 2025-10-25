@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../i18n/app_localizations_extension.dart';
+import '../theme/app_theme.dart';
 
 class NutritionCard extends StatelessWidget {
   final int caloriesConsumed;
@@ -35,7 +36,7 @@ class NutritionCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      color: isDarkMode ? Color(0xFF2C2C2C) : Colors.white,
+      color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
       child: Padding(
         padding: EdgeInsets.fromLTRB(8, 10, 8, 8),
         child: Row(
@@ -64,8 +65,9 @@ class NutritionCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color:
-                                    isDarkMode ? Colors.white : Colors.black87,
+                                color: isDarkMode
+                                    ? AppTheme.darkTextColor
+                                    : AppTheme.textPrimaryColor,
                               ),
                             ),
                             Text(
@@ -73,8 +75,8 @@ class NutritionCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 color: isDarkMode
-                                    ? Colors.white60
-                                    : Colors.black54,
+                                    ? Color(0xFFAEB7CE)
+                                    : AppTheme.textSecondaryColor,
                               ),
                             ),
                           ],
@@ -88,7 +90,9 @@ class NutritionCard extends StatelessWidget {
                     '$caloriesConsumed / $caloriesGoal kcal',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                      color: isDarkMode
+                          ? Color(0xFFAEB7CE)
+                          : AppTheme.textSecondaryColor,
                     ),
                   ),
                 ],
@@ -109,7 +113,7 @@ class NutritionCard extends StatelessWidget {
                     consumed: proteinConsumed,
                     goal: proteinGoal,
                     unit: 'g',
-                    color: Color(0xFF5B7FDB),
+                    color: Color(0xFFA8B7F5),
                     isDarkMode: isDarkMode,
                   ),
                   SizedBox(height: 6),
@@ -120,7 +124,7 @@ class NutritionCard extends StatelessWidget {
                     consumed: carbsConsumed,
                     goal: carbsGoal,
                     unit: 'g',
-                    color: Color(0xFFE6A23C),
+                    color: Color(0xFFFFCC7A),
                     isDarkMode: isDarkMode,
                   ),
                   SizedBox(height: 6),
@@ -131,7 +135,7 @@ class NutritionCard extends StatelessWidget {
                     consumed: fatsConsumed,
                     goal: fatsGoal,
                     unit: 'g',
-                    color: Color(0xFF9B59B6),
+                    color: Color(0xFF9BA9F2),
                     isDarkMode: isDarkMode,
                   ),
                 ],
@@ -177,15 +181,17 @@ class _MacroRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 color: isDarkMode
-                    ? Colors.white.withOpacity(0.87)
-                    : Colors.black87,
+                    ? AppTheme.darkTextColor
+                    : AppTheme.textPrimaryColor,
               ),
             ),
             Text(
               '$consumed / $goal$unit',
               style: TextStyle(
                 fontSize: 12,
-                color: isDarkMode ? Colors.white60 : Colors.black54,
+                color: isDarkMode
+                    ? Color(0xFFAEB7CE)
+                    : AppTheme.textSecondaryColor,
               ),
             ),
           ],
@@ -195,7 +201,8 @@ class _MacroRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: progress,
-            backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+            backgroundColor:
+                isDarkMode ? Color(0xFF2F2F2F) : Color(0xFFF5F7FA),
             valueColor: AlwaysStoppedAnimation<Color>(color),
             minHeight: 5,
           ),
@@ -224,16 +231,16 @@ class CalorieCirclePainter extends CustomPainter {
 
     // Background circle (cinza claro)
     final bgPaint = Paint()
-      ..color = isDarkMode ? Colors.grey[800]! : Color(0xFFE8E8E8)
+      ..color = isDarkMode ? Color(0xFF3A3A3A) : Color(0xFFF2F4F7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;
 
     canvas.drawCircle(center, radius, bgPaint);
 
-    // Progress arc (verde)
+    // Progress arc (verde suave)
     final progressPaint = Paint()
-      ..color = Color(0xFF66BB6A)
+      ..color = Color(0xFF8FE3B0)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;

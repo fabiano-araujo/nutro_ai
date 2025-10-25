@@ -2,6 +2,7 @@
 final Map<String, String> ptBRTranslations = {
   // Títulos de telas
   'app_title': 'Nutro AI',
+  'app_subtitle': 'Seu assistente inteligente de nutrição',
   'home_title': 'Início',
   'tools_title': 'Ferramentas',
   'history_title': 'Histórico',
@@ -13,7 +14,7 @@ final Map<String, String> ptBRTranslations = {
   'email_login_title': 'Entrar com Email',
   'welcome': 'Bem-vindo',
   'welcome_description':
-      'Entre com sua conta para acessar seu histórico e salvar seu progresso',
+      'Entre com sua conta para acompanhar suas calorias e alcançar seus objetivos nutricionais',
   'sign_in_with_google': 'Entrar com Google',
   'sign_in_with_email': 'Entrar com email e senha',
   'or': 'ou',

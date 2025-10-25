@@ -155,7 +155,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
             children: [
               // Botão "Hoje" (só aparece quando não está no dia atual)
               SizedBox(
-                width: 80,
+                width: 90,
                 child: !isToday
                     ? Padding(
                         padding: EdgeInsets.only(left: 8),
@@ -216,7 +216,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
               ),
 
               // Espaço vazio à direita para manter centralização
-              SizedBox(width: 80),
+              SizedBox(width: 90),
             ],
           ),
         ),

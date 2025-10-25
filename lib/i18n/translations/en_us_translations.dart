@@ -2,6 +2,7 @@
 final Map<String, String> enUSTranslations = {
   // Screen titles
   'app_title': 'Nutro AI',
+  'app_subtitle': 'Your intelligent nutrition assistant',
   'home_title': 'Home',
   'tools_title': 'Tools',
   'history_title': 'History',
@@ -13,7 +14,7 @@ final Map<String, String> enUSTranslations = {
   'email_login_title': 'Login with Email',
   'welcome': 'Welcome',
   'welcome_description':
-      'Sign in with your account to access your history and save your progress',
+      'Sign in with your account to track your calories and achieve your nutritional goals',
   'sign_in_with_google': 'Sign in with Google',
   'sign_in_with_email': 'Sign in with email and password',
   'or': 'or',

@@ -220,10 +220,8 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            context.tr.translate('your_ultimate') +
-                                ' ' +
-                                (context.tr.translate('study_companion') ??
-                                    'Study Companion'),
+                            context.tr.translate('app_subtitle') ??
+                                'Seu assistente inteligente de nutrição',
                             style: TextStyle(
                               color: isDarkMode
                                   ? Colors.white70
@@ -235,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 60),
                   // Card de login
                   Padding(
                     padding: const EdgeInsets.only(
@@ -278,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen>
                               const SizedBox(height: 16),
                               Text(
                                 context.tr.translate('welcome_description') ??
-                                    'Entre com sua conta para acessar seu histórico e salvar seu progresso',
+                                    'Entre com sua conta para acompanhar suas calorias e alcançar seus objetivos nutricionais',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,

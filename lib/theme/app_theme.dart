@@ -3,14 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Primary Colors
-  static const Color primaryColor = Color(0xFF6E81F2);
-  static const Color primaryLightColor = Color(0xFF90D6BC);
-  static const Color primaryDarkColor = Color(0xFF4D9B79);
+  static const Color primaryColor = Color(0xFFA8B7F5);
+  static const Color primaryLightColor = Color(0xFFC2CEFA);
+  static const Color primaryDarkColor = Color(0xFF8A9BE8);
 
   // Secondary Colors
-  static const Color secondaryColor = Color(0xFF4C5DDD);
-  static const Color secondaryLightColor = Color(0xFFABBCFF);
-  static const Color secondaryDarkColor = Color(0xFF344BCC);
+  static const Color secondaryColor = Color(0xFF9BA9F2);
+  static const Color secondaryLightColor = Color(0xFFB5C1F7);
+  static const Color secondaryDarkColor = Color(0xFF7B8AE8);
 
   // Neutral Colors
   static const Color backgroundColor = Color(0xFFF7F9FC);
@@ -25,10 +25,10 @@ class AppTheme {
   static const Color textLightColor = Color(0xFF8D96AD);
 
   // Status Colors
-  static const Color successColor = Color(0xFF43A047);
-  static const Color errorColor = Color(0xFFE53935);
-  static const Color warningColor = Color(0xFFFFA000);
-  static const Color infoColor = Color(0xFF21AAFF);
+  static const Color successColor = Color(0xFF8FE3B0);
+  static const Color errorColor = Color(0xFFE57373);
+  static const Color warningColor = Color(0xFFFFCC7A);
+  static const Color infoColor = Color(0xFF7EC8E3);
 
   // Dark Theme Colors
   static const Color darkBackgroundColor = Color.fromARGB(255, 24, 25, 26);

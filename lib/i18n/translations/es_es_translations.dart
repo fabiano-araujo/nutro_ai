@@ -2,6 +2,7 @@
 final Map<String, String> esESTranslations = {
   // Títulos de pantallas
   'app_title': 'Nutro AI',
+  'app_subtitle': 'Tu asistente inteligente de nutrición',
   'home_title': 'Inicio',
   'tools_title': 'Herramientas',
   'history_title': 'Historial',
