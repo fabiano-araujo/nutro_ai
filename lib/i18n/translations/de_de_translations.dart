@@ -229,7 +229,7 @@ final Map<String, String> deDETranslations = {
   'start_new_conversation': 'Neues Gespräch starten?',
   'conversation_saved_history':
       'Dein aktuelles Gespräch wird im Verlauf verfügbar sein.',
-  'ask_anything': 'Frage alles',
+  'ask_anything': 'Was hast du gegessen oder trainiert?',
   'gallery': 'Galerie',
   'camera': 'Kamera',
   'edit_message': 'Nachricht bearbeiten',
@@ -327,7 +327,7 @@ final Map<String, String> deDETranslations = {
 
   // KI-Tutor-Bildschirm
   'ai_tutor_title': 'Studienassistent',
-  'ask_anything': 'Frag irgendwas',
+  'ask_anything': 'Was hast du gegessen oder trainiert?',
 
   // Abonnement-Bildschirm
   'premium_plans': 'Premium-Pläne',
@@ -368,4 +368,19 @@ final Map<String, String> deDETranslations = {
       'Fehler beim Laden der Werbung. Bitte versuche es später erneut.',
   'ad_failed': 'Fehler beim Laden der Werbung',
   'retry': 'Erneut versuchen',
+
+  // Nutrition Card
+  'remaining': 'übrig',
+  'protein': 'Protein',
+  'carbs': 'Kohlenhydrate',
+  'fats': 'Fette',
+
+  // Weekly Calendar - Days
+  'mon': 'MO',
+  'tue': 'DI',
+  'wed': 'MI',
+  'thu': 'DO',
+  'fri': 'FR',
+  'sat': 'SA',
+  'sun': 'SO',
 };

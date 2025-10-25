@@ -1,13 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(*)"
+      "Bash(flutter analyze:*)"
     ],
-    "deny": [
-      "Bash(rm -rf /*)",
-      "Bash(sudo rm *)",
-      "Bash(format *)"
-    ],
+    "deny": [],
     "ask": []
   }
 }

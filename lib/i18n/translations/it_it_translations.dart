@@ -199,7 +199,7 @@ final Map<String, String> itITTranslations = {
   'start_new_conversation': 'Iniziare una nuova conversazione?',
   'conversation_saved_history':
       'La tua conversazione attuale sarà disponibile nella cronologia.',
-  'ask_anything': 'Chiedi qualsiasi cosa',
+  'ask_anything': 'Cosa hai mangiato o fatto come esercizio?',
   'gallery': 'Galleria',
   'camera': 'Fotocamera',
   'edit_message': 'Modifica messaggio',
@@ -297,7 +297,7 @@ final Map<String, String> itITTranslations = {
 
   // Schermata del tutor AI
   'ai_tutor_title': 'Assistente di Studio',
-  'ask_anything': 'Chiedi qualsiasi cosa',
+  'ask_anything': 'Cosa hai mangiato o fatto come esercizio?',
 
   // Schermata di abbonamento
   'premium_plans': 'Piani Premium',
@@ -366,4 +366,19 @@ final Map<String, String> itITTranslations = {
       'Accedi per visualizzare la tua cronologia, i preferiti e le impostazioni personalizzate.',
   'sign_in': 'Accedi',
   'sign_out': 'Disconnetti',
+
+  // Nutrition Card
+  'remaining': 'rimanenti',
+  'protein': 'Proteine',
+  'carbs': 'Carboidrati',
+  'fats': 'Grassi',
+
+  // Weekly Calendar - Days
+  'mon': 'LUN',
+  'tue': 'MAR',
+  'wed': 'MER',
+  'thu': 'GIO',
+  'fri': 'VEN',
+  'sat': 'SAB',
+  'sun': 'DOM',
 };

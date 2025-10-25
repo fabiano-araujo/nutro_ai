@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
@@ -76,14 +77,14 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     return List.generate(7, (index) => weekStart.add(Duration(days: index)));
   }
 
-  String _formatDateTitle() {
+  String _formatDateTitle(BuildContext context) {
     final now = DateTime.now();
     final yesterday = now.subtract(Duration(days: 1));
 
     if (_isSameDay(_selectedDate, now)) {
-      return 'Hoje';
+      return context.tr.translate('today');
     } else if (_isSameDay(_selectedDate, yesterday)) {
-      return 'Ontem';
+      return context.tr.translate('yesterday');
     } else {
       final formatter = DateFormat('MMM. d, yyyy', 'pt_BR');
       return formatter.format(_selectedDate);
@@ -172,7 +173,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  'Hoje',
+                                  context.tr.translate('today'),
                                   style: TextStyle(
                                     color: Theme.of(context).primaryColor,
                                     fontSize: 14,
@@ -202,7 +203,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Text(
-                        _formatDateTitle(),
+                        _formatDateTitle(context),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -253,7 +254,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
   Widget _buildDayItem(DateTime date, bool isDarkMode) {
     final isSelected = _isSameDay(date, _selectedDate);
     final isToday = _isSameDay(date, DateTime.now());
-    final dayName = _getDayName(date.weekday);
+    final dayName = _getDayName(date.weekday, context);
     final dayNumber = date.day.toString();
 
     return GestureDetector(
@@ -341,22 +342,22 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
         date1.day == date2.day;
   }
 
-  String _getDayName(int weekday) {
+  String _getDayName(int weekday, BuildContext context) {
     switch (weekday) {
       case 1:
-        return 'SEG';
+        return context.tr.translate('mon');
       case 2:
-        return 'TER';
+        return context.tr.translate('tue');
       case 3:
-        return 'QUA';
+        return context.tr.translate('wed');
       case 4:
-        return 'QUI';
+        return context.tr.translate('thu');
       case 5:
-        return 'SEX';
+        return context.tr.translate('fri');
       case 6:
-        return 'SÁB';
+        return context.tr.translate('sat');
       case 7:
-        return 'DOM';
+        return context.tr.translate('sun');
       default:
         return '';
     }

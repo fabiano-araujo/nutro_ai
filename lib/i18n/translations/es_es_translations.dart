@@ -229,7 +229,7 @@ final Map<String, String> esESTranslations = {
   'start_new_conversation': '¿Iniciar nueva conversación?',
   'conversation_saved_history':
       'Tu conversación actual estará disponible en el historial.',
-  'ask_anything': 'Pregunta cualquier cosa',
+  'ask_anything': '¿Qué comiste o ejercitaste?',
   'gallery': 'Galería',
   'camera': 'Cámara',
   'edit_message': 'Editar mensaje',
@@ -462,7 +462,7 @@ final Map<String, String> esESTranslations = {
 
   // Pantalla de AI Tutor
   'ai_tutor_title': 'Asistente de Estudios',
-  'ask_anything': 'Pregunta cualquier cosa',
+  'ask_anything': '¿Qué comiste o ejercitaste?',
 
   // Pantalla de Suscripción
   'premium_plans': 'Planes Premium',
@@ -502,4 +502,19 @@ final Map<String, String> esESTranslations = {
       'Error al cargar el anuncio. Por favor, inténtalo de nuevo más tarde.',
   'ad_failed': 'Error al cargar el anuncio',
   'retry': 'Intentar de nuevo',
+
+  // Nutrition Card
+  'remaining': 'restantes',
+  'protein': 'Proteína',
+  'carbs': 'Carbohidratos',
+  'fats': 'Grasas',
+
+  // Weekly Calendar - Days
+  'mon': 'LUN',
+  'tue': 'MAR',
+  'wed': 'MIÉ',
+  'thu': 'JUE',
+  'fri': 'VIE',
+  'sat': 'SÁB',
+  'sun': 'DOM',
 };

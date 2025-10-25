@@ -254,7 +254,7 @@ final Map<String, String> enUSTranslations = {
   'start_new_conversation': 'Start new conversation?',
   'conversation_saved_history':
       'Your current conversation will be available in history.',
-  'ask_anything': 'Ask anything',
+  'ask_anything': 'What did you eat or exercise?',
   'explique_conceitos': 'Explain concepts',
   'edit_message': 'Edit message',
   'edit_your_message': 'Edit your message',
@@ -570,4 +570,19 @@ final Map<String, String> enUSTranslations = {
   'ad_load_error': 'Error loading the ad. Please try again later.',
   'ad_failed': 'Failed to load ad',
   'retry': 'Try again',
+
+  // Nutrition Card
+  'remaining': 'remaining',
+  'protein': 'Protein',
+  'carbs': 'Carbs',
+  'fats': 'Fats',
+
+  // Weekly Calendar - Days
+  'mon': 'MON',
+  'tue': 'TUE',
+  'wed': 'WED',
+  'thu': 'THU',
+  'fri': 'FRI',
+  'sat': 'SAT',
+  'sun': 'SUN',
 };

@@ -1010,7 +1010,7 @@ class AITutorScreenState extends State<AITutorScreen>
                             children: [
                               // Botão de galeria/foto
                               IconButton(
-                                icon: Icon(Icons.add_circle_outline,
+                                icon: Icon(Icons.camera_alt,
                                     color: isDarkMode
                                         ? Colors.grey[400]
                                         : AppTheme.textSecondaryColor),
@@ -1076,6 +1076,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                         context.tr.translate('ask_anything') ??
                                             "Pergunte qualquer coisa",
                                     hintStyle: TextStyle(
+                                      fontSize: 15,
                                       color: isListening
                                           ? Colors.red
                                           : isDarkMode

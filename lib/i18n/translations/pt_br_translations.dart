@@ -550,7 +550,7 @@ final Map<String, String> ptBRTranslations = {
   'quotes': 'Citações',
 
   // Assistente de aprendizagem
-  'ask_anything': 'Pergunte qualquer coisa',
+  'ask_anything': 'O que você comeu ou se exercitou?',
   'explain_concepts': 'Explique conceitos',
   'explique_conceitos': 'Explique conceitos',
   'quiz_generator': 'Gerador de quiz',
@@ -707,7 +707,7 @@ final Map<String, String> ptBRTranslations = {
 
   // Tela AI Tutor
   'ai_tutor_title': 'Assistente de Estudos',
-  'ask_anything': 'Pergunte qualquer coisa',
+  'ask_anything': 'O que você comeu ou se exercitou?',
 
   // Tela de Assinatura
   'premium_plans': 'Planos Premium',
@@ -753,4 +753,19 @@ final Map<String, String> ptBRTranslations = {
   'comoProcessarImagem': 'Como você deseja processar esta imagem?',
   'modoTradicional': 'Modo tradicional',
   'aiTutorRecomendado': 'AI Tutor (Recomendado)',
+
+  // Nutrition Card
+  'remaining': 'restantes',
+  'protein': 'Proteína',
+  'carbs': 'Carboidratos',
+  'fats': 'Gorduras',
+
+  // Weekly Calendar - Days
+  'mon': 'SEG',
+  'tue': 'TER',
+  'wed': 'QUA',
+  'thu': 'QUI',
+  'fri': 'SEX',
+  'sat': 'SÁB',
+  'sun': 'DOM',
 };

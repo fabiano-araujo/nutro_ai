@@ -202,7 +202,7 @@ final Map<String, String> frFRTranslations = {
   'start_new_conversation': 'Démarrer une nouvelle conversation ?',
   'conversation_saved_history':
       'Votre conversation actuelle sera disponible dans l\'historique.',
-  'ask_anything': 'Demandez n\'importe quoi',
+  'ask_anything': 'Qu\'avez-vous mangé ou fait comme exercice ?',
   'gallery': 'Galerie',
   'camera': 'Appareil photo',
   'edit_message': 'Modifier le message',
@@ -299,7 +299,7 @@ final Map<String, String> frFRTranslations = {
 
   // Écran de tuteur IA
   'ai_tutor_title': 'Assistant d\'Études',
-  'ask_anything': 'Demandez n\'importe quoi',
+  'ask_anything': 'Qu\'avez-vous mangé ou fait comme exercice ?',
 
   // Écran d'abonnement
   'premium_plans': 'Plans Premium',
@@ -368,4 +368,19 @@ final Map<String, String> frFRTranslations = {
       'Connectez-vous pour voir votre historique, vos favoris et vos paramètres personnalisés.',
   'sign_in': 'Se connecter',
   'sign_out': 'Déconnexion',
+
+  // Nutrition Card
+  'remaining': 'restant',
+  'protein': 'Protéines',
+  'carbs': 'Glucides',
+  'fats': 'Lipides',
+
+  // Weekly Calendar - Days
+  'mon': 'LUN',
+  'tue': 'MAR',
+  'wed': 'MER',
+  'thu': 'JEU',
+  'fri': 'VEN',
+  'sat': 'SAM',
+  'sun': 'DIM',
 };

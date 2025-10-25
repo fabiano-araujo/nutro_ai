@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../i18n/app_localizations_extension.dart';
 
 class NutritionCard extends StatelessWidget {
   final int caloriesConsumed;
@@ -29,14 +30,14 @@ class NutritionCard extends StatelessWidget {
     final caloriesRemaining = caloriesGoal - caloriesConsumed;
 
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       color: isDarkMode ? Color(0xFF2C2C2C) : Colors.white,
       child: Padding(
-        padding: EdgeInsets.all(12),
+        padding: EdgeInsets.fromLTRB(8, 10, 8, 8),
         child: Row(
           children: [
             // Lado esquerdo - Calorias
@@ -46,8 +47,8 @@ class NutritionCard extends StatelessWidget {
                 children: [
                   // Gráfico circular de calorias
                   SizedBox(
-                    width: 105,
-                    height: 105,
+                    width: 95,
+                    height: 95,
                     child: CustomPaint(
                       painter: CalorieCirclePainter(
                         consumed: caloriesConsumed,
@@ -61,14 +62,14 @@ class NutritionCard extends StatelessWidget {
                             Text(
                               caloriesRemaining.toString(),
                               style: TextStyle(
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color:
                                     isDarkMode ? Colors.white : Colors.black87,
                               ),
                             ),
                             Text(
-                              'remaining',
+                              context.tr.translate('remaining'),
                               style: TextStyle(
                                 fontSize: 10,
                                 color: isDarkMode
@@ -81,7 +82,7 @@ class NutritionCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(height: 4),
+                  SizedBox(height: 2),
                   // Total de calorias
                   Text(
                     '$caloriesConsumed / $caloriesGoal kcal',
@@ -104,29 +105,29 @@ class NutritionCard extends StatelessWidget {
                 children: [
                   // Protein
                   _MacroRow(
-                    label: 'Protein',
+                    label: context.tr.translate('protein'),
                     consumed: proteinConsumed,
                     goal: proteinGoal,
                     unit: 'g',
                     color: Color(0xFF5B7FDB),
                     isDarkMode: isDarkMode,
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 6),
 
                   // Carbs
                   _MacroRow(
-                    label: 'Carbs',
+                    label: context.tr.translate('carbs'),
                     consumed: carbsConsumed,
                     goal: carbsGoal,
                     unit: 'g',
                     color: Color(0xFFE6A23C),
                     isDarkMode: isDarkMode,
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 6),
 
                   // Fats
                   _MacroRow(
-                    label: 'Fats',
+                    label: context.tr.translate('fats'),
                     consumed: fatsConsumed,
                     goal: fatsGoal,
                     unit: 'g',
@@ -189,14 +190,14 @@ class _MacroRow extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: 4),
+        SizedBox(height: 3),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: progress,
             backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
             valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 6,
+            minHeight: 5,
           ),
         ),
       ],
@@ -225,7 +226,7 @@ class CalorieCirclePainter extends CustomPainter {
     final bgPaint = Paint()
       ..color = isDarkMode ? Colors.grey[800]! : Color(0xFFE8E8E8)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
+      ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;
 
     canvas.drawCircle(center, radius, bgPaint);
@@ -234,7 +235,7 @@ class CalorieCirclePainter extends CustomPainter {
     final progressPaint = Paint()
       ..color = Color(0xFF66BB6A)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
+      ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;
 
     const startAngle = -math.pi / 2; // Começar no topo
