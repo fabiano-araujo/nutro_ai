@@ -33,6 +33,7 @@ import '../utils/media_picker_helper.dart';
 import '../utils/ai_interaction_helper.dart';
 import 'dart:convert';
 import '../i18n/app_localizations_extension.dart';
+import '../widgets/weekly_calendar.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -833,8 +834,7 @@ class AITutorScreenState extends State<AITutorScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          context.tr.translate('ai_tutor_title') ??
-                              'Assistente de Estudos',
+                          'Nutro AI',
                           style: TextStyle(
                             color: isDarkMode
                                 ? Colors.white
@@ -843,51 +843,18 @@ class AITutorScreenState extends State<AITutorScreen>
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: FaIcon(FontAwesomeIcons.penToSquare,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : AppTheme.textPrimaryColor,
-                                  size: 20),
-                              onPressed: () {
-                                // Reiniciar a conversa na mesma tela
-                                setState(() {
-                                  // Limpar mensagens e resetar controller
-                                  _controller = AITutorController(
-                                    speechMixin: _speechMixinRef,
-                                    ttsRef: _ttsMixinRef,
-                                  );
-
-                                  // Atualizar a mensagem de boas-vindas
-                                  _controller.updateWelcomeMessage(context);
-
-                                  // Scroll para o topo para ver a nova mensagem de boas-vindas
-                                  Future.delayed(Duration(milliseconds: 100),
-                                      () {
-                                    if (_scrollController.hasClients) {
-                                      _scrollController.jumpTo(0);
-                                    }
-                                  });
-                                });
-
-                                // Confirmar ao usuário
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Nova conversa iniciada'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              },
-                              tooltip: 'Nova conversa',
-                            ),
-                            SizedBox(width: 8),
-                            CreditIndicator(),
-                          ],
-                        ),
+                        CreditIndicator(),
                       ],
                     ),
+                  ),
+
+                  // Calendário semanal
+                  WeeklyCalendar(
+                    selectedDate: DateTime.now(),
+                    onDaySelected: (date) {
+                      // TODO: Implementar filtro de conversas por data
+                      print('Data selecionada: $date');
+                    },
                   ),
 
                   // Lista de mensagens

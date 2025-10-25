@@ -48,9 +48,9 @@ class _MainNavigationState extends State<MainNavigation> {
     super.initState();
     // Registrar callback para mudanu00e7a de aba
     navigationController.tabChangeCallback = (index) {
-      // Verificar se o usuário está saindo da tela de AITutor (índice 2)
+      // Verificar se o usuário está saindo da tela de AITutor (índice 0)
       // Esta verificação é crucial para saber quando mostrar o anúncio intersticial
-      bool leavingAITutor = _currentIndex == 2 && index != 2;
+      bool leavingAITutor = _currentIndex == 0 && index != 0;
 
       // Atualizar índices
       setState(() {
@@ -77,9 +77,9 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   final List<Widget> _screens = [
+    AITutorScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
     ToolsScreen(), // Ferramentas (Tools) - Dark theme
     CameraScanScreen(), // Digitalizar (Scan) - Direct camera access
-    AITutorScreen(), // Chat com IA integrado diretamente
     // Exibe LoginScreen se não autenticado, senão ProfileScreen
     Builder(
       builder: (context) {
@@ -104,11 +104,11 @@ class _MainNavigationState extends State<MainNavigation> {
 
     return WillPopScope(
       onWillPop: () async {
-        // Se não estiver na primeira aba (ferramentas)
+        // Se não estiver na primeira aba (AI Tutor)
         if (_currentIndex != 0) {
           // Se estiver saindo da aba do AITutor para outra, acionar o método
           // Mesmo padrão de verificação usado no callback de mudança de aba
-          bool leavingAITutor = _currentIndex == 2;
+          bool leavingAITutor = _currentIndex == 0;
 
           // Voltar para a primeira aba
           setState(() {
@@ -148,6 +148,11 @@ class _MainNavigationState extends State<MainNavigation> {
           unselectedItemColor: unselectedIconColor,
           items: [
             BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              activeIcon: Icon(Icons.chat_bubble),
+              label: '',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.lightbulb_outline),
               activeIcon: Icon(Icons.lightbulb),
               label: '',
@@ -155,11 +160,6 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(
               icon: Icon(Icons.camera_alt_outlined),
               activeIcon: Icon(Icons.camera_alt),
-              label: '',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
               label: '',
             ),
             BottomNavigationBarItem(
