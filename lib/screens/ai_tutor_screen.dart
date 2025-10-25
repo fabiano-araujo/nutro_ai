@@ -15,7 +15,6 @@ import '../services/ad_manager.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../providers/credit_provider.dart';
-import '../widgets/credit_indicator.dart';
 import 'settings_screen.dart';
 import '../widgets/message_notifier.dart';
 import '../utils/code_detector.dart';
@@ -278,7 +277,7 @@ class AITutorScreenState extends State<AITutorScreen>
       ttsRef: _ttsMixinRef,
       toolType: toolType,
       conversationId: widget.conversationId ?? conversationIdFromToolData,
-      showWelcomeMessage: !isFromTool && !loadingExistingConversation,
+      showWelcomeMessage: false, // Usando overlay em vez de mensagem no chat
       rawInitialPromptJson: isFromTool
           ? widget.initialPrompt
           : null, // Passa o JSON completo se for ferramenta
@@ -342,8 +341,8 @@ class AITutorScreenState extends State<AITutorScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Atualizar a mensagem de boas-vindas se necessário
-    _controller.updateWelcomeMessage(context);
+    // Mensagem de boas-vindas agora é exibida como overlay
+    // _controller.updateWelcomeMessage(context);
   }
 
   @override
@@ -827,28 +826,6 @@ class AITutorScreenState extends State<AITutorScreen>
             body: SafeArea(
               child: Column(
                 children: [
-                  // Barra superior com título e indicador de créditos
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    color: currentScaffoldBackgroundColor,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Nutro AI',
-                          style: TextStyle(
-                            color: isDarkMode
-                                ? Colors.white
-                                : AppTheme.textPrimaryColor,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        CreditIndicator(),
-                      ],
-                    ),
-                  ),
-
                   // Calendário semanal
                   WeeklyCalendar(
                     selectedDate: DateTime.now(),
@@ -863,39 +840,11 @@ class AITutorScreenState extends State<AITutorScreen>
 
                   // Lista de mensagens
                   Expanded(
-                    child: messages.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 32),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    appLocalizations.translate('start_question'),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDarkMode
-                                          ? Colors.white
-                                          : AppTheme.textPrimaryColor,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    appLocalizations.translate('start_question_subtitle'),
-                                    style: AppTheme.bodyMedium.copyWith(
-                                      color: isDarkMode
-                                          ? Colors.white70
-                                          : AppTheme.textSecondaryColor,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
+                    child: Stack(
+                      children: [
+                        // ListView (só renderiza quando há mensagens)
+                        if (messages.isNotEmpty)
+                          ListView.builder(
                             controller: _scrollController,
                             padding: EdgeInsets.all(16),
                             // Adicionar +1 para o card de ferramentas quando existir
@@ -938,6 +887,47 @@ class AITutorScreenState extends State<AITutorScreen>
                               }
                             },
                           ),
+
+                        // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens)
+                        if (messages.isEmpty)
+                          Positioned.fill(
+                            child: Container(
+                              color: currentScaffoldBackgroundColor,
+                              child: Center(
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 32),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        appLocalizations.translate('start_question'),
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : AppTheme.textPrimaryColor,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      SizedBox(height: 12),
+                                      Text(
+                                        appLocalizations.translate('start_question_subtitle'),
+                                        style: AppTheme.bodyMedium.copyWith(
+                                          color: isDarkMode
+                                              ? Colors.white70
+                                              : AppTheme.textSecondaryColor,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
 
                   // Área de input
