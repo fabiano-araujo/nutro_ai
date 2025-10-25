@@ -46,8 +46,8 @@ class NutritionCard extends StatelessWidget {
                 children: [
                   // Gráfico circular de calorias
                   SizedBox(
-                    width: 100,
-                    height: 100,
+                    width: 105,
+                    height: 105,
                     child: CustomPaint(
                       painter: CalorieCirclePainter(
                         consumed: caloriesConsumed,
@@ -61,16 +61,19 @@ class NutritionCard extends StatelessWidget {
                             Text(
                               caloriesRemaining.toString(),
                               style: TextStyle(
-                                fontSize: 28,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.white : Colors.black87,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black87,
                               ),
                             ),
                             Text(
                               'remaining',
                               style: TextStyle(
-                                fontSize: 11,
-                                color: isDarkMode ? Colors.white60 : Colors.black54,
+                                fontSize: 10,
+                                color: isDarkMode
+                                    ? Colors.white60
+                                    : Colors.black54,
                               ),
                             ),
                           ],
@@ -172,7 +175,9 @@ class _MacroRow extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-                color: isDarkMode ? Colors.white.withOpacity(0.87) : Colors.black87,
+                color: isDarkMode
+                    ? Colors.white.withOpacity(0.87)
+                    : Colors.black87,
               ),
             ),
             Text(
@@ -220,7 +225,7 @@ class CalorieCirclePainter extends CustomPainter {
     final bgPaint = Paint()
       ..color = isDarkMode ? Colors.grey[800]! : Color(0xFFE8E8E8)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
+      ..strokeWidth = 10
       ..strokeCap = StrokeCap.round;
 
     canvas.drawCircle(center, radius, bgPaint);
@@ -229,7 +234,7 @@ class CalorieCirclePainter extends CustomPainter {
     final progressPaint = Paint()
       ..color = Color(0xFF66BB6A)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
+      ..strokeWidth = 10
       ..strokeCap = StrokeCap.round;
 
     const startAngle = -math.pi / 2; // Começar no topo
