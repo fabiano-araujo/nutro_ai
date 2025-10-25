@@ -117,16 +117,27 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Nome do dia da semana
-            Text(
-              dayName,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
                 color: isSelected
                     ? Theme.of(context).primaryColor
-                    : isDarkMode
-                        ? Colors.white70
-                        : AppTheme.textSecondaryColor,
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                dayName,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected
+                      ? Colors.white
+                      : isToday
+                          ? Theme.of(context).primaryColor
+                          : isDarkMode
+                              ? Colors.white70
+                              : AppTheme.textSecondaryColor,
+                ),
               ),
             ),
             SizedBox(height: 4),
@@ -137,37 +148,32 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? Theme.of(context).primaryColor
-                    : Colors.transparent,
+                    : isDarkMode
+                        ? Colors.white.withAlpha(13)
+                        : Colors.black.withAlpha(13),
                 shape: BoxShape.circle,
+                // Borda para o dia atual
+                border: isToday && !isSelected
+                    ? Border.all(
+                        color: Theme.of(context).primaryColor,
+                        width: 2.5,
+                      )
+                    : null,
               ),
               alignment: Alignment.center,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    dayNumber,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected
-                          ? Colors.white
+              child: Text(
+                dayNumber,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected
+                      ? Colors.white
+                      : isToday
+                          ? Theme.of(context).primaryColor
                           : isDarkMode
                               ? Colors.white
                               : AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                  // Indicador de hoje (ponto amarelo)
-                  if (isToday && !isSelected)
-                    Container(
-                      margin: EdgeInsets.only(top: 2),
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.amber,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
           ],

@@ -177,16 +177,17 @@ final Map<String, String> frFRTranslations = {
 
   // Écran de chat (Tuteur IA)
   'ai_tutor_welcome':
-      'Bonjour ! Je suis votre tuteur IA. Comment puis-je vous aider dans vos études aujourd\'hui ?\n\nJe peux expliquer des concepts, aider avec des exercices ou répondre à des questions sur n\'importe quel sujet.',
+      'Qu\'avez-vous mangé aujourd\'hui ? Je calcule les calories et les nutriments pour vous.',
   'ai_tutor_short_welcome':
-      'Bonjour ! Je suis votre tuteur IA. Comment puis-je vous aider dans vos études aujourd\'hui ?',
+      'Qu\'avez-vous mangé aujourd\'hui ? Je calcule les calories et les nutriments pour vous.',
   'ask_question': 'Posez une question...',
   'reset_conversation': 'Réinitialiser la conversation ?',
   'reset_conversation_message':
       'Cela supprimera tous les messages actuels et démarrera une nouvelle conversation.',
   'restart': 'Redémarrer',
   'reset_conversation_tooltip': 'Réinitialiser la conversation',
-  'start_question': 'Commencez par poser une question !',
+  'start_question': 'Qu\'avez-vous mangé aujourd\'hui ?',
+  'start_question_subtitle': 'Je calcule les calories et les nutriments pour vous.',
   'you': 'Vous',
   'thinking': 'Réflexion...',
   'copy_response': 'Copier la réponse',

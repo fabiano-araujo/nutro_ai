@@ -204,16 +204,17 @@ final Map<String, String> deDETranslations = {
 
   // Chat-Bildschirm (KI-Tutor)
   'ai_tutor_welcome':
-      'Hallo! Ich bin dein KI-Tutor. Wie kann ich dir heute bei deinem Studium helfen?\n\nIch kann Konzepte erklären, bei Übungen helfen oder Fragen zu jedem Fach beantworten.',
+      'Was hast du heute gegessen? Ich berechne die Kalorien und Nährstoffe für dich.',
   'ai_tutor_short_welcome':
-      'Hallo! Ich bin dein KI-Tutor. Wie kann ich dir heute bei deinem Studium helfen?',
+      'Was hast du heute gegessen? Ich berechne die Kalorien und Nährstoffe für dich.',
   'ask_question': 'Stelle eine Frage...',
   'reset_conversation': 'Gespräch zurücksetzen?',
   'reset_conversation_message':
       'Dies löscht alle aktuellen Nachrichten und startet ein neues Gespräch.',
   'restart': 'Neu starten',
   'reset_conversation_tooltip': 'Gespräch zurücksetzen',
-  'start_question': 'Beginne mit einer Frage!',
+  'start_question': 'Was hast du heute gegessen?',
+  'start_question_subtitle': 'Ich berechne die Kalorien und Nährstoffe für dich.',
   'you': 'Du',
   'thinking': 'Denke nach...',
   'copy_response': 'Antwort kopieren',

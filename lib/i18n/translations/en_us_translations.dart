@@ -229,16 +229,17 @@ final Map<String, String> enUSTranslations = {
   // Chat screen (AI Tutor)
   'ai_tutor': 'AI Tutor',
   'ai_tutor_welcome':
-      'Hello! I\'m your AI tutor. How can I help with your studies today?\n\nI can explain concepts, help with exercises, or answer questions about any subject.',
+      'What did you eat today? I calculate the calories and nutrients for you.',
   'ai_tutor_short_welcome':
-      'Hi! I\'m your AI tutor. How can I help with your studies today?',
+      'What did you eat today? I calculate the calories and nutrients for you.',
   'ask_question': 'Ask a question...',
   'reset_conversation': 'Reset conversation?',
   'reset_conversation_message':
       'This will delete all current messages and start a new conversation.',
   'restart': 'Restart',
   'reset_conversation_tooltip': 'Reset conversation',
-  'start_question': 'Start by asking a question!',
+  'start_question': 'What did you eat today?',
+  'start_question_subtitle': 'I calculate the calories and nutrients for you.',
   'you': 'You',
   'thinking': 'Thinking...',
   'copy_response': 'Copy response',

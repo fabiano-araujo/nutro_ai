@@ -236,16 +236,17 @@ final Map<String, String> ptBRTranslations = {
   // Tela de chat (IA Tutor)
   'ai_tutor': 'Assistente de Estudos',
   'ai_tutor_welcome':
-      'Olá! Eu sou seu tutor de IA. Como posso ajudar com seus estudos hoje?\n\nPosso explicar conceitos, ajudar com exercícios, ou responder perguntas sobre qualquer matéria.',
+      'O que você comeu hoje? Eu calculo as calorias e os nutrientes para você.',
   'ai_tutor_short_welcome':
-      'Olá! Sou seu tutor de IA. Como posso ajudar com seus estudos hoje?',
+      'O que você comeu hoje? Eu calculo as calorias e os nutrientes para você.',
   'ask_question': 'Faça uma pergunta...',
   'reset_conversation': 'Reiniciar conversa?',
   'reset_conversation_message':
       'Isso excluirá todas as mensagens atuais e iniciará uma nova conversa.',
   'restart': 'Reiniciar',
   'reset_conversation_tooltip': 'Reiniciar conversa',
-  'start_question': 'Comece fazendo uma pergunta!',
+  'start_question': 'O que você comeu hoje?',
+  'start_question_subtitle': 'Eu calculo as calorias e os nutrientes para você.',
   'you': 'Você',
   'thinking': 'Pensando...',
   'copy_response': 'Copiar resposta',

@@ -174,16 +174,17 @@ final Map<String, String> itITTranslations = {
 
   // Schermata chat (Tutor IA)
   'ai_tutor_welcome':
-      'Ciao! Sono il tuo tutor IA. Come posso aiutarti con i tuoi studi oggi?\n\nPosso spiegare concetti, aiutare con gli esercizi o rispondere a domande su qualsiasi materia.',
+      'Cosa hai mangiato oggi? Calcolo le calorie e i nutrienti per te.',
   'ai_tutor_short_welcome':
-      'Ciao! Sono il tuo tutor IA. Come posso aiutarti con i tuoi studi oggi?',
+      'Cosa hai mangiato oggi? Calcolo le calorie e i nutrienti per te.',
   'ask_question': 'Fai una domanda...',
   'reset_conversation': 'Resettare la conversazione?',
   'reset_conversation_message':
       'Questo eliminerà tutti i messaggi attuali e inizierà una nuova conversazione.',
   'restart': 'Riavvia',
   'reset_conversation_tooltip': 'Resetta conversazione',
-  'start_question': 'Inizia facendo una domanda!',
+  'start_question': 'Cosa hai mangiato oggi?',
+  'start_question_subtitle': 'Calcolo le calorie e i nutrienti per te.',
   'you': 'Tu',
   'thinking': 'Pensando...',
   'copy_response': 'Copia risposta',

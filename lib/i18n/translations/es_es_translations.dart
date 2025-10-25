@@ -204,16 +204,17 @@ final Map<String, String> esESTranslations = {
 
   // Pantalla de chat (Tutor IA)
   'ai_tutor_welcome':
-      '¡Hola! Soy tu tutor de IA. ¿Cómo puedo ayudarte con tus estudios hoy?\n\nPuedo explicar conceptos, ayudar con ejercicios o responder preguntas sobre cualquier materia.',
+      '¿Qué comiste hoy? Yo calculo las calorías y los nutrientes para ti.',
   'ai_tutor_short_welcome':
-      '¡Hola! Soy tu tutor de IA. ¿Cómo puedo ayudarte con tus estudios hoy?',
+      '¿Qué comiste hoy? Yo calculo las calorías y los nutrientes para ti.',
   'ask_question': 'Haz una pregunta...',
   'reset_conversation': '¿Reiniciar conversación?',
   'reset_conversation_message':
       'Esto borrará todos los mensajes actuales e iniciará una nueva conversación.',
   'restart': 'Reiniciar',
   'reset_conversation_tooltip': 'Reiniciar conversación',
-  'start_question': '¡Comienza haciendo una pregunta!',
+  'start_question': '¿Qué comiste hoy?',
+  'start_question_subtitle': 'Yo calculo las calorías y los nutrientes para ti.',
   'you': 'Tú',
   'thinking': 'Pensando...',
   'copy_response': 'Copiar respuesta',

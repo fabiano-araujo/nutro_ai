@@ -34,6 +34,7 @@ import '../utils/ai_interaction_helper.dart';
 import 'dart:convert';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
+import '../widgets/nutrition_card.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -857,16 +858,40 @@ class AITutorScreenState extends State<AITutorScreen>
                     },
                   ),
 
+                  // Nutrition card (sempre visível)
+                  NutritionCard(),
+
                   // Lista de mensagens
                   Expanded(
                     child: messages.isEmpty
                         ? Center(
-                            child: Text(
-                              appLocalizations.translate('start_question'),
-                              style: AppTheme.bodyMedium.copyWith(
-                                color: isDarkMode
-                                    ? Colors.white70
-                                    : AppTheme.textSecondaryColor,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 32),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    appLocalizations.translate('start_question'),
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : AppTheme.textPrimaryColor,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    appLocalizations.translate('start_question_subtitle'),
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      color: isDarkMode
+                                          ? Colors.white70
+                                          : AppTheme.textSecondaryColor,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
                           )
