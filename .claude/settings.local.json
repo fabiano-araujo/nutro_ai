@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(if exist \"lib\\models\\nul\" del \"lib\\models\\nul\")",
+      "Bash(if exist \"nul\" del \"nul\")",
+      "Bash(cmd /c \"if exist lib\\models\\nul del lib\\models\\nul\")",
+      "Bash(cmd /c \"if exist nul del nul\")",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

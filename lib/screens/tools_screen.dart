@@ -28,6 +28,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../widgets/meal_card.dart';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
+import '../models/Nutrient.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({Key? key}) : super(key: key);
@@ -46,36 +47,99 @@ class _ToolsScreenState extends State<ToolsScreen> {
   }
 
   void _initializeExampleMeal() {
-    final foods = [
+    final foods = <Food>[
       Food(
         name: 'Egg',
         amount: '1 large',
-        calories: 78,
-        protein: 6,
-        carbs: 1,
-        fat: 5,
         emoji: '🥚',
-        imageUrl: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
+        photo: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
+        brand: 'Organic Farm',
+        nutrients: [
+          Nutrient(
+            idFood: 0,
+            servingSize: 50,
+            servingUnit: 'g',
+            calories: 78,
+            protein: 6.3,
+            carbohydrate: 0.6,
+            fat: 5.3,
+            saturatedFat: 1.6,
+            monounsaturatedFat: 2.0,
+            polyunsaturatedFat: 0.7,
+            transFat: 0,
+            cholesterol: 186,
+            sodium: 62,
+            potassium: 69,
+            dietaryFiber: 0,
+            sugars: 0.6,
+            vitaminA: 80,
+            vitaminD: 1.1,
+            vitaminB6: 0.1,
+            vitaminB12: 0.6,
+            calcium: 28,
+            iron: 0.9,
+          ),
+        ],
       ),
       Food(
         name: 'Couscous',
         amount: '100g',
-        calories: 376,
-        protein: 13,
-        carbs: 77,
-        fat: 1,
         emoji: '🍚',
-        imageUrl: 'https://images.unsplash.com/photo-1596040033229-a0b0d1f6e2e3?w=200&h=200&fit=crop',
+        photo: 'https://images.unsplash.com/photo-1596040033229-a0b0d1f6e2e3?w=200&h=200&fit=crop',
+        brand: 'Mediterranean',
+        nutrients: [
+          Nutrient(
+            idFood: 0,
+            servingSize: 100,
+            servingUnit: 'g',
+            calories: 376,
+            protein: 13,
+            carbohydrate: 77,
+            fat: 1,
+            saturatedFat: 0.1,
+            monounsaturatedFat: 0.2,
+            polyunsaturatedFat: 0.4,
+            sodium: 10,
+            potassium: 166,
+            dietaryFiber: 5,
+            sugars: 2,
+            calcium: 24,
+            iron: 1.1,
+            vitaminB6: 0.2,
+          ),
+        ],
       ),
       Food(
         name: 'Milk',
         amount: '200ml',
-        calories: 91,
-        protein: 6,
-        carbs: 9,
-        fat: 3,
         emoji: '🥛',
-        imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop',
+        photo: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop',
+        brand: 'Dairy Fresh',
+        nutrients: [
+          Nutrient(
+            idFood: 0,
+            servingSize: 200,
+            servingUnit: 'ml',
+            calories: 91,
+            protein: 6,
+            carbohydrate: 9,
+            fat: 3,
+            saturatedFat: 1.9,
+            monounsaturatedFat: 0.8,
+            polyunsaturatedFat: 0.1,
+            cholesterol: 12,
+            sodium: 95,
+            potassium: 280,
+            sugars: 9,
+            addedSugars: 0,
+            calcium: 220,
+            iron: 0.1,
+            vitaminA: 100,
+            vitaminD: 2.5,
+            vitaminB6: 0.2,
+            vitaminB12: 0.9,
+          ),
+        ],
       ),
     ];
 

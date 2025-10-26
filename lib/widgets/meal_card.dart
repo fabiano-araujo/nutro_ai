@@ -3,6 +3,7 @@ import '../models/food_model.dart';
 import '../models/meal_model.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../screens/food_page.dart';
 
 class MealCard extends StatefulWidget {
   final Meal meal;
@@ -295,16 +296,26 @@ class _FoodItem extends StatelessWidget {
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(12),
-            child: Row(
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FoodPage(food: food),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
               children: [
                 // Left side: Icon + Name + Edit Icon
                 Expanded(
@@ -393,7 +404,7 @@ class _FoodItem extends StatelessWidget {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              food.amount,
+                              food.amount ?? '',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: secondaryTextColor,
@@ -495,7 +506,8 @@ class _FoodItem extends StatelessWidget {
                 ],
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
