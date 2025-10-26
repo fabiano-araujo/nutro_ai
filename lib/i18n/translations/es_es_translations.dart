@@ -14,7 +14,7 @@ final Map<String, String> esESTranslations = {
   'email_login_title': 'Iniciar sesión con Email',
   'welcome': 'Bienvenido',
   'welcome_description':
-      'Inicia sesión con tu cuenta para acceder a tu historial y guardar tu progreso',
+      'Inicia sesión con tu cuenta para rastrear tus calorías y alcanzar tus objetivos nutricionales',
   'sign_in_with_google': 'Iniciar sesión con Google',
   'sign_in_with_email': 'Iniciar sesión con email y contraseña',
   'or': 'o',
@@ -506,7 +506,7 @@ final Map<String, String> esESTranslations = {
 
   // Nutrition Card
   'remaining': 'restantes',
-  'protein': 'Proteína',
+  'protein': 'Proteínas',
   'carbs': 'Carbohidratos',
   'fats': 'Grasas',
 

@@ -131,11 +131,17 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            context.tr.translate('email_login_title') ?? 'Login com Email'),
+          context.tr.translate('email_login_title') ?? 'Login com Email',
+          style: TextStyle(color: Colors.white),
+        ),
         centerTitle: false,
         scrolledUnderElevation: 0,
+        backgroundColor: isDarkMode
+            ? AppTheme.darkBackgroundColor
+            : AppTheme.primaryColor.withOpacity(0.8),
+        foregroundColor: Colors.white,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),

@@ -205,7 +205,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                       child: Text(
                         _formatDateTitle(context),
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 20,
                           fontWeight: FontWeight.w600,
                           color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                         ),

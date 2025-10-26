@@ -371,7 +371,7 @@ final Map<String, String> deDETranslations = {
 
   // Nutrition Card
   'remaining': 'übrig',
-  'protein': 'Protein',
+  'protein': 'Proteine',
   'carbs': 'Kohlenhydrate',
   'fats': 'Fette',
 

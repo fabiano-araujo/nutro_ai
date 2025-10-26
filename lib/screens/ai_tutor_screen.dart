@@ -941,7 +941,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                       Text(
                                         appLocalizations.translate('start_question'),
                                         style: TextStyle(
-                                          fontSize: 24,
+                                          fontSize: 28,
                                           fontWeight: FontWeight.bold,
                                           color: isDarkMode
                                               ? Colors.white

@@ -757,7 +757,7 @@ final Map<String, String> ptBRTranslations = {
 
   // Nutrition Card
   'remaining': 'restantes',
-  'protein': 'Proteína',
+  'protein': 'Proteínas',
   'carbs': 'Carboidratos',
   'fats': 'Gorduras',
 

@@ -574,7 +574,7 @@ final Map<String, String> enUSTranslations = {
 
   // Nutrition Card
   'remaining': 'remaining',
-  'protein': 'Protein',
+  'protein': 'Proteins',
   'carbs': 'Carbs',
   'fats': 'Fats',
 
