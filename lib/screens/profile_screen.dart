@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:math' as math;
 
 import '../services/auth_service.dart';
 import 'login_screen.dart';
@@ -163,30 +164,320 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(user, ThemeData theme, ColorScheme colorScheme) {
-    return Column(
-      children: [
-        // Avatar
-        CircleAvatar(
-          radius: 64,
-          backgroundColor: theme.colorScheme.surfaceContainerHighest,
-          backgroundImage: user.photo != null ? NetworkImage(user.photo!) : null,
-          child: user.photo == null
-              ? Icon(
-                  Icons.person_outline,
-                  size: 64,
-                  color: theme.colorScheme.onSurfaceVariant,
-                )
-              : null,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          user.name,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
+    // Calculate daily calories based on user data
+    final dailyCalories = _calculateDailyCalories();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-        ),
-      ],
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar à esquerda
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                backgroundImage: user.photo != null ? NetworkImage(user.photo!) : null,
+                child: user.photo == null
+                    ? Icon(
+                        Icons.person_outline,
+                        size: 50,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 20),
+              // Nome à direita
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      user.name,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            _getBMIColor().withValues(alpha: 0.12),
+                            _getBMIColor().withValues(alpha: 0.06),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _getBMIColor().withValues(alpha: 0.25),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: _getBMIColor().withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.favorite,
+                              size: 11,
+                              color: _getBMIColor(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'IMC ${_calculateBMI().toStringAsFixed(1)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: _getBMIColor(),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: _getBMIColor().withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _getBMICategory(),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: _getBMIColor().withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Divisor
+          Divider(
+            color: theme.colorScheme.surfaceContainerHighest,
+            thickness: 1,
+          ),
+          const SizedBox(height: 16),
+          // Objetivo e Calorias
+          Row(
+            children: [
+              // Objetivo
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _getGoalIcon(),
+                            size: 20,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Objetivo',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _getGoalText(),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Calorias Diárias
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.local_fire_department,
+                            size: 20,
+                            color: Colors.orange,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Meta Diária',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${dailyCalories.toStringAsFixed(0)} kcal',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
+  }
+
+  IconData _getGoalIcon() {
+    switch (_goal) {
+      case 'Lose Weight':
+        return Icons.trending_down;
+      case 'Gain Weight':
+        return Icons.trending_up;
+      case 'Maintain Weight':
+        return Icons.trending_flat;
+      default:
+        return Icons.flag;
+    }
+  }
+
+  String _getGoalText() {
+    switch (_goal) {
+      case 'Lose Weight':
+        return 'Perder Peso';
+      case 'Gain Weight':
+        return 'Ganhar Peso';
+      case 'Maintain Weight':
+        return 'Manter Peso';
+      default:
+        return _goal;
+    }
+  }
+
+  double _calculateDailyCalories() {
+    // Fórmula de Harris-Benedict
+    double bmr;
+    if (_sex == 'Male') {
+      bmr = 88.362 + (13.397 * _weight) + (4.799 * _height) - (5.677 * _age);
+    } else {
+      bmr = 447.593 + (9.247 * _weight) + (3.098 * _height) - (4.330 * _age);
+    }
+
+    // Multiplicador de atividade
+    double activityMultiplier;
+    switch (_activityLevel) {
+      case 'Sedentary':
+        activityMultiplier = 1.2;
+        break;
+      case 'Lightly Active':
+        activityMultiplier = 1.375;
+        break;
+      case 'Moderately Active':
+        activityMultiplier = 1.55;
+        break;
+      case 'Very Active':
+        activityMultiplier = 1.725;
+        break;
+      case 'Extremely Active':
+        activityMultiplier = 1.9;
+        break;
+      default:
+        activityMultiplier = 1.2;
+    }
+
+    double tdee = bmr * activityMultiplier;
+
+    // Ajuste baseado no objetivo
+    switch (_goal) {
+      case 'Lose Weight':
+        return tdee - 500; // Déficit de 500 calorias
+      case 'Gain Weight':
+        return tdee + 500; // Superávit de 500 calorias
+      case 'Maintain Weight':
+      default:
+        return tdee;
+    }
+  }
+
+  double _calculateBMI() {
+    // IMC = peso (kg) / altura (m)²
+    final heightInMeters = _height / 100;
+    return _weight / (heightInMeters * heightInMeters);
+  }
+
+  String _getBMICategory() {
+    final bmi = _calculateBMI();
+    if (bmi < 18.5) {
+      return 'Abaixo do peso';
+    } else if (bmi < 25) {
+      return 'Peso normal';
+    } else if (bmi < 30) {
+      return 'Sobrepeso';
+    } else {
+      return 'Obesidade';
+    }
+  }
+
+  Color _getBMIColor() {
+    final bmi = _calculateBMI();
+    if (bmi < 18.5) {
+      return const Color(0xFF64B5F6); // Azul suave - Abaixo do peso
+    } else if (bmi < 25) {
+      return const Color(0xFF66BB6A); // Verde suave - Peso normal
+    } else if (bmi < 30) {
+      return const Color(0xFFFFB74D); // Laranja suave - Sobrepeso
+    } else {
+      return const Color(0xFFEF5350); // Vermelho suave - Obesidade
+    }
   }
 
   Widget _buildPersonalInformationSection(ThemeData theme, ColorScheme colorScheme) {
@@ -749,7 +1040,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMacronutrientsChartCard(ThemeData theme, ColorScheme colorScheme) {
     List<double> proteinData, carbsData, fatData, fiberData;
-    int daysCount;
 
     switch (_selectedMacroPeriod) {
       case '30 dias':
@@ -757,22 +1047,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         carbsData = _dailyCarbs30;
         fatData = _dailyFat30;
         fiberData = _dailyFiber30;
-        daysCount = 30;
         break;
       case '90 dias':
         proteinData = _dailyProtein90;
         carbsData = _dailyCarbs90;
         fatData = _dailyFat90;
         fiberData = _dailyFiber90;
-        daysCount = 90;
         break;
       default:
         proteinData = _dailyProtein7;
         carbsData = _dailyCarbs7;
         fatData = _dailyFat7;
         fiberData = _dailyFiber7;
-        daysCount = 7;
     }
+
+    // Calculate averages
+    final avgProtein = proteinData.reduce((a, b) => a + b) / proteinData.length;
+    final avgCarbs = carbsData.reduce((a, b) => a + b) / carbsData.length;
+    final avgFat = fatData.reduce((a, b) => a + b) / fatData.length;
+    final avgFiber = fiberData.reduce((a, b) => a + b) / fiberData.length;
 
     return Container(
       decoration: BoxDecoration(
@@ -810,18 +1103,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 24),
           SizedBox(
             height: 250,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 50,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      strokeWidth: 1,
-                    );
-                  },
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: 250,
+                minY: 0,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      String label = '';
+                      switch (groupIndex) {
+                        case 0:
+                          label = 'Proteína';
+                          break;
+                        case 1:
+                          label = 'Carboidrato';
+                          break;
+                        case 2:
+                          label = 'Gordura';
+                          break;
+                        case 3:
+                          label = 'Fibra';
+                          break;
+                      }
+                      return BarTooltipItem(
+                        '$label\n${rod.toY.toStringAsFixed(1)}g',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      );
+                    },
+                  ),
                 ),
                 titlesData: FlTitlesData(
                   show: true,
@@ -830,21 +1144,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 30,
-                      interval: daysCount > 30 ? 15 : (daysCount > 7 ? 5 : 1),
+                      reservedSize: 40,
                       getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 && value.toInt() < daysCount) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              '${value.toInt() + 1}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-                              ),
-                            ),
-                          );
+                        String text = '';
+                        Color color = Colors.black;
+                        switch (value.toInt()) {
+                          case 0:
+                            text = 'Proteína';
+                            color = const Color(0xFF9575CD); // Purple
+                            break;
+                          case 1:
+                            text = 'Carboidrato';
+                            color = const Color(0xFFA1887F); // Brown
+                            break;
+                          case 2:
+                            text = 'Gordura';
+                            color = const Color(0xFF90A4AE); // Blue-grey
+                            break;
+                          case 3:
+                            text = 'Fibra';
+                            color = Colors.green;
+                            break;
                         }
-                        return const Text('');
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            text,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                          ),
+                        );
                       },
                     ),
                   ),
@@ -864,6 +1196,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 50,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      strokeWidth: 1,
+                    );
+                  },
+                ),
                 borderData: FlBorderData(
                   show: true,
                   border: Border(
@@ -871,115 +1214,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     left: BorderSide(color: theme.colorScheme.surfaceContainerHighest, width: 1),
                   ),
                 ),
-                minX: 0,
-                maxX: (daysCount - 1).toDouble(),
-                minY: 0,
-                maxY: 250,
-                lineBarsData: [
-                  // Protein line
-                  LineChartBarData(
-                    spots: proteinData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
-                    isCurved: true,
-                    color: Colors.red,
-                    barWidth: 2.5,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 2,
-                          color: Colors.red,
-                          strokeWidth: 1,
-                          strokeColor: theme.cardColor,
-                        );
-                      },
-                    ),
+                barGroups: [
+                  BarChartGroupData(
+                    x: 0,
+                    barRods: [
+                      BarChartRodData(
+                        toY: avgProtein,
+                        color: const Color(0xFF9575CD), // Purple - matches nutrition_card.dart
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        backDrawRodData: BackgroundBarChartRodData(
+                          show: true,
+                          toY: 250,
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ],
                   ),
-                  // Carbs line
-                  LineChartBarData(
-                    spots: carbsData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
-                    isCurved: true,
-                    color: Colors.blue,
-                    barWidth: 2.5,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 2,
-                          color: Colors.blue,
-                          strokeWidth: 1,
-                          strokeColor: theme.cardColor,
-                        );
-                      },
-                    ),
+                  BarChartGroupData(
+                    x: 1,
+                    barRods: [
+                      BarChartRodData(
+                        toY: avgCarbs,
+                        color: const Color(0xFFA1887F), // Brown - matches nutrition_card.dart
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        backDrawRodData: BackgroundBarChartRodData(
+                          show: true,
+                          toY: 250,
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ],
                   ),
-                  // Fat line
-                  LineChartBarData(
-                    spots: fatData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
-                    isCurved: true,
-                    color: Colors.orange,
-                    barWidth: 2.5,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 2,
-                          color: Colors.orange,
-                          strokeWidth: 1,
-                          strokeColor: theme.cardColor,
-                        );
-                      },
-                    ),
+                  BarChartGroupData(
+                    x: 2,
+                    barRods: [
+                      BarChartRodData(
+                        toY: avgFat,
+                        color: const Color(0xFF90A4AE), // Blue-grey - matches nutrition_card.dart
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        backDrawRodData: BackgroundBarChartRodData(
+                          show: true,
+                          toY: 250,
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ],
                   ),
-                  // Fiber line
-                  LineChartBarData(
-                    spots: fiberData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
-                    isCurved: true,
-                    color: Colors.green,
-                    barWidth: 2.5,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 2,
-                          color: Colors.green,
-                          strokeWidth: 1,
-                          strokeColor: theme.cardColor,
-                        );
-                      },
-                    ),
+                  BarChartGroupData(
+                    x: 3,
+                    barRods: [
+                      BarChartRodData(
+                        toY: avgFiber,
+                        color: Colors.green,
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        backDrawRodData: BackgroundBarChartRodData(
+                          show: true,
+                          toY: 250,
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        String label = '';
-                        Color color = Colors.white;
-                        if (spot.barIndex == 0) {
-                          label = 'Proteína';
-                          color = Colors.red;
-                        } else if (spot.barIndex == 1) {
-                          label = 'Carboidrato';
-                          color = Colors.blue;
-                        } else if (spot.barIndex == 2) {
-                          label = 'Gordura';
-                          color = Colors.orange;
-                        } else if (spot.barIndex == 3) {
-                          label = 'Fibra';
-                          color = Colors.green;
-                        }
-                        return LineTooltipItem(
-                          '$label: ${spot.y.toInt()}g',
-                          TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
-                        );
-                      }).toList();
-                    },
-                  ),
-                ),
               ),
             ),
           ),
@@ -989,10 +1289,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
-              _buildMacroLegendItem('Proteína', Colors.red, theme),
-              _buildMacroLegendItem('Carboidrato', Colors.blue, theme),
-              _buildMacroLegendItem('Gordura', Colors.orange, theme),
-              _buildMacroLegendItem('Fibra', Colors.green, theme),
+              _buildMacroLegendItem('Proteína: ${avgProtein.toStringAsFixed(1)}g', const Color(0xFF9575CD), theme),
+              _buildMacroLegendItem('Carboidrato: ${avgCarbs.toStringAsFixed(1)}g', const Color(0xFFA1887F), theme),
+              _buildMacroLegendItem('Gordura: ${avgFat.toStringAsFixed(1)}g', const Color(0xFF90A4AE), theme),
+              _buildMacroLegendItem('Fibra: ${avgFiber.toStringAsFixed(1)}g', Colors.green, theme),
             ],
           ),
         ],

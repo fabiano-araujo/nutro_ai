@@ -13,6 +13,7 @@ class NutritionCard extends StatelessWidget {
   final int fatsConsumed;
   final int fatsGoal;
   final VoidCallback? onTap;
+  final VoidCallback? onEditGoals;
 
   const NutritionCard({
     Key? key,
@@ -25,6 +26,7 @@ class NutritionCard extends StatelessWidget {
     this.fatsConsumed = 45,
     this.fatsGoal = 70,
     this.onTap,
+    this.onEditGoals,
   }) : super(key: key);
 
   @override

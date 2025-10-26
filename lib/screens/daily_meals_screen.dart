@@ -69,6 +69,33 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               children: [
                 SizedBox(height: 8),
 
+                // Nutrition summary header with edit button
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Resumo Nutricional',
+                        style: AppTheme.headingMedium.copyWith(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.edit, color: textColor),
+                        tooltip: 'Editar metas',
+                        onPressed: () {
+                          _showEditGoalsDialog(context, provider);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 8),
+
                 // Nutrition summary card
                 GestureDetector(
                   onTap: () {
@@ -511,11 +538,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               ),
             ),
 
-            SizedBox(height: 16),
-
-            // Bar chart showing macronutrients per food
-            _buildMacroBarChart(allFoods, isDarkMode, textColor),
-
             Divider(
               color: isDarkMode ? Colors.white24 : Colors.black12,
               height: 24,
@@ -523,25 +545,27 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             ),
 
             // Calories
-            _NutrientRow(
+            _MacroNutrientRow(
               label: 'Calorias',
               value: '$totalCalories kcal',
               isDarkMode: isDarkMode,
             ),
+
             SizedBox(height: 12),
 
             // Protein
-            _NutrientRow(
+            _MacroNutrientRow(
               label: 'Proteína',
-              value: '${totalProtein.toStringAsFixed(1)} g',
+              value: '${totalProtein.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
+
             SizedBox(height: 12),
 
             // Total Carbohydrates
-            _NutrientRow(
+            _MacroNutrientRow(
               label: 'Carboidratos Totais',
-              value: '${totalCarbs.toStringAsFixed(1)} g',
+              value: '${totalCarbs.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
             if (totalFiber > 0 || totalSugars > 0)
@@ -560,24 +584,25 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     if (totalFiber > 0)
                       _SubNutrientRow(
                         label: 'Fibra Alimentar',
-                        value: '${totalFiber.toStringAsFixed(1)} g',
+                        value: '${totalFiber.toStringAsFixed(0)} g',
                         isDarkMode: isDarkMode,
                       ),
                     if (totalSugars > 0)
                       _SubNutrientRow(
                         label: 'Açúcares',
-                        value: '${totalSugars.toStringAsFixed(1)} g',
+                        value: '${totalSugars.toStringAsFixed(0)} g',
                         isDarkMode: isDarkMode,
                       ),
                   ],
                 ),
               ),
+
             SizedBox(height: 12),
 
             // Total Fat
-            _NutrientRow(
+            _MacroNutrientRow(
               label: 'Gordura Total',
-              value: '${totalFat.toStringAsFixed(1)} g',
+              value: '${totalFat.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
             if (totalSaturatedFat > 0)
@@ -617,95 +642,93 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             ),
 
             // Micronutrients List
-            if (totalCholesterol > 0) ...[
-              _NutrientRow(
+            if (totalCholesterol > 0)
+              _MicroNutrientRow(
                 label: 'Colesterol',
                 value: '${totalCholesterol.toStringAsFixed(0)} mg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalCholesterol > 0)
               SizedBox(height: 12),
-            ],
-            if (totalSodium > 0) ...[
-              _NutrientRow(
+
+            if (totalSodium > 0)
+              _MicroNutrientRow(
                 label: 'Sódio',
                 value: '${totalSodium.toStringAsFixed(0)} mg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalSodium > 0)
               SizedBox(height: 12),
-            ],
-            if (totalPotassium > 0) ...[
-              _NutrientRow(
+
+            if (totalPotassium > 0)
+              _MicroNutrientRow(
                 label: 'Potássio',
                 value: '${totalPotassium.toStringAsFixed(0)} mg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalPotassium > 0)
               SizedBox(height: 12),
-            ],
-            if (totalCalcium > 0) ...[
-              _NutrientRow(
+
+            if (totalCalcium > 0)
+              _MicroNutrientRow(
                 label: 'Cálcio',
                 value: '${totalCalcium.toStringAsFixed(0)} mg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalCalcium > 0)
               SizedBox(height: 12),
-            ],
-            if (totalIron > 0) ...[
-              _NutrientRow(
+
+            if (totalIron > 0)
+              _MicroNutrientRow(
                 label: 'Ferro',
                 value: '${totalIron.toStringAsFixed(1)} mg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalIron > 0)
               SizedBox(height: 12),
-            ],
-            if (totalVitaminD > 0) ...[
-              _NutrientRow(
+
+            if (totalVitaminD > 0)
+              _MicroNutrientRow(
                 label: 'Vitamina D',
                 value: '${totalVitaminD.toStringAsFixed(1)} mcg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalVitaminD > 0)
               SizedBox(height: 12),
-            ],
-            if (totalVitaminA > 0) ...[
-              _NutrientRow(
+
+            if (totalVitaminA > 0)
+              _MicroNutrientRow(
                 label: 'Vitamina A',
                 value: '${totalVitaminA.toStringAsFixed(1)} mcg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalVitaminA > 0)
               SizedBox(height: 12),
-            ],
-            if (totalVitaminC > 0) ...[
-              _NutrientRow(
+
+            if (totalVitaminC > 0)
+              _MicroNutrientRow(
                 label: 'Vitamina C',
                 value: '${totalVitaminC.toStringAsFixed(1)} mg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalVitaminC > 0)
               SizedBox(height: 12),
-            ],
-            if (totalVitaminB6 > 0) ...[
-              _NutrientRow(
+
+            if (totalVitaminB6 > 0)
+              _MicroNutrientRow(
                 label: 'Vitamina B6',
                 value: '${totalVitaminB6.toStringAsFixed(1)} mg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
+            if (totalVitaminB6 > 0)
               SizedBox(height: 12),
-            ],
-            if (totalVitaminB12 > 0) ...[
-              _NutrientRow(
+
+            if (totalVitaminB12 > 0)
+              _MicroNutrientRow(
                 label: 'Vitamina B12',
                 value: '${totalVitaminB12.toStringAsFixed(1)} mcg',
                 isDarkMode: isDarkMode,
-                isBold: false,
               ),
-            ],
           ],
         ),
       ),
@@ -723,6 +746,123 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditGoalsDialog(BuildContext context, DailyMealsProvider provider) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode
+        ? AppTheme.darkTextColor
+        : AppTheme.textPrimaryColor;
+
+    final caloriesController = TextEditingController(text: provider.caloriesGoal.toString());
+    final proteinController = TextEditingController(text: provider.proteinGoal.toString());
+    final carbsController = TextEditingController(text: provider.carbsGoal.toString());
+    final fatsController = TextEditingController(text: provider.fatsGoal.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        title: Text(
+          'Editar Metas Nutricionais',
+          style: TextStyle(color: textColor),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: caloriesController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Calorias (kcal)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primaryColor),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: proteinController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Proteína (g)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primaryColor),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: carbsController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Carboidratos (g)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primaryColor),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: fatsController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Gorduras (g)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primaryColor),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: TextStyle(color: textColor.withValues(alpha: 0.7))),
+          ),
+          TextButton(
+            onPressed: () {
+              final calories = int.tryParse(caloriesController.text) ?? provider.caloriesGoal;
+              final protein = int.tryParse(proteinController.text) ?? provider.proteinGoal;
+              final carbs = int.tryParse(carbsController.text) ?? provider.carbsGoal;
+              final fats = int.tryParse(fatsController.text) ?? provider.fatsGoal;
+
+              provider.updateGoals(
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fats: fats,
+              );
+
+              Navigator.pop(context);
+            },
+            child: Text('Salvar', style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),
@@ -1278,19 +1418,17 @@ class _MacroLabelRow extends StatelessWidget {
   }
 }
 
-// Nutrient row widget
-class _NutrientRow extends StatelessWidget {
+// Macronutrient row widget (for main nutrients)
+class _MacroNutrientRow extends StatelessWidget {
   final String label;
   final String value;
   final bool isDarkMode;
-  final bool isBold;
 
-  const _NutrientRow({
+  const _MacroNutrientRow({
     Key? key,
     required this.label,
     required this.value,
     required this.isDarkMode,
-    this.isBold = true,
   }) : super(key: key);
 
   @override
@@ -1305,16 +1443,59 @@ class _NutrientRow extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
             color: textColor,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Micronutrient row widget (for minerals and vitamins - without bold)
+class _MicroNutrientRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isDarkMode;
+
+  const _MicroNutrientRow({
+    Key? key,
+    required this.label,
+    required this.value,
+    required this.isDarkMode,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = isDarkMode
+        ? AppTheme.darkTextColor
+        : AppTheme.textPrimaryColor;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.normal,
+            color: textColor,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.normal,
             color: textColor,
           ),
         ),
