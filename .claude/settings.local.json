@@ -8,7 +8,8 @@
       "Bash(if exist \"nul\" del \"nul\")",
       "Bash(cmd /c \"if exist lib\\models\\nul del lib\\models\\nul\")",
       "Bash(cmd /c \"if exist nul del nul\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -29,6 +29,8 @@ import '../widgets/meal_card.dart';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
 import '../models/Nutrient.dart';
+import '../models/FoodRegion.dart';
+import '../models/Portion.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({Key? key}) : super(key: key);
@@ -78,6 +80,36 @@ class _ToolsScreenState extends State<ToolsScreen> {
             vitaminB12: 0.6,
             calcium: 28,
             iron: 0.9,
+          ),
+        ],
+        foodRegions: [
+          FoodRegion(
+            regionCode: 'US',
+            languageCode: 'en',
+            idFood: 0,
+            translation: 'Egg',
+            portions: [
+              Portion(
+                idFoodRegion: 0,
+                proportion: 1.0,
+                description: 'Large (50g)',
+              ),
+              Portion(
+                idFoodRegion: 0,
+                proportion: 0.8,
+                description: 'Medium (40g)',
+              ),
+              Portion(
+                idFoodRegion: 0,
+                proportion: 0.6,
+                description: 'Small (30g)',
+              ),
+              Portion(
+                idFoodRegion: 0,
+                proportion: 2.0,
+                description: '100g',
+              ),
+            ],
           ),
         ],
       ),
@@ -138,6 +170,36 @@ class _ToolsScreenState extends State<ToolsScreen> {
             vitaminD: 2.5,
             vitaminB6: 0.2,
             vitaminB12: 0.9,
+          ),
+        ],
+        foodRegions: [
+          FoodRegion(
+            regionCode: 'US',
+            languageCode: 'en',
+            idFood: 0,
+            translation: 'Milk',
+            portions: [
+              Portion(
+                idFoodRegion: 0,
+                proportion: 1.0,
+                description: 'Glass (200ml)',
+              ),
+              Portion(
+                idFoodRegion: 0,
+                proportion: 0.5,
+                description: 'Half glass (100ml)',
+              ),
+              Portion(
+                idFoodRegion: 0,
+                proportion: 1.25,
+                description: 'Cup (250ml)',
+              ),
+              Portion(
+                idFoodRegion: 0,
+                proportion: 0.25,
+                description: 'Tablespoon (50ml)',
+              ),
+            ],
           ),
         ],
       ),
