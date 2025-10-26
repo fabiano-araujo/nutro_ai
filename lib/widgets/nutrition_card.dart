@@ -12,6 +12,7 @@ class NutritionCard extends StatelessWidget {
   final int carbsGoal;
   final int fatsConsumed;
   final int fatsGoal;
+  final VoidCallback? onTap;
 
   const NutritionCard({
     Key? key,
@@ -23,6 +24,7 @@ class NutritionCard extends StatelessWidget {
     this.carbsGoal = 300,
     this.fatsConsumed = 45,
     this.fatsGoal = 70,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -30,118 +32,121 @@ class NutritionCard extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final caloriesRemaining = caloriesGoal - caloriesConsumed;
 
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(8, 10, 8, 8),
-        child: Row(
-          children: [
-            // Lado esquerdo - Calorias
-            Expanded(
-              flex: 2,
-              child: Column(
-                children: [
-                  // Gráfico circular de calorias
-                  SizedBox(
-                    width: 95,
-                    height: 95,
-                    child: CustomPaint(
-                      painter: CalorieCirclePainter(
-                        consumed: caloriesConsumed,
-                        goal: caloriesGoal,
-                        isDarkMode: isDarkMode,
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              caloriesRemaining.toString(),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: isDarkMode
-                                    ? AppTheme.darkTextColor
-                                    : AppTheme.textPrimaryColor,
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(8, 10, 8, 8),
+          child: Row(
+            children: [
+              // Lado esquerdo - Calorias
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    // Gráfico circular de calorias
+                    SizedBox(
+                      width: 95,
+                      height: 95,
+                      child: CustomPaint(
+                        painter: CalorieCirclePainter(
+                          consumed: caloriesConsumed,
+                          goal: caloriesGoal,
+                          isDarkMode: isDarkMode,
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                caloriesRemaining.toString(),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode
+                                      ? AppTheme.darkTextColor
+                                      : AppTheme.textPrimaryColor,
+                                ),
                               ),
-                            ),
-                            Text(
-                              context.tr.translate('remaining'),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isDarkMode
-                                    ? Color(0xFFAEB7CE)
-                                    : AppTheme.textSecondaryColor,
+                              Text(
+                                context.tr.translate('remaining'),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDarkMode
+                                      ? Color(0xFFAEB7CE)
+                                      : AppTheme.textSecondaryColor,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: 2),
-                  // Total de calorias
-                  Text(
-                    '$caloriesConsumed / $caloriesGoal kcal',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDarkMode
-                          ? Color(0xFFAEB7CE)
-                          : AppTheme.textSecondaryColor,
+                    SizedBox(height: 2),
+                    // Total de calorias
+                    Text(
+                      '$caloriesConsumed / $caloriesGoal kcal',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDarkMode
+                            ? Color(0xFFAEB7CE)
+                            : AppTheme.textSecondaryColor,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            SizedBox(width: 16),
+              SizedBox(width: 16),
 
-            // Lado direito - Macros
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Protein
-                  _MacroRow(
-                    label: context.tr.translate('protein'),
-                    consumed: proteinConsumed,
-                    goal: proteinGoal,
-                    unit: 'g',
-                    color: Color(0xFF9575CD),
-                    isDarkMode: isDarkMode,
-                  ),
-                  SizedBox(height: 6),
+              // Lado direito - Macros
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Protein
+                    _MacroRow(
+                      label: context.tr.translate('protein'),
+                      consumed: proteinConsumed,
+                      goal: proteinGoal,
+                      unit: 'g',
+                      color: Color(0xFF9575CD),
+                      isDarkMode: isDarkMode,
+                    ),
+                    SizedBox(height: 6),
 
-                  // Carbs
-                  _MacroRow(
-                    label: context.tr.translate('carbs'),
-                    consumed: carbsConsumed,
-                    goal: carbsGoal,
-                    unit: 'g',
-                    color: Color(0xFFA1887F),
-                    isDarkMode: isDarkMode,
-                  ),
-                  SizedBox(height: 6),
+                    // Carbs
+                    _MacroRow(
+                      label: context.tr.translate('carbs'),
+                      consumed: carbsConsumed,
+                      goal: carbsGoal,
+                      unit: 'g',
+                      color: Color(0xFFA1887F),
+                      isDarkMode: isDarkMode,
+                    ),
+                    SizedBox(height: 6),
 
-                  // Fats
-                  _MacroRow(
-                    label: context.tr.translate('fats'),
-                    consumed: fatsConsumed,
-                    goal: fatsGoal,
-                    unit: 'g',
-                    color: Color(0xFF90A4AE),
-                    isDarkMode: isDarkMode,
-                  ),
-                ],
+                    // Fats
+                    _MacroRow(
+                      label: context.tr.translate('fats'),
+                      consumed: fatsConsumed,
+                      goal: fatsGoal,
+                      unit: 'g',
+                      color: Color(0xFF90A4AE),
+                      isDarkMode: isDarkMode,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

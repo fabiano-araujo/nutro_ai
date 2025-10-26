@@ -34,6 +34,7 @@ import 'dart:convert';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
+import 'daily_meals_screen.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -873,7 +874,16 @@ class AITutorScreenState extends State<AITutorScreen>
                     duration: Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                     child: _showNutritionCard
-                        ? NutritionCard()
+                        ? NutritionCard(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const DailyMealsScreen(),
+                                ),
+                              );
+                            },
+                          )
                         : SizedBox.shrink(),
                   ),
 

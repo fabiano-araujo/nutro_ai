@@ -22,6 +22,7 @@ import 'i18n/app_localizations.dart';
 import 'i18n/language_controller.dart';
 import 'providers/credit_provider.dart';
 import 'providers/essay_provider.dart';
+import 'providers/daily_meals_provider.dart';
 
 // Chave global para acessar o navigator de qualquer lugar do app
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -174,6 +175,9 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider(
           create: (_) => EssayProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DailyMealsProvider(),
         ),
       ],
       child: Consumer2<ThemeProvider, LanguageController>(
