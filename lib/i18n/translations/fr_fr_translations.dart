@@ -383,4 +383,11 @@ final Map<String, String> frFRTranslations = {
   'fri': 'VEN',
   'sat': 'SAM',
   'sun': 'DIM',
+
+  // Meal Types
+  'breakfast': 'Petit-déjeuner',
+  'lunch': 'Déjeuner',
+  'dinner': 'Dîner',
+  'snack': 'Collation',
+  'free_meal': 'Repas Libre',
 };

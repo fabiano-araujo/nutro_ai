@@ -518,4 +518,11 @@ final Map<String, String> esESTranslations = {
   'fri': 'VIE',
   'sat': 'SÁB',
   'sun': 'DOM',
+
+  // Meal Types
+  'breakfast': 'Desayuno',
+  'lunch': 'Almuerzo',
+  'dinner': 'Cena',
+  'snack': 'Merienda',
+  'free_meal': 'Comida Libre',
 };

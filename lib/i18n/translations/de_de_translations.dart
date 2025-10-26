@@ -383,4 +383,11 @@ final Map<String, String> deDETranslations = {
   'fri': 'FR',
   'sat': 'SA',
   'sun': 'SO',
+
+  // Meal Types
+  'breakfast': 'Frühstück',
+  'lunch': 'Mittagessen',
+  'dinner': 'Abendessen',
+  'snack': 'Snack',
+  'free_meal': 'Freie Mahlzeit',
 };

@@ -381,4 +381,11 @@ final Map<String, String> itITTranslations = {
   'fri': 'VEN',
   'sat': 'SAB',
   'sun': 'DOM',
+
+  // Meal Types
+  'breakfast': 'Colazione',
+  'lunch': 'Pranzo',
+  'dinner': 'Cena',
+  'snack': 'Spuntino',
+  'free_meal': 'Pasto Libero',
 };

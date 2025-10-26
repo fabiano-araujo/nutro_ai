@@ -769,4 +769,11 @@ final Map<String, String> ptBRTranslations = {
   'fri': 'SEX',
   'sat': 'SÁB',
   'sun': 'DOM',
+
+  // Meal Types
+  'breakfast': 'Café da Manhã',
+  'lunch': 'Almoço',
+  'dinner': 'Jantar',
+  'snack': 'Lanche',
+  'free_meal': 'Refeição Livre',
 };

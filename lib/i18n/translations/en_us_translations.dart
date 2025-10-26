@@ -586,4 +586,11 @@ final Map<String, String> enUSTranslations = {
   'fri': 'FRI',
   'sat': 'SAT',
   'sun': 'SUN',
+
+  // Meal Types
+  'breakfast': 'Breakfast',
+  'lunch': 'Lunch',
+  'dinner': 'Dinner',
+  'snack': 'Snack',
+  'free_meal': 'Free Meal',
 };

@@ -25,6 +25,9 @@ import '../providers/credit_provider.dart';
 import '../services/ad_manager.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../widgets/meal_card.dart';
+import '../models/food_model.dart';
+import '../models/meal_model.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({Key? key}) : super(key: key);
@@ -34,6 +37,55 @@ class ToolsScreen extends StatefulWidget {
 }
 
 class _ToolsScreenState extends State<ToolsScreen> {
+  late Meal _exampleMeal;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeExampleMeal();
+  }
+
+  void _initializeExampleMeal() {
+    final foods = [
+      Food(
+        name: 'Egg',
+        amount: '1 large',
+        calories: 78,
+        protein: 6,
+        carbs: 1,
+        fat: 5,
+        emoji: '🥚',
+        imageUrl: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
+      ),
+      Food(
+        name: 'Couscous',
+        amount: '100g',
+        calories: 376,
+        protein: 13,
+        carbs: 77,
+        fat: 1,
+        emoji: '🍚',
+        imageUrl: 'https://images.unsplash.com/photo-1596040033229-a0b0d1f6e2e3?w=200&h=200&fit=crop',
+      ),
+      Food(
+        name: 'Milk',
+        amount: '200ml',
+        calories: 91,
+        protein: 6,
+        carbs: 9,
+        fat: 3,
+        emoji: '🥛',
+        imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop',
+      ),
+    ];
+
+    _exampleMeal = Meal(
+      id: '1',
+      type: MealType.breakfast,
+      foods: foods,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -202,6 +254,26 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       ],
                     ),
                   ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Meal Card
+                MealCard(
+                  meal: _exampleMeal,
+                  onEditFood: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Edit food - feature coming soon'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  onMealTypeChanged: (MealType newType) {
+                    setState(() {
+                      _exampleMeal = _exampleMeal.copyWith(type: newType);
+                    });
+                  },
                 ),
 
                 const SizedBox(height: 24),
