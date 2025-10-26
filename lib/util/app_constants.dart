@@ -3,6 +3,6 @@
 /// URL base do servidor da API
 class AppConstants {
   /// URL base do servidor da API
-  static const String API_BASE_URL = "http://study.snapdark.com:3001";
+  static const String API_BASE_URL = "http://192.168.3.11:3000";
   // static const String API_BASE_URL = "http://192.168.102.86:3001";
 }

@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
-import '../util/app_constants.dart';
 import '../services/api_service.dart';
-import 'email_register_screen.dart';
 
-class EmailLoginScreen extends StatefulWidget {
-  const EmailLoginScreen({Key? key}) : super(key: key);
+class EmailRegisterScreen extends StatefulWidget {
+  const EmailRegisterScreen({Key? key}) : super(key: key);
 
   @override
-  State<EmailLoginScreen> createState() => _EmailLoginScreenState();
+  State<EmailRegisterScreen> createState() => _EmailRegisterScreenState();
 }
 
-class _EmailLoginScreenState extends State<EmailLoginScreen>
+class _EmailRegisterScreenState extends State<EmailRegisterScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String _errorMessage = '';
 
   late AnimationController _animationController;
@@ -59,13 +58,15 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleEmailLogin() async {
+  Future<void> _handleRegister() async {
     // Validar o formulário
     if (!_formKey.currentState!.validate()) {
       return;
@@ -77,17 +78,19 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     });
 
     try {
+      final name = _nameController.text.trim();
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      // Chamar API para login usando ApiService
-      final data = await ApiService.authenticateWithEmail(
+      // Chamar API para registro usando ApiService
+      final data = await ApiService.registerWithEmail(
+        name: name,
         email: email,
         senha: password,
       );
 
       if (data['success'] == true) {
-        // Login bem-sucedido
+        // Registro bem-sucedido
         final authService = Provider.of<AuthService>(context, listen: false);
 
         // Atualizar o serviço de autenticação com os dados do usuário
@@ -98,29 +101,21 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                context.tr.translate('login_success') ??
-                    'Login realizado com sucesso!',
+                context.tr.translate('registration_success') ??
+                    'Cadastro realizado com sucesso!',
               ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
             ),
           );
 
-          // Aguardar um pouco para garantir que o AuthService foi atualizado
-          await Future.delayed(Duration(milliseconds: 300));
-
-          // O Builder no IndexedStack vai detectar automaticamente
-          // a mudança no authService e mostrar o ProfileScreen
-          // Apenas atualizamos o estado para refletir a mudança
-          setState(() {
-            _isLoading = false;
-          });
+          // Voltar para a tela anterior (que deve atualizar automaticamente)
+          Navigator.of(context).pop();
         }
       } else {
-        // Tratar erro de login
+        // Tratar erro de registro
         setState(() {
           _errorMessage = data['message'] ??
-              'Falha ao fazer login. Verifique suas credenciais.';
+              'Falha ao realizar cadastro. Tente novamente.';
         });
       }
     } catch (e) {
@@ -128,7 +123,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
         _errorMessage =
             'Erro ao conectar ao servidor. Tente novamente mais tarde.';
       });
-      print('[EmailLoginScreen] Erro ao fazer login: $e');
+      print('[EmailRegisterScreen] Erro ao fazer registro: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -147,7 +142,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          context.tr.translate('email_login_title') ?? 'Login com Email',
+          context.tr.translate('register_title') ?? 'Criar Conta',
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: false,
@@ -190,7 +185,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SizedBox(height: size.height * 0.05),
+                    SizedBox(height: size.height * 0.02),
                     // Logo
                     Container(
                       width: 80,
@@ -211,7 +206,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Icon(
-                              Icons.email,
+                              Icons.person_add,
                               size: 40,
                               color: Colors.white,
                             );
@@ -222,8 +217,8 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                     const SizedBox(height: 24),
                     // Título
                     Text(
-                      context.tr.translate('enter_with_email') ??
-                          'Entre com seu Email',
+                      context.tr.translate('create_account') ??
+                          'Crie sua Conta',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 28,
@@ -234,8 +229,8 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                     const SizedBox(height: 8),
                     // Subtítulo
                     Text(
-                      context.tr.translate('access_account') ??
-                          'Acesse sua conta para continuar',
+                      context.tr.translate('register_subtitle') ??
+                          'Preencha os dados para começar',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 16,
@@ -293,6 +288,43 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                   ],
                                 ),
                               ),
+
+                            // Campo de nome
+                            TextFormField(
+                              controller: _nameController,
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
+                              decoration: InputDecoration(
+                                labelText:
+                                    context.tr.translate('name') ?? 'Nome',
+                                prefixIcon: Icon(Icons.person_outline),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: isDarkMode
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade300,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return context.tr
+                                          .translate('please_enter_name') ??
+                                      'Por favor, insira seu nome';
+                                }
+                                if (value.length < 3) {
+                                  return context.tr
+                                          .translate('name_min_length') ??
+                                      'O nome deve ter pelo menos 3 caracteres';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
 
                             // Campo de email
                             TextFormField(
@@ -377,37 +409,69 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 20),
 
-                            // Link de esqueci a senha
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {
-                                  // Implementar esqueci a senha
-                                },
-                                child: Text(
-                                  context.tr.translate('forgot_password') ??
-                                      'Esqueceu a senha?',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.primary,
+                            // Campo de confirmar senha
+                            TextFormField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscureConfirmPassword,
+                              decoration: InputDecoration(
+                                labelText:
+                                    context.tr.translate('confirm_password') ??
+                                        'Confirmar Senha',
+                                prefixIcon: Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureConfirmPassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscureConfirmPassword =
+                                          !_obscureConfirmPassword;
+                                    });
+                                  },
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: isDarkMode
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade300,
                                   ),
                                 ),
                               ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return context.tr.translate(
+                                          'please_confirm_password') ??
+                                      'Por favor, confirme sua senha';
+                                }
+                                if (value != _passwordController.text) {
+                                  return context.tr
+                                          .translate('passwords_dont_match') ??
+                                      'As senhas não coincidem';
+                                }
+                                return null;
+                              },
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 32),
 
-                            // Botão de login
+                            // Botão de cadastro
                             SizedBox(
                               width: double.infinity,
                               height: 50,
                               child: _isLoading
                                   ? Center(child: CircularProgressIndicator())
                                   : ElevatedButton(
-                                      onPressed: _handleEmailLogin,
+                                      onPressed: _handleRegister,
                                       child: Text(
-                                        context.tr.translate('login_button') ??
-                                            'Entrar',
+                                        context.tr.translate('register_button') ??
+                                            'Cadastrar',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -428,15 +492,15 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
 
                             const SizedBox(height: 24),
 
-                            // Link para cadastro
+                            // Link para login
                             Container(
                               width: double.infinity,
                               margin: EdgeInsets.only(top: 8),
                               child: Column(
                                 children: [
                                   Text(
-                                    context.tr.translate('no_account') ??
-                                        'Ainda não tem uma conta?',
+                                    context.tr.translate('already_have_account') ??
+                                        'Já tem uma conta?',
                                     style: TextStyle(
                                       color: isDarkMode
                                           ? Colors.grey.shade400
@@ -446,16 +510,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                   SizedBox(height: 4),
                                   TextButton(
                                     onPressed: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              EmailRegisterScreen(),
-                                        ),
-                                      );
+                                      Navigator.of(context).pop();
                                     },
                                     child: Text(
-                                      context.tr.translate('sign_up') ??
-                                          'Cadastre-se',
+                                      context.tr.translate('login_button') ??
+                                          'Entrar',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,

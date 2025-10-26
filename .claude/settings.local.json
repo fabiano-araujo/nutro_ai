@@ -9,7 +9,9 @@
       "Bash(cmd /c \"if exist lib\\models\\nul del lib\\models\\nul\")",
       "Bash(cmd /c \"if exist nul del nul\")",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(yarn prisma migrate:*)",
+      "Bash(yarn add:*)"
     ],
     "deny": [],
     "ask": []

@@ -84,6 +84,46 @@ class ApiService {
     }
   }
 
+  // Método para registrar novo usuário com email e senha
+  static Future<Map<String, dynamic>> registerWithEmail({
+    required String name,
+    required String email,
+    required String senha,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/registro'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nome': name, // API espera 'nome' em português
+          'email': email,
+          'senha': senha,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print('Resposta registro com email (sucesso): $data');
+        return data;
+      } else {
+        final errorData = jsonDecode(response.body);
+        print(
+          'Resposta registro com email (erro ${response.statusCode}): ${response.body}',
+        );
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Erro ao criar conta',
+        };
+      }
+    } catch (e) {
+      print('Erro no registro com email: $e');
+      return {
+        'success': false,
+        'message': 'Erro ao conectar: ${e.toString()}',
+      };
+    }
+  }
+
   // Método para obter informações do usuário atual usando o token
   static Future<User> getUserProfile(String token) async {
     try {
