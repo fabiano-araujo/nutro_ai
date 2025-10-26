@@ -113,7 +113,7 @@ class NutritionCard extends StatelessWidget {
                     consumed: proteinConsumed,
                     goal: proteinGoal,
                     unit: 'g',
-                    color: Color(0xFFA8B7F5),
+                    color: Color(0xFF9575CD),
                     isDarkMode: isDarkMode,
                   ),
                   SizedBox(height: 6),
@@ -124,7 +124,7 @@ class NutritionCard extends StatelessWidget {
                     consumed: carbsConsumed,
                     goal: carbsGoal,
                     unit: 'g',
-                    color: Color(0xFFFFCC7A),
+                    color: Color(0xFFA1887F),
                     isDarkMode: isDarkMode,
                   ),
                   SizedBox(height: 6),
@@ -135,7 +135,7 @@ class NutritionCard extends StatelessWidget {
                     consumed: fatsConsumed,
                     goal: fatsGoal,
                     unit: 'g',
-                    color: Color(0xFF9BA9F2),
+                    color: Color(0xFF90A4AE),
                     isDarkMode: isDarkMode,
                   ),
                 ],
@@ -238,9 +238,9 @@ class CalorieCirclePainter extends CustomPainter {
 
     canvas.drawCircle(center, radius, bgPaint);
 
-    // Progress arc (verde suave)
+    // Progress arc (cor principal)
     final progressPaint = Paint()
-      ..color = Color(0xFF8FE3B0)
+      ..color = AppTheme.primaryColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;

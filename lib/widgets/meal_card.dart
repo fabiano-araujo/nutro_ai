@@ -85,9 +85,9 @@ class _MealCardState extends State<MealCard> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -120,7 +120,7 @@ class _MealCardState extends State<MealCard> {
           InkWell(
             onTap: () => setState(() => showMealOptions = !showMealOptions),
             child: Container(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -150,7 +150,7 @@ class _MealCardState extends State<MealCard> {
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.successColor,
+                          color: AppTheme.primaryColor,
                         ),
                       ),
                       SizedBox(width: 4),
@@ -219,7 +219,7 @@ class _MealCardState extends State<MealCard> {
 
           // Macros Summary
           Container(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: BorderRadius.only(
@@ -232,9 +232,10 @@ class _MealCardState extends State<MealCard> {
                 Expanded(
                   child: _MacroCard(
                     label: 'P',
+                    fullName: context.tr.translate('protein'),
                     value: widget.meal.totalProtein.toStringAsFixed(1),
                     unit: 'g',
-                    color: Color(0xFF7EC8E3),
+                    color: Color(0xFF9575CD),
                     isDarkMode: isDarkMode,
                   ),
                 ),
@@ -242,9 +243,10 @@ class _MealCardState extends State<MealCard> {
                 Expanded(
                   child: _MacroCard(
                     label: 'C',
+                    fullName: context.tr.translate('carbs'),
                     value: widget.meal.totalCarbs.toStringAsFixed(1),
                     unit: 'g',
-                    color: AppTheme.warningColor,
+                    color: Color(0xFFA1887F),
                     isDarkMode: isDarkMode,
                   ),
                 ),
@@ -252,9 +254,10 @@ class _MealCardState extends State<MealCard> {
                 Expanded(
                   child: _MacroCard(
                     label: 'F',
+                    fullName: context.tr.translate('fats'),
                     value: widget.meal.totalFat.toStringAsFixed(1),
                     unit: 'g',
-                    color: Color(0xFFE57373),
+                    color: Color(0xFF90A4AE),
                     isDarkMode: isDarkMode,
                   ),
                 ),
@@ -460,9 +463,10 @@ class _FoodItem extends StatelessWidget {
                   Expanded(
                     child: _MacroCard(
                       label: 'P',
+                      fullName: context.tr.translate('protein'),
                       value: food.protein.toStringAsFixed(1),
                       unit: 'g',
-                      color: Color(0xFF7EC8E3),
+                      color: Color(0xFF9575CD),
                       isDarkMode: isDarkMode,
                     ),
                   ),
@@ -470,9 +474,10 @@ class _FoodItem extends StatelessWidget {
                   Expanded(
                     child: _MacroCard(
                       label: 'C',
+                      fullName: context.tr.translate('carbs'),
                       value: food.carbs.toStringAsFixed(1),
                       unit: 'g',
-                      color: AppTheme.warningColor,
+                      color: Color(0xFFA1887F),
                       isDarkMode: isDarkMode,
                     ),
                   ),
@@ -480,9 +485,10 @@ class _FoodItem extends StatelessWidget {
                   Expanded(
                     child: _MacroCard(
                       label: 'F',
+                      fullName: context.tr.translate('fats'),
                       value: food.fat.toStringAsFixed(1),
                       unit: 'g',
-                      color: Color(0xFFE57373),
+                      color: Color(0xFF90A4AE),
                       isDarkMode: isDarkMode,
                     ),
                   ),
@@ -523,29 +529,15 @@ class _MacroCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-              SizedBox(width: 2),
-              Text(
-                fullName,
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w500,
-                  color: color.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
+          Text(
+            fullName,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
-          SizedBox(height: 2),
+          SizedBox(height: 0),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -555,14 +547,14 @@ class _MacroCard extends StatelessWidget {
                 value,
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
                   color: color,
                 ),
               ),
               Text(
                 unit,
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 8,
                   fontWeight: FontWeight.w600,
                   color: color.withValues(alpha: 0.8),
                 ),
