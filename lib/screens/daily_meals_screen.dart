@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/daily_meals_provider.dart';
+import '../providers/meal_types_provider.dart';
 import '../models/meal_model.dart';
+import '../models/food_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/nutrition_card.dart';
+import 'manage_meal_types_screen.dart';
 
 class DailyMealsScreen extends StatefulWidget {
   const DailyMealsScreen({Key? key}) : super(key: key);
@@ -85,6 +88,38 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
                 SizedBox(height: 16),
 
+                // Meals section header with edit button
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Refeições',
+                        style: AppTheme.headingMedium.copyWith(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.edit, color: textColor),
+                        tooltip: 'Editar refeições',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ManageMealTypesScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 8),
+
                 // Meals list
                 _buildMealsList(provider, isDarkMode, textColor),
 
@@ -108,41 +143,283 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     bool isDarkMode,
     Color textColor,
   ) {
-    final mealTypes = [
-      MealType.breakfast,
-      MealType.lunch,
-      MealType.dinner,
-      MealType.snack,
+    return Consumer<MealTypesProvider>(
+      builder: (context, mealTypesProvider, child) {
+        final mealTypes = mealTypesProvider.mealTypes;
+
+        if (mealTypes.isEmpty) {
+          return Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.restaurant_menu,
+                    size: 64,
+                    color: textColor.withValues(alpha: 0.3),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Nenhuma refeição configurada',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: textColor.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Configure suas refeições nas configurações',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textColor.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: mealTypes.map((mealTypeConfig) {
+            // Map custom meal type ID to enum
+            final type = _getMealTypeFromId(mealTypeConfig.id);
+            final meal = provider.getMealByType(type);
+
+            // Create meal info from provider config
+            final mealInfo = MealTypeOption(
+              type: type,
+              name: mealTypeConfig.name,
+              emoji: mealTypeConfig.emoji,
+            );
+
+            final hasFoods = meal != null && meal.foods.isNotEmpty;
+            final isExpanded = _expandedMeals[type] ?? false;
+
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: _MealCard(
+                mealInfo: mealInfo,
+                meal: meal,
+                hasFoods: hasFoods,
+                isExpanded: isExpanded,
+                isDarkMode: isDarkMode,
+                textColor: textColor,
+                onExpand: () {
+                  setState(() {
+                    _expandedMeals[type] = !isExpanded;
+                  });
+                },
+                onAddFood: () {
+                  // TODO: Navigate to food search/selection
+                  _showAddFoodDialog(type);
+                },
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  // Helper method to map custom meal type IDs to enum
+  MealType _getMealTypeFromId(String id) {
+    switch (id) {
+      case 'breakfast':
+        return MealType.breakfast;
+      case 'morning_snack':
+        return MealType.snack;
+      case 'lunch':
+        return MealType.lunch;
+      case 'afternoon_snack':
+        return MealType.snack;
+      case 'dinner':
+        return MealType.dinner;
+      case 'supper':
+        return MealType.freeMeal;
+      default:
+        // For custom meal types created by user, use freeMeal
+        return MealType.freeMeal;
+    }
+  }
+
+  // Build bar chart showing macronutrients per food
+  Widget _buildMacroBarChart(List<Food> foods, bool isDarkMode, Color textColor) {
+    if (foods.isEmpty) return SizedBox.shrink();
+
+    // Color palette - using the same colors from nutrition_card.dart
+    final List<Color> foodColors = [
+      Color(0xFF9575CD), // Purple (same as protein in nutrition_card)
+      Color(0xFFA1887F), // Brown (same as carbs in nutrition_card)
+      Color(0xFF90A4AE), // Blue-grey (same as fats in nutrition_card)
+      Color(0xFF81C784), // Green
+      Color(0xFFFFB74D), // Orange
+      Color(0xFFE57373), // Red
+      Color(0xFF64B5F6), // Blue
+      Color(0xFFBA68C8), // Light purple
+      Color(0xFF4DB6AC), // Teal
+      Color(0xFFFFD54F), // Yellow
     ];
 
-    return Column(
-      children: mealTypes.map((type) {
-        final meal = provider.getMealByType(type);
-        final mealInfo = DailyMealsProvider.getMealTypeOption(type);
-        final hasFoods = meal != null && meal.foods.isNotEmpty;
-        final isExpanded = _expandedMeals[type] ?? false;
+    // Find max value for scaling
+    double maxProtein = 0;
+    double maxCarbs = 0;
+    double maxFat = 0;
 
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: _MealCard(
-            mealInfo: mealInfo,
-            meal: meal,
-            hasFoods: hasFoods,
-            isExpanded: isExpanded,
-            isDarkMode: isDarkMode,
-            textColor: textColor,
-            onExpand: () {
-              setState(() {
-                _expandedMeals[type] = !isExpanded;
-              });
-            },
-            onAddFood: () {
-              // TODO: Navigate to food search/selection
-              _showAddFoodDialog(type);
-            },
+    for (var food in foods) {
+      if (food.protein > maxProtein) maxProtein = food.protein;
+      if (food.carbs > maxCarbs) maxCarbs = food.carbs;
+      if (food.fat > maxFat) maxFat = food.fat;
+    }
+
+    final maxValue = [maxProtein, maxCarbs, maxFat].reduce((a, b) => a > b ? a : b);
+    if (maxValue == 0) return SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Legend showing food colors
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: foods.asMap().entries.map((entry) {
+            final index = entry.key;
+            final food = entry.value;
+            final color = foodColors[index % foodColors.length];
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  food.name,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textColor.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+
+        SizedBox(height: 16),
+
+        // Bar chart for Protein
+        _buildMacroBar(
+          'Proteína',
+          foods,
+          (food) => food.protein,
+          maxValue,
+          foodColors,
+          isDarkMode,
+          textColor,
+        ),
+        SizedBox(height: 12),
+
+        // Bar chart for Carbs
+        _buildMacroBar(
+          'Carboidratos',
+          foods,
+          (food) => food.carbs,
+          maxValue,
+          foodColors,
+          isDarkMode,
+          textColor,
+        ),
+        SizedBox(height: 12),
+
+        // Bar chart for Fat
+        _buildMacroBar(
+          'Gorduras',
+          foods,
+          (food) => food.fat,
+          maxValue,
+          foodColors,
+          isDarkMode,
+          textColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMacroBar(
+    String label,
+    List<Food> foods,
+    double Function(Food) getValue,
+    double maxValue,
+    List<Color> colors,
+    bool isDarkMode,
+    Color textColor,
+  ) {
+    // Calculate total for this macro
+    final total = foods.fold(0.0, (sum, food) => sum + getValue(food));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+            Text(
+              '${total.toStringAsFixed(1)}g',
+              style: TextStyle(
+                fontSize: 12,
+                color: textColor.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 6),
+
+        // Stacked bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            height: 20,
+            decoration: BoxDecoration(
+              color: isDarkMode ? Color(0xFF2F2F2F) : Color(0xFFF5F7FA),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              children: foods.asMap().entries.map((entry) {
+                final index = entry.key;
+                final food = entry.value;
+                final value = getValue(food);
+                final proportion = total > 0 ? value / total : 0;
+                final color = colors[index % colors.length];
+
+                if (value == 0) return SizedBox.shrink();
+
+                return Flexible(
+                  flex: (proportion * 1000).round(),
+                  child: Container(
+                    color: color,
+                    height: 20,
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 
@@ -233,6 +510,11 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 color: textColor,
               ),
             ),
+
+            SizedBox(height: 16),
+
+            // Bar chart showing macronutrients per food
+            _buildMacroBarChart(allFoods, isDarkMode, textColor),
 
             Divider(
               color: isDarkMode ? Colors.white24 : Colors.black12,

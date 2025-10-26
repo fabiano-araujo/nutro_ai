@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../screens/food_page.dart';
+import '../providers/meal_types_provider.dart';
 
 class MealCard extends StatefulWidget {
   final Meal meal;
@@ -33,28 +35,34 @@ class _MealCardState extends State<MealCard> {
     });
   }
 
-  List<MealTypeOption> get mealOptions => [
-        MealTypeOption(
-          type: MealType.breakfast,
-          name: context.tr.translate('breakfast'),
-          emoji: '🌅',
-        ),
-        MealTypeOption(
-          type: MealType.lunch,
-          name: context.tr.translate('lunch'),
-          emoji: '🌞',
-        ),
-        MealTypeOption(
-          type: MealType.dinner,
-          name: context.tr.translate('dinner'),
-          emoji: '🌙',
-        ),
-        MealTypeOption(
-          type: MealType.snack,
-          name: context.tr.translate('snack'),
-          emoji: '🍎',
-        ),
-      ];
+  List<MealTypeOption> getMealOptions(BuildContext context) {
+    final provider = Provider.of<MealTypesProvider>(context, listen: false);
+    return provider.mealTypes.map((config) {
+      return MealTypeOption(
+        type: _getMealTypeFromId(config.id),
+        name: config.name,
+        emoji: config.emoji,
+      );
+    }).toList();
+  }
+
+  MealType _getMealTypeFromId(String id) {
+    // Map custom IDs to MealType enum
+    switch (id) {
+      case 'breakfast':
+        return MealType.breakfast;
+      case 'lunch':
+        return MealType.lunch;
+      case 'dinner':
+        return MealType.dinner;
+      case 'snack':
+      case 'morning_snack':
+      case 'afternoon_snack':
+        return MealType.snack;
+      default:
+        return MealType.freeMeal;
+    }
+  }
 
   String getMealTypeName(MealType type) {
     switch (type) {
@@ -179,7 +187,7 @@ class _MealCardState extends State<MealCard> {
                     : Color(0xFFF7F9FC),
               ),
               child: Column(
-                children: mealOptions.map((option) {
+                children: getMealOptions(context).map((option) {
                   return Padding(
                     padding: EdgeInsets.only(bottom: 8),
                     child: InkWell(
