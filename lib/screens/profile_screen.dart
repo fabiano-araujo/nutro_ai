@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'dart:math' as math;
 
 import '../services/auth_service.dart';
+import '../providers/nutrition_goals_provider.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import '../i18n/app_localizations_extension.dart';
@@ -49,23 +49,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late ScrollController _scrollController;
 
-  // Personal Information
-  double _height = 180.0;
-  double _weight = 75.0;
-  String _sex = 'Male';
-  int _age = 30;
-  String _activityLevel = 'Moderate';
-  String _goal = 'Lose Weight';
-
-  // Macro Targets
-  bool _autoCalculateMacros = true;
-  double _carbsPercentage = 40.0;
-  double _proteinPercentage = 30.0;
-  double _fatPercentage = 30.0;
-
   // Calories chart data
   String _selectedPeriod = '7 dias';
-  final double _calorieGoal = 2000.0;
   final List<double> _dailyCalories7 = [1800, 2100, 1900, 2200, 1850, 2050, 1950];
   final List<double> _dailyCalories30 = List.generate(30, (index) => 1800 + (index % 5) * 100);
   final List<double> _dailyCalories90 = List.generate(90, (index) => 1800 + (index % 5) * 100);
@@ -129,10 +114,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildMacronutrientsChartCard(theme, colorScheme),
         const SizedBox(height: 24),
 
-        // Personal Information
-        _buildPersonalInformationSection(theme, colorScheme),
-        const SizedBox(height: 24),
-
         // Daily Macro Targets
         _buildMacroTargetsSection(theme, colorScheme),
         const SizedBox(height: 32),
@@ -164,8 +145,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(user, ThemeData theme, ColorScheme colorScheme) {
-    // Calculate daily calories based on user data
-    final dailyCalories = _calculateDailyCalories();
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    // Calculate daily calories and BMI based on user data
+    final dailyCalories = nutritionProvider.caloriesGoal.toDouble();
+    final bmi = _calculateBMI(nutritionProvider.weight, nutritionProvider.height);
+    final bmiColor = _getBMIColor(bmi);
+    final bmiCategory = _getBMICategory(bmi);
 
     return Container(
       decoration: BoxDecoration(
@@ -187,18 +172,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               // Avatar à esquerda
               CircleAvatar(
-                radius: 50,
+                radius: 40,
                 backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 backgroundImage: user.photo != null ? NetworkImage(user.photo!) : null,
                 child: user.photo == null
                     ? Icon(
                         Icons.person_outline,
-                        size: 50,
+                        size: 40,
                         color: theme.colorScheme.onSurfaceVariant,
                       )
                     : null,
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
               // Nome à direita
               Expanded(
                 child: Column(
@@ -219,13 +204,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            _getBMIColor().withValues(alpha: 0.12),
-                            _getBMIColor().withValues(alpha: 0.06),
+                            bmiColor.withValues(alpha: 0.12),
+                            bmiColor.withValues(alpha: 0.06),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: _getBMIColor().withValues(alpha: 0.25),
+                          color: bmiColor.withValues(alpha: 0.25),
                           width: 1,
                         ),
                       ),
@@ -235,20 +220,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: _getBMIColor().withValues(alpha: 0.2),
+                              color: bmiColor.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               Icons.favorite,
                               size: 11,
-                              color: _getBMIColor(),
+                              color: bmiColor,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'IMC ${_calculateBMI().toStringAsFixed(1)}',
+                            'IMC ${bmi.toStringAsFixed(1)}',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: _getBMIColor(),
+                              color: bmiColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
@@ -258,15 +243,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             width: 3,
                             height: 3,
                             decoration: BoxDecoration(
-                              color: _getBMIColor().withValues(alpha: 0.5),
+                              color: bmiColor.withValues(alpha: 0.5),
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _getBMICategory(),
+                            bmiCategory,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: _getBMIColor().withValues(alpha: 0.8),
+                              color: bmiColor.withValues(alpha: 0.8),
                               fontWeight: FontWeight.w600,
                               fontSize: 11,
                             ),
@@ -276,6 +261,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
+              ),
+              // Ícone de editar
+              IconButton(
+                onPressed: () {
+                  // TODO: Navegar para tela de edição de perfil
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Editar perfil - Em breve!')),
+                  );
+                },
+                icon: Icon(
+                  Icons.edit_outlined,
+                  color: colorScheme.primary,
+                  size: 22,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
@@ -303,7 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Row(
                         children: [
                           Icon(
-                            _getGoalIcon(),
+                            _getGoalIcon(nutritionProvider.fitnessGoal),
                             size: 20,
                             color: colorScheme.primary,
                           ),
@@ -319,7 +320,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _getGoalText(),
+                        _getGoalText(nutritionProvider.fitnessGoal),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: colorScheme.primary,
@@ -377,85 +378,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  IconData _getGoalIcon() {
-    switch (_goal) {
-      case 'Lose Weight':
+  IconData _getGoalIcon(FitnessGoal goal) {
+    switch (goal) {
+      case FitnessGoal.loseWeight:
         return Icons.trending_down;
-      case 'Gain Weight':
+      case FitnessGoal.gainWeight:
+      case FitnessGoal.gainMuscle:
         return Icons.trending_up;
-      case 'Maintain Weight':
+      case FitnessGoal.maintainWeight:
         return Icons.trending_flat;
-      default:
-        return Icons.flag;
     }
   }
 
-  String _getGoalText() {
-    switch (_goal) {
-      case 'Lose Weight':
+  String _getGoalText(FitnessGoal goal) {
+    switch (goal) {
+      case FitnessGoal.loseWeight:
         return 'Perder Peso';
-      case 'Gain Weight':
+      case FitnessGoal.gainWeight:
         return 'Ganhar Peso';
-      case 'Maintain Weight':
+      case FitnessGoal.gainMuscle:
+        return 'Ganhar Massa';
+      case FitnessGoal.maintainWeight:
         return 'Manter Peso';
-      default:
-        return _goal;
     }
   }
 
-  double _calculateDailyCalories() {
-    // Fórmula de Harris-Benedict
-    double bmr;
-    if (_sex == 'Male') {
-      bmr = 88.362 + (13.397 * _weight) + (4.799 * _height) - (5.677 * _age);
-    } else {
-      bmr = 447.593 + (9.247 * _weight) + (3.098 * _height) - (4.330 * _age);
-    }
-
-    // Multiplicador de atividade
-    double activityMultiplier;
-    switch (_activityLevel) {
-      case 'Sedentary':
-        activityMultiplier = 1.2;
-        break;
-      case 'Lightly Active':
-        activityMultiplier = 1.375;
-        break;
-      case 'Moderately Active':
-        activityMultiplier = 1.55;
-        break;
-      case 'Very Active':
-        activityMultiplier = 1.725;
-        break;
-      case 'Extremely Active':
-        activityMultiplier = 1.9;
-        break;
-      default:
-        activityMultiplier = 1.2;
-    }
-
-    double tdee = bmr * activityMultiplier;
-
-    // Ajuste baseado no objetivo
-    switch (_goal) {
-      case 'Lose Weight':
-        return tdee - 500; // Déficit de 500 calorias
-      case 'Gain Weight':
-        return tdee + 500; // Superávit de 500 calorias
-      case 'Maintain Weight':
-      default:
-        return tdee;
-    }
-  }
-
-  double _calculateBMI() {
+  double _calculateBMI(double weight, double height) {
     // IMC = peso (kg) / altura (m)²
-    final heightInMeters = _height / 100;
-    return _weight / (heightInMeters * heightInMeters);
+    final heightInMeters = height / 100;
+    return weight / (heightInMeters * heightInMeters);
   }
 
-  String _getBMICategory() {
-    final bmi = _calculateBMI();
+  String _getBMICategory(double bmi) {
     if (bmi < 18.5) {
       return 'Abaixo do peso';
     } else if (bmi < 25) {
@@ -467,8 +421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Color _getBMIColor() {
-    final bmi = _calculateBMI();
+  Color _getBMIColor(double bmi) {
     if (bmi < 18.5) {
       return const Color(0xFF64B5F6); // Azul suave - Abaixo do peso
     } else if (bmi < 25) {
@@ -480,31 +433,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _buildPersonalInformationSection(ThemeData theme, ColorScheme colorScheme) {
-    return _buildSectionCard(
-      theme: theme,
-      colorScheme: colorScheme,
-      title: 'Personal Information',
-      children: [
-        _buildNumberInputRow('Height', _height, 'cm', (value) {
-          setState(() => _height = value);
-        }),
-        _buildNumberInputRow('Weight', _weight, 'kg', (value) {
-          setState(() => _weight = value);
-        }),
-        _buildToggleRow('Sex', _sex, ['Male', 'Female'], (value) {
-          setState(() => _sex = value);
-        }),
-        _buildNumberInputRow('Age', _age.toDouble(), 'years', (value) {
-          setState(() => _age = value.toInt());
-        }),
-        _buildDropdownRow('Activity Level', _activityLevel, theme),
-        _buildDropdownRow('Goal', _goal, theme),
-      ],
-    );
-  }
-
   Widget _buildMacroTargetsSection(ThemeData theme, ColorScheme colorScheme) {
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
@@ -525,15 +456,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Daily Macro Targets',
+                'Metas Diárias de Macros',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Switch(
-                value: _autoCalculateMacros,
+                value: nutritionProvider.useCalculatedGoals,
                 onChanged: (value) {
-                  setState(() => _autoCalculateMacros = value);
+                  nutritionProvider.setUseCalculatedGoals(value);
                 },
                 activeThumbColor: colorScheme.primary,
               ),
@@ -541,7 +472,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Automatically calculated based on your goals, or set manually.',
+            'Calculado automaticamente com base em seus objetivos, ou definir manualmente.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
             ),
@@ -550,16 +481,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMacroColumn('${_carbsPercentage.toInt()}%', 'Carbs', theme),
-              _buildMacroColumn('${_proteinPercentage.toInt()}%', 'Protein', theme),
-              _buildMacroColumn('${_fatPercentage.toInt()}%', 'Fat', theme),
+              _buildMacroColumn('${nutritionProvider.carbsPercentage}%', 'Carboidratos', theme),
+              _buildMacroColumn('${nutritionProvider.proteinPercentage}%', 'Proteínas', theme),
+              _buildMacroColumn('${nutritionProvider.fatPercentage}%', 'Gorduras', theme),
             ],
           ),
           const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: _carbsPercentage / 100,
+              value: nutritionProvider.carbsPercentage / 100,
               backgroundColor: colorScheme.surfaceContainerHighest,
               color: colorScheme.primary,
               minHeight: 10,
@@ -587,171 +518,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSectionCard({
-    required ThemeData theme,
-    required ColorScheme colorScheme,
-    required String title,
-    required List<Widget> children,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text(
-              title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ...children,
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNumberInputRow(
-    String label,
-    double value,
-    String unit,
-    Function(double) onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodyLarge),
-          Row(
-            children: [
-              SizedBox(
-                width: 80,
-                child: TextField(
-                  controller: TextEditingController(text: value.toStringAsFixed(0)),
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.right,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                  onChanged: (text) {
-                    final newValue = double.tryParse(text);
-                    if (newValue != null) onChanged(newValue);
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(unit, style: Theme.of(context).textTheme.bodyLarge),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleRow(
-    String label,
-    String selectedValue,
-    List<String> options,
-    Function(String) onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodyLarge),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: options.map((option) {
-                final isSelected = option == selectedValue;
-                return GestureDetector(
-                  onTap: () => onChanged(option),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      option,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isSelected
-                                ? Colors.white
-                                : Theme.of(context).textTheme.bodyLarge?.color,
-                          ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDropdownRow(String label, String value, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: theme.textTheme.bodyLarge),
-          Row(
-            children: [
-              Text(value, style: theme.textTheme.bodyLarge),
-              const SizedBox(width: 4),
-              const Icon(Icons.expand_more),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavigationRow(String label, String trailing, ThemeData theme) {
-    return InkWell(
-      onTap: () {
-        // Handle navigation
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: theme.textTheme.bodyLarge),
-            Icon(
-              trailing.isEmpty ? Icons.chevron_right : Icons.chevron_right,
-              color: theme.textTheme.bodyLarge?.color,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -806,6 +572,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildCaloriesChartCard(ThemeData theme, ColorScheme colorScheme) {
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final calorieGoal = nutritionProvider.caloriesGoal.toDouble();
+
     List<double> currentData;
     int daysCount;
 
@@ -927,11 +696,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 lineBarsData: [
                   LineChartBarData(
                     spots: [
-                      FlSpot(0, _calorieGoal),
-                      FlSpot((daysCount - 1).toDouble(), _calorieGoal),
+                      FlSpot(0, calorieGoal),
+                      FlSpot((daysCount - 1).toDouble(), calorieGoal),
                     ],
                     isCurved: false,
-                    color: colorScheme.primary.withValues(alpha: 0.5),
+                    color: Colors.orange,
                     barWidth: 2,
                     isStrokeCapRound: false,
                     dotData: const FlDotData(show: false),
@@ -984,7 +753,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildLegendItem('Consumido', colorScheme.primary, theme, false),
               const SizedBox(width: 24),
-              _buildLegendItem('Objetivo', colorScheme.primary.withValues(alpha: 0.5), theme, true),
+              _buildLegendItem('Meta Diária', Colors.orange, theme, true),
             ],
           ),
         ],

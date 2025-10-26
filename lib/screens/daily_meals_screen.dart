@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
+import '../providers/nutrition_goals_provider.dart';
 import '../models/meal_model.dart';
 import '../models/food_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/nutrition_card.dart';
 import 'manage_meal_types_screen.dart';
+import 'nutrition_goals_screen.dart';
 
 class DailyMealsScreen extends StatefulWidget {
   const DailyMealsScreen({Key? key}) : super(key: key);
@@ -62,8 +64,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           ),
         ],
       ),
-      body: Consumer<DailyMealsProvider>(
-        builder: (context, provider, child) {
+      body: Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
+        builder: (context, mealsProvider, goalsProvider, child) {
           return SingleChildScrollView(
             child: Column(
               children: [
@@ -87,7 +89,12 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                         icon: Icon(Icons.edit, color: textColor),
                         tooltip: 'Editar metas',
                         onPressed: () {
-                          _showEditGoalsDialog(context, provider);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NutritionGoalsScreen(),
+                            ),
+                          );
                         },
                       ),
                     ],
@@ -102,14 +109,14 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     // Card is already on this screen, no navigation needed
                   },
                   child: NutritionCard(
-                    caloriesConsumed: provider.totalCalories,
-                    caloriesGoal: provider.caloriesGoal,
-                    proteinConsumed: provider.totalProtein.toInt(),
-                    proteinGoal: provider.proteinGoal,
-                    carbsConsumed: provider.totalCarbs.toInt(),
-                    carbsGoal: provider.carbsGoal,
-                    fatsConsumed: provider.totalFat.toInt(),
-                    fatsGoal: provider.fatsGoal,
+                    caloriesConsumed: mealsProvider.totalCalories,
+                    caloriesGoal: goalsProvider.caloriesGoal,
+                    proteinConsumed: mealsProvider.totalProtein.toInt(),
+                    proteinGoal: goalsProvider.proteinGoal,
+                    carbsConsumed: mealsProvider.totalCarbs.toInt(),
+                    carbsGoal: goalsProvider.carbsGoal,
+                    fatsConsumed: mealsProvider.totalFat.toInt(),
+                    fatsGoal: goalsProvider.fatGoal,
                   ),
                 ),
 
@@ -148,13 +155,13 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 SizedBox(height: 8),
 
                 // Meals list
-                _buildMealsList(provider, isDarkMode, textColor),
+                _buildMealsList(mealsProvider, isDarkMode, textColor),
 
                 SizedBox(height: 16),
 
                 // Daily Nutrition Details Card
-                if (provider.todayMeals.isNotEmpty)
-                  _buildDailyNutritionCard(provider, isDarkMode, textColor),
+                if (mealsProvider.todayMeals.isNotEmpty)
+                  _buildDailyNutritionCard(mealsProvider, isDarkMode, textColor),
 
                 SizedBox(height: 16),
               ],
@@ -752,122 +759,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     );
   }
 
-  void _showEditGoalsDialog(BuildContext context, DailyMealsProvider provider) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
-
-    final caloriesController = TextEditingController(text: provider.caloriesGoal.toString());
-    final proteinController = TextEditingController(text: provider.proteinGoal.toString());
-    final carbsController = TextEditingController(text: provider.carbsGoal.toString());
-    final fatsController = TextEditingController(text: provider.fatsGoal.toString());
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        title: Text(
-          'Editar Metas Nutricionais',
-          style: TextStyle(color: textColor),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: caloriesController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  labelText: 'Calorias (kcal)',
-                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.primaryColor),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: proteinController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  labelText: 'Proteína (g)',
-                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.primaryColor),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: carbsController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  labelText: 'Carboidratos (g)',
-                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.primaryColor),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: fatsController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  labelText: 'Gorduras (g)',
-                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.primaryColor),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: textColor.withValues(alpha: 0.7))),
-          ),
-          TextButton(
-            onPressed: () {
-              final calories = int.tryParse(caloriesController.text) ?? provider.caloriesGoal;
-              final protein = int.tryParse(proteinController.text) ?? provider.proteinGoal;
-              final carbs = int.tryParse(carbsController.text) ?? provider.carbsGoal;
-              final fats = int.tryParse(fatsController.text) ?? provider.fatsGoal;
-
-              provider.updateGoals(
-                calories: calories,
-                protein: protein,
-                carbs: carbs,
-                fats: fats,
-              );
-
-              Navigator.pop(context);
-            },
-            child: Text('Salvar', style: TextStyle(color: AppTheme.primaryColor)),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _MealCard extends StatelessWidget {
@@ -1531,14 +1422,14 @@ class _SubNutrientRow extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               color: secondaryTextColor,
             ),
           ),
           Text(
             value,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.w500,
               color: secondaryTextColor,
             ),

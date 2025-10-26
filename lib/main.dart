@@ -24,6 +24,7 @@ import 'providers/credit_provider.dart';
 import 'providers/essay_provider.dart';
 import 'providers/daily_meals_provider.dart';
 import 'providers/meal_types_provider.dart';
+import 'providers/nutrition_goals_provider.dart';
 
 // Chave global para acessar o navigator de qualquer lugar do app
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -182,6 +183,9 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider(
           create: (_) => MealTypesProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NutritionGoalsProvider(),
         ),
       ],
       child: Consumer2<ThemeProvider, LanguageController>(
