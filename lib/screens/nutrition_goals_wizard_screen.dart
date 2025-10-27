@@ -59,7 +59,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   }
 
   void _nextStep() {
-    if (_currentStep < 2) {
+    if (_currentStep < 3) {
       setState(() => _currentStep++);
       _pageController.animateToPage(
         _currentStep,
@@ -152,7 +152,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               },
               children: [
                 _buildPersonalInfoStep(theme, isDarkMode, textColor),
-                _buildActivityGoalStep(theme, isDarkMode, textColor),
+                _buildActivityLevelStep(theme, isDarkMode, textColor),
+                _buildFitnessGoalStep(theme, isDarkMode, textColor),
                 _buildDietTypeStep(theme, isDarkMode, textColor),
               ],
             ),
@@ -169,7 +170,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Row(
-        children: List.generate(3, (index) {
+        children: List.generate(4, (index) {
           final isCompleted = index < _currentStep;
           final isCurrent = index == _currentStep;
 
@@ -187,7 +188,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     ),
                   ),
                 ),
-                if (index < 2) const SizedBox(width: 4),
+                if (index < 3) const SizedBox(width: 4),
               ],
             ),
           );
@@ -333,7 +334,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildActivityGoalStep(ThemeData theme, bool isDarkMode, Color textColor) {
+  Widget _buildActivityLevelStep(ThemeData theme, bool isDarkMode, Color textColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -341,22 +342,13 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         children: [
           _buildStepHeader(
             icon: Icons.directions_run,
-            title: 'Atividade e Objetivo',
-            subtitle: 'Como você se mantém ativo e qual é seu objetivo?',
+            title: 'Nível de Atividade',
+            subtitle: 'Como você se mantém ativo no dia a dia?',
             theme: theme,
             textColor: textColor,
           ),
           const SizedBox(height: 32),
 
-          // Activity Level
-          Text(
-            'Nível de Atividade',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
           ...ActivityLevel.values.map((level) {
             final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
             return Padding(
@@ -372,17 +364,26 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               ),
             );
           }).toList(),
-          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
 
-          // Fitness Goal
-          Text(
-            'Seu Objetivo',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-            ),
+  Widget _buildFitnessGoalStep(ThemeData theme, bool isDarkMode, Color textColor) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStepHeader(
+            icon: Icons.track_changes,
+            title: 'Seu Objetivo',
+            subtitle: 'O que você deseja alcançar?',
+            theme: theme,
+            textColor: textColor,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 32),
+
           ...FitnessGoal.values.map((goal) {
             final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
             return Padding(
@@ -720,7 +721,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 ),
               ),
               child: Text(
-                _currentStep == 2 ? 'Concluir' : 'Próximo',
+                _currentStep == 3 ? 'Concluir' : 'Próximo',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),

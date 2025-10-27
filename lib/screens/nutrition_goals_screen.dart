@@ -240,13 +240,13 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Activity & Goal Card
+        // Activity Level Card
         _buildInfoCard(
           cardColor: cardColor,
           isDarkMode: isDarkMode,
-          title: 'Atividade e Objetivo',
+          title: 'Nível de Atividade',
           subtitle: provider.getActivityLevelName(provider.activityLevel),
-          details: provider.getFitnessGoalName(provider.fitnessGoal),
+          details: provider.getActivityLevelDescription(provider.activityLevel),
           icon: Icons.directions_run,
           iconColor: Colors.green,
           theme: theme,
@@ -256,6 +256,28 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => const NutritionGoalsWizardScreen(startStep: 1),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+
+        // Fitness Goal Card
+        _buildInfoCard(
+          cardColor: cardColor,
+          isDarkMode: isDarkMode,
+          title: 'Objetivo',
+          subtitle: provider.getFitnessGoalName(provider.fitnessGoal),
+          details: _getGoalDetail(provider.fitnessGoal),
+          icon: Icons.track_changes,
+          iconColor: Colors.purple,
+          theme: theme,
+          textColor: textColor,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NutritionGoalsWizardScreen(startStep: 2),
               ),
             );
           },
@@ -277,7 +299,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const NutritionGoalsWizardScreen(startStep: 2),
+                builder: (context) => const NutritionGoalsWizardScreen(startStep: 3),
               ),
             );
           },
@@ -528,5 +550,18 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         ],
       ),
     );
+  }
+
+  String _getGoalDetail(FitnessGoal goal) {
+    switch (goal) {
+      case FitnessGoal.loseWeight:
+        return 'Déficit calórico de 500 kcal/dia';
+      case FitnessGoal.maintainWeight:
+        return 'Manter peso atual';
+      case FitnessGoal.gainWeight:
+        return 'Superávit de 300 kcal/dia';
+      case FitnessGoal.gainMuscle:
+        return 'Superávit de 500 kcal/dia';
+    }
   }
 }
