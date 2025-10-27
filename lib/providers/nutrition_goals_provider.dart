@@ -455,7 +455,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
       case DietType.highProtein:
         return '30% Carbs, 40% Proteína, 30% Gordura';
       case DietType.custom:
-        return 'Definir manualmente';
+        return '$_carbsPercentage% Carbs, $_proteinPercentage% Proteína, $_fatPercentage% Gordura';
     }
   }
 }
