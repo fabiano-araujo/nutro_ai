@@ -190,13 +190,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      user.name,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            user.name,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Ícone de editar na mesma linha
+                        InkWell(
+                          onTap: () {
+                            // TODO: Navegar para tela de edição de perfil
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Editar perfil - Em breve!')),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -261,22 +286,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-              ),
-              // Ícone de editar
-              IconButton(
-                onPressed: () {
-                  // TODO: Navegar para tela de edição de perfil
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Editar perfil - Em breve!')),
-                  );
-                },
-                icon: Icon(
-                  Icons.edit_outlined,
-                  color: colorScheme.primary,
-                  size: 22,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
               ),
             ],
           ),
@@ -592,6 +601,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         daysCount = 7;
     }
 
+    // Calcular min e max dinamicamente
+    final maxDataValue = currentData.reduce((a, b) => a > b ? a : b);
+    final minDataValue = currentData.reduce((a, b) => a < b ? a : b);
+
+    // Incluir a meta no cálculo do range
+    final maxValue = [maxDataValue, calorieGoal].reduce((a, b) => a > b ? a : b);
+    final minValue = [minDataValue, calorieGoal].reduce((a, b) => a < b ? a : b);
+
+    // Adicionar margem de 10% acima e abaixo
+    final range = maxValue - minValue;
+    final chartMaxY = (maxValue + range * 0.15).ceilToDouble();
+    final chartMinY = (minValue - range * 0.15).floorToDouble();
+
+    // Calcular intervalo apropriado para as linhas de grade
+    final totalRange = chartMaxY - chartMinY;
+    final interval = (totalRange / 5).ceilToDouble();
+
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
@@ -633,7 +659,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 500,
+                  horizontalInterval: interval,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
                       color: theme.colorScheme.surfaceContainerHighest,
@@ -669,7 +695,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 500,
+                      interval: interval,
                       reservedSize: 45,
                       getTitlesWidget: (value, meta) {
                         return Text(
@@ -691,8 +717,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 minX: 0,
                 maxX: (daysCount - 1).toDouble(),
-                minY: 1000,
-                maxY: 2500,
+                minY: chartMinY,
+                maxY: chartMaxY,
                 lineBarsData: [
                   LineChartBarData(
                     spots: [

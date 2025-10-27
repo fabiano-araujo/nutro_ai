@@ -43,119 +43,21 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header explanation
-                Text(
-                  'Configure suas metas nutricionais diárias',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
                 const SizedBox(height: 8),
-                Text(
-                  'Escolha entre calcular automaticamente baseado em suas informações ou definir manualmente.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: textColor.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 24),
 
-                // Toggle: Calculated vs Manual
-                _buildCalculationModeCard(provider, theme, isDarkMode, textColor),
-
-                const SizedBox(height: 24),
-
-                // Current Goals Summary
+                // Current Goals Summary with edit button
                 _buildGoalsSummaryCard(provider, theme, isDarkMode, textColor),
 
                 const SizedBox(height: 24),
 
-                // Configuration section based on mode
-                if (provider.useCalculatedGoals) ...[
-                  _buildCalculatedConfigSection(provider, theme, isDarkMode, textColor),
-                ] else ...[
-                  _buildManualConfigSection(provider, theme, isDarkMode, textColor),
-                ],
+                // Configuration section
+                _buildCalculatedConfigSection(provider, theme, isDarkMode, textColor),
 
                 const SizedBox(height: 80),
               ],
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildCalculationModeCard(
-    NutritionGoalsProvider provider,
-    ThemeData theme,
-    bool isDarkMode,
-    Color textColor,
-  ) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Modo de Cálculo',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: textColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    provider.useCalculatedGoals ? 'Calculado automaticamente' : 'Manual',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              Switch(
-                value: provider.useCalculatedGoals,
-                onChanged: (value) {
-                  provider.setUseCalculatedGoals(value);
-                },
-                activeTrackColor: AppTheme.primaryColor,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            provider.useCalculatedGoals
-                ? 'Suas metas são calculadas com base em suas informações pessoais, nível de atividade e objetivos.'
-                : 'Você está definindo suas metas manualmente. Você pode alternar para o modo calculado a qualquer momento.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: textColor.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -188,12 +90,26 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Suas Metas Diárias',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Suas Metas Diárias',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  _showManualEditDialog(context, provider, theme, isDarkMode, textColor);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Icon(Icons.edit, color: textColor, size: 20),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
 
@@ -493,175 +409,146 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     );
   }
 
-  Widget _buildManualConfigSection(
+  void _showManualEditDialog(
+    BuildContext context,
     NutritionGoalsProvider provider,
     ThemeData theme,
     bool isDarkMode,
     Color textColor,
   ) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
-
     final caloriesController = TextEditingController(text: provider.caloriesGoal.toString());
     final proteinController = TextEditingController(text: provider.proteinGoal.toString());
     final carbsController = TextEditingController(text: provider.carbsGoal.toString());
     final fatController = TextEditingController(text: provider.fatGoal.toString());
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-          width: 1,
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        title: Text(
+          'Editar Metas Manualmente',
+          style: TextStyle(color: textColor),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Configuração Manual',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Calories
-          _buildInputField(
-            controller: caloriesController,
-            label: 'Calorias (kcal)',
-            icon: Icons.local_fire_department,
-            iconColor: Colors.orange,
-            theme: theme,
-            textColor: textColor,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 16),
-
-          // Protein
-          _buildInputField(
-            controller: proteinController,
-            label: 'Proteína (g)',
-            icon: Icons.fitness_center,
-            iconColor: const Color(0xFF9575CD),
-            theme: theme,
-            textColor: textColor,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 16),
-
-          // Carbs
-          _buildInputField(
-            controller: carbsController,
-            label: 'Carboidratos (g)',
-            icon: Icons.grain,
-            iconColor: const Color(0xFFA1887F),
-            theme: theme,
-            textColor: textColor,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 16),
-
-          // Fat
-          _buildInputField(
-            controller: fatController,
-            label: 'Gorduras (g)',
-            icon: Icons.water_drop,
-            iconColor: const Color(0xFF90A4AE),
-            theme: theme,
-            textColor: textColor,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 24),
-
-          // Save button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                final calories = int.tryParse(caloriesController.text) ?? provider.caloriesGoal;
-                final protein = int.tryParse(proteinController.text) ?? provider.proteinGoal;
-                final carbs = int.tryParse(carbsController.text) ?? provider.carbsGoal;
-                final fat = int.tryParse(fatController.text) ?? provider.fatGoal;
-
-                provider.updateManualGoals(
-                  calories: calories,
-                  protein: protein,
-                  carbs: carbs,
-                  fat: fat,
-                );
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Metas salvas com sucesso!'),
-                    backgroundColor: Colors.green,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: caloriesController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Calorias (kcal)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  prefixIcon: Icon(Icons.local_fire_department, color: Colors.orange),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                );
-              },
-              icon: const Icon(Icons.save),
-              label: const Text('Salvar Metas'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: proteinController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Proteína (g)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  prefixIcon: Icon(Icons.fitness_center, color: const Color(0xFF9575CD)),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: carbsController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Carboidratos (g)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  prefixIcon: Icon(Icons.grain, color: const Color(0xFFA1887F)),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: fatController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Gorduras (g)',
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                  prefixIcon: Icon(Icons.water_drop, color: const Color(0xFF90A4AE)),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: TextStyle(color: textColor.withValues(alpha: 0.7))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final calories = int.tryParse(caloriesController.text) ?? provider.caloriesGoal;
+              final protein = int.tryParse(proteinController.text) ?? provider.proteinGoal;
+              final carbs = int.tryParse(carbsController.text) ?? provider.carbsGoal;
+              final fat = int.tryParse(fatController.text) ?? provider.fatGoal;
+
+              provider.updateManualGoals(
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+              );
+
+              Navigator.pop(context);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Metas atualizadas com sucesso!'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
             ),
+            child: const Text('Salvar'),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    required Color iconColor,
-    required ThemeData theme,
-    required Color textColor,
-    required bool isDarkMode,
-  }) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: iconColor, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            style: TextStyle(color: textColor),
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: AppTheme.primaryColor),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
