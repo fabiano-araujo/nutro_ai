@@ -282,28 +282,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             );
           },
         ),
-        const SizedBox(height: 12),
-
-        // Formula Card
-        _buildInfoCard(
-          cardColor: cardColor,
-          isDarkMode: isDarkMode,
-          title: 'Fórmula de Cálculo',
-          subtitle: provider.getFormulaName(provider.formula),
-          details: 'Método de cálculo de calorias',
-          icon: Icons.calculate,
-          iconColor: Colors.purple,
-          theme: theme,
-          textColor: textColor,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const NutritionGoalsWizardScreen(startStep: 3),
-              ),
-            );
-          },
-        ),
         const SizedBox(height: 24),
 
         // Complete wizard button

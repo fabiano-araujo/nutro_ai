@@ -958,7 +958,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             break;
                           case 3:
                             text = 'Fibra';
-                            color = Colors.green;
+                            color = const Color(0xFF81C784); // Verde suave
                             break;
                         }
                         return Padding(
@@ -1063,7 +1063,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     barRods: [
                       BarChartRodData(
                         toY: avgFiber,
-                        color: Colors.green,
+                        color: const Color(0xFF81C784), // Verde suave
                         width: 40,
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                         backDrawRodData: BackgroundBarChartRodData(
@@ -1087,7 +1087,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildMacroLegendItem('Proteína: ${avgProtein.toStringAsFixed(1)}g', const Color(0xFF9575CD), theme),
               _buildMacroLegendItem('Carboidrato: ${avgCarbs.toStringAsFixed(1)}g', const Color(0xFFA1887F), theme),
               _buildMacroLegendItem('Gordura: ${avgFat.toStringAsFixed(1)}g', const Color(0xFF90A4AE), theme),
-              _buildMacroLegendItem('Fibra: ${avgFiber.toStringAsFixed(1)}g', Colors.green, theme),
+              _buildMacroLegendItem('Fibra: ${avgFiber.toStringAsFixed(1)}g', const Color(0xFF81C784), theme),
             ],
           ),
         ],

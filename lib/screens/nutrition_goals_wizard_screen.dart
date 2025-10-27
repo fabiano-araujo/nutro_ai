@@ -30,9 +30,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   // Step 2: Diet Type
   DietType _selectedDietType = DietType.balanced;
 
-  // Step 3: Formula
-  CalculationFormula _selectedFormula = CalculationFormula.mifflinStJeor;
-
   @override
   void initState() {
     super.initState();
@@ -51,7 +48,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         _selectedActivityLevel = provider.activityLevel;
         _selectedFitnessGoal = provider.fitnessGoal;
         _selectedDietType = provider.dietType;
-        _selectedFormula = provider.formula;
       });
     });
   }
@@ -63,7 +59,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   }
 
   void _nextStep() {
-    if (_currentStep < 3) {
+    if (_currentStep < 2) {
       setState(() => _currentStep++);
       _pageController.animateToPage(
         _currentStep,
@@ -100,7 +96,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     provider.updateActivityAndGoals(
       activityLevel: _selectedActivityLevel,
       fitnessGoal: _selectedFitnessGoal,
-      formula: _selectedFormula,
     );
 
     provider.updateDietType(_selectedDietType);
@@ -159,7 +154,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 _buildPersonalInfoStep(theme, isDarkMode, textColor),
                 _buildActivityGoalStep(theme, isDarkMode, textColor),
                 _buildDietTypeStep(theme, isDarkMode, textColor),
-                _buildFormulaStep(theme, isDarkMode, textColor),
               ],
             ),
           ),
@@ -175,7 +169,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Row(
-        children: List.generate(4, (index) {
+        children: List.generate(3, (index) {
           final isCompleted = index < _currentStep;
           final isCurrent = index == _currentStep;
 
@@ -193,7 +187,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     ),
                   ),
                 ),
-                if (index < 3) const SizedBox(width: 4),
+                if (index < 2) const SizedBox(width: 4),
               ],
             ),
           );
@@ -433,41 +427,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 subtitle: provider.getDietTypeDescription(dietType),
                 isSelected: _selectedDietType == dietType,
                 onTap: () => setState(() => _selectedDietType = dietType),
-                theme: theme,
-                isDarkMode: isDarkMode,
-                textColor: textColor,
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFormulaStep(ThemeData theme, bool isDarkMode, Color textColor) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepHeader(
-            icon: Icons.calculate,
-            title: 'Fórmula de Cálculo',
-            subtitle: 'Escolha o método para calcular suas calorias',
-            theme: theme,
-            textColor: textColor,
-          ),
-          const SizedBox(height: 32),
-
-          ...CalculationFormula.values.map((formula) {
-            final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildOptionCard(
-                title: provider.getFormulaName(formula),
-                subtitle: _getFormulaDescription(formula),
-                isSelected: _selectedFormula == formula,
-                onTap: () => setState(() => _selectedFormula = formula),
                 theme: theme,
                 isDarkMode: isDarkMode,
                 textColor: textColor,
@@ -761,7 +720,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 ),
               ),
               child: Text(
-                _currentStep == 3 ? 'Concluir' : 'Próximo',
+                _currentStep == 2 ? 'Concluir' : 'Próximo',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -784,14 +743,4 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     }
   }
 
-  String _getFormulaDescription(CalculationFormula formula) {
-    switch (formula) {
-      case CalculationFormula.mifflinStJeor:
-        return 'Mais precisa para a maioria das pessoas (recomendada)';
-      case CalculationFormula.harrisBenedict:
-        return 'Fórmula tradicional e bem estabelecida';
-      case CalculationFormula.katchMcArdle:
-        return 'Mais precisa se você souber seu percentual de gordura';
-    }
-  }
 }

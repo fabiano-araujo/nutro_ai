@@ -9,6 +9,7 @@ import '../widgets/rate_app_bottom_sheet.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../providers/nutrition_goals_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   final int? initialTab;
@@ -151,6 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildAccountRow('Restrições', _restrictions, Icons.block, theme, onTap: () {}),
               _buildAccountRow('Dieta', _dietType, Icons.restaurant_menu, theme, onTap: () {}),
               _buildAccountRow('Condições de Saúde', _healthConditions, Icons.favorite_border, theme, onTap: () {}),
+              _buildFormulaRow(theme),
               _buildSwitchRow('Adicionar calorias de exercício ao objetivo diário', _addExerciseCalories, theme, colorScheme, (value) {
                 setState(() => _addExerciseCalories = value);
               }),
@@ -429,6 +431,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildFormulaRow(ThemeData theme) {
+    return Consumer<NutritionGoalsProvider>(
+      builder: (context, provider, child) {
+        return _buildAccountRow(
+          'Fórmula de Cálculo',
+          provider.getFormulaName(provider.formula),
+          Icons.calculate,
+          theme,
+          onTap: () => _showFormulaDialog(theme, provider),
+        );
+      },
+    );
+  }
+
+  void _showFormulaDialog(ThemeData theme, NutritionGoalsProvider provider) {
+    final formulas = CalculationFormula.values;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Fórmula de Cálculo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: formulas.map((formula) {
+            final isSelected = formula == provider.formula;
+            return ListTile(
+              leading: Icon(
+                Icons.calculate,
+                color: isSelected ? theme.colorScheme.primary : null,
+              ),
+              title: Text(provider.getFormulaName(formula)),
+              subtitle: Text(
+                _getFormulaDescription(formula),
+                style: theme.textTheme.bodySmall,
+              ),
+              trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+              onTap: () {
+                provider.updateActivityAndGoals(formula: formula);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  String _getFormulaDescription(CalculationFormula formula) {
+    switch (formula) {
+      case CalculationFormula.mifflinStJeor:
+        return 'Mais precisa para a maioria das pessoas';
+      case CalculationFormula.harrisBenedict:
+        return 'Fórmula tradicional e bem estabelecida';
+      case CalculationFormula.katchMcArdle:
+        return 'Requer percentual de gordura corporal';
+    }
   }
 
   Widget _buildNotificationRow(ThemeData theme, ColorScheme colorScheme) {
