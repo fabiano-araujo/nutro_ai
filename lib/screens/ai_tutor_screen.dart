@@ -15,6 +15,7 @@ import '../services/ad_manager.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../providers/credit_provider.dart';
+import '../providers/nutrition_goals_provider.dart';
 import 'settings_screen.dart';
 import '../widgets/message_notifier.dart';
 import '../utils/code_detector.dart';
@@ -874,13 +875,21 @@ class AITutorScreenState extends State<AITutorScreen>
                     duration: Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                     child: _showNutritionCard
-                        ? NutritionCard(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const DailyMealsScreen(),
-                                ),
+                        ? Consumer<NutritionGoalsProvider>(
+                            builder: (context, nutritionProvider, child) {
+                              return NutritionCard(
+                                caloriesGoal: nutritionProvider.caloriesGoal,
+                                proteinGoal: nutritionProvider.proteinGoal,
+                                carbsGoal: nutritionProvider.carbsGoal,
+                                fatsGoal: nutritionProvider.fatGoal,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const DailyMealsScreen(),
+                                    ),
+                                  );
+                                },
                               );
                             },
                           )

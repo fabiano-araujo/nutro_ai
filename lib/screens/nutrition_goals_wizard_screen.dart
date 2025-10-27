@@ -5,8 +5,13 @@ import '../theme/app_theme.dart';
 
 class NutritionGoalsWizardScreen extends StatefulWidget {
   final int startStep;
+  final bool fromProfile;
 
-  const NutritionGoalsWizardScreen({Key? key, this.startStep = 0}) : super(key: key);
+  const NutritionGoalsWizardScreen({
+    Key? key,
+    this.startStep = 0,
+    this.fromProfile = false,
+  }) : super(key: key);
 
   @override
   State<NutritionGoalsWizardScreen> createState() => _NutritionGoalsWizardScreenState();
@@ -59,6 +64,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   }
 
   void _nextStep() {
+    // Save current step data before moving forward
+    _saveCurrentStep();
+
+    // Se foi aberto do profile, salvar e voltar
+    if (widget.fromProfile) {
+      _saveAndFinish();
+      return;
+    }
+
     if (_currentStep < 3) {
       setState(() => _currentStep++);
       _pageController.animateToPage(
@@ -68,6 +82,39 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
       );
     } else {
       _saveAndFinish();
+    }
+  }
+
+  void _saveCurrentStep() {
+    final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+
+    switch (_currentStep) {
+      case 0:
+        // Save personal info
+        provider.updatePersonalInfo(
+          sex: _selectedSex,
+          age: _age,
+          weight: _weight,
+          height: _height,
+          bodyFat: _bodyFat,
+        );
+        break;
+      case 1:
+        // Save activity level
+        provider.updateActivityAndGoals(
+          activityLevel: _selectedActivityLevel,
+        );
+        break;
+      case 2:
+        // Save fitness goal
+        provider.updateActivityAndGoals(
+          fitnessGoal: _selectedFitnessGoal,
+        );
+        break;
+      case 3:
+        // Save diet type
+        provider.updateDietType(_selectedDietType);
+        break;
     }
   }
 
@@ -84,21 +131,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
 
   void _saveAndFinish() {
     final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-
-    provider.updatePersonalInfo(
-      sex: _selectedSex,
-      age: _age,
-      weight: _weight,
-      height: _height,
-      bodyFat: _bodyFat,
-    );
-
-    provider.updateActivityAndGoals(
-      activityLevel: _selectedActivityLevel,
-      fitnessGoal: _selectedFitnessGoal,
-    );
-
-    provider.updateDietType(_selectedDietType);
 
     // Ensure calculated mode is enabled
     provider.setUseCalculatedGoals(true);
@@ -690,7 +722,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
       ),
       child: Row(
         children: [
-          if (_currentStep > 0)
+          if (_currentStep > 0 && !widget.fromProfile)
             Expanded(
               child: OutlinedButton(
                 onPressed: _previousStep,
@@ -707,9 +739,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 ),
               ),
             ),
-          if (_currentStep > 0) const SizedBox(width: 12),
+          if (_currentStep > 0 && !widget.fromProfile) const SizedBox(width: 12),
           Expanded(
-            flex: _currentStep == 0 ? 1 : 2,
+            flex: (_currentStep == 0 || widget.fromProfile) ? 1 : 2,
             child: ElevatedButton(
               onPressed: _nextStep,
               style: ElevatedButton.styleFrom(
@@ -721,7 +753,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 ),
               ),
               child: Text(
-                _currentStep == 3 ? 'Concluir' : 'Próximo',
+                widget.fromProfile
+                    ? 'Salvar'
+                    : (_currentStep == 3 ? 'Concluir' : 'Próximo'),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),

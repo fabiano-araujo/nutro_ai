@@ -6,6 +6,8 @@ import '../services/auth_service.dart';
 import '../providers/nutrition_goals_provider.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
+import 'nutrition_goals_wizard_screen.dart';
+import 'nutrition_goals_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 
 // Custom painter for dashed line in legend
@@ -145,12 +147,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(user, ThemeData theme, ColorScheme colorScheme) {
-    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-    // Calculate daily calories and BMI based on user data
-    final dailyCalories = nutritionProvider.caloriesGoal.toDouble();
-    final bmi = _calculateBMI(nutritionProvider.weight, nutritionProvider.height);
-    final bmiColor = _getBMIColor(bmi);
-    final bmiCategory = _getBMICategory(bmi);
+    return Consumer<NutritionGoalsProvider>(
+      builder: (context, nutritionProvider, child) {
+        // Calculate daily calories and BMI based on user data
+        final dailyCalories = nutritionProvider.caloriesGoal.toDouble();
+        final bmi = _calculateBMI(nutritionProvider.weight, nutritionProvider.height);
+        final bmiColor = _getBMIColor(bmi);
+        final bmiCategory = _getBMICategory(bmi);
 
     return Container(
       decoration: BoxDecoration(
@@ -206,9 +209,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // Ícone de editar na mesma linha
                         InkWell(
                           onTap: () {
-                            // TODO: Navegar para tela de edição de perfil
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Editar perfil - Em breve!')),
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const NutritionGoalsWizardScreen(
+                                  startStep: 0,
+                                  fromProfile: true,
+                                ),
+                              ),
                             );
                           },
                           borderRadius: BorderRadius.circular(20),
@@ -301,82 +308,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               // Objetivo
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            _getGoalIcon(nutritionProvider.fitnessGoal),
-                            size: 20,
-                            color: colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Objetivo',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _getGoalText(nutritionProvider.fitnessGoal),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NutritionGoalsWizardScreen(
+                          startStep: 2,
+                          fromProfile: true,
                         ),
                       ),
-                    ],
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              _getGoalIcon(nutritionProvider.fitnessGoal),
+                              size: 20,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Objetivo',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _getGoalText(nutritionProvider.fitnessGoal),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               // Calorias Diárias
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.local_fire_department,
-                            size: 20,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NutritionGoalsScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              size: 20,
+                              color: Colors.orange,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Meta Diária',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${dailyCalories.toStringAsFixed(0)} kcal',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
                             color: Colors.orange,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Meta Diária',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${dailyCalories.toStringAsFixed(0)} kcal',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -384,6 +414,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 
@@ -443,9 +475,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMacroTargetsSection(ThemeData theme, ColorScheme colorScheme) {
-    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-
-    return Container(
+    return Consumer<NutritionGoalsProvider>(
+      builder: (context, nutritionProvider, child) {
+        return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -507,6 +539,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+        );
+      },
     );
   }
 
