@@ -16,6 +16,7 @@ import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../providers/credit_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../providers/daily_meals_provider.dart';
 import 'settings_screen.dart';
 import '../widgets/message_notifier.dart';
 import '../utils/code_detector.dart';
@@ -875,12 +876,21 @@ class AITutorScreenState extends State<AITutorScreen>
                     duration: Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                     child: _showNutritionCard
-                        ? Consumer<NutritionGoalsProvider>(
-                            builder: (context, nutritionProvider, child) {
+                        ? Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
+                            builder: (context, nutritionProvider, mealsProvider, child) {
+                              // Ocultar o card se não houver refeições registradas no dia
+                              if (mealsProvider.todayMeals.isEmpty) {
+                                return SizedBox.shrink();
+                              }
+
                               return NutritionCard(
+                                caloriesConsumed: mealsProvider.totalCalories,
                                 caloriesGoal: nutritionProvider.caloriesGoal,
+                                proteinConsumed: mealsProvider.totalProtein.toInt(),
                                 proteinGoal: nutritionProvider.proteinGoal,
+                                carbsConsumed: mealsProvider.totalCarbs.toInt(),
                                 carbsGoal: nutritionProvider.carbsGoal,
+                                fatsConsumed: mealsProvider.totalFat.toInt(),
                                 fatsGoal: nutritionProvider.fatGoal,
                                 onTap: () {
                                   Navigator.push(
