@@ -449,6 +449,10 @@ final Map<String, String> esESTranslations = {
   'physics_hint': 'Toma una foto de un problema de física',
   'chemistry_hint': 'Toma una foto de un problema de química',
   'history_hint': 'Toma una foto de una pregunta de historia',
+  'ai_macros': 'Macros con IA',
+  'ai_macros_hint': 'Toma una foto de tu comida para calcular macros',
+  'barcode': 'Código de Barras',
+  'barcode_hint': 'Escanea el código de barras del producto',
 
   // Mensaje de bienvenida en tarjeta
   'welcome_message_card': '¡Hola! Soy Nutro AI, tu asistente de nutrición',

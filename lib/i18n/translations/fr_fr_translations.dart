@@ -269,6 +269,10 @@ final Map<String, String> frFRTranslations = {
   'physics_hint': 'Prenez une photo d\'un problème de physique',
   'chemistry_hint': 'Prenez une photo d\'un problème de chimie',
   'history_hint': 'Prenez une photo d\'une question d\'histoire',
+  'ai_macros': 'Macros IA',
+  'ai_macros_hint': 'Prenez une photo de votre nourriture pour calculer les macros',
+  'barcode': 'Code-barres',
+  'barcode_hint': 'Scannez le code-barres du produit',
 
   // Message de bienvenue dans la carte
   'welcome_message_card': 'Bonjour ! Je suis Nutro AI, votre assistant nutritionnel',

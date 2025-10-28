@@ -267,6 +267,10 @@ final Map<String, String> itITTranslations = {
   'physics_hint': 'Scatta una foto di un problema di fisica',
   'chemistry_hint': 'Scatta una foto di un problema di chimica',
   'history_hint': 'Scatta una foto di una domanda di storia',
+  'ai_macros': 'Macro IA',
+  'ai_macros_hint': 'Scatta una foto del tuo cibo per calcolare i macro',
+  'barcode': 'Codice a Barre',
+  'barcode_hint': 'Scansiona il codice a barre del prodotto',
 
   // Messaggio di benvenuto nella scheda
   'welcome_message_card': 'Ciao! Sono Nutro AI, il tuo assistente di nutrizione',

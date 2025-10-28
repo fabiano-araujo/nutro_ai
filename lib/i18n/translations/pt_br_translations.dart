@@ -694,6 +694,10 @@ final Map<String, String> ptBRTranslations = {
   'physics_hint': 'Tire uma foto de um problema de física',
   'chemistry_hint': 'Tire uma foto de um problema de química',
   'history_hint': 'Tire uma foto de uma questão de história',
+  'ai_macros': 'Macros com IA',
+  'ai_macros_hint': 'Tire uma foto do seu alimento para calcular macros',
+  'barcode': 'Código de Barras',
+  'barcode_hint': 'Escaneie o código de barras do produto',
 
   // Mensagem de boas-vindas no card
   'welcome_message_card': 'Olá! Sou Nutro AI, seu assistente de nutrição',

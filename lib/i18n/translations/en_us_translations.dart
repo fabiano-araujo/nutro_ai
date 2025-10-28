@@ -528,6 +528,10 @@ final Map<String, String> enUSTranslations = {
   'physics_hint': 'Take a picture of a physics problem',
   'chemistry_hint': 'Take a picture of a chemistry problem',
   'history_hint': 'Take a picture of a history question',
+  'ai_macros': 'AI Macros',
+  'ai_macros_hint': 'Take a photo of your food to calculate macros',
+  'barcode': 'Barcode',
+  'barcode_hint': 'Scan the product barcode',
 
   // Welcome message in card
   'welcome_message_card': 'Hi! I\'m Nutro AI, your nutrition assistant',

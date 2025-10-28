@@ -312,6 +312,10 @@ final Map<String, String> deDETranslations = {
   'physics_hint': 'Fotografiere ein Physikproblem',
   'chemistry_hint': 'Fotografiere ein Chemieproblem',
   'history_hint': 'Fotografiere eine Geschichtsfrage',
+  'ai_macros': 'KI-Makros',
+  'ai_macros_hint': 'Fotografiere dein Essen, um Makros zu berechnen',
+  'barcode': 'Barcode',
+  'barcode_hint': 'Scanne den Produktbarcode',
 
   // Willkommensnachricht auf der Karte
   'welcome_message_card': 'Hallo! Ich bin Nutro AI, dein Ernährungsassistent',
