@@ -1082,327 +1082,373 @@ class _MacroEditBottomSheetState extends State<_MacroEditBottomSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-            // Toggle between 3 modes
-            Container(
-              decoration: BoxDecoration(
-                color: widget.isDarkMode
-                    ? Colors.grey[800]
-                    : Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
+                      // Toggle between 3 modes
+                      Container(
+                        decoration: BoxDecoration(
+                          color: widget.isDarkMode
+                              ? Colors.grey[800]
+                              : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildToggleButton(
+                                label: '%',
+                                isSelected: _selectedMode == 0,
+                                onTap: () => setState(() => _selectedMode = 0),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildToggleButton(
+                                label: 'g',
+                                isSelected: _selectedMode == 1,
+                                onTap: () => setState(() => _selectedMode = 1),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildToggleButton(
+                                label: 'g/kg',
+                                isSelected: _selectedMode == 2,
+                                onTap: () => setState(() => _selectedMode = 2),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      if (_selectedMode == 0) ..._buildPercentageMode(isValid, totalPercentage),
+                      if (_selectedMode == 1) ..._buildGramsMode(),
+                      if (_selectedMode == 2) ..._buildGramsPerKgMode(),
+
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red, width: 1),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-              padding: const EdgeInsets.all(4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildToggleButton(
-                      label: '%',
-                      isSelected: _selectedMode == 0,
-                      onTap: () => setState(() => _selectedMode = 0),
+
+              // Bottom action bar
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: widget.cardColor,
+                  border: Border(
+                    top: BorderSide(
+                      color: widget.textColor.withValues(alpha: 0.1),
+                      width: 1,
                     ),
                   ),
-                  Expanded(
-                    child: _buildToggleButton(
-                      label: 'g',
-                      isSelected: _selectedMode == 1,
-                      onTap: () => setState(() => _selectedMode = 1),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(
+                            color: widget.textColor.withValues(alpha: 0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: widget.textColor.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: _validateAndUpdate,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Salvar Alterações',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  List<Widget> _buildPercentageMode(bool isValid, double totalPercentage) {
+    return [
+      Text(
+        'Meta de calorias: ${widget.provider.caloriesGoal} kcal',
+        style: widget.theme.textTheme.bodyMedium?.copyWith(
+          color: widget.textColor.withValues(alpha: 0.7),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 16),
+      _buildPercentageSlider(
+        label: 'Carboidratos',
+        value: _carbsPercentage,
+        color: const Color(0xFFA1887F),
+        icon: Icons.grain,
+        onChanged: (value) {
+          setState(() {
+            _carbsPercentage = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildPercentageSlider(
+        label: 'Proteína',
+        value: _proteinPercentage,
+        color: const Color(0xFF9575CD),
+        icon: Icons.fitness_center,
+        onChanged: (value) {
+          setState(() {
+            _proteinPercentage = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildPercentageSlider(
+        label: 'Gorduras',
+        value: _fatPercentage,
+        color: const Color(0xFF90A4AE),
+        icon: Icons.water_drop,
+        onChanged: (value) {
+          setState(() {
+            _fatPercentage = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isValid
+              ? Colors.green.withValues(alpha: 0.1)
+              : Colors.orange.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isValid ? Colors.green : Colors.orange,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Total:',
+              style: widget.theme.textTheme.bodyLarge?.copyWith(
+                color: widget.textColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  '${totalPercentage.toStringAsFixed(0)}%',
+                  style: widget.theme.textTheme.bodyLarge?.copyWith(
+                    color: isValid ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Expanded(
-                    child: _buildToggleButton(
-                      label: 'g/kg',
-                      isSelected: _selectedMode == 2,
-                      onTap: () => setState(() => _selectedMode = 2),
+                ),
+                if (!isValid) ...[
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _autoAdjust,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Ajustar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: 20),
-
-            if (_selectedMode == 0) ...[
-              // Percentage mode
-              Text(
-                'Meta de calorias: ${widget.provider.caloriesGoal} kcal',
-                style: widget.theme.textTheme.bodyMedium?.copyWith(
-                  color: widget.textColor.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildPercentageSlider(
-                label: 'Carboidratos',
-                value: _carbsPercentage,
-                color: const Color(0xFFA1887F),
-                icon: Icons.grain,
-                onChanged: (value) {
-                  setState(() {
-                    _carbsPercentage = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _buildPercentageSlider(
-                label: 'Proteína',
-                value: _proteinPercentage,
-                color: const Color(0xFF9575CD),
-                icon: Icons.fitness_center,
-                onChanged: (value) {
-                  setState(() {
-                    _proteinPercentage = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _buildPercentageSlider(
-                label: 'Gorduras',
-                value: _fatPercentage,
-                color: const Color(0xFF90A4AE),
-                icon: Icons.water_drop,
-                onChanged: (value) {
-                  setState(() {
-                    _fatPercentage = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Total display
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isValid
-                      ? Colors.green.withValues(alpha: 0.1)
-                      : Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isValid ? Colors.green : Colors.orange,
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total:',
-                      style: widget.theme.textTheme.bodyLarge?.copyWith(
-                        color: widget.textColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          '${totalPercentage.toStringAsFixed(0)}%',
-                          style: widget.theme.textTheme.bodyLarge?.copyWith(
-                            color: isValid ? Colors.green : Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (!isValid) ...[
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: _autoAdjust,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Ajustar',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ] else if (_selectedMode == 1) ...[
-              // Grams mode
-              Text(
-                'Meta de calorias: ${widget.provider.caloriesGoal} kcal',
-                style: widget.theme.textTheme.bodyMedium?.copyWith(
-                  color: widget.textColor.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildGramsInput(
-                label: 'Carboidratos',
-                value: _carbsGrams,
-                color: const Color(0xFFA1887F),
-                icon: Icons.grain,
-                caloriesPerGram: 4,
-                onChanged: (value) {
-                  setState(() {
-                    _carbsGrams = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _buildGramsInput(
-                label: 'Proteína',
-                value: _proteinGrams,
-                color: const Color(0xFF9575CD),
-                icon: Icons.fitness_center,
-                caloriesPerGram: 4,
-                onChanged: (value) {
-                  setState(() {
-                    _proteinGrams = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _buildGramsInput(
-                label: 'Gorduras',
-                value: _fatGrams,
-                color: const Color(0xFF90A4AE),
-                icon: Icons.water_drop,
-                caloriesPerGram: 9,
-                onChanged: (value) {
-                  setState(() {
-                    _fatGrams = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Total calories from macros
-              _buildCaloriesSummary(),
-            ] else ...[
-              // Grams per kg mode
-              Text(
-                'Peso corporal: ${widget.provider.weight.toStringAsFixed(1)} kg',
-                style: widget.theme.textTheme.bodyMedium?.copyWith(
-                  color: widget.textColor.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Meta de calorias: ${widget.provider.caloriesGoal} kcal',
-                style: widget.theme.textTheme.bodyMedium?.copyWith(
-                  color: widget.textColor.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildGramsPerKgInput(
-                label: 'Carboidratos',
-                value: _carbsPerKg,
-                color: const Color(0xFFA1887F),
-                icon: Icons.grain,
-                caloriesPerGram: 4,
-                weight: widget.provider.weight,
-                onChanged: (value) {
-                  setState(() {
-                    _carbsPerKg = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _buildGramsPerKgInput(
-                label: 'Proteína',
-                value: _proteinPerKg,
-                color: const Color(0xFF9575CD),
-                icon: Icons.fitness_center,
-                caloriesPerGram: 4,
-                weight: widget.provider.weight,
-                onChanged: (value) {
-                  setState(() {
-                    _proteinPerKg = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _buildGramsPerKgInput(
-                label: 'Gorduras',
-                value: _fatPerKg,
-                color: const Color(0xFF90A4AE),
-                icon: Icons.water_drop,
-                caloriesPerGram: 9,
-                weight: widget.provider.weight,
-                onChanged: (value) {
-                  setState(() {
-                    _fatPerKg = value;
-                    _errorMessage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Total calories from macros
-              _buildCaloriesSummaryPerKg(),
-            ],
-
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'Cancelar',
-            style: TextStyle(color: widget.textColor.withValues(alpha: 0.7)),
-          ),
+    ];
+  }
+
+  List<Widget> _buildGramsMode() {
+    return [
+      Text(
+        'Meta de calorias: ${widget.provider.caloriesGoal} kcal',
+        style: widget.theme.textTheme.bodyMedium?.copyWith(
+          color: widget.textColor.withValues(alpha: 0.7),
+          fontWeight: FontWeight.w500,
         ),
-        ElevatedButton(
-          onPressed: _validateAndUpdate,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Salvar'),
+      ),
+      const SizedBox(height: 16),
+      _buildGramsInput(
+        label: 'Carboidratos',
+        value: _carbsGrams,
+        color: const Color(0xFFA1887F),
+        icon: Icons.grain,
+        caloriesPerGram: 4,
+        onChanged: (value) {
+          setState(() {
+            _carbsGrams = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildGramsInput(
+        label: 'Proteína',
+        value: _proteinGrams,
+        color: const Color(0xFF9575CD),
+        icon: Icons.fitness_center,
+        caloriesPerGram: 4,
+        onChanged: (value) {
+          setState(() {
+            _proteinGrams = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildGramsInput(
+        label: 'Gorduras',
+        value: _fatGrams,
+        color: const Color(0xFF90A4AE),
+        icon: Icons.water_drop,
+        caloriesPerGram: 9,
+        onChanged: (value) {
+          setState(() {
+            _fatGrams = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildCaloriesSummary(),
+    ];
+  }
+
+  List<Widget> _buildGramsPerKgMode() {
+    return [
+      Text(
+        'Peso corporal: ${widget.provider.weight.toStringAsFixed(1)} kg',
+        style: widget.theme.textTheme.bodyMedium?.copyWith(
+          color: widget.textColor.withValues(alpha: 0.7),
+          fontWeight: FontWeight.w500,
         ),
-      ],
-    );
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Meta de calorias: ${widget.provider.caloriesGoal} kcal',
+        style: widget.theme.textTheme.bodyMedium?.copyWith(
+          color: widget.textColor.withValues(alpha: 0.7),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 16),
+      _buildGramsPerKgInput(
+        label: 'Carboidratos',
+        value: _carbsPerKg,
+        color: const Color(0xFFA1887F),
+        icon: Icons.grain,
+        caloriesPerGram: 4,
+        weight: widget.provider.weight,
+        onChanged: (value) {
+          setState(() {
+            _carbsPerKg = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildGramsPerKgInput(
+        label: 'Proteína',
+        value: _proteinPerKg,
+        color: const Color(0xFF9575CD),
+        icon: Icons.fitness_center,
+        caloriesPerGram: 4,
+        weight: widget.provider.weight,
+        onChanged: (value) {
+          setState(() {
+            _proteinPerKg = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildGramsPerKgInput(
+        label: 'Gorduras',
+        value: _fatPerKg,
+        color: const Color(0xFF90A4AE),
+        icon: Icons.water_drop,
+        caloriesPerGram: 9,
+        weight: widget.provider.weight,
+        onChanged: (value) {
+          setState(() {
+            _fatPerKg = value;
+            _errorMessage = null;
+          });
+        },
+      ),
+      const SizedBox(height: 16),
+      _buildCaloriesSummaryPerKg(),
+    ];
   }
 
   Widget _buildToggleButton({
