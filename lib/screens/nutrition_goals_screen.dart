@@ -45,7 +45,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               children: [
                 const SizedBox(height: 8),
 
-                // Current Goals Summary with edit button
+                // Goals Summary Card - Specific for this screen
                 _buildGoalsSummaryCard(provider, theme, isDarkMode, textColor),
 
                 const SizedBox(height: 16),
@@ -83,7 +83,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
           width: 1,
@@ -91,12 +91,12 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -105,104 +105,170 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             children: [
               Text(
                 'Suas Metas Diárias',
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: theme.textTheme.titleLarge?.copyWith(
                   color: textColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  _showManualEditDialog(context, provider, theme, isDarkMode, textColor);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Icon(Icons.edit, color: textColor, size: 20),
+                onTap: () => _showManualEditDialog(context, provider, theme, isDarkMode, textColor),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.edit,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-          // Calories
-          _buildGoalRow(
-            icon: Icons.local_fire_department,
-            iconColor: Colors.orange,
-            label: 'Calorias',
-            value: '${provider.caloriesGoal} kcal',
-            theme: theme,
-            textColor: textColor,
+          // Calories - Large display
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.orange.withValues(alpha: 0.2),
+                        Colors.deepOrange.withValues(alpha: 0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.local_fire_department,
+                    color: Colors.orange,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${provider.caloriesGoal}',
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'kcal / dia',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: textColor.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
 
-          // Protein
-          _buildGoalRow(
-            icon: Icons.fitness_center,
-            iconColor: const Color(0xFF9575CD),
-            label: 'Proteína',
-            value: '${provider.proteinGoal}g',
-            theme: theme,
-            textColor: textColor,
+          const SizedBox(height: 24),
+
+          // Divider
+          Divider(
+            color: textColor.withValues(alpha: 0.1),
+            thickness: 1,
           ),
-          const SizedBox(height: 12),
 
-          // Carbs
-          _buildGoalRow(
-            icon: Icons.grain,
-            iconColor: const Color(0xFFA1887F),
-            label: 'Carboidratos',
-            value: '${provider.carbsGoal}g',
-            theme: theme,
-            textColor: textColor,
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
 
-          // Fat
-          _buildGoalRow(
-            icon: Icons.water_drop,
-            iconColor: const Color(0xFF90A4AE),
-            label: 'Gorduras',
-            value: '${provider.fatGoal}g',
-            theme: theme,
-            textColor: textColor,
+          // Macros in row
+          Row(
+            children: [
+              Expanded(
+                child: _buildMacroColumn(
+                  icon: Icons.fitness_center,
+                  iconColor: const Color(0xFF9575CD),
+                  label: 'Proteína',
+                  value: '${provider.proteinGoal}g',
+                  percentage: '${provider.proteinPercentage}%',
+                  theme: theme,
+                  textColor: textColor,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 60,
+                color: textColor.withValues(alpha: 0.1),
+              ),
+              Expanded(
+                child: _buildMacroColumn(
+                  icon: Icons.grain,
+                  iconColor: const Color(0xFFA1887F),
+                  label: 'Carboidratos',
+                  value: '${provider.carbsGoal}g',
+                  percentage: '${provider.carbsPercentage}%',
+                  theme: theme,
+                  textColor: textColor,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 60,
+                color: textColor.withValues(alpha: 0.1),
+              ),
+              Expanded(
+                child: _buildMacroColumn(
+                  icon: Icons.water_drop,
+                  iconColor: const Color(0xFF90A4AE),
+                  label: 'Gorduras',
+                  value: '${provider.fatGoal}g',
+                  percentage: '${provider.fatPercentage}%',
+                  theme: theme,
+                  textColor: textColor,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGoalRow({
+  Widget _buildMacroColumn({
     required IconData icon,
     required Color iconColor,
     required String label,
     required String value,
+    required String percentage,
     required ThemeData theme,
     required Color textColor,
   }) {
-    return Row(
+    return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: iconColor, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: textColor,
-            ),
-          ),
-        ),
+        Icon(icon, color: iconColor, size: 24),
+        const SizedBox(height: 8),
         Text(
           value,
           style: theme.textTheme.titleMedium?.copyWith(
             color: textColor,
             fontWeight: FontWeight.bold,
           ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          percentage,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: iconColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: textColor.withValues(alpha: 0.6),
+            fontSize: 11,
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -498,9 +564,11 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   ) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => _MacroEditDialog(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _MacroEditBottomSheet(
         provider: provider,
         theme: theme,
         isDarkMode: isDarkMode,
@@ -667,15 +735,15 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   }
 }
 
-// Dialog widget for editing macronutrients
-class _MacroEditDialog extends StatefulWidget {
+// Bottom sheet widget for editing macronutrients
+class _MacroEditBottomSheet extends StatefulWidget {
   final NutritionGoalsProvider provider;
   final ThemeData theme;
   final bool isDarkMode;
   final Color textColor;
   final Color cardColor;
 
-  const _MacroEditDialog({
+  const _MacroEditBottomSheet({
     required this.provider,
     required this.theme,
     required this.isDarkMode,
@@ -684,10 +752,10 @@ class _MacroEditDialog extends StatefulWidget {
   });
 
   @override
-  State<_MacroEditDialog> createState() => _MacroEditDialogState();
+  State<_MacroEditBottomSheet> createState() => _MacroEditBottomSheetState();
 }
 
-class _MacroEditDialogState extends State<_MacroEditDialog> {
+class _MacroEditBottomSheetState extends State<_MacroEditBottomSheet> {
   int _selectedMode = 0; // 0 = Percentage, 1 = Grams, 2 = Grams/kg
 
   // Percentage mode
@@ -952,17 +1020,68 @@ class _MacroEditDialogState extends State<_MacroEditDialog> {
     final totalPercentage = _carbsPercentage + _proteinPercentage + _fatPercentage;
     final isValid = (totalPercentage - 100).abs() < 0.1;
 
-    return AlertDialog(
-      backgroundColor: widget.cardColor,
-      title: Text(
-        'Editar Macronutrientes',
-        style: TextStyle(color: widget.textColor),
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.cardColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) {
+          return Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: widget.textColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Editar Macronutrientes',
+                      style: widget.theme.textTheme.titleLarge?.copyWith(
+                        color: widget.textColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: widget.textColor),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Divider
+              Divider(
+                color: widget.textColor.withValues(alpha: 0.1),
+                height: 1,
+              ),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
             // Toggle between 3 modes
             Container(
               decoration: BoxDecoration(
