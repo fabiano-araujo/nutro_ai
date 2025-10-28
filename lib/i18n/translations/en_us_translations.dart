@@ -36,6 +36,22 @@ final Map<String, String> enUSTranslations = {
   'sign_in': 'Sign in',
   'sign_out': 'Sign Out',
 
+  // Registration Screens
+  'register_title': 'Create Account',
+  'create_account': 'Create Your Account',
+  'register_subtitle': 'Fill in the details to get started',
+  'name': 'Name',
+  'please_enter_name': 'Please enter your name',
+  'confirm_password': 'Confirm Password',
+  'please_confirm_password': 'Please confirm your password',
+  'passwords_dont_match': 'Passwords do not match',
+  'register_button': 'Register',
+  'already_have_account': 'Already have an account?',
+  'registration_success': 'Registration successful!',
+  'registration_failed': 'Registration failed. Please try again.',
+  'server_connection_error':
+      'Error connecting to server. Please try again later.',
+
   // Home Screen
   'your_ultimate': 'Your Ultimate',
   'study_companion': 'Study Companion',
@@ -512,6 +528,10 @@ final Map<String, String> enUSTranslations = {
   'physics_hint': 'Take a picture of a physics problem',
   'chemistry_hint': 'Take a picture of a chemistry problem',
   'history_hint': 'Take a picture of a history question',
+  'ai_macros': 'AI Macros',
+  'ai_macros_hint': 'Take a photo of your food to calculate macros',
+  'barcode': 'Barcode',
+  'barcode_hint': 'Scan the product barcode',
 
   // Welcome message in card
   'welcome_message_card': 'Hi! I\'m Nutro AI, your nutrition assistant',

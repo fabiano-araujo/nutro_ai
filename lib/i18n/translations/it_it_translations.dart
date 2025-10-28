@@ -267,6 +267,10 @@ final Map<String, String> itITTranslations = {
   'physics_hint': 'Scatta una foto di un problema di fisica',
   'chemistry_hint': 'Scatta una foto di un problema di chimica',
   'history_hint': 'Scatta una foto di una domanda di storia',
+  'ai_macros': 'Macro IA',
+  'ai_macros_hint': 'Scatta una foto del tuo cibo per calcolare i macro',
+  'barcode': 'Codice a Barre',
+  'barcode_hint': 'Scansiona il codice a barre del prodotto',
 
   // Messaggio di benvenuto nella scheda
   'welcome_message_card': 'Ciao! Sono Nutro AI, il tuo assistente di nutrizione',
@@ -366,6 +370,22 @@ final Map<String, String> itITTranslations = {
       'Accedi per visualizzare la tua cronologia, i preferiti e le impostazioni personalizzate.',
   'sign_in': 'Accedi',
   'sign_out': 'Disconnetti',
+
+  // Schermate di Registrazione
+  'register_title': 'Crea Account',
+  'create_account': 'Crea il Tuo Account',
+  'register_subtitle': 'Compila i dettagli per iniziare',
+  'name': 'Nome',
+  'please_enter_name': 'Per favore inserisci il tuo nome',
+  'confirm_password': 'Conferma Password',
+  'please_confirm_password': 'Per favore conferma la tua password',
+  'passwords_dont_match': 'Le password non corrispondono',
+  'register_button': 'Registrati',
+  'already_have_account': 'Hai già un account?',
+  'registration_success': 'Registrazione riuscita!',
+  'registration_failed': 'Registrazione fallita. Riprova.',
+  'server_connection_error':
+      'Errore di connessione al server. Riprova più tardi.',
 
   // Nutrition Card
   'remaining': 'rimanenti',

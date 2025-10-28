@@ -22,7 +22,7 @@ class CameraScanScreen extends StatefulWidget {
 
 class _CameraScanScreenState extends State<CameraScanScreen>
     with WidgetsBindingObserver {
-  String _selectedScanMode = 'general'; // 'translate', 'general', 'math'
+  String _selectedScanMode = 'ai_macros'; // 'ai_macros', 'barcode'
   bool _flashEnabled = false;
   Uint8List? _capturedImage;
   String _selectedLanguage = 'en'; // Idioma padrão para tradução (ex: inglês)
@@ -45,40 +45,16 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   // Lista de todos os modos disponíveis
   final List<Map<String, dynamic>> _scanModes = [
     {
-      'id': 'translate',
-      'label': 'Traduzir',
-      'color': Color(0xFF21AAFF),
-      'icon': Icons.translate,
-    },
-    {
-      'id': 'general',
-      'label': 'Geral',
+      'id': 'ai_macros',
+      'label': 'Macros com IA',
       'color': AppTheme.primaryColor,
-      'icon': Icons.auto_awesome,
+      'icon': Icons.restaurant_menu,
     },
     {
-      'id': 'math',
-      'label': 'Matemática',
-      'color': Color(0xFFFF7A50),
-      'icon': Icons.functions,
-    },
-    {
-      'id': 'physics',
-      'label': 'Física',
-      'color': Color(0xFFE91E63),
-      'icon': Icons.science,
-    },
-    {
-      'id': 'chemistry',
-      'label': 'Química',
-      'color': Color(0xFF9C27B0),
-      'icon': Icons.science_outlined,
-    },
-    {
-      'id': 'history',
-      'label': 'História',
-      'color': Color(0xFFFF9800),
-      'icon': Icons.history_edu,
+      'id': 'barcode',
+      'label': 'Código de Barras',
+      'color': Color(0xFF21AAFF),
+      'icon': Icons.qr_code_scanner,
     },
   ];
 
@@ -111,11 +87,11 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     // Inicializa o PageController na página correspondente ao modo selecionado
     int initialIndex =
         _scanModes.indexWhere((mode) => mode['id'] == _selectedScanMode);
-    if (initialIndex < 0) initialIndex = 1; // default para 'general' (índice 1)
+    if (initialIndex < 0) initialIndex = 0; // default para 'ai_macros' (índice 0)
 
     _pageController = PageController(
       initialPage: initialIndex,
-      viewportFraction: 0.32, // Aumentado para dar mais espaço aos textos
+      viewportFraction: 0.5, // Aumentado para dar mais espaço aos textos
     );
 
     // Adicionar verificação de sanidade para câmera presa em loading
@@ -739,25 +715,13 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     // Texto da dica baseado no modo
     String hintText = '';
     switch (_selectedScanMode) {
-      case 'math':
-        hintText = context.tr.translate('math_hint') ??
-            'Tire uma foto de um problema de matemática';
+      case 'ai_macros':
+        hintText = context.tr.translate('ai_macros_hint') ??
+            'Tire uma foto do seu alimento para calcular macros';
         break;
-      case 'physics':
-        hintText = 'Tire uma foto de um problema de física';
-        break;
-      case 'chemistry':
-        hintText = 'Tire uma foto de um problema de química';
-        break;
-      case 'history':
-        hintText = 'Tire uma foto de uma questão de história';
-        break;
-      case 'general':
-        hintText = context.tr.translate('general_hint') ??
-            'Tire uma foto de uma pergunta';
-        break;
-      case 'translate':
-        hintText = context.tr.translate('translate_hint_short');
+      case 'barcode':
+        hintText = context.tr.translate('barcode_hint') ??
+            'Escaneie o código de barras do produto';
         break;
     }
 
@@ -820,72 +784,11 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                   color: Colors.black.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: _selectedScanMode == 'translate'
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            context.tr.translate('translate_hint_short'),
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          if (false)
-                            Text(
-                              "Debug: " +
-                                  "PT: " +
-                                  context.tr.translate('translate_hint_short') +
-                                  " | " +
-                                  "EN: " +
-                                  (context.tr.translate('math') ??
-                                      "não encontrado"),
-                              style: TextStyle(color: Colors.red, fontSize: 12),
-                            ),
-                          SizedBox(width: 5),
-                          Flexible(
-                            child: Theme(
-                              data: Theme.of(context).copyWith(
-                                canvasColor: Colors.black.withOpacity(0.8),
-                              ),
-                              child: DropdownButton<String>(
-                                value: _selectedLanguage,
-                                icon: Icon(Icons.arrow_drop_down,
-                                    color: Colors.white, size: 18),
-                                underline: Container(
-                                  height: 0,
-                                  color: Colors.transparent,
-                                ),
-                                isDense: true,
-                                onChanged: (String? newValue) {
-                                  if (newValue != null) {
-                                    setState(() {
-                                      _selectedLanguage = newValue;
-                                    });
-                                  }
-                                },
-                                items: _supportedLanguages.entries
-                                    .map<DropdownMenuItem<String>>(
-                                        (MapEntry<String, String> entry) {
-                                  return DropdownMenuItem<String>(
-                                    value: entry.key,
-                                    child: Text(
-                                      entry.value,
-                                      style: TextStyle(
-                                          color: Colors.white, fontSize: 14),
-                                    ),
-                                  );
-                                }).toList(),
-                                style: TextStyle(color: Colors.white),
-                                dropdownColor: Colors.grey[850],
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        _getModeHintText(),
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                        textAlign: TextAlign.center,
-                      ),
+                child: Text(
+                  _getModeHintText(),
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
 
@@ -1269,23 +1172,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   // Método para obter o texto da dica baseado no modo
   String _getModeHintText() {
     switch (_selectedScanMode) {
-      case 'math':
-        return context.tr.translate('math_hint') ??
-            'Tire uma foto de um problema de matemática';
-      case 'physics':
-        return context.tr.translate('physics_hint') ??
-            'Tire uma foto de um problema de física';
-      case 'chemistry':
-        return context.tr.translate('chemistry_hint') ??
-            'Tire uma foto de um problema de química';
-      case 'history':
-        return context.tr.translate('history_hint') ??
-            'Tire uma foto de uma questão de história';
-      case 'general':
-        return context.tr.translate('general_hint') ??
-            'Tire uma foto de uma pergunta';
-      case 'translate':
-        return context.tr.translate('translate_hint_short');
+      case 'ai_macros':
+        return context.tr.translate('ai_macros_hint') ??
+            'Tire uma foto do seu alimento para calcular macros';
+      case 'barcode':
+        return context.tr.translate('barcode_hint') ??
+            'Escaneie o código de barras do produto';
       default:
         return '';
     }

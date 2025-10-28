@@ -36,6 +36,22 @@ final Map<String, String> esESTranslations = {
   'sign_in': 'Iniciar sesión',
   'sign_out': 'Cerrar Sesión',
 
+  // Pantallas de Registro
+  'register_title': 'Crear Cuenta',
+  'create_account': 'Crea tu Cuenta',
+  'register_subtitle': 'Completa los datos para comenzar',
+  'name': 'Nombre',
+  'please_enter_name': 'Por favor, ingresa tu nombre',
+  'confirm_password': 'Confirmar Contraseña',
+  'please_confirm_password': 'Por favor, confirma tu contraseña',
+  'passwords_dont_match': 'Las contraseñas no coinciden',
+  'register_button': 'Registrarse',
+  'already_have_account': '¿Ya tienes una cuenta?',
+  'registration_success': '¡Registro exitoso!',
+  'registration_failed': 'Error al registrarse. Inténtalo de nuevo.',
+  'server_connection_error':
+      'Error al conectar con el servidor. Inténtalo más tarde.',
+
   // Pantalla de inicio
   'your_ultimate': 'Tu Mejor',
   'study_companion': 'Compañero de Estudio',
@@ -433,6 +449,10 @@ final Map<String, String> esESTranslations = {
   'physics_hint': 'Toma una foto de un problema de física',
   'chemistry_hint': 'Toma una foto de un problema de química',
   'history_hint': 'Toma una foto de una pregunta de historia',
+  'ai_macros': 'Macros con IA',
+  'ai_macros_hint': 'Toma una foto de tu comida para calcular macros',
+  'barcode': 'Código de Barras',
+  'barcode_hint': 'Escanea el código de barras del producto',
 
   // Mensaje de bienvenida en tarjeta
   'welcome_message_card': '¡Hola! Soy Nutro AI, tu asistente de nutrición',

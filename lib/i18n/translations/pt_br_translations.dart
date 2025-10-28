@@ -36,6 +36,22 @@ final Map<String, String> ptBRTranslations = {
   'sign_in': 'Entrar',
   'sign_out': 'Sair da Conta',
 
+  // Telas de Registro
+  'register_title': 'Criar Conta',
+  'create_account': 'Crie sua Conta',
+  'register_subtitle': 'Preencha os dados para começar',
+  'name': 'Nome',
+  'please_enter_name': 'Por favor, insira seu nome',
+  'confirm_password': 'Confirmar Senha',
+  'please_confirm_password': 'Por favor, confirme sua senha',
+  'passwords_dont_match': 'As senhas não coincidem',
+  'register_button': 'Cadastrar',
+  'already_have_account': 'Já tem uma conta?',
+  'registration_success': 'Cadastro realizado com sucesso!',
+  'registration_failed': 'Falha ao realizar cadastro. Tente novamente.',
+  'server_connection_error':
+      'Erro ao conectar ao servidor. Tente novamente mais tarde.',
+
   // Home Screen
   'your_ultimate': 'Seu Melhor',
   'study_companion': 'Companheiro de Estudos',
@@ -678,6 +694,10 @@ final Map<String, String> ptBRTranslations = {
   'physics_hint': 'Tire uma foto de um problema de física',
   'chemistry_hint': 'Tire uma foto de um problema de química',
   'history_hint': 'Tire uma foto de uma questão de história',
+  'ai_macros': 'Macros com IA',
+  'ai_macros_hint': 'Tire uma foto do seu alimento para calcular macros',
+  'barcode': 'Código de Barras',
+  'barcode_hint': 'Escaneie o código de barras do produto',
 
   // Mensagem de boas-vindas no card
   'welcome_message_card': 'Olá! Sou Nutro AI, seu assistente de nutrição',

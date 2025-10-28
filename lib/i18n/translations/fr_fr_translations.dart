@@ -269,6 +269,10 @@ final Map<String, String> frFRTranslations = {
   'physics_hint': 'Prenez une photo d\'un problème de physique',
   'chemistry_hint': 'Prenez une photo d\'un problème de chimie',
   'history_hint': 'Prenez une photo d\'une question d\'histoire',
+  'ai_macros': 'Macros IA',
+  'ai_macros_hint': 'Prenez une photo de votre nourriture pour calculer les macros',
+  'barcode': 'Code-barres',
+  'barcode_hint': 'Scannez le code-barres du produit',
 
   // Message de bienvenue dans la carte
   'welcome_message_card': 'Bonjour ! Je suis Nutro AI, votre assistant nutritionnel',
@@ -368,6 +372,22 @@ final Map<String, String> frFRTranslations = {
       'Connectez-vous pour voir votre historique, vos favoris et vos paramètres personnalisés.',
   'sign_in': 'Se connecter',
   'sign_out': 'Déconnexion',
+
+  // Écrans d'inscription
+  'register_title': 'Créer un Compte',
+  'create_account': 'Créez votre Compte',
+  'register_subtitle': 'Remplissez les détails pour commencer',
+  'name': 'Nom',
+  'please_enter_name': 'Veuillez entrer votre nom',
+  'confirm_password': 'Confirmer le Mot de Passe',
+  'please_confirm_password': 'Veuillez confirmer votre mot de passe',
+  'passwords_dont_match': 'Les mots de passe ne correspondent pas',
+  'register_button': 'S\'inscrire',
+  'already_have_account': 'Vous avez déjà un compte?',
+  'registration_success': 'Inscription réussie!',
+  'registration_failed': 'Échec de l\'inscription. Veuillez réessayer.',
+  'server_connection_error':
+      'Erreur de connexion au serveur. Veuillez réessayer plus tard.',
 
   // Nutrition Card
   'remaining': 'restant',
