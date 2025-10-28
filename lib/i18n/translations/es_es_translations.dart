@@ -36,6 +36,22 @@ final Map<String, String> esESTranslations = {
   'sign_in': 'Iniciar sesión',
   'sign_out': 'Cerrar Sesión',
 
+  // Pantallas de Registro
+  'register_title': 'Crear Cuenta',
+  'create_account': 'Crea tu Cuenta',
+  'register_subtitle': 'Completa los datos para comenzar',
+  'name': 'Nombre',
+  'please_enter_name': 'Por favor, ingresa tu nombre',
+  'confirm_password': 'Confirmar Contraseña',
+  'please_confirm_password': 'Por favor, confirma tu contraseña',
+  'passwords_dont_match': 'Las contraseñas no coinciden',
+  'register_button': 'Registrarse',
+  'already_have_account': '¿Ya tienes una cuenta?',
+  'registration_success': '¡Registro exitoso!',
+  'registration_failed': 'Error al registrarse. Inténtalo de nuevo.',
+  'server_connection_error':
+      'Error al conectar con el servidor. Inténtalo más tarde.',
+
   // Pantalla de inicio
   'your_ultimate': 'Tu Mejor',
   'study_companion': 'Compañero de Estudio',

@@ -115,12 +115,13 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
         // Tratar erro de registro
         setState(() {
           _errorMessage = data['message'] ??
+              context.tr.translate('registration_failed') ??
               'Falha ao realizar cadastro. Tente novamente.';
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage =
+        _errorMessage = context.tr.translate('server_connection_error') ??
             'Erro ao conectar ao servidor. Tente novamente mais tarde.';
       });
       print('[EmailRegisterScreen] Erro ao fazer registro: $e');

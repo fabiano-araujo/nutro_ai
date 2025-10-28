@@ -367,6 +367,22 @@ final Map<String, String> itITTranslations = {
   'sign_in': 'Accedi',
   'sign_out': 'Disconnetti',
 
+  // Schermate di Registrazione
+  'register_title': 'Crea Account',
+  'create_account': 'Crea il Tuo Account',
+  'register_subtitle': 'Compila i dettagli per iniziare',
+  'name': 'Nome',
+  'please_enter_name': 'Per favore inserisci il tuo nome',
+  'confirm_password': 'Conferma Password',
+  'please_confirm_password': 'Per favore conferma la tua password',
+  'passwords_dont_match': 'Le password non corrispondono',
+  'register_button': 'Registrati',
+  'already_have_account': 'Hai già un account?',
+  'registration_success': 'Registrazione riuscita!',
+  'registration_failed': 'Registrazione fallita. Riprova.',
+  'server_connection_error':
+      'Errore di connessione al server. Riprova più tardi.',
+
   // Nutrition Card
   'remaining': 'rimanenti',
   'protein': 'Proteine',

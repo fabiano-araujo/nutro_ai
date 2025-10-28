@@ -36,6 +36,22 @@ final Map<String, String> deDETranslations = {
   'sign_in': 'Anmelden',
   'sign_out': 'Abmelden',
 
+  // Registrierungsbildschirme
+  'register_title': 'Konto Erstellen',
+  'create_account': 'Erstellen Sie Ihr Konto',
+  'register_subtitle': 'Füllen Sie die Details aus, um zu beginnen',
+  'name': 'Name',
+  'please_enter_name': 'Bitte geben Sie Ihren Namen ein',
+  'confirm_password': 'Passwort Bestätigen',
+  'please_confirm_password': 'Bitte bestätigen Sie Ihr Passwort',
+  'passwords_dont_match': 'Passwörter stimmen nicht überein',
+  'register_button': 'Registrieren',
+  'already_have_account': 'Haben Sie bereits ein Konto?',
+  'registration_success': 'Registrierung erfolgreich!',
+  'registration_failed': 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.',
+  'server_connection_error':
+      'Fehler beim Verbinden mit dem Server. Bitte versuchen Sie es später erneut.',
+
   // Startbildschirm
   'your_ultimate': 'Dein Ultimativer',
   'study_companion': 'Lernbegleiter',

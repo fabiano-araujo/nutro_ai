@@ -369,6 +369,22 @@ final Map<String, String> frFRTranslations = {
   'sign_in': 'Se connecter',
   'sign_out': 'Déconnexion',
 
+  // Écrans d'inscription
+  'register_title': 'Créer un Compte',
+  'create_account': 'Créez votre Compte',
+  'register_subtitle': 'Remplissez les détails pour commencer',
+  'name': 'Nom',
+  'please_enter_name': 'Veuillez entrer votre nom',
+  'confirm_password': 'Confirmer le Mot de Passe',
+  'please_confirm_password': 'Veuillez confirmer votre mot de passe',
+  'passwords_dont_match': 'Les mots de passe ne correspondent pas',
+  'register_button': 'S\'inscrire',
+  'already_have_account': 'Vous avez déjà un compte?',
+  'registration_success': 'Inscription réussie!',
+  'registration_failed': 'Échec de l\'inscription. Veuillez réessayer.',
+  'server_connection_error':
+      'Erreur de connexion au serveur. Veuillez réessayer plus tard.',
+
   // Nutrition Card
   'remaining': 'restant',
   'protein': 'Protéines',
