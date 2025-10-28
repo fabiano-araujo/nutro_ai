@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/meal_model.dart';
 import '../models/food_model.dart';
 import '../models/Nutrient.dart';
@@ -6,12 +8,17 @@ import '../models/Nutrient.dart';
 class DailyMealsProvider extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now();
   final Map<String, List<Meal>> _mealsByDate = {};
+  bool _isLoaded = false;
 
   // Goals (can be customized by user later)
   int caloriesGoal = 2000;
   int proteinGoal = 150;
   int carbsGoal = 250;
   int fatsGoal = 67;
+
+  DailyMealsProvider() {
+    _loadFromPreferences();
+  }
 
   DateTime get selectedDate => _selectedDate;
 
@@ -44,6 +51,62 @@ class DailyMealsProvider extends ChangeNotifier {
   int get carbsRemaining => carbsGoal - totalCarbs.toInt();
   int get fatsRemaining => fatsGoal - totalFat.toInt();
 
+  // Load meals from SharedPreferences
+  Future<void> _loadFromPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load meals by date
+      final mealsJson = prefs.getString('daily_meals');
+      if (mealsJson != null) {
+        final Map<String, dynamic> decodedMap = jsonDecode(mealsJson);
+        _mealsByDate.clear();
+
+        decodedMap.forEach((dateKey, mealsListJson) {
+          final List<dynamic> mealsList = mealsListJson as List<dynamic>;
+          _mealsByDate[dateKey] = mealsList
+              .map((mealJson) => Meal.fromJson(mealJson as Map<String, dynamic>))
+              .toList();
+        });
+      }
+
+      // Load goals
+      caloriesGoal = prefs.getInt('meals_calories_goal') ?? 2000;
+      proteinGoal = prefs.getInt('meals_protein_goal') ?? 150;
+      carbsGoal = prefs.getInt('meals_carbs_goal') ?? 250;
+      fatsGoal = prefs.getInt('meals_fats_goal') ?? 67;
+
+      _isLoaded = true;
+      notifyListeners();
+    } catch (e) {
+      print('Error loading daily meals: $e');
+      _isLoaded = true;
+    }
+  }
+
+  // Save meals to SharedPreferences
+  Future<void> _saveToPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Convert meals map to JSON
+      final Map<String, dynamic> mealsToSave = {};
+      _mealsByDate.forEach((dateKey, mealsList) {
+        mealsToSave[dateKey] = mealsList.map((meal) => meal.toJson()).toList();
+      });
+
+      await prefs.setString('daily_meals', jsonEncode(mealsToSave));
+
+      // Save goals
+      await prefs.setInt('meals_calories_goal', caloriesGoal);
+      await prefs.setInt('meals_protein_goal', proteinGoal);
+      await prefs.setInt('meals_carbs_goal', carbsGoal);
+      await prefs.setInt('meals_fats_goal', fatsGoal);
+    } catch (e) {
+      print('Error saving daily meals: $e');
+    }
+  }
+
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
@@ -73,6 +136,7 @@ class DailyMealsProvider extends ChangeNotifier {
       ));
     }
 
+    _saveToPreferences();
     notifyListeners();
   }
 
@@ -94,6 +158,7 @@ class DailyMealsProvider extends ChangeNotifier {
       meals[mealIndex] = meals[mealIndex].copyWith(foods: updatedFoods);
     }
 
+    _saveToPreferences();
     notifyListeners();
   }
 
@@ -107,6 +172,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (protein != null) proteinGoal = protein;
     if (carbs != null) carbsGoal = carbs;
     if (fats != null) fatsGoal = fats;
+    _saveToPreferences();
     notifyListeners();
   }
 
@@ -372,6 +438,7 @@ class DailyMealsProvider extends ChangeNotifier {
   void clearAllMeals() {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] = [];
+    _saveToPreferences();
     notifyListeners();
   }
 }
