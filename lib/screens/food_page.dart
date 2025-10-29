@@ -9,6 +9,7 @@ import '../models/Nutrient.dart';
 import '../models/FoodRegion.dart';
 import '../models/Portion.dart';
 import '../providers/daily_meals_provider.dart';
+import '../providers/food_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../helpers/webview_helper.dart';
 import '../widgets/macro_card.dart';
@@ -538,6 +539,11 @@ class _FoodPageState extends State<FoodPage> {
                     Provider.of<DailyMealsProvider>(context, listen: false)
                         .addFoodToMeal(mealType, scaledFood);
 
+                    // Add to history (recents and frequency)
+                    final historyProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
+                    historyProvider.addToRecents(scaledFood);
+                    historyProvider.incrementFrequency(scaledFood);
+
                     // Close both dialogs
                     Navigator.pop(context); // Close meal type selector
                     Navigator.pop(context); // Close food page
@@ -833,10 +839,20 @@ class _FoodPageState extends State<FoodPage> {
                   onPressed: () => Navigator.pop(context),
                 ),
                 actions: [
-                  IconButton(
-                    icon: Icon(Icons.star_outline, color: textColor),
-                    onPressed: () {
-                      // TODO: Add to favorites
+                  Consumer<FoodHistoryProvider>(
+                    builder: (context, historyProvider, child) {
+                      final currentFood = _fullFoodData ?? widget.food;
+                      final isFavorited = historyProvider.isFavorite(currentFood);
+
+                      return IconButton(
+                        icon: Icon(
+                          isFavorited ? Icons.star : Icons.star_outline,
+                          color: isFavorited ? AppTheme.primaryColor : textColor,
+                        ),
+                        onPressed: () {
+                          historyProvider.toggleFavorite(currentFood);
+                        },
+                      );
                     },
                   ),
                 ],

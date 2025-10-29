@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../models/food_model.dart';
@@ -9,6 +10,7 @@ import 'food_page.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../helpers/scraper_helper.dart';
 import '../helpers/webview_helper.dart';
+import '../providers/food_history_provider.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   const FoodSearchScreen({Key? key}) : super(key: key);
@@ -24,14 +26,12 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
 
   bool _isSearching = false;
   List<Map<String, dynamic>> _searchResults = [];
-  List<Food> _recentFoods = [];
-  List<Food> _favoriteFoods = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -184,20 +184,31 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
             padding: const EdgeInsets.all(16.0),
             child: Container(
               decoration: BoxDecoration(
-                color: isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
+                color: isDarkMode
+                    ? AppTheme.primaryColor.withValues(alpha: 0.15)
+                    : AppTheme.primaryColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(50),
               ),
               child: TextField(
                 controller: _searchController,
-                style: TextStyle(color: textColor),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
                 decoration: InputDecoration(
                   hintText: context.tr.translate('what_did_you_eat'),
                   hintStyle: TextStyle(
-                    color: secondaryTextColor.withValues(alpha: 0.6),
+                    color: isDarkMode
+                        ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                        : AppTheme.primaryColor.withValues(alpha: 0.5),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
                   ),
                   prefixIcon: Icon(
                     Icons.search,
                     color: AppTheme.primaryColor,
+                    size: 22,
                   ),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
@@ -214,15 +225,37 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
           if (!_isSearching)
             Container(
               color: backgroundColor,
-              child: TabBar(
-                controller: _tabController,
-                labelColor: AppTheme.primaryColor,
-                unselectedLabelColor: secondaryTextColor,
-                indicatorColor: AppTheme.primaryColor,
-                indicatorWeight: 3,
-                tabs: [
-                  Tab(text: context.tr.translate('recent')),
-                  Tab(text: context.tr.translate('favorites')),
+              child: Column(
+                children: [
+                  TabBar(
+                    controller: _tabController,
+                    labelColor: textColor,
+                    unselectedLabelColor: secondaryTextColor,
+                    labelStyle: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                    unselectedLabelStyle: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
+                    indicatorColor: AppTheme.primaryColor,
+                    indicatorWeight: 2.5,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    tabs: [
+                      Tab(text: context.tr.translate('recent')),
+                      Tab(text: context.tr.translate('favorites')),
+                      Tab(text: 'Frequentes'),
+                    ],
+                  ),
+                  Container(
+                    height: 1,
+                    color: isDarkMode
+                        ? Color(0xFF2A2A2A)
+                        : Color(0xFFF0F0F0),
+                  ),
                 ],
               ),
             ),
@@ -254,12 +287,17 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                     color: backgroundColor,
                     child: _isSearching
                         ? _buildSearchResults(isDarkMode, textColor, secondaryTextColor, cardColor)
-                        : TabBarView(
-                            controller: _tabController,
-                            children: [
-                              _buildRecentList(isDarkMode, textColor, secondaryTextColor, cardColor),
-                              _buildFavoritesList(isDarkMode, textColor, secondaryTextColor, cardColor),
-                            ],
+                        : Consumer<FoodHistoryProvider>(
+                            builder: (context, historyProvider, child) {
+                              return TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _buildRecentList(historyProvider.recents, isDarkMode, textColor, secondaryTextColor, cardColor),
+                                  _buildFavoritesList(historyProvider.favorites, isDarkMode, textColor, secondaryTextColor, cardColor),
+                                  _buildFrequentList(historyProvider.frequents, isDarkMode, textColor, secondaryTextColor, cardColor),
+                                ],
+                              );
+                            },
                           ),
                   ),
                 ),
@@ -463,8 +501,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildRecentList(bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
-    if (_recentFoods.isEmpty) {
+  Widget _buildRecentList(List<Food> recentFoods, bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+    if (recentFoods.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -489,16 +527,16 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
 
     return ListView.builder(
       padding: EdgeInsets.all(16),
-      itemCount: _recentFoods.length,
+      itemCount: recentFoods.length,
       itemBuilder: (context, index) {
-        final food = _recentFoods[index];
+        final food = recentFoods[index];
         return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
 
-  Widget _buildFavoritesList(bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
-    if (_favoriteFoods.isEmpty) {
+  Widget _buildFavoritesList(List<Food> favoriteFoods, bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+    if (favoriteFoods.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -523,9 +561,43 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
 
     return ListView.builder(
       padding: EdgeInsets.all(16),
-      itemCount: _favoriteFoods.length,
+      itemCount: favoriteFoods.length,
       itemBuilder: (context, index) {
-        final food = _favoriteFoods[index];
+        final food = favoriteFoods[index];
+        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
+      },
+    );
+  }
+
+  Widget _buildFrequentList(List<Food> frequentFoods, bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+    if (frequentFoods.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.trending_up,
+              size: 64,
+              color: secondaryTextColor.withValues(alpha: 0.5),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Nenhum alimento frequente',
+              style: TextStyle(
+                color: secondaryTextColor,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.all(16),
+      itemCount: frequentFoods.length,
+      itemBuilder: (context, index) {
+        final food = frequentFoods[index];
         return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
