@@ -39,58 +39,61 @@ class _MyInAppWebViewState extends State<MyInAppWebView> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        InAppWebView(
-          initialUrlRequest: URLRequest(
-            url: WebUri(widget.url),
+        Opacity(
+          opacity: 0.0,
+          child: InAppWebView(
+            initialUrlRequest: URLRequest(
+              url: WebUri(widget.url),
+            ),
+            initialSettings: widget.settings ?? WebViewHelper.getDefaultSettings(),
+            onWebViewCreated: (controller) {
+              WebViewHelper.setInAppWebViewController(controller);
+              widget.onWebViewCreated?.call(controller);
+            },
+            onLoadStart: (controller, url) {
+              setState(() {
+                _isLoading = true;
+                _progress = 0;
+              });
+              widget.onLoadStart?.call(controller, url);
+            },
+            onLoadStop: (controller, url) {
+              setState(() {
+                _isLoading = false;
+                _progress = 1.0;
+              });
+              widget.onLoadStop?.call(controller, url);
+            },
+            onReceivedError: (controller, request, error) {
+              setState(() {
+                _isLoading = false;
+              });
+              widget.onReceivedError?.call(
+                controller,
+                request.url,
+                error.type.toNativeValue() ?? -1,
+                error.description,
+              );
+            },
+            onProgressChanged: (controller, progress) {
+              setState(() {
+                _progress = progress / 100;
+              });
+              widget.onProgressChanged?.call(controller, progress);
+            },
+            onConsoleMessage: (controller, consoleMessage) {
+              // Debug: imprime mensagens do console do JavaScript
+              debugPrint('WebView Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}');
+              widget.onConsoleMessage?.call(controller, consoleMessage);
+            },
+            onPermissionRequest: (controller, request) async {
+              // Concede automaticamente permissões solicitadas pelo WebView
+              return PermissionResponse(
+                resources: request.resources,
+                action: PermissionResponseAction.GRANT,
+              );
+            },
           ),
-          initialSettings: widget.settings ?? WebViewHelper.getDefaultSettings(),
-          onWebViewCreated: (controller) {
-            WebViewHelper.setInAppWebViewController(controller);
-            widget.onWebViewCreated?.call(controller);
-          },
-          onLoadStart: (controller, url) {
-            setState(() {
-              _isLoading = true;
-              _progress = 0;
-            });
-            widget.onLoadStart?.call(controller, url);
-          },
-          onLoadStop: (controller, url) {
-            setState(() {
-              _isLoading = false;
-              _progress = 1.0;
-            });
-            widget.onLoadStop?.call(controller, url);
-          },
-          onReceivedError: (controller, request, error) {
-            setState(() {
-              _isLoading = false;
-            });
-            widget.onReceivedError?.call(
-              controller,
-              request.url,
-              error.type.toNativeValue() ?? -1,
-              error.description,
-            );
-          },
-          onProgressChanged: (controller, progress) {
-            setState(() {
-              _progress = progress / 100;
-            });
-            widget.onProgressChanged?.call(controller, progress);
-          },
-          onConsoleMessage: (controller, consoleMessage) {
-            // Debug: imprime mensagens do console do JavaScript
-            debugPrint('WebView Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}');
-            widget.onConsoleMessage?.call(controller, consoleMessage);
-          },
-          onPermissionRequest: (controller, request) async {
-            // Concede automaticamente permissões solicitadas pelo WebView
-            return PermissionResponse(
-              resources: request.resources,
-              action: PermissionResponseAction.GRANT,
-            );
-          },
         ),
         if (widget.showProgress && _isLoading && _progress < 1.0)
           Positioned(

@@ -232,18 +232,21 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
               children: [
                 // WebView (sempre ativo mas invisível)
                 Positioned.fill(
-                  child: InAppWebView(
-                    initialSettings: InAppWebViewSettings(
-                      javaScriptEnabled: true,
-                      domStorageEnabled: true,
+                  child: Opacity(
+                    opacity: 0.0,
+                    child: InAppWebView(
+                      initialSettings: InAppWebViewSettings(
+                        javaScriptEnabled: true,
+                        domStorageEnabled: true,
+                      ),
+                      onWebViewCreated: _scraperHelper.onWebViewCreated,
+                      onLoadStop: (controller, url) async {
+                        _scraperHelper.onLoadFinished(controller, url);
+                        // Wait a bit for the page to fully render
+                        await Future.delayed(Duration(milliseconds: 1500));
+                        await _extractFoodData();
+                      },
                     ),
-                    onWebViewCreated: _scraperHelper.onWebViewCreated,
-                    onLoadStop: (controller, url) async {
-                      _scraperHelper.onLoadFinished(controller, url);
-                      // Wait a bit for the page to fully render
-                      await Future.delayed(Duration(milliseconds: 1500));
-                      await _extractFoodData();
-                    },
                   ),
                 ),
 
