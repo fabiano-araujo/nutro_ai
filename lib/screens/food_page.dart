@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math' as math;
+import 'dart:convert';
 import 'package:provider/provider.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
+import '../models/Nutrient.dart';
+import '../models/FoodRegion.dart';
+import '../models/Portion.dart';
 import '../providers/daily_meals_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -25,6 +31,11 @@ class _FoodPageState extends State<FoodPage> {
   late double _currentServingSize;
   String? _selectedPortionDescription;
 
+  InAppWebViewController? _webViewController;
+  bool _isLoadingFullData = false;
+  Food? _fullFoodData;
+  String? _foodUrlToLoad;
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +49,19 @@ class _FoodPageState extends State<FoodPage> {
     if (portions != null && portions.isNotEmpty) {
       _selectedPortionDescription = portions.first.description;
     }
+
+    // Prepare URL for loading
+    if (widget.foodUrl != null && widget.foodUrl!.isNotEmpty) {
+      _foodUrlToLoad = widget.foodUrl!.startsWith('http')
+          ? widget.foodUrl!
+          : 'https://mobile.fatsecret.com.br${widget.foodUrl}';
+
+      print('Will load food data from: $_foodUrlToLoad');
+
+      setState(() {
+        _isLoadingFullData = true;
+      });
+    }
   }
 
   @override
@@ -46,9 +70,229 @@ class _FoodPageState extends State<FoodPage> {
     super.dispose();
   }
 
+  Future<void> _extractFullFoodData() async {
+    try {
+      print('Starting food data extraction...');
+
+      // Load the JavaScript file
+      final script = await rootBundle.loadString('assets/nutrition_script_mobile_br.js');
+
+      // Remove the main() call at the end to avoid sending to server
+      final scriptWithoutMain = script.replaceAll(RegExp(r'main\(\);?\s*$'), '');
+
+      // Modify the script to use the handler instead of calling main()
+      final modifiedScript = '''
+        console.log('[Flutter] ===== SCRIPT INJECTION START =====');
+        console.log('[Flutter] typeof window:', typeof window);
+        console.log('[Flutter] typeof document:', typeof document);
+        console.log('[Flutter] typeof window.flutter_inappwebview:', typeof window.flutter_inappwebview);
+
+        $scriptWithoutMain
+
+        // Override to send data back to Flutter
+        console.log('[Flutter] Script loaded, starting extraction...');
+        console.log('[Flutter] Document ready state:', document.readyState);
+
+        // Wait for document to be fully ready
+        if (document.readyState === 'loading') {
+          console.log('[Flutter] Document still loading, waiting...');
+          document.addEventListener('DOMContentLoaded', function() {
+            console.log('[Flutter] DOMContentLoaded event fired');
+            extractAndSend();
+          });
+        } else {
+          console.log('[Flutter] Document already ready, extracting now');
+          extractAndSend();
+        }
+
+        function extractAndSend() {
+          try {
+            console.log('[Flutter] Calling processAllPortions...');
+            let data = processAllPortions();
+
+            if (!data) {
+              console.error('[Flutter] processAllPortions returned null or undefined');
+              window.flutter_inappwebview.callHandler('NUTRITION_DATA_HANDLER', null);
+              return;
+            }
+
+            console.log('[Flutter] Data processed successfully');
+            console.log('[Flutter] Data type:', typeof data);
+            console.log('[Flutter] Data keys:', Object.keys(data));
+            console.log('[Flutter] Full data:', JSON.stringify(data, null, 2));
+
+            // Convert to JSON string
+            let jsonString = JSON.stringify(data);
+            console.log('[Flutter] JSON string length:', jsonString.length);
+
+            // Send to Flutter
+            console.log('[Flutter] Sending data to Flutter handler...');
+            window.flutter_inappwebview.callHandler('NUTRITION_DATA_HANDLER', jsonString);
+            console.log('[Flutter] Data sent successfully!');
+          } catch(e) {
+            console.error('[Flutter] Error during extraction:', e);
+            console.error('[Flutter] Stack:', e.stack);
+            window.flutter_inappwebview.callHandler('NUTRITION_DATA_HANDLER', null);
+          }
+        }
+      ''';
+
+      print('Script length: ${modifiedScript.length} characters');
+      print('Injecting script...');
+
+      if (_webViewController != null) {
+        await _webViewController!.evaluateJavascript(source: modifiedScript);
+        print('Script injected successfully');
+      } else {
+        print('ERROR: WebView controller is null!');
+        setState(() {
+          _isLoadingFullData = false;
+        });
+      }
+    } catch (e) {
+      print('Error extracting food data: $e');
+      setState(() {
+        _isLoadingFullData = false;
+      });
+    }
+  }
+
+  void _handleNutritionData(dynamic data) {
+    print('===== CALLBACK RECEIVED =====');
+    print('Data type: ${data.runtimeType}');
+    print('Data is null: ${data == null}');
+    if (data != null) {
+      print('Data length: ${data.toString().length}');
+      print('Data preview: ${data.toString().substring(0, data.toString().length > 200 ? 200 : data.toString().length)}');
+    }
+    print('============================');
+
+    if (data != null && data is String && data.isNotEmpty) {
+      try {
+        print('Attempting to parse JSON data...');
+        final Map<String, dynamic> parsed = jsonDecode(data);
+        print('Parsed food data successfully');
+
+        // Convert to Food model
+        final fullFood = _convertToFullFood(parsed);
+
+        setState(() {
+          _fullFoodData = fullFood;
+          _isLoadingFullData = false;
+
+          // Update serving size and portions if available
+          if (fullFood.nutrients != null && fullFood.nutrients!.isNotEmpty) {
+            _currentServingSize = fullFood.nutrients!.first.servingSize;
+            _servingSizeController.text = _currentServingSize.toInt().toString();
+          }
+
+          if (fullFood.foodRegions != null &&
+              fullFood.foodRegions!.isNotEmpty &&
+              fullFood.foodRegions!.first.portions != null &&
+              fullFood.foodRegions!.first.portions!.isNotEmpty) {
+            _selectedPortionDescription = fullFood.foodRegions!.first.portions!.first.description;
+          }
+        });
+
+        print('Food data loaded successfully: ${fullFood.name}');
+      } catch (e) {
+        print('Error parsing food data: $e');
+        setState(() {
+          _isLoadingFullData = false;
+        });
+      }
+    } else {
+      print('===== NO VALID DATA =====');
+      if (data == null) {
+        print('Data is null');
+      } else if (data is! String) {
+        print('Data is not String, type: ${data.runtimeType}');
+        print('Data value: $data');
+      } else if (data.isEmpty) {
+        print('Data is empty string');
+      } else {
+        print('Data is not empty but invalid: $data');
+      }
+      print('========================');
+
+      setState(() {
+        _isLoadingFullData = false;
+      });
+    }
+  }
+
+
+  Food _convertToFullFood(Map<String, dynamic> data) {
+    final foodData = data['food'] as Map<String, dynamic>?;
+    final nutrientList = data['nutrient'] as List<dynamic>?;
+    final portionList = data['portion'] as List<dynamic>?;
+
+    // Convert nutrients
+    List<Nutrient>? nutrients;
+    if (nutrientList != null && nutrientList.isNotEmpty) {
+      nutrients = nutrientList.map((n) {
+        final nutrient = n as Map<String, dynamic>;
+        return Nutrient(
+          idFood: foodData?['id_fatsecret'] ?? 0,
+          servingSize: (nutrient['serving_size'] as num?)?.toDouble() ?? 100.0,
+          servingUnit: nutrient['serving_unit'] as String? ?? 'g',
+          calories: (nutrient['calories'] as num?)?.toDouble(),
+          protein: (nutrient['protein'] as num?)?.toDouble(),
+          carbohydrate: (nutrient['carbohydrate'] as num?)?.toDouble(),
+          fat: (nutrient['fat'] as num?)?.toDouble(),
+          saturatedFat: (nutrient['saturated_fat'] as num?)?.toDouble(),
+          transFat: (nutrient['trans_fat'] as num?)?.toDouble(),
+          cholesterol: (nutrient['cholesterol'] as num?)?.toDouble(),
+          sodium: (nutrient['sodium'] as num?)?.toDouble(),
+          potassium: (nutrient['potassium'] as num?)?.toDouble(),
+          dietaryFiber: (nutrient['dietary_fiber'] as num?)?.toDouble(),
+          sugars: (nutrient['sugars'] as num?)?.toDouble(),
+          vitaminA: (nutrient['vitamin_a'] as num?)?.toDouble(),
+          vitaminC: (nutrient['vitamin_c'] as num?)?.toDouble(),
+          vitaminD: (nutrient['vitamin_d'] as num?)?.toDouble(),
+          calcium: (nutrient['calcium'] as num?)?.toDouble(),
+          iron: (nutrient['iron'] as num?)?.toDouble(),
+        );
+      }).toList();
+    }
+
+    // Convert portions with reference to food region
+    List<Portion>? portions;
+    if (portionList != null && portionList.isNotEmpty) {
+      portions = portionList.map((p) {
+        final portion = p as Map<String, dynamic>;
+        return Portion(
+          idFoodRegion: 0, // This will be set by the database
+          proportion: (portion['proportion'] as num?)?.toDouble() ?? 1.0,
+          description: portion['description'] as String? ?? '',
+        );
+      }).toList();
+    }
+
+    // Create food region with portions
+    final foodRegion = FoodRegion(
+      regionCode: 'BR',
+      languageCode: 'pt',
+      idFood: foodData?['id_fatsecret'] ?? 0,
+      translation: foodData?['name'] as String? ?? widget.food.name,
+      portions: portions,
+    );
+
+    return Food(
+      name: foodData?['name'] as String? ?? widget.food.name,
+      brand: foodData?['brand'] as String?,
+      emoji: widget.food.emoji,
+      photo: foodData?['photo'] as String?,
+      idFatsecret: foodData?['id_fatsecret'] as int?,
+      nutrients: nutrients ?? widget.food.nutrients,
+      foodRegions: [foodRegion],
+    );
+  }
+
   double _getScaledValue(double? value) {
     if (value == null) return 0.0;
-    final originalServing = widget.food.nutrients?.first.servingSize ?? 100.0;
+    final currentFood = _fullFoodData ?? widget.food;
+    final originalServing = currentFood.nutrients?.first.servingSize ?? 100.0;
     return (value / originalServing) * _currentServingSize;
   }
 
@@ -109,14 +353,17 @@ class _FoodPageState extends State<FoodPage> {
 
                 return InkWell(
                   onTap: () {
+                    // Use full data if available
+                    final currentFood = _fullFoodData ?? widget.food;
+
                     // Create a Food object with the current serving size
-                    final nutrient = widget.food.nutrients?.first;
+                    final nutrient = currentFood.nutrients?.first;
                     final originalServing = nutrient?.servingSize ?? 100.0;
                     final scaleFactor = _currentServingSize / originalServing;
 
                     // Create a new Food with scaled nutrients
-                    final scaledFood = widget.food.copyWith(
-                      nutrients: widget.food.nutrients?.map((n) => n.copyWith(
+                    final scaledFood = currentFood.copyWith(
+                      nutrients: currentFood.nutrients?.map((n) => n.copyWith(
                         servingSize: _currentServingSize,
                         calories: (n.calories ?? 0) * scaleFactor,
                         protein: (n.protein ?? 0) * scaleFactor,
@@ -150,7 +397,7 @@ class _FoodPageState extends State<FoodPage> {
                     // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${widget.food.name} added to ${option.name}'),
+                        content: Text('${currentFood.name} added to ${option.name}'),
                         duration: Duration(seconds: 2),
                         backgroundColor: AppTheme.primaryColor,
                       ),
@@ -198,10 +445,11 @@ class _FoodPageState extends State<FoodPage> {
   }
 
   void _showPortionPicker() {
-    final portions = widget.food.foodRegions?.first.portions;
+    final currentFood = _fullFoodData ?? widget.food;
+    final portions = currentFood.foodRegions?.first.portions;
     if (portions == null || portions.isEmpty) return;
 
-    final nutrient = widget.food.nutrients?.first;
+    final nutrient = currentFood.nutrients?.first;
     final baseServingSize = nutrient?.servingSize ?? 100.0;
 
     showModalBottomSheet(
@@ -322,7 +570,9 @@ class _FoodPageState extends State<FoodPage> {
         ? Color(0xFFAEB7CE)
         : AppTheme.textSecondaryColor;
 
-    final nutrient = widget.food.nutrients?.first;
+    // Use full data if loaded, otherwise use initial data
+    final currentFood = _fullFoodData ?? widget.food;
+    final nutrient = currentFood.nutrients?.first;
     final calories = _getScaledValue(nutrient?.calories);
     final protein = _getScaledValue(nutrient?.protein);
     final carbs = _getScaledValue(nutrient?.carbohydrate);
@@ -332,8 +582,70 @@ class _FoodPageState extends State<FoodPage> {
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          // Main Content
-          CustomScrollView(
+          // WebView (invisível, por baixo de tudo)
+          if (_foodUrlToLoad != null)
+            Positioned.fill(
+              child: InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(_foodUrlToLoad!)),
+                initialSettings: InAppWebViewSettings(
+                  javaScriptEnabled: true,
+                  domStorageEnabled: true,
+                ),
+                onWebViewCreated: (controller) {
+                  _webViewController = controller;
+                  print('WebView created for food details');
+
+                  // Register handler for JavaScript communication
+                  controller.addJavaScriptHandler(
+                    handlerName: 'NUTRITION_DATA_HANDLER',
+                    callback: (args) {
+                      print('JavaScript handler called with ${args.length} args');
+                      if (args.isNotEmpty) {
+                        _handleNutritionData(args[0]);
+                      }
+                    },
+                  );
+                },
+                onLoadStop: (controller, url) async {
+                  print('===== PAGE LOADED =====');
+                  print('URL: $url');
+
+                  // Check if page is ready
+                  try {
+                    final hasNutritionFacts = await controller.evaluateJavascript(source: 'document.querySelector(".nutrition_facts") !== null');
+                    print('Has nutrition_facts element: $hasNutritionFacts');
+
+                    if (hasNutritionFacts == true) {
+                      final nfClass = await controller.evaluateJavascript(source: 'document.querySelector(".nutrition_facts").className');
+                      print('Nutrition facts class: $nfClass');
+                    }
+                  } catch (e) {
+                    print('Error checking page: $e');
+                  }
+
+                  print('Waiting 3 seconds before extraction...');
+                  await Future.delayed(Duration(milliseconds: 3000));
+                  await _extractFullFoodData();
+                },
+                onConsoleMessage: (controller, consoleMessage) {
+                  print('[WebView Console] ${consoleMessage.messageLevel}: ${consoleMessage.message}');
+                },
+                onReceivedError: (controller, request, error) {
+                  print('WebView error: ${error.description}');
+                  if (request.isForMainFrame ?? false) {
+                    setState(() {
+                      _isLoadingFullData = false;
+                    });
+                  }
+                },
+              ),
+            ),
+
+          // Main Content (por cima do WebView)
+          Positioned.fill(
+            child: Container(
+              color: backgroundColor,
+              child: CustomScrollView(
             slivers: [
               // Top App Bar
               SliverAppBar(
@@ -372,14 +684,14 @@ class _FoodPageState extends State<FoodPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: widget.food.imageUrl != null
+                          child: currentFood.imageUrl != null
                               ? Image.network(
-                                  widget.food.imageUrl!,
+                                  currentFood.imageUrl!,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Center(
                                       child: Text(
-                                        widget.food.emoji,
+                                        currentFood.emoji,
                                         style: TextStyle(fontSize: 80),
                                       ),
                                     );
@@ -387,7 +699,7 @@ class _FoodPageState extends State<FoodPage> {
                                 )
                               : Center(
                                   child: Text(
-                                    widget.food.emoji,
+                                    currentFood.emoji,
                                     style: TextStyle(fontSize: 80),
                                   ),
                                 ),
@@ -404,16 +716,16 @@ class _FoodPageState extends State<FoodPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.food.name,
+                            currentFood.name,
                             style: AppTheme.headingLarge.copyWith(
                               color: textColor,
                               fontSize: 32,
                             ),
                           ),
-                          if (widget.food.brand != null) ...[
+                          if (currentFood.brand != null) ...[
                             SizedBox(height: 4),
                             Text(
-                              widget.food.brand!,
+                              currentFood.brand!,
                               style: AppTheme.bodyLarge.copyWith(
                                 color: secondaryTextColor,
                               ),
@@ -881,6 +1193,35 @@ class _FoodPageState extends State<FoodPage> {
               ),
             ],
           ),
+            ),
+          ),
+
+          // Loading indicator overlay
+          if (_isLoadingFullData)
+            Positioned.fill(
+              child: Container(
+                color: backgroundColor.withValues(alpha: 0.8),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading complete nutrition data...',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           // Floating Action Button
           Positioned(

@@ -4,18 +4,31 @@
 // ============================================
 
 function getNutrientsAndValues() {
+    console.log('[getNutrientsAndValues] Iniciando extração...');
+    console.log('[getNutrientsAndValues] Document ready state:', document.readyState);
+
     // Seleciona o elemento de nutrition facts (versão internacional/brasileira ou US)
     let nutritionFactsElement = document.querySelector('.nutrition_facts.international') ||
                                  document.querySelector('.nutrition_facts.us');
 
     if (!nutritionFactsElement) {
-        console.error('Elemento .nutrition_facts não encontrado (testado: .international e .us)');
-        return null;
+        console.error('[getNutrientsAndValues] Elemento .nutrition_facts não encontrado (testado: .international e .us)');
+        console.error('[getNutrientsAndValues] Tentando encontrar qualquer elemento nutrition_facts...');
+
+        let anyNutritionFacts = document.querySelector('.nutrition_facts');
+        if (anyNutritionFacts) {
+            console.log('[getNutrientsAndValues] Encontrou nutrition_facts sem classe específica, classes:', anyNutritionFacts.className);
+            nutritionFactsElement = anyNutritionFacts;
+        } else {
+            console.error('[getNutrientsAndValues] Nenhum elemento .nutrition_facts encontrado');
+            console.log('[getNutrientsAndValues] HTML body:', document.body.innerHTML.substring(0, 500));
+            return null;
+        }
     }
 
     // Detecta qual versão do site estamos usando
     const isUSVersion = nutritionFactsElement.classList.contains('us');
-    console.log('Versão detectada:', isUSVersion ? 'US' : 'Internacional/BR');
+    console.log('[getNutrientsAndValues] Versão detectada:', isUSVersion ? 'US' : 'Internacional/BR');
 
     // Extrai o nome do alimento do h1
     let foodNameElement = document.querySelector('.page-title h1');
@@ -345,25 +358,29 @@ function getAllPortionsWithCalories() {
 
 // Função para processar todas as porções e calcular proporções
 function processAllPortions() {
+    console.log('[processAllPortions] Iniciando processamento...');
+
     // Processa a porção atual (selecionada) para obter os nutrientes base
     let currentData = getNutrientsAndValues();
 
     if (!currentData) {
-        console.error('Erro ao processar dados nutricionais');
+        console.error('[processAllPortions] Erro ao processar dados nutricionais - getNutrientsAndValues retornou null');
         return null;
     }
 
+    console.log('[processAllPortions] Dados base obtidos:', JSON.stringify(currentData, null, 2));
+
     // Extrai todas as porções com suas calorias
     let allPortions = getAllPortionsWithCalories();
-    console.log('Porções disponíveis:', allPortions);
+    console.log('[processAllPortions] Porções disponíveis:', allPortions.length, allPortions);
 
     // Se não encontrou porções na tabela, usa apenas a porção única do serving_size_value
     if (allPortions.length === 0) {
-        console.warn('Tabela de porções não encontrada. Usando porção única do serving_size_value');
+        console.warn('[processAllPortions] Tabela de porções não encontrada. Usando porção única do serving_size_value');
 
         // Mantém a porção única que já foi extraída em currentData
         // com proportion = 1 (já é o padrão em getNutrientsAndValues)
-        console.log('Usando porção única:', currentData.portion);
+        console.log('[processAllPortions] Usando porção única:', currentData.portion);
         return currentData;
     }
 
@@ -387,7 +404,7 @@ function processAllPortions() {
     let basePortion = allPortions[basePortionIndex];
     let baseCalories = basePortion.calories;
 
-    console.log('Porção base identificada:', basePortion);
+    console.log('[processAllPortions] Porção base identificada:', basePortion);
 
     // Calcula as proporções de todas as porções com base nas calorias
     let portionsWithProportions = allPortions.map(portion => {
@@ -401,7 +418,7 @@ function processAllPortions() {
         };
     });
 
-    console.log('Porções com proporções calculadas:', portionsWithProportions);
+    console.log('[processAllPortions] Porções com proporções calculadas:', portionsWithProportions);
 
     // Atualiza o resultado com todas as porções
     currentData.portion = portionsWithProportions;

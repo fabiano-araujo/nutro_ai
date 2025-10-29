@@ -161,7 +161,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
         actions: [
           IconButton(
             icon: Icon(
-              Icons.barcode_reader,
+              Icons.barcode_reader, // Ícone de código de barras com linhas horizontais
               color: textColor,
             ),
             onPressed: () {
