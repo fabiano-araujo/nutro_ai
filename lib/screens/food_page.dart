@@ -575,12 +575,14 @@ class _FoodPageState extends State<FoodPage> {
           // WebView (invisível, por baixo de tudo)
           if (_foodUrlToLoad != null)
             Positioned.fill(
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(url: WebUri(_foodUrlToLoad!)),
-                initialSettings: InAppWebViewSettings(
-                  javaScriptEnabled: true,
-                  domStorageEnabled: true,
-                ),
+              child: Opacity(
+                opacity: 0.0,
+                child: InAppWebView(
+                  initialUrlRequest: URLRequest(url: WebUri(_foodUrlToLoad!)),
+                  initialSettings: InAppWebViewSettings(
+                    javaScriptEnabled: true,
+                    domStorageEnabled: true,
+                  ),
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
                   print('WebView created for food details');
@@ -626,6 +628,7 @@ class _FoodPageState extends State<FoodPage> {
                     _isLoading = false; // Stop loading on WebView error
                   });
                 },
+                ),
               ),
             ),
 
