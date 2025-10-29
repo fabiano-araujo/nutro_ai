@@ -8,6 +8,7 @@ import '../models/FoodRegion.dart';
 import 'food_page.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../helpers/scraper_helper.dart';
+import '../helpers/webview_helper.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   const FoodSearchScreen({Key? key}) : super(key: key);
@@ -235,15 +236,12 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                   child: Opacity(
                     opacity: 0.0,
                     child: InAppWebView(
-                      initialSettings: InAppWebViewSettings(
-                        javaScriptEnabled: true,
-                        domStorageEnabled: true,
-                      ),
+                      initialSettings: WebViewHelper.getOptimizedSettings(),
                       onWebViewCreated: _scraperHelper.onWebViewCreated,
                       onLoadStop: (controller, url) async {
                         _scraperHelper.onLoadFinished(controller, url);
                         // Wait a bit for the page to fully render
-                        await Future.delayed(Duration(milliseconds: 1500));
+                        await Future.delayed(Duration(milliseconds: 500));
                         await _extractFoodData();
                       },
                     ),

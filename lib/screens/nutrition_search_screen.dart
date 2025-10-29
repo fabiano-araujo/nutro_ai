@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../widgets/my_inapp_webview.dart';
 import '../helpers/scraper_helper.dart';
+import '../helpers/webview_helper.dart';
 
 /// Tela de pesquisa de informações nutricionais com WebView
 class NutritionSearchScreen extends StatefulWidget {
@@ -424,6 +425,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
         onLoadStop: _scraperHelper.onLoadFinished,
         onReceivedError: _scraperHelper.onLoadError,
         showProgress: true,
+        settings: WebViewHelper.getOptimizedSettings(),
       ),
     );
   }

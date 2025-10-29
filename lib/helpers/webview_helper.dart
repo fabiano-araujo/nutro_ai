@@ -66,4 +66,47 @@ class WebViewHelper {
       userAgent: "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36",
     );
   }
+
+  /// Configurações otimizadas para carregamento rápido (sem imagens, sem cache)
+  /// Ideal para scraping de dados onde apenas o HTML é necessário
+  static InAppWebViewSettings getOptimizedSettings() {
+    return InAppWebViewSettings(
+      // JavaScript essencial para scraping
+      javaScriptEnabled: true,
+
+      // Desabilita carregamento de imagens para acelerar
+      blockNetworkImage: true,
+
+      // Desabilita cache para sempre ter dados frescos e economizar memória
+      clearCache: true,
+      cacheEnabled: false,
+
+      // Desabilita recursos de mídia desnecessários
+      mediaPlaybackRequiresUserGesture: true,
+      allowsInlineMediaPlayback: false,
+      javaScriptCanOpenWindowsAutomatically: false,
+
+      // Desabilita recursos visuais desnecessários
+      verticalScrollBarEnabled: false,
+      horizontalScrollBarEnabled: false,
+      supportZoom: false,
+      builtInZoomControls: false,
+      displayZoomControls: false,
+
+      // Minimiza uso de recursos
+      useOnDownloadStart: false,
+      useOnLoadResource: false,
+      useShouldOverrideUrlLoading: false,
+
+      // User agent leve
+      userAgent: "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36",
+
+      // Desabilita geolocalização e outros recursos pesados
+      geolocationEnabled: false,
+
+      // Configurações de rede otimizadas
+      allowFileAccessFromFileURLs: false,
+      allowUniversalAccessFromFileURLs: false,
+    );
+  }
 }

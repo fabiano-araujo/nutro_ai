@@ -11,6 +11,7 @@ import '../models/FoodRegion.dart';
 import '../models/Portion.dart';
 import '../providers/daily_meals_provider.dart';
 import '../theme/app_theme.dart';
+import '../helpers/webview_helper.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
@@ -579,10 +580,7 @@ class _FoodPageState extends State<FoodPage> {
                 opacity: 0.0,
                 child: InAppWebView(
                   initialUrlRequest: URLRequest(url: WebUri(_foodUrlToLoad!)),
-                  initialSettings: InAppWebViewSettings(
-                    javaScriptEnabled: true,
-                    domStorageEnabled: true,
-                  ),
+                  initialSettings: WebViewHelper.getOptimizedSettings(),
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
                   print('WebView created for food details');
@@ -615,8 +613,6 @@ class _FoodPageState extends State<FoodPage> {
                     print('Error checking page: $e');
                   }
 
-                  print('Waiting 3 seconds before extraction...');
-                  await Future.delayed(Duration(milliseconds: 3000));
                   await _extractFullFoodData();
                 },
                 onConsoleMessage: (controller, consoleMessage) {
