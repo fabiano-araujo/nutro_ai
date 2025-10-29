@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math' as math;
 import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -12,6 +11,10 @@ import '../models/Portion.dart';
 import '../providers/daily_meals_provider.dart';
 import '../theme/app_theme.dart';
 import '../helpers/webview_helper.dart';
+import '../widgets/macro_card.dart';
+import '../widgets/macro_nutrient_row.dart';
+import '../widgets/sub_nutrient_row.dart';
+import '../widgets/micro_nutrient_row.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
@@ -461,35 +464,39 @@ class _FoodPageState extends State<FoodPage> {
       builder: (context) {
         return Container(
           padding: EdgeInsets.all(20),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Select Meal Type',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Select Meal Type',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: textColor),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              // Meal types list
-              ...MealType.values.map((mealType) {
+                    IconButton(
+                      icon: Icon(Icons.close, color: textColor),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                // Meal types list
+                ...MealType.values.map((mealType) {
                 final option = DailyMealsProvider.getMealTypeOption(mealType);
 
                 return InkWell(
@@ -579,6 +586,7 @@ class _FoodPageState extends State<FoodPage> {
               }).toList(),
               SizedBox(height: 16),
             ],
+          ),
           ),
         );
       },
@@ -690,19 +698,26 @@ class _FoodPageState extends State<FoodPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          displayText,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: textColor,
+                        Expanded(
+                          child: Text(
+                            displayText,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              color: textColor,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isSelected)
-                          Icon(
-                            Icons.check_circle,
-                            color: AppTheme.primaryColor,
-                            size: 24,
+                          Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Icon(
+                              Icons.check_circle,
+                              color: AppTheme.primaryColor,
+                              size: 24,
+                            ),
                           ),
                       ],
                     ),
@@ -1059,7 +1074,7 @@ class _FoodPageState extends State<FoodPage> {
 
                     SizedBox(height: 24),
 
-                    // Macro Breakdown Card
+                    // Nutrition Facts - Macro Summary Card
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Container(
@@ -1075,57 +1090,50 @@ class _FoodPageState extends State<FoodPage> {
                             ),
                           ],
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              'Macro Breakdown',
-                              style: AppTheme.headingSmall.copyWith(
-                                color: textColor,
-                                fontSize: 18,
+                            Expanded(
+                              child: MacroCard(
+                                label: 'Cal',
+                                fullName: 'Calories',
+                                value: calories.toStringAsFixed(0),
+                                unit: '',
+                                color: AppTheme.primaryColor,
+                                isDarkMode: isDarkMode,
                               ),
                             ),
-                            SizedBox(height: 20),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Pie Chart
-                                _MacroPieChart(
-                                  protein: protein,
-                                  carbs: carbs,
-                                  fat: fat,
-                                  calories: calories,
-                                  isDarkMode: isDarkMode,
-                                ),
-                                SizedBox(width: 24),
-                                // Macro Labels
-                                Expanded(
-                                  child: Column(
-                                    children: [
-                                      _MacroRow(
-                                        label: 'Protein',
-                                        value: '${protein.toStringAsFixed(1)}g',
-                                        color: Color(0xFF9575CD),
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                      SizedBox(height: 12),
-                                      _MacroRow(
-                                        label: 'Carbs',
-                                        value: '${carbs.toStringAsFixed(1)}g',
-                                        color: Color(0xFFA1887F),
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                      SizedBox(height: 12),
-                                      _MacroRow(
-                                        label: 'Fat',
-                                        value: '${fat.toStringAsFixed(1)}g',
-                                        color: Color(0xFF90A4AE),
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: MacroCard(
+                                label: 'P',
+                                fullName: 'Proteins',
+                                value: protein.toStringAsFixed(1),
+                                unit: 'g',
+                                color: Color(0xFF9575CD),
+                                isDarkMode: isDarkMode,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: MacroCard(
+                                label: 'C',
+                                fullName: 'Carbs',
+                                value: carbs.toStringAsFixed(1),
+                                unit: 'g',
+                                color: Color(0xFFA1887F),
+                                isDarkMode: isDarkMode,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: MacroCard(
+                                label: 'F',
+                                fullName: 'Fats',
+                                value: fat.toStringAsFixed(1),
+                                unit: 'g',
+                                color: Color(0xFF90A4AE),
+                                isDarkMode: isDarkMode,
+                              ),
                             ),
                           ],
                         ),
@@ -1134,7 +1142,7 @@ class _FoodPageState extends State<FoodPage> {
 
                     SizedBox(height: 24),
 
-                    // Nutrition Facts Card
+                    // Detailed Nutrition Facts Card
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Container(
@@ -1176,7 +1184,7 @@ class _FoodPageState extends State<FoodPage> {
                             ),
 
                             // Calories
-                            _MacroNutrientRow(
+                            MacroNutrientRow(
                               label: 'Calories',
                               value: '${calories.toStringAsFixed(0)} kcal',
                               isDarkMode: isDarkMode,
@@ -1185,7 +1193,7 @@ class _FoodPageState extends State<FoodPage> {
                             SizedBox(height: 12),
 
                             // Protein
-                            _MacroNutrientRow(
+                            MacroNutrientRow(
                               label: 'Protein',
                               value: '${protein.toStringAsFixed(0)} g',
                               isDarkMode: isDarkMode,
@@ -1194,7 +1202,7 @@ class _FoodPageState extends State<FoodPage> {
                             SizedBox(height: 12),
 
                             // Total Carbohydrates Group
-                            _MacroNutrientRow(
+                            MacroNutrientRow(
                               label: 'Total Carbohydrates',
                               value: '${carbs.toStringAsFixed(0)} g',
                               isDarkMode: isDarkMode,
@@ -1213,13 +1221,13 @@ class _FoodPageState extends State<FoodPage> {
                                 child: Column(
                                   children: [
                                     if (nutrient?.dietaryFiber != null)
-                                      _SubNutrientRow(
+                                      SubNutrientRow(
                                         label: 'Dietary Fiber',
                                         value: '${_getScaledValue(nutrient?.dietaryFiber).toStringAsFixed(0)} g',
                                         isDarkMode: isDarkMode,
                                       ),
                                     if (nutrient?.sugars != null)
-                                      _SubNutrientRow(
+                                      SubNutrientRow(
                                         label: 'Sugars',
                                         value: '${_getScaledValue(nutrient?.sugars).toStringAsFixed(0)} g',
                                         isDarkMode: isDarkMode,
@@ -1231,7 +1239,7 @@ class _FoodPageState extends State<FoodPage> {
                             SizedBox(height: 12),
 
                             // Total Fat Group
-                            _MacroNutrientRow(
+                            MacroNutrientRow(
                               label: 'Total Fat',
                               value: '${fat.toStringAsFixed(0)} g',
                               isDarkMode: isDarkMode,
@@ -1250,13 +1258,13 @@ class _FoodPageState extends State<FoodPage> {
                                 child: Column(
                                   children: [
                                     if (nutrient?.saturatedFat != null)
-                                      _SubNutrientRow(
+                                      SubNutrientRow(
                                         label: 'Saturated Fat',
                                         value: '${_getScaledValue(nutrient?.saturatedFat).toStringAsFixed(1)} g',
                                         isDarkMode: isDarkMode,
                                       ),
                                     if (nutrient?.transFat != null)
-                                      _SubNutrientRow(
+                                      SubNutrientRow(
                                         label: 'Trans Fat',
                                         value: '${_getScaledValue(nutrient?.transFat).toStringAsFixed(0)} g',
                                         isDarkMode: isDarkMode,
@@ -1285,7 +1293,7 @@ class _FoodPageState extends State<FoodPage> {
 
                             // Micronutrients List
                             if (nutrient?.cholesterol != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Cholesterol',
                                 value: '${_getScaledValue(nutrient?.cholesterol).toStringAsFixed(0)} mg',
                                 isDarkMode: isDarkMode,
@@ -1294,7 +1302,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.sodium != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Sodium',
                                 value: '${_getScaledValue(nutrient?.sodium).toStringAsFixed(0)} mg',
                                 isDarkMode: isDarkMode,
@@ -1303,7 +1311,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.potassium != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Potassium',
                                 value: '${_getScaledValue(nutrient?.potassium).toStringAsFixed(0)} mg',
                                 isDarkMode: isDarkMode,
@@ -1312,7 +1320,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.calcium != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Calcium',
                                 value: '${_getScaledValue(nutrient?.calcium).toStringAsFixed(0)} mg',
                                 isDarkMode: isDarkMode,
@@ -1321,7 +1329,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.iron != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Iron',
                                 value: '${_getScaledValue(nutrient?.iron).toStringAsFixed(1)} mg',
                                 isDarkMode: isDarkMode,
@@ -1330,7 +1338,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.vitaminD != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Vitamin D',
                                 value: '${_getScaledValue(nutrient?.vitaminD).toStringAsFixed(1)} mcg',
                                 isDarkMode: isDarkMode,
@@ -1339,7 +1347,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.vitaminA != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Vitamin A',
                                 value: '${_getScaledValue(nutrient?.vitaminA).toStringAsFixed(1)} mcg',
                                 isDarkMode: isDarkMode,
@@ -1348,7 +1356,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.vitaminC != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Vitamin C',
                                 value: '${_getScaledValue(nutrient?.vitaminC).toStringAsFixed(1)} mg',
                                 isDarkMode: isDarkMode,
@@ -1357,7 +1365,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.vitaminB6 != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Vitamin B6',
                                 value: '${_getScaledValue(nutrient?.vitaminB6).toStringAsFixed(1)} mg',
                                 isDarkMode: isDarkMode,
@@ -1366,7 +1374,7 @@ class _FoodPageState extends State<FoodPage> {
                               SizedBox(height: 12),
 
                             if (nutrient?.vitaminB12 != null)
-                              _MicroNutrientRow(
+                              MicroNutrientRow(
                                 label: 'Vitamin B12',
                                 value: '${_getScaledValue(nutrient?.vitaminB12).toStringAsFixed(1)} mcg',
                                 isDarkMode: isDarkMode,
@@ -1376,7 +1384,7 @@ class _FoodPageState extends State<FoodPage> {
                       ),
                     ),
 
-                    SizedBox(height: 100), // Space for FAB
+                    SizedBox(height: 120), // Space for FAB
                   ],
                 ),
               ),
@@ -1433,347 +1441,3 @@ class _FoodPageState extends State<FoodPage> {
   }
 }
 
-// Macro Pie Chart Widget
-class _MacroPieChart extends StatelessWidget {
-  final double protein;
-  final double carbs;
-  final double fat;
-  final double calories;
-  final bool isDarkMode;
-
-  const _MacroPieChart({
-    Key? key,
-    required this.protein,
-    required this.carbs,
-    required this.fat,
-    required this.calories,
-    required this.isDarkMode,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    // Calculate percentages (calories from macros)
-    final proteinCal = protein * 4;
-    final carbsCal = carbs * 4;
-    final fatCal = fat * 9;
-    final total = proteinCal + carbsCal + fatCal;
-
-    return SizedBox(
-      width: 120,
-      height: 120,
-      child: Stack(
-        children: [
-          CustomPaint(
-            size: Size(120, 120),
-            painter: _PieChartPainter(
-              proteinPercent: total > 0 ? proteinCal / total : 0,
-              carbsPercent: total > 0 ? carbsCal / total : 0,
-              fatPercent: total > 0 ? fatCal / total : 0,
-              isDarkMode: isDarkMode,
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  calories.toStringAsFixed(0),
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode
-                        ? AppTheme.darkTextColor
-                        : AppTheme.textPrimaryColor,
-                  ),
-                ),
-                Text(
-                  'Calories',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDarkMode
-                        ? Color(0xFFAEB7CE)
-                        : AppTheme.textSecondaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Pie Chart Painter
-class _PieChartPainter extends CustomPainter {
-  final double proteinPercent;
-  final double carbsPercent;
-  final double fatPercent;
-  final bool isDarkMode;
-
-  _PieChartPainter({
-    required this.proteinPercent,
-    required this.carbsPercent,
-    required this.fatPercent,
-    required this.isDarkMode,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-    final strokeWidth = 12.0;
-
-    // Background circle
-    final bgPaint = Paint()
-      ..color = (isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-    canvas.drawCircle(center, radius - strokeWidth / 2, bgPaint);
-
-    // Draw segments
-    double startAngle = -math.pi / 2;
-
-    // Protein segment
-    if (proteinPercent > 0) {
-      final proteinPaint = Paint()
-        ..color = Color(0xFF9575CD)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
-      final sweepAngle = 2 * math.pi * proteinPercent;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
-        startAngle,
-        sweepAngle,
-        false,
-        proteinPaint,
-      );
-      startAngle += sweepAngle;
-    }
-
-    // Carbs segment
-    if (carbsPercent > 0) {
-      final carbsPaint = Paint()
-        ..color = Color(0xFFA1887F)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
-      final sweepAngle = 2 * math.pi * carbsPercent;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
-        startAngle,
-        sweepAngle,
-        false,
-        carbsPaint,
-      );
-      startAngle += sweepAngle;
-    }
-
-    // Fat segment
-    if (fatPercent > 0) {
-      final fatPaint = Paint()
-        ..color = Color(0xFF90A4AE)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
-      final sweepAngle = 2 * math.pi * fatPercent;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
-        startAngle,
-        sweepAngle,
-        false,
-        fatPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// Macro Row Widget
-class _MacroRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final bool isDarkMode;
-
-  const _MacroRow({
-    Key? key,
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.isDarkMode,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-            SizedBox(width: 8),
-            Text(
-              label,
-              style: AppTheme.bodyMedium.copyWith(
-                color: isDarkMode
-                    ? AppTheme.darkTextColor
-                    : AppTheme.textPrimaryColor,
-              ),
-            ),
-          ],
-        ),
-        Text(
-          value,
-          style: AppTheme.bodyMedium.copyWith(
-            color: isDarkMode
-                ? AppTheme.darkTextColor
-                : AppTheme.textPrimaryColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// Macronutrient Row Widget (for main nutrients)
-class _MacroNutrientRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isDarkMode;
-
-  const _MacroNutrientRow({
-    Key? key,
-    required this.label,
-    required this.value,
-    required this.isDarkMode,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// Sub-Nutrient Row Widget (for indented items)
-class _SubNutrientRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isDarkMode;
-
-  const _SubNutrientRow({
-    Key? key,
-    required this.label,
-    required this.value,
-    required this.isDarkMode,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final secondaryTextColor = isDarkMode
-        ? Color(0xFF9CA3AF)
-        : Color(0xFF6B7280);
-
-    return Padding(
-      padding: EdgeInsets.only(left: 16, top: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 15,
-              color: secondaryTextColor,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: secondaryTextColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Micronutrient Row Widget (for minerals and vitamins - without bold)
-class _MicroNutrientRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isDarkMode;
-
-  const _MicroNutrientRow({
-    Key? key,
-    required this.label,
-    required this.value,
-    required this.isDarkMode,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
-            color: textColor,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
-            color: textColor,
-          ),
-        ),
-      ],
-    );
-  }
-}
