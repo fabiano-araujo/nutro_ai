@@ -633,13 +633,7 @@ class _FoodPageState extends State<FoodPage> {
           Positioned.fill(
             child: Container(
               color: backgroundColor,
-              child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        color: AppTheme.primaryColor,
-                      ),
-                    )
-                  : CustomScrollView(
+              child: CustomScrollView(
             slivers: [
               // Top App Bar
               SliverAppBar(
@@ -661,6 +655,17 @@ class _FoodPageState extends State<FoodPage> {
                   ),
                 ],
               ),
+
+              // Loading or Content
+              if (_isLoading)
+                SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                )
+              else
 
               SliverToBoxAdapter(
                 child: Column(
@@ -1207,47 +1212,48 @@ class _FoodPageState extends State<FoodPage> {
             ),
           ),
 
-          // Floating Action Button
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    backgroundColor.withValues(alpha: 0.0),
-                    backgroundColor,
-                  ],
-                ),
-              ),
-              padding: EdgeInsets.all(16),
-              child: ElevatedButton(
-                onPressed: () {
-                  _showMealTypeSelector(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+          // Floating Action Button (hide during loading)
+          if (!_isLoading)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      backgroundColor.withValues(alpha: 0.0),
+                      backgroundColor,
+                    ],
                   ),
-                  elevation: 4,
-                  shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
                 ),
-                child: Text(
-                  'Add to Meal',
-                  style: AppTheme.buttonText.copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                padding: EdgeInsets.all(16),
+                child: ElevatedButton(
+                  onPressed: () {
+                    _showMealTypeSelector(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 4,
+                    shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+                  ),
+                  child: Text(
+                    'Add to Meal',
+                    style: AppTheme.buttonText.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
