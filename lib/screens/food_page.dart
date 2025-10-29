@@ -32,7 +32,6 @@ class _FoodPageState extends State<FoodPage> {
   String? _selectedPortionDescription;
 
   InAppWebViewController? _webViewController;
-  bool _isLoadingFullData = false;
   Food? _fullFoodData;
   String? _foodUrlToLoad;
 
@@ -57,10 +56,6 @@ class _FoodPageState extends State<FoodPage> {
           : 'https://mobile.fatsecret.com.br${widget.foodUrl}';
 
       print('Will load food data from: $_foodUrlToLoad');
-
-      setState(() {
-        _isLoadingFullData = true;
-      });
     }
   }
 
@@ -145,15 +140,9 @@ class _FoodPageState extends State<FoodPage> {
         print('Script injected successfully');
       } else {
         print('ERROR: WebView controller is null!');
-        setState(() {
-          _isLoadingFullData = false;
-        });
       }
     } catch (e) {
       print('Error extracting food data: $e');
-      setState(() {
-        _isLoadingFullData = false;
-      });
     }
   }
 
@@ -178,7 +167,6 @@ class _FoodPageState extends State<FoodPage> {
 
         setState(() {
           _fullFoodData = fullFood;
-          _isLoadingFullData = false;
 
           // Update serving size and portions if available
           if (fullFood.nutrients != null && fullFood.nutrients!.isNotEmpty) {
@@ -197,9 +185,6 @@ class _FoodPageState extends State<FoodPage> {
         print('Food data loaded successfully: ${fullFood.name}');
       } catch (e) {
         print('Error parsing food data: $e');
-        setState(() {
-          _isLoadingFullData = false;
-        });
       }
     } else {
       print('===== NO VALID DATA =====');
@@ -214,10 +199,6 @@ class _FoodPageState extends State<FoodPage> {
         print('Data is not empty but invalid: $data');
       }
       print('========================');
-
-      setState(() {
-        _isLoadingFullData = false;
-      });
     }
   }
 
@@ -632,11 +613,6 @@ class _FoodPageState extends State<FoodPage> {
                 },
                 onReceivedError: (controller, request, error) {
                   print('WebView error: ${error.description}');
-                  if (request.isForMainFrame ?? false) {
-                    setState(() {
-                      _isLoadingFullData = false;
-                    });
-                  }
                 },
               ),
             ),
@@ -672,70 +648,87 @@ class _FoodPageState extends State<FoodPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Image
+                    // Header with circular image and title
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: currentFood.imageUrl != null
-                              ? Image.network(
-                                  currentFood.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Center(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Square food image with rounded corners
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: currentFood.imageUrl != null
+                                  ? Image.network(
+                                      currentFood.imageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Center(
+                                          child: Text(
+                                            currentFood.emoji,
+                                            style: TextStyle(fontSize: 40),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : Center(
                                       child: Text(
                                         currentFood.emoji,
-                                        style: TextStyle(fontSize: 80),
+                                        style: TextStyle(fontSize: 40),
                                       ),
-                                    );
-                                  },
-                                )
-                              : Center(
-                                  child: Text(
-                                    currentFood.emoji,
-                                    style: TextStyle(fontSize: 80),
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 24),
-
-                    // Headline and Brand
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            currentFood.name,
-                            style: AppTheme.headingLarge.copyWith(
-                              color: textColor,
-                              fontSize: 32,
+                                    ),
                             ),
                           ),
-                          if (currentFood.brand != null) ...[
-                            SizedBox(height: 4),
-                            Text(
-                              currentFood.brand!,
-                              style: AppTheme.bodyLarge.copyWith(
-                                color: secondaryTextColor,
-                              ),
+                          SizedBox(width: 16),
+                          // Food name and brand
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  currentFood.name,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (currentFood.brand != null) ...[
+                                  SizedBox(height: 4),
+                                  Text(
+                                    currentFood.brand!,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: secondaryTextColor,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
                             ),
-                          ],
+                          ),
                         ],
                       ),
                     ),
 
-                    SizedBox(height: 24),
+                    SizedBox(height: 8),
 
                     // Serving Size Selector
                     Padding(
@@ -1195,33 +1188,6 @@ class _FoodPageState extends State<FoodPage> {
           ),
             ),
           ),
-
-          // Loading indicator overlay
-          if (_isLoadingFullData)
-            Positioned.fill(
-              child: Container(
-                color: backgroundColor.withValues(alpha: 0.8),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'Loading complete nutrition data...',
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
 
           // Floating Action Button
           Positioned(
