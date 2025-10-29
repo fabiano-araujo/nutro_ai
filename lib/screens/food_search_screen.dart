@@ -5,6 +5,7 @@ import '../models/food_model.dart';
 import '../models/Nutrient.dart';
 import '../models/FoodRegion.dart';
 import 'food_page.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   const FoodSearchScreen({Key? key}) : super(key: key);
@@ -92,8 +93,6 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       final result = await _webViewController!.evaluateJavascript(source: jsCode);
 
       if (result != null) {
-        final List<dynamic> foodList = [];
-
         // Parse the result
         if (result is String) {
           final decoded = result;
@@ -230,6 +229,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       emoji: '🍽️',
       nutrients: [
         Nutrient(
+          idFood: 0,
           servingSize: 100.0,
           servingUnit: 'g',
           calories: calories,
@@ -240,6 +240,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       ],
       foodRegions: [
         FoodRegion(
+          regionCode: 'BR',
+          languageCode: 'pt',
+          idFood: 0,
+          translation: data['nome'] ?? 'Unknown',
           portions: [],
         ),
       ],
@@ -270,7 +274,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Search Food',
+          context.tr.translate('search_food'),
           style: TextStyle(
             color: textColor,
             fontSize: 20,
@@ -305,7 +309,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                 controller: _searchController,
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  hintText: 'What did you eat?',
+                  hintText: context.tr.translate('what_did_you_eat'),
                   hintStyle: TextStyle(
                     color: secondaryTextColor.withValues(alpha: 0.6),
                   ),
@@ -335,8 +339,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                 indicatorColor: AppTheme.primaryColor,
                 indicatorWeight: 3,
                 tabs: [
-                  Tab(text: 'Recent'),
-                  Tab(text: 'Favorites'),
+                  Tab(text: context.tr.translate('recent')),
+                  Tab(text: context.tr.translate('favorites')),
                 ],
               ),
             ),
@@ -389,7 +393,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
             ),
             SizedBox(height: 16),
             Text(
-              'Searching...',
+              context.tr.translate('searching'),
               style: TextStyle(
                 color: secondaryTextColor,
                 fontSize: 16,
@@ -412,7 +416,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
             ),
             SizedBox(height: 16),
             Text(
-              'No results found',
+              context.tr.translate('no_results_found'),
               style: TextStyle(
                 color: secondaryTextColor,
                 fontSize: 16,
@@ -562,7 +566,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
             ),
             SizedBox(height: 16),
             Text(
-              'No recent searches',
+              context.tr.translate('no_recent_searches'),
               style: TextStyle(
                 color: secondaryTextColor,
                 fontSize: 16,
@@ -596,7 +600,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
             ),
             SizedBox(height: 16),
             Text(
-              'No favorite foods',
+              context.tr.translate('no_favorite_foods'),
               style: TextStyle(
                 color: secondaryTextColor,
                 fontSize: 16,

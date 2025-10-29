@@ -796,4 +796,14 @@ final Map<String, String> ptBRTranslations = {
   'dinner': 'Jantar',
   'snack': 'Lanche',
   'free_meal': 'Refeição Livre',
+
+  // Food Search
+  'search_food': 'Buscar Alimento',
+  'what_did_you_eat': 'O que você comeu?',
+  'recent': 'Recentes',
+  'favorites': 'Favoritos',
+  'searching': 'Pesquisando...',
+  'no_results_found': 'Nenhum resultado encontrado',
+  'no_recent_searches': 'Nenhuma pesquisa recente',
+  'no_favorite_foods': 'Nenhum alimento favorito',
 };

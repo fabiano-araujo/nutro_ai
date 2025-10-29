@@ -613,4 +613,14 @@ final Map<String, String> enUSTranslations = {
   'dinner': 'Dinner',
   'snack': 'Snack',
   'free_meal': 'Free Meal',
+
+  // Food Search
+  'search_food': 'Search Food',
+  'what_did_you_eat': 'What did you eat?',
+  'recent': 'Recent',
+  'favorites': 'Favorites',
+  'searching': 'Searching...',
+  'no_results_found': 'No results found',
+  'no_recent_searches': 'No recent searches',
+  'no_favorite_foods': 'No favorite foods',
 };

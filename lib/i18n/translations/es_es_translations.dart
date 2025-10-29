@@ -545,4 +545,14 @@ final Map<String, String> esESTranslations = {
   'dinner': 'Cena',
   'snack': 'Merienda',
   'free_meal': 'Comida Libre',
+
+  // Food Search
+  'search_food': 'Buscar Alimento',
+  'what_did_you_eat': '¿Qué comiste?',
+  'recent': 'Reciente',
+  'favorites': 'Favoritos',
+  'searching': 'Buscando...',
+  'no_results_found': 'No se encontraron resultados',
+  'no_recent_searches': 'No hay búsquedas recientes',
+  'no_favorite_foods': 'No hay alimentos favoritos',
 };
