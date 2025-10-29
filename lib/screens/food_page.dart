@@ -31,6 +31,7 @@ class _FoodPageState extends State<FoodPage> {
   late TextEditingController _servingSizeController;
   late double _currentServingSize;
   String? _selectedPortionDescription;
+  String? _currentServingUnit; // Store current unit
 
   InAppWebViewController? _webViewController;
   Food? _fullFoodData;
@@ -40,15 +41,43 @@ class _FoodPageState extends State<FoodPage> {
   @override
   void initState() {
     super.initState();
-    _currentServingSize = widget.food.nutrients?.first.servingSize ?? 100.0;
-    _servingSizeController = TextEditingController(
-      text: _currentServingSize.toInt().toString(),
-    );
 
-    // Set default portion description
+    final baseServingSize = widget.food.nutrients?.first.servingSize ?? 100.0;
+
+    // Set default portion and calculate initial values
     final portions = widget.food.foodRegions?.first.portions;
     if (portions != null && portions.isNotEmpty) {
-      _selectedPortionDescription = portions.first.description;
+      final firstPortion = portions.first;
+      _selectedPortionDescription = firstPortion.description;
+
+      // Parse the first portion to get correct display and calculation values
+      final parsed = _parsePortionDescription(firstPortion.description);
+      final parsedSize = parsed['size'] as double;
+      final parsedUnit = parsed['unit'] as String;
+
+      // Calculate actual serving size using proportion
+      final actualServingSize = baseServingSize * firstPortion.proportion;
+
+      print('===== INIT FIRST PORTION =====');
+      print('Description: ${firstPortion.description}');
+      print('Parsed size (display): $parsedSize');
+      print('Parsed unit (display): $parsedUnit');
+      print('Proportion: ${firstPortion.proportion}');
+      print('Base serving: $baseServingSize');
+      print('Actual serving size (for macros): $actualServingSize');
+      print('==============================');
+
+      _currentServingSize = actualServingSize;
+      _currentServingUnit = parsedUnit;
+      _servingSizeController = TextEditingController(
+        text: parsedSize.toInt().toString(),
+      );
+    } else {
+      // No portions, use base values
+      _currentServingSize = baseServingSize;
+      _servingSizeController = TextEditingController(
+        text: baseServingSize.toInt().toString(),
+      );
     }
 
     // Prepare URL for loading
@@ -66,6 +95,62 @@ class _FoodPageState extends State<FoodPage> {
   void dispose() {
     _servingSizeController.dispose();
     super.dispose();
+  }
+
+  /// Parse portion description and extract serving size and unit
+  /// Returns map with 'size' (double), 'unit' (String), and 'displayText' (String)
+  Map<String, dynamic> _parsePortionDescription(String description) {
+    print('===== PARSING PORTION DESCRIPTION =====');
+    print('Original: $description');
+
+    final trimmed = description.trim();
+
+    // Check if it's g or ml (should show as just "g" or "ml" in list, servingSize 100)
+    if (trimmed.toLowerCase() == 'g' || trimmed.toLowerCase() == 'ml') {
+      print('Rule 1: Pure g/ml unit');
+      print('Result: size=100, unit=$trimmed, display=$trimmed');
+      return {'size': 100.0, 'unit': trimmed, 'displayText': trimmed};
+    }
+
+    // Check for "100 g" or "100 ml" format
+    final mlGPattern = RegExp(r'^(\d+(?:[.,]\d+)?)\s*(g|ml)$', caseSensitive: false);
+    final mlGMatch = mlGPattern.firstMatch(trimmed);
+    if (mlGMatch != null) {
+      final size = double.tryParse(mlGMatch.group(1)?.replaceAll(',', '.') ?? '100') ?? 100.0;
+      final unit = mlGMatch.group(2) ?? 'g';
+      print('Rule 2: Number + g/ml format');
+      print('Result: size=$size, unit=$unit, display=$unit');
+      return {'size': size, 'unit': unit, 'displayText': unit};
+    }
+
+    // Check for number at the beginning (e.g., "1 médio", "8 fl oz")
+    final numberPattern = RegExp(r'^(\d+(?:[.,]\d+)?)\s+(.+)$');
+    final numberMatch = numberPattern.firstMatch(trimmed);
+    if (numberMatch != null) {
+      final numberStr = numberMatch.group(1)?.replaceAll(',', '.');
+      final textPart = numberMatch.group(2)?.trim();
+
+      if (numberStr != null && textPart != null && textPart.isNotEmpty) {
+        final size = double.tryParse(numberStr) ?? 1.0;
+
+        // Special case: if it's "1 something", remove the "1" from display
+        if (size == 1.0) {
+          print('Rule 3: Starting with "1" - removing from display');
+          print('Result: size=$size, unit=$textPart, display=$textPart');
+          return {'size': size, 'unit': textPart, 'displayText': textPart};
+        } else {
+          // Keep the number for display (e.g., "8 fl oz")
+          print('Rule 4: Starting with number > 1 - keeping in display');
+          print('Result: size=$size, unit=$textPart, display=$trimmed');
+          return {'size': size, 'unit': textPart, 'displayText': trimmed};
+        }
+      }
+    }
+
+    // No pattern matched, return as is with size 1
+    print('No rule matched - returning as is');
+    print('Result: size=1, unit=$trimmed, display=$trimmed');
+    return {'size': 1.0, 'unit': trimmed, 'displayText': trimmed};
   }
 
   Future<void> _extractFullFoodData() async {
@@ -173,16 +258,37 @@ class _FoodPageState extends State<FoodPage> {
           _isLoading = false; // Stop loading on success
 
           // Update serving size and portions if available
-          if (fullFood.nutrients != null && fullFood.nutrients!.isNotEmpty) {
-            _currentServingSize = fullFood.nutrients!.first.servingSize;
-            _servingSizeController.text = _currentServingSize.toInt().toString();
-          }
+          final baseServingSize = fullFood.nutrients?.first.servingSize ?? 100.0;
+          final portions = fullFood.foodRegions?.first.portions;
 
-          if (fullFood.foodRegions != null &&
-              fullFood.foodRegions!.isNotEmpty &&
-              fullFood.foodRegions!.first.portions != null &&
-              fullFood.foodRegions!.first.portions!.isNotEmpty) {
-            _selectedPortionDescription = fullFood.foodRegions!.first.portions!.first.description;
+          if (portions != null && portions.isNotEmpty) {
+            final firstPortion = portions.first;
+            _selectedPortionDescription = firstPortion.description;
+
+            // Parse the first portion to get correct display and calculation values
+            final parsed = _parsePortionDescription(firstPortion.description);
+            final parsedSize = parsed['size'] as double;
+            final parsedUnit = parsed['unit'] as String;
+
+            // Calculate actual serving size using proportion
+            final actualServingSize = baseServingSize * firstPortion.proportion;
+
+            print('===== LOADED FIRST PORTION =====');
+            print('Description: ${firstPortion.description}');
+            print('Parsed size (display): $parsedSize');
+            print('Parsed unit (display): $parsedUnit');
+            print('Proportion: ${firstPortion.proportion}');
+            print('Base serving: $baseServingSize');
+            print('Actual serving size (for macros): $actualServingSize');
+            print('================================');
+
+            _currentServingSize = actualServingSize;
+            _currentServingUnit = parsedUnit;
+            _servingSizeController.text = parsedSize.toInt().toString();
+          } else {
+            // No portions, use base values
+            _currentServingSize = baseServingSize;
+            _servingSizeController.text = baseServingSize.toInt().toString();
           }
         });
 
@@ -218,15 +324,54 @@ class _FoodPageState extends State<FoodPage> {
     final nutrientList = data['nutrient'] as List<dynamic>?;
     final portionList = data['portion'] as List<dynamic>?;
 
+    print('===== CONVERTENDO FOOD DATA =====');
+    print('Food: ${foodData?['name']}');
+    print('Nutrient List: $nutrientList');
+    print('Portion List: $portionList');
+
     // Convert nutrients
     List<Nutrient>? nutrients;
     if (nutrientList != null && nutrientList.isNotEmpty) {
       nutrients = nutrientList.map((n) {
         final nutrient = n as Map<String, dynamic>;
+
+        // Parse serving size and unit
+        double servingSize = (nutrient['serving_size'] as num?)?.toDouble() ?? 100.0;
+        String servingUnit = (nutrient['serving_unit'] as String? ?? 'g').trim();
+
+        print('===== PROCESSANDO NUTRIENT =====');
+        print('Original serving_size: ${nutrient['serving_size']}');
+        print('Original serving_unit: ${nutrient['serving_unit']}');
+
+        // Process serving unit according to rules:
+        // 1. If unit is "g" or "ml", set servingSize to 100
+        // 2. If unit has a number (e.g., "1 xícara"), extract number to servingSize and remove it from unit
+        if (servingUnit.toLowerCase() == 'g' || servingUnit.toLowerCase() == 'ml') {
+          servingSize = 100.0;
+          print('Rule 1 applied: Unit is g/ml, setting servingSize to 100');
+        } else {
+          // Try to extract number from beginning of unit
+          final match = RegExp(r'^(\d+(?:[.,]\d+)?)\s*(.*)$').firstMatch(servingUnit);
+          if (match != null) {
+            final numberStr = match.group(1)?.replaceAll(',', '.');
+            final unitPart = match.group(2)?.trim();
+
+            if (numberStr != null && unitPart != null && unitPart.isNotEmpty) {
+              servingSize = double.tryParse(numberStr) ?? servingSize;
+              servingUnit = unitPart;
+              print('Rule 2 applied: Extracted number $numberStr, unit is now "$servingUnit"');
+            }
+          }
+        }
+
+        print('Final servingSize: $servingSize');
+        print('Final servingUnit: $servingUnit');
+        print('================================');
+
         return Nutrient(
           idFood: foodData?['id_fatsecret'] ?? 0,
-          servingSize: (nutrient['serving_size'] as num?)?.toDouble() ?? 100.0,
-          servingUnit: nutrient['serving_unit'] as String? ?? 'g',
+          servingSize: servingSize,
+          servingUnit: servingUnit,
           calories: (nutrient['calories'] as num?)?.toDouble(),
           protein: (nutrient['protein'] as num?)?.toDouble(),
           carbohydrate: (nutrient['carbohydrate'] as num?)?.toDouble(),
@@ -250,14 +395,19 @@ class _FoodPageState extends State<FoodPage> {
     // Convert portions with reference to food region
     List<Portion>? portions;
     if (portionList != null && portionList.isNotEmpty) {
+      print('===== PROCESSANDO PORTIONS =====');
       portions = portionList.map((p) {
         final portion = p as Map<String, dynamic>;
+        print('Portion original - proportion: ${portion['proportion']}, description: ${portion['description']}');
+
         return Portion(
           idFoodRegion: 0, // This will be set by the database
           proportion: (portion['proportion'] as num?)?.toDouble() ?? 1.0,
           description: portion['description'] as String? ?? '',
         );
       }).toList();
+      print('Total portions: ${portions.length}');
+      print('================================');
     }
 
     // Create food region with portions
@@ -440,6 +590,7 @@ class _FoodPageState extends State<FoodPage> {
     final portions = currentFood.foodRegions?.first.portions;
     if (portions == null || portions.isEmpty) return;
 
+    // Get base serving size (usually 100g)
     final nutrient = currentFood.nutrients?.first;
     final baseServingSize = nutrient?.servingSize ?? 100.0;
 
@@ -486,15 +637,36 @@ class _FoodPageState extends State<FoodPage> {
               SizedBox(height: 16),
               // Portions list
               ...portions.map((portion) {
-                final portionSize = baseServingSize * portion.proportion;
                 final isSelected = _selectedPortionDescription == portion.description;
+
+                // Parse the portion description
+                final parsed = _parsePortionDescription(portion.description);
+                final displayText = parsed['displayText'] as String;
 
                 return InkWell(
                   onTap: () {
                     setState(() {
-                      _currentServingSize = portionSize;
+                      // Parse the description to get display values
+                      final parsedSize = parsed['size'] as double;
+                      final parsedUnit = parsed['unit'] as String;
+
+                      // Calculate actual serving size using proportion (for macro calculations)
+                      // The proportion is relative to baseServingSize (usually 100g)
+                      final actualServingSize = baseServingSize * portion.proportion;
+
+                      print('===== PORTION SELECTED =====');
+                      print('Description: ${portion.description}');
+                      print('Parsed size (display): $parsedSize');
+                      print('Parsed unit (display): $parsedUnit');
+                      print('Proportion: ${portion.proportion}');
+                      print('Base serving: $baseServingSize');
+                      print('Actual serving size (for macros): $actualServingSize');
+                      print('============================');
+
+                      _currentServingSize = actualServingSize;
+                      _currentServingUnit = parsedUnit;
                       _selectedPortionDescription = portion.description;
-                      _servingSizeController.text = portionSize.toStringAsFixed(0);
+                      _servingSizeController.text = parsedSize.toStringAsFixed(0);
                     });
                     Navigator.pop(context);
                   },
@@ -519,7 +691,7 @@ class _FoodPageState extends State<FoodPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          portion.description,
+                          displayText,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -858,7 +1030,9 @@ class _FoodPageState extends State<FoodPage> {
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            _selectedPortionDescription ?? 'Container (${_currentServingSize.toStringAsFixed(0)}${nutrient?.servingUnit ?? 'g'})',
+                                            _currentServingUnit ?? (_selectedPortionDescription != null
+                                                ? _parsePortionDescription(_selectedPortionDescription!)['displayText'] as String
+                                                : '${_currentServingSize.toStringAsFixed(0)} ${nutrient?.servingUnit ?? 'g'}'),
                                             style: TextStyle(
                                               fontSize: 18,
                                               fontWeight: FontWeight.w600,
