@@ -37,7 +37,7 @@ import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
 import 'daily_meals_screen.dart';
-import 'nutrition_search_screen.dart';
+import 'food_search_screen.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -876,7 +876,7 @@ class AITutorScreenState extends State<AITutorScreen>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const NutritionSearchScreen(),
+                              builder: (context) => const FoodSearchScreen(),
                             ),
                           );
                         },

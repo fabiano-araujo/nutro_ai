@@ -8,10 +8,12 @@ import '../theme/app_theme.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
+  final String? foodUrl; // URL do FatSecret para carregar dados completos
 
   const FoodPage({
     Key? key,
     required this.food,
+    this.foodUrl,
   }) : super(key: key);
 
   @override

@@ -233,6 +233,47 @@ class ScraperHelper {
     ''';
   }
 
+  /// Extrai lista de alimentos da página de pesquisa do FatSecret
+  static String getFatSecretSearchResultsScript() {
+    return '''
+      (function() {
+        try {
+          const alimentos = [];
+          const linhas = document.querySelectorAll('table.list tbody tr:not(.paging):not(:has(th))');
+
+          linhas.forEach(linha => {
+            const linkElement = linha.querySelector('a.inner-link');
+            const brandElement = linha.querySelector('a.brand');
+            const descricoes = linha.querySelectorAll('.nowrap.small-text');
+
+            if (linkElement) {
+              const descricao = descricoes[0]?.textContent.trim() || '';
+              const regex = /Calorias:\\s*(\\d+)kcal.*Gord:\\s*([\\d.,]+)g.*Carbs:\\s*([\\d.,]+)g.*Prot:\\s*([\\d.,]+)g/;
+              const match = descricao.match(regex);
+
+              const alimento = {
+                nome: linkElement.textContent.trim(),
+                marca: brandElement ? brandElement.textContent.trim().replace(/[()]/g, '') : null,
+                link: linkElement.getAttribute('href'),
+                descricao: descricao,
+                calorias: match ? match[1] : null,
+                gordura: match ? match[2] : null,
+                carboidratos: match ? match[3] : null,
+                proteina: match ? match[4] : null
+              };
+
+              alimentos.push(alimento);
+            }
+          });
+
+          window.flutter_inappwebview.callHandler('$HANDLER_LISTENER', JSON.stringify(alimentos));
+        } catch(e) {
+          window.flutter_inappwebview.callHandler('$HANDLER_LISTENER', JSON.stringify([]));
+        }
+      })();
+    ''';
+  }
+
   /// Limpa recursos
   void dispose() {
     _timeoutTimer?.cancel();

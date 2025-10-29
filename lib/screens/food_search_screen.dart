@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../models/food_model.dart';
 import '../models/Nutrient.dart';
 import '../models/FoodRegion.dart';
 import 'food_page.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../helpers/scraper_helper.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   const FoodSearchScreen({Key? key}) : super(key: key);
@@ -16,11 +18,10 @@ class FoodSearchScreen extends StatefulWidget {
 
 class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  InAppWebViewController? _webViewController;
+  final ScraperHelper _scraperHelper = ScraperHelper();
   late TabController _tabController;
 
   bool _isSearching = false;
-  bool _showWebView = false;
   List<Map<String, dynamic>> _searchResults = [];
   List<Food> _recentFoods = [];
   List<Food> _favoriteFoods = [];
@@ -36,6 +37,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
   void dispose() {
     _searchController.dispose();
     _tabController.dispose();
+    _scraperHelper.dispose();
     super.dispose();
   }
 
@@ -49,183 +51,58 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
 
     final url = 'https://mobile.fatsecret.com.br/calorias-nutrição/search?q=${Uri.encodeComponent(query)}';
 
-    await _webViewController?.loadUrl(
-      urlRequest: URLRequest(url: WebUri(url)),
-    );
+    // Carrega a URL
+    await _scraperHelper.loadUrl(url);
   }
 
   Future<void> _extractFoodData() async {
-    if (_webViewController == null) return;
+    await _scraperHelper.extractContent(
+      script: ScraperHelper.getFatSecretSearchResultsScript(),
+      callback: (data) {
+        if (data != null && data is String) {
+          try {
+            final List<dynamic> parsed = jsonDecode(data);
+            final List<Map<String, dynamic>> results = [];
 
-    const jsCode = '''
-      (function() {
-        const alimentos = [];
-        const linhas = document.querySelectorAll('table.list tbody tr:not(.paging):not(:has(th))');
-
-        linhas.forEach(linha => {
-          const linkElement = linha.querySelector('a.inner-link');
-          const descricoes = linha.querySelectorAll('.nowrap.small-text');
-
-          if (linkElement) {
-            const descricao = descricoes[0]?.textContent.trim() || '';
-            const regex = /Calorias:\\s*(\\d+)kcal.*Gord:\\s*([\\d.]+)g.*Carbs:\\s*([\\d.]+)g.*Prot:\\s*([\\d.]+)g/;
-            const match = descricao.match(regex);
-
-            const alimento = {
-              nome: linkElement.textContent.trim(),
-              link: linkElement.getAttribute('href'),
-              descricao: descricao,
-              calorias: match ? match[1] : null,
-              gordura: match ? match[2] : null,
-              carboidratos: match ? match[3] : null,
-              proteina: match ? match[4] : null
-            };
-
-            alimentos.push(alimento);
-          }
-        });
-
-        return JSON.stringify(alimentos);
-      })();
-    ''';
-
-    try {
-      final result = await _webViewController!.evaluateJavascript(source: jsCode);
-
-      if (result != null) {
-        // Parse the result
-        if (result is String) {
-          final decoded = result;
-          // Remove quotes if present
-          final cleaned = decoded.replaceAll(RegExp(r'^"|"$'), '');
-          if (cleaned.isNotEmpty && cleaned != 'null') {
-            try {
-              final parsed = Uri.decodeComponent(cleaned);
-              // Parse JSON manually or use dart:convert if available
-              setState(() {
-                _searchResults = _parseJsonArray(parsed);
-                _isLoading = false;
-              });
-            } catch (e) {
-              print('Error parsing: $e');
-              setState(() {
-                _isLoading = false;
-              });
+            for (var item in parsed) {
+              if (item is Map) {
+                results.add(Map<String, dynamic>.from(item));
+              }
             }
-          } else {
+
+            print('Found ${results.length} foods');
+            setState(() {
+              _searchResults = results;
+              _isLoading = false;
+            });
+          } catch (e) {
+            print('Error parsing JSON: $e');
             setState(() {
               _searchResults = [];
               _isLoading = false;
             });
           }
+        } else {
+          print('No data received from scraper');
+          setState(() {
+            _searchResults = [];
+            _isLoading = false;
+          });
         }
-      }
-    } catch (e) {
-      print('Error extracting data: $e');
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<Map<String, dynamic>> _parseJsonArray(String jsonString) {
-    try {
-      // Simple JSON array parser for the food data
-      final List<Map<String, dynamic>> results = [];
-
-      // Remove brackets and split by objects
-      final cleaned = jsonString.trim();
-      if (!cleaned.startsWith('[') || !cleaned.endsWith(']')) {
-        return results;
-      }
-
-      final objectsString = cleaned.substring(1, cleaned.length - 1);
-      final objects = <String>[];
-      int braceCount = 0;
-      int startIndex = 0;
-
-      for (int i = 0; i < objectsString.length; i++) {
-        if (objectsString[i] == '{') {
-          if (braceCount == 0) startIndex = i;
-          braceCount++;
-        } else if (objectsString[i] == '}') {
-          braceCount--;
-          if (braceCount == 0) {
-            objects.add(objectsString.substring(startIndex, i + 1));
-          }
-        }
-      }
-
-      for (final obj in objects) {
-        final map = _parseJsonObject(obj);
-        if (map.isNotEmpty) {
-          results.add(map);
-        }
-      }
-
-      return results;
-    } catch (e) {
-      print('Parse error: $e');
-      return [];
-    }
-  }
-
-  Map<String, dynamic> _parseJsonObject(String jsonObject) {
-    final Map<String, dynamic> result = {};
-
-    try {
-      // Remove braces
-      final content = jsonObject.substring(1, jsonObject.length - 1);
-
-      // Split by comma, but not within quotes
-      final pairs = <String>[];
-      int quoteCount = 0;
-      int startIndex = 0;
-
-      for (int i = 0; i < content.length; i++) {
-        if (content[i] == '"') {
-          quoteCount++;
-        } else if (content[i] == ',' && quoteCount % 2 == 0) {
-          pairs.add(content.substring(startIndex, i));
-          startIndex = i + 1;
-        }
-      }
-      pairs.add(content.substring(startIndex));
-
-      for (final pair in pairs) {
-        final colonIndex = pair.indexOf(':');
-        if (colonIndex > 0) {
-          final key = pair.substring(0, colonIndex).trim().replaceAll('"', '');
-          var value = pair.substring(colonIndex + 1).trim();
-
-          // Remove quotes from value
-          if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.substring(1, value.length - 1);
-          }
-
-          // Convert null string to actual null
-          if (value == 'null') {
-            result[key] = null;
-          } else {
-            result[key] = value;
-          }
-        }
-      }
-    } catch (e) {
-      print('Object parse error: $e');
-    }
-
-    return result;
+      },
+      timeoutSeconds: 15,
+    );
   }
 
   Food _convertToFood(Map<String, dynamic> data) {
-    final calories = double.tryParse(data['calorias'] ?? '0') ?? 0.0;
-    final protein = double.tryParse(data['proteina'] ?? '0') ?? 0.0;
-    final carbs = double.tryParse(data['carboidratos'] ?? '0') ?? 0.0;
-    final fat = double.tryParse(data['gordura'] ?? '0') ?? 0.0;
+    final calories = double.tryParse((data['calorias'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
+    final protein = double.tryParse((data['proteina'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
+    final carbs = double.tryParse((data['carboidratos'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
+    final fat = double.tryParse((data['gordura'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
 
     return Food(
       name: data['nome'] ?? 'Unknown',
+      brand: data['marca'],
       emoji: '🍽️',
       nutrients: [
         Nutrient(
@@ -284,13 +161,17 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
         actions: [
           IconButton(
             icon: Icon(
-              _showWebView ? Icons.visibility_off : Icons.visibility,
+              Icons.barcode_reader,
               color: textColor,
             ),
             onPressed: () {
-              setState(() {
-                _showWebView = !_showWebView;
-              });
+              // TODO: Implementar scan de código de barras
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Barcode scanner coming soon!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
             },
           ),
         ],
@@ -345,37 +226,44 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
               ),
             ),
 
-          // WebView (hidden by default)
-          if (_showWebView)
-            Container(
-              height: 300,
-              child: InAppWebView(
-                initialSettings: InAppWebViewSettings(
-                  javaScriptEnabled: true,
-                  domStorageEnabled: true,
-                ),
-                onWebViewCreated: (controller) {
-                  _webViewController = controller;
-                },
-                onLoadStop: (controller, url) async {
-                  // Wait a bit for the page to fully render
-                  await Future.delayed(Duration(milliseconds: 1500));
-                  await _extractFoodData();
-                },
-              ),
-            ),
-
-          // Content
+          // Content with WebView in Stack
           Expanded(
-            child: _isSearching
-                ? _buildSearchResults(isDarkMode, textColor, secondaryTextColor, cardColor)
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildRecentList(isDarkMode, textColor, secondaryTextColor, cardColor),
-                      _buildFavoritesList(isDarkMode, textColor, secondaryTextColor, cardColor),
-                    ],
+            child: Stack(
+              children: [
+                // WebView (sempre ativo mas invisível)
+                Positioned.fill(
+                  child: InAppWebView(
+                    initialSettings: InAppWebViewSettings(
+                      javaScriptEnabled: true,
+                      domStorageEnabled: true,
+                    ),
+                    onWebViewCreated: _scraperHelper.onWebViewCreated,
+                    onLoadStop: (controller, url) async {
+                      _scraperHelper.onLoadFinished(controller, url);
+                      // Wait a bit for the page to fully render
+                      await Future.delayed(Duration(milliseconds: 1500));
+                      await _extractFoodData();
+                    },
                   ),
+                ),
+
+                // UI visível (por cima do WebView)
+                Positioned.fill(
+                  child: Container(
+                    color: backgroundColor,
+                    child: _isSearching
+                        ? _buildSearchResults(isDarkMode, textColor, secondaryTextColor, cardColor)
+                        : TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildRecentList(isDarkMode, textColor, secondaryTextColor, cardColor),
+                              _buildFavoritesList(isDarkMode, textColor, secondaryTextColor, cardColor),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -465,10 +353,17 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       child: InkWell(
         onTap: () {
           final food = _convertToFood(item);
+          final foodUrl = item['link'] != null
+              ? 'https://mobile.fatsecret.com.br${item['link']}'
+              : null;
+
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => FoodPage(food: food),
+              builder: (context) => FoodPage(
+                food: food,
+                foodUrl: foodUrl,
+              ),
             ),
           );
         },
@@ -487,6 +382,20 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                   color: textColor,
                 ),
               ),
+
+              // Brand
+              if (item['marca'] != null && item['marca'].isNotEmpty) ...[
+                SizedBox(height: 4),
+                Text(
+                  item['marca'],
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ],
+
               SizedBox(height: 8),
 
               // Description
