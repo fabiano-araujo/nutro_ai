@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:provider/provider.dart';
 import '../models/food_model.dart';
+import '../models/meal_model.dart';
+import '../providers/daily_meals_provider.dart';
 import '../theme/app_theme.dart';
 
 class FoodPage extends StatefulWidget {
@@ -54,6 +57,142 @@ class _FoodPageState extends State<FoodPage> {
         _currentServingSize = newValue;
       });
     }
+  }
+
+  void _showMealTypeSelector(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final textColor = isDarkMode
+        ? AppTheme.darkTextColor
+        : AppTheme.textPrimaryColor;
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Select Meal Type',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: textColor),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              // Meal types list
+              ...MealType.values.map((mealType) {
+                final option = DailyMealsProvider.getMealTypeOption(mealType);
+
+                return InkWell(
+                  onTap: () {
+                    // Create a Food object with the current serving size
+                    final nutrient = widget.food.nutrients?.first;
+                    final originalServing = nutrient?.servingSize ?? 100.0;
+                    final scaleFactor = _currentServingSize / originalServing;
+
+                    // Create a new Food with scaled nutrients
+                    final scaledFood = widget.food.copyWith(
+                      nutrients: widget.food.nutrients?.map((n) => n.copyWith(
+                        servingSize: _currentServingSize,
+                        calories: (n.calories ?? 0) * scaleFactor,
+                        protein: (n.protein ?? 0) * scaleFactor,
+                        carbohydrate: (n.carbohydrate ?? 0) * scaleFactor,
+                        fat: (n.fat ?? 0) * scaleFactor,
+                        saturatedFat: n.saturatedFat != null ? n.saturatedFat! * scaleFactor : null,
+                        transFat: n.transFat != null ? n.transFat! * scaleFactor : null,
+                        cholesterol: n.cholesterol != null ? (n.cholesterol! * scaleFactor).toDouble() : null,
+                        sodium: n.sodium != null ? (n.sodium! * scaleFactor).toDouble() : null,
+                        potassium: n.potassium != null ? (n.potassium! * scaleFactor).toDouble() : null,
+                        dietaryFiber: n.dietaryFiber != null ? n.dietaryFiber! * scaleFactor : null,
+                        sugars: n.sugars != null ? n.sugars! * scaleFactor : null,
+                        vitaminA: n.vitaminA != null ? n.vitaminA! * scaleFactor : null,
+                        vitaminC: n.vitaminC != null ? n.vitaminC! * scaleFactor : null,
+                        vitaminD: n.vitaminD != null ? n.vitaminD! * scaleFactor : null,
+                        vitaminB6: n.vitaminB6 != null ? n.vitaminB6! * scaleFactor : null,
+                        vitaminB12: n.vitaminB12 != null ? n.vitaminB12! * scaleFactor : null,
+                        calcium: n.calcium != null ? (n.calcium! * scaleFactor).toDouble() : null,
+                        iron: n.iron != null ? n.iron! * scaleFactor : null,
+                      )).toList(),
+                    );
+
+                    // Add to meal
+                    Provider.of<DailyMealsProvider>(context, listen: false)
+                        .addFoodToMeal(mealType, scaledFood);
+
+                    // Close both dialogs
+                    Navigator.pop(context); // Close meal type selector
+                    Navigator.pop(context); // Close food page
+
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${widget.food.name} added to ${option.name}'),
+                        duration: Duration(seconds: 2),
+                        backgroundColor: AppTheme.primaryColor,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                    margin: EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDarkMode
+                            ? AppTheme.darkBorderColor
+                            : AppTheme.dividerColor,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          option.emoji,
+                          style: TextStyle(fontSize: 24),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          option.name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: textColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+              SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showPortionPicker() {
@@ -760,8 +899,7 @@ class _FoodPageState extends State<FoodPage> {
               padding: EdgeInsets.all(16),
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: Add to meal
-                  Navigator.pop(context);
+                  _showMealTypeSelector(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,

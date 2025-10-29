@@ -37,6 +37,7 @@ import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
 import 'daily_meals_screen.dart';
+import 'nutrition_search_screen.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -863,11 +864,23 @@ class AITutorScreenState extends State<AITutorScreen>
               child: Column(
                 children: [
                   // Calendário semanal
-                  WeeklyCalendar(
-                    selectedDate: DateTime.now(),
-                    onDaySelected: (date) {
-                      // TODO: Implementar filtro de conversas por data
-                      print('Data selecionada: $date');
+                  Consumer<DailyMealsProvider>(
+                    builder: (context, mealsProvider, child) {
+                      return WeeklyCalendar(
+                        selectedDate: mealsProvider.selectedDate,
+                        onDaySelected: (date) {
+                          print('Data selecionada: $date');
+                          mealsProvider.setSelectedDate(date);
+                        },
+                        onSearchPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NutritionSearchScreen(),
+                            ),
+                          );
+                        },
+                      );
                     },
                   ),
 

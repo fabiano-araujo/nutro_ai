@@ -6,7 +6,8 @@
             "name": "Flutter: Android",
             "type": "dart",
             "request": "launch",
-            "program": "lib/main.dart"
+            "program": "lib/main.dart",
+            "flutterMode": "debug"
         },
         {
             "name": "Flutter: Chrome",

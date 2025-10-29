@@ -6,11 +6,13 @@ import '../i18n/app_localizations_extension.dart';
 class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
   final DateTime? selectedDate;
+  final VoidCallback? onSearchPressed;
 
   const WeeklyCalendar({
     Key? key,
     this.onDaySelected,
     this.selectedDate,
+    this.onSearchPressed,
   }) : super(key: key);
 
   @override
@@ -215,8 +217,26 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                 ),
               ),
 
-              // Espaço vazio à direita para manter centralização
-              SizedBox(width: 90),
+              // Ícone de pesquisa à direita
+              SizedBox(
+                width: 90,
+                child: widget.onSearchPressed != null
+                    ? Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.search,
+                              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                            ),
+                            tooltip: 'Pesquisar alimentos',
+                            onPressed: widget.onSearchPressed,
+                          ),
+                        ),
+                      )
+                    : SizedBox.shrink(),
+              ),
             ],
           ),
         ),
