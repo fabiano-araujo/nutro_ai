@@ -34,6 +34,7 @@ class _FoodPageState extends State<FoodPage> {
   InAppWebViewController? _webViewController;
   Food? _fullFoodData;
   String? _foodUrlToLoad;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _FoodPageState extends State<FoodPage> {
           : 'https://mobile.fatsecret.com.br${widget.foodUrl}';
 
       print('Will load food data from: $_foodUrlToLoad');
+      _isLoading = true; // Start loading
     }
   }
 
@@ -167,6 +169,7 @@ class _FoodPageState extends State<FoodPage> {
 
         setState(() {
           _fullFoodData = fullFood;
+          _isLoading = false; // Stop loading on success
 
           // Update serving size and portions if available
           if (fullFood.nutrients != null && fullFood.nutrients!.isNotEmpty) {
@@ -185,6 +188,9 @@ class _FoodPageState extends State<FoodPage> {
         print('Food data loaded successfully: ${fullFood.name}');
       } catch (e) {
         print('Error parsing food data: $e');
+        setState(() {
+          _isLoading = false; // Stop loading on error
+        });
       }
     } else {
       print('===== NO VALID DATA =====');
@@ -199,6 +205,9 @@ class _FoodPageState extends State<FoodPage> {
         print('Data is not empty but invalid: $data');
       }
       print('========================');
+      setState(() {
+        _isLoading = false; // Stop loading even if no valid data
+      });
     }
   }
 
@@ -613,6 +622,9 @@ class _FoodPageState extends State<FoodPage> {
                 },
                 onReceivedError: (controller, request, error) {
                   print('WebView error: ${error.description}');
+                  setState(() {
+                    _isLoading = false; // Stop loading on WebView error
+                  });
                 },
               ),
             ),
@@ -621,7 +633,13 @@ class _FoodPageState extends State<FoodPage> {
           Positioned.fill(
             child: Container(
               color: backgroundColor,
-              child: CustomScrollView(
+              child: _isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        color: AppTheme.primaryColor,
+                      ),
+                    )
+                  : CustomScrollView(
             slivers: [
               // Top App Bar
               SliverAppBar(
