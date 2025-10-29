@@ -186,7 +186,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             children: [
               Expanded(
                 child: _buildMacroColumn(
-                  icon: Icons.fitness_center,
+                  icon: Icons.restaurant_menu,
                   iconColor: const Color(0xFF9575CD),
                   label: 'Proteína',
                   value: '${provider.proteinGoal}g',
@@ -202,7 +202,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               ),
               Expanded(
                 child: _buildMacroColumn(
-                  icon: Icons.grain,
+                  icon: Icons.bakery_dining,
                   iconColor: const Color(0xFFA1887F),
                   label: 'Carboidratos',
                   value: '${provider.carbsGoal}g',
@@ -218,7 +218,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               ),
               Expanded(
                 child: _buildMacroColumn(
-                  icon: Icons.water_drop,
+                  icon: Icons.opacity,
                   iconColor: const Color(0xFF90A4AE),
                   label: 'Gorduras',
                   value: '${provider.fatGoal}g',
@@ -630,7 +630,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 decoration: InputDecoration(
                   labelText: 'Proteína (g)',
                   labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-                  prefixIcon: Icon(Icons.fitness_center, color: const Color(0xFF9575CD)),
+                  prefixIcon: Icon(Icons.restaurant_menu, color: const Color(0xFF9575CD)),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
                     borderRadius: BorderRadius.circular(12),
@@ -649,7 +649,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 decoration: InputDecoration(
                   labelText: 'Carboidratos (g)',
                   labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-                  prefixIcon: Icon(Icons.grain, color: const Color(0xFFA1887F)),
+                  prefixIcon: Icon(Icons.bakery_dining, color: const Color(0xFFA1887F)),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
                     borderRadius: BorderRadius.circular(12),
@@ -668,7 +668,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 decoration: InputDecoration(
                   labelText: 'Gorduras (g)',
                   labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
-                  prefixIcon: Icon(Icons.water_drop, color: const Color(0xFF90A4AE)),
+                  prefixIcon: Icon(Icons.opacity, color: const Color(0xFF90A4AE)),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
                     borderRadius: BorderRadius.circular(12),

@@ -500,7 +500,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Carboidratos',
         value: _carbsPercentage,
         color: const Color(0xFFA1887F),
-        icon: Icons.grain,
+        icon: Icons.bakery_dining,
         onChanged: (value) {
           setState(() {
             _carbsPercentage = value;
@@ -513,7 +513,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Proteína',
         value: _proteinPercentage,
         color: const Color(0xFF9575CD),
-        icon: Icons.fitness_center,
+        icon: Icons.restaurant_menu,
         onChanged: (value) {
           setState(() {
             _proteinPercentage = value;
@@ -526,7 +526,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Gorduras',
         value: _fatPercentage,
         color: const Color(0xFF90A4AE),
-        icon: Icons.water_drop,
+        icon: Icons.opacity,
         onChanged: (value) {
           setState(() {
             _fatPercentage = value;
@@ -609,7 +609,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Carboidratos',
         value: _carbsGrams,
         color: const Color(0xFFA1887F),
-        icon: Icons.grain,
+        icon: Icons.bakery_dining,
         caloriesPerGram: 4,
         onChanged: (value) {
           setState(() {
@@ -623,7 +623,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Proteína',
         value: _proteinGrams,
         color: const Color(0xFF9575CD),
-        icon: Icons.fitness_center,
+        icon: Icons.restaurant_menu,
         caloriesPerGram: 4,
         onChanged: (value) {
           setState(() {
@@ -637,7 +637,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Gorduras',
         value: _fatGrams,
         color: const Color(0xFF90A4AE),
-        icon: Icons.water_drop,
+        icon: Icons.opacity,
         caloriesPerGram: 9,
         onChanged: (value) {
           setState(() {
@@ -673,7 +673,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Carboidratos',
         value: _carbsPerKg,
         color: const Color(0xFFA1887F),
-        icon: Icons.grain,
+        icon: Icons.bakery_dining,
         caloriesPerGram: 4,
         weight: widget.provider.weight,
         onChanged: (value) {
@@ -688,7 +688,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Proteína',
         value: _proteinPerKg,
         color: const Color(0xFF9575CD),
-        icon: Icons.fitness_center,
+        icon: Icons.restaurant_menu,
         caloriesPerGram: 4,
         weight: widget.provider.weight,
         onChanged: (value) {
@@ -703,7 +703,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         label: 'Gorduras',
         value: _fatPerKg,
         color: const Color(0xFF90A4AE),
-        icon: Icons.water_drop,
+        icon: Icons.opacity,
         caloriesPerGram: 9,
         weight: widget.provider.weight,
         onChanged: (value) {
