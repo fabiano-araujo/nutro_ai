@@ -40,6 +40,8 @@ import '../widgets/nutrition_card.dart';
 import 'daily_meals_screen.dart';
 import 'food_search_screen.dart';
 import 'camera_scan_screen.dart';
+import 'profile_screen.dart';
+import 'login_screen.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -918,6 +920,7 @@ class AITutorScreenState extends State<AITutorScreen>
                   // Calendário semanal
                   Consumer<DailyMealsProvider>(
                     builder: (context, mealsProvider, child) {
+                      final authService = Provider.of<AuthService>(context);
                       return WeeklyCalendar(
                         selectedDate: mealsProvider.selectedDate,
                         onDaySelected: (date) {
@@ -932,6 +935,18 @@ class AITutorScreenState extends State<AITutorScreen>
                             ),
                           );
                         },
+                        onProfilePressed: () {
+                          final authService = Provider.of<AuthService>(context, listen: false);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => authService.isAuthenticated
+                                  ? const ProfileScreen()
+                                  : const LoginScreen(),
+                            ),
+                          );
+                        },
+                        profileImageUrl: authService.currentUser?.photo,
                       );
                     },
                   ),
@@ -1053,7 +1068,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                                   ),
                                                 ),
                                                 TextSpan(
-                                                  text: 'Por onde\ncomençamos?',
+                                                  text: 'Por onde\ncomeçamos?',
                                                   style: TextStyle(
                                                     fontSize: 32,
                                                     fontWeight: FontWeight.bold,

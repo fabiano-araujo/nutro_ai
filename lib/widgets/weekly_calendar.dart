@@ -8,6 +8,7 @@ class WeeklyCalendar extends StatefulWidget {
   final DateTime? selectedDate;
   final VoidCallback? onSearchPressed;
   final VoidCallback? onProfilePressed;
+  final String? profileImageUrl;
 
   const WeeklyCalendar({
     Key? key,
@@ -15,6 +16,7 @@ class WeeklyCalendar extends StatefulWidget {
     this.selectedDate,
     this.onSearchPressed,
     this.onProfilePressed,
+    this.profileImageUrl,
   }) : super(key: key);
 
   @override
@@ -224,7 +226,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
 
               // Ícones à direita (pesquisa e perfil)
               SizedBox(
-                width: 90,
+                width: 110,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -242,15 +244,22 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                     if (widget.onProfilePressed != null)
                       Padding(
                         padding: EdgeInsets.only(left: 8, right: 8),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.person_outline,
-                            color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                        child: GestureDetector(
+                          onTap: widget.onProfilePressed,
+                          child: CircleAvatar(
+                            radius: 20,
+                            backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                            backgroundImage: widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty
+                                ? NetworkImage(widget.profileImageUrl!)
+                                : null,
+                            child: widget.profileImageUrl == null || widget.profileImageUrl!.isEmpty
+                                ? Icon(
+                                    Icons.person,
+                                    size: 24,
+                                    color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                                  )
+                                : null,
                           ),
-                          tooltip: 'Perfil',
-                          onPressed: widget.onProfilePressed,
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(),
                         ),
                       ),
                   ],
