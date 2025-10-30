@@ -150,20 +150,20 @@ class AITutorScreenState extends State<AITutorScreen>
             '1 filé de frango cru 120g, salada e 2 colheres de arroz',
           ];
           break;
-        case 'perguntar_nutricao':
+        case 'sugestoes_refeicoes':
           _suggestions = [
-            'Quantas calorias tem uma banana?',
-            'Qual a melhor proteína para ganho muscular?',
-            'Como montar um prato saudável?',
-            'Quais alimentos são ricos em ferro?',
+            'Me sugira um almoço saudável e prático',
+            'O que posso comer no café da manhã para emagrecer?',
+            'O que comer para ganhar peso sendo magro?',
+            'Monte um cardápio completo para o meu dia',
           ];
           break;
-        case 'ver_progresso':
+        case 'perguntar_nutricao':
           _suggestions = [
-            'Mostre meu consumo de calorias hoje',
-            'Como está minha evolução essa semana?',
-            'Já atingi minhas metas nutricionais?',
-            'Quantas proteínas consumi hoje?',
+            'Não consigo emagrecer, o que posso estar fazendo errado?',
+            'Como ganhar massa muscular rapidamente?',
+            'Como controlar a vontade de comer doces?',
+            'Posso comer carboidrato à noite?',
           ];
           break;
         default:
@@ -1127,21 +1127,22 @@ class AITutorScreenState extends State<AITutorScreen>
                                       // Saudação personalizada
                                       Consumer<AuthService>(
                                         builder: (context, authService, child) {
-                                          final userName = authService.currentUser?.name?.split(' ').first ?? 'Olá';
+                                          final userName = authService.currentUser?.name?.split(' ').first;
                                           return RichText(
                                             text: TextSpan(
                                               children: [
-                                                TextSpan(
-                                                  text: authService.isAuthenticated ? 'Olá, $userName,\n' : 'Olá,\n',
-                                                  style: TextStyle(
-                                                    fontSize: 24,
-                                                    fontWeight: FontWeight.w300,
-                                                    color: isDarkMode
-                                                        ? Colors.white
-                                                        : AppTheme.textPrimaryColor,
-                                                    height: 1.2,
+                                                if (authService.isAuthenticated)
+                                                  TextSpan(
+                                                    text: 'Olá, $userName,\n',
+                                                    style: TextStyle(
+                                                      fontSize: 24,
+                                                      fontWeight: FontWeight.w300,
+                                                      color: isDarkMode
+                                                          ? Colors.white
+                                                          : AppTheme.textPrimaryColor,
+                                                      height: 1.2,
+                                                    ),
                                                   ),
-                                                ),
                                                 TextSpan(
                                                   text: 'Por onde\ncomeçamos?',
                                                   style: TextStyle(
@@ -1185,18 +1186,18 @@ class AITutorScreenState extends State<AITutorScreen>
                                       ),
                                       SizedBox(height: 12),
                                       _buildSuggestionButton(
-                                        text: 'Perguntar sobre nutrição',
+                                        text: 'Sugestões de refeições',
                                         isDarkMode: isDarkMode,
                                         onTap: () {
-                                          _showSuggestionsForAction('perguntar_nutricao');
+                                          _showSuggestionsForAction('sugestoes_refeicoes');
                                         },
                                       ),
                                       SizedBox(height: 12),
                                       _buildSuggestionButton(
-                                        text: 'Ver meu progresso',
+                                        text: 'Perguntar sobre nutrição',
                                         isDarkMode: isDarkMode,
                                         onTap: () {
-                                          _showSuggestionsForAction('ver_progresso');
+                                          _showSuggestionsForAction('perguntar_nutricao');
                                         },
                                       ),
                                     ],
