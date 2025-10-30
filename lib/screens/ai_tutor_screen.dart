@@ -172,9 +172,11 @@ class AITutorScreenState extends State<AITutorScreen>
     });
     // Focar no input após construir o widget
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _inputFocusNode.requestFocus();
+      if (!mounted) {
+        return;
       }
+      FocusScope.of(context).requestFocus(_inputFocusNode);
+      SystemChannels.textInput.invokeMethod('TextInput.show');
     });
   }
 
