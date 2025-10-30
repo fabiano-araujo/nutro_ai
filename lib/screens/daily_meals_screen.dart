@@ -9,6 +9,7 @@ import '../widgets/nutrition_card.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
 import 'food_search_screen.dart';
+import '../i18n/app_localizations.dart';
 
 class DailyMealsScreen extends StatefulWidget {
   const DailyMealsScreen({Key? key}) : super(key: key);
@@ -77,6 +78,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
         ),
         title: Consumer<DailyMealsProvider>(
           builder: (context, mealsProvider, child) {
+            final appLocalizations = AppLocalizations.of(context);
             final selectedDate = mealsProvider.selectedDate;
             final today = DateTime.now();
 
@@ -90,11 +92,11 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             // Determinar o texto baseado na diferença
             String dateText;
             if (difference == 0) {
-              dateText = 'Hoje';
+              dateText = appLocalizations.translate('today');
             } else if (difference == -1) {
-              dateText = 'Ontem';
+              dateText = appLocalizations.translate('yesterday');
             } else if (difference == 1) {
-              dateText = 'Amanhã';
+              dateText = appLocalizations.translate('tomorrow');
             } else {
               dateText = '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}';
             }
@@ -104,7 +106,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Diário de Refeições',
+                  appLocalizations.translate('meals_diary'),
                   style: AppTheme.headingLarge.copyWith(
                     color: textColor,
                     fontSize: 20,
@@ -125,7 +127,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.calendar_today, color: textColor),
-            tooltip: 'Selecionar data',
+            tooltip: AppLocalizations.of(context).translate('select_date'),
             onPressed: () => _showDatePicker(context),
           ),
         ],
@@ -144,7 +146,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Resumo Nutricional',
+                        AppLocalizations.of(context).translate('nutrition_summary'),
                         style: AppTheme.headingMedium.copyWith(
                           color: textColor,
                           fontSize: 18,

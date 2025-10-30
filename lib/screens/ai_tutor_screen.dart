@@ -1529,40 +1529,46 @@ class AITutorScreenState extends State<AITutorScreen>
           if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: Image.network(
-                  thumbnailUrl,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 180,
-                      color: Colors.grey[300],
-                      child: Center(child: Icon(Icons.broken_image)),
-                    );
-                  },
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Image.network(
+                    thumbnailUrl,
+                    height: 180,
+                    width: 180,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 180,
+                        width: 180,
+                        color: Colors.grey[300],
+                        child: Center(child: Icon(Icons.broken_image)),
+                      );
+                    },
+                  ),
                 ),
               ),
             )
           else if (isFromCamera && cameraImageBytes != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: Image.memory(
-                  cameraImageBytes,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 180,
-                      color: Colors.grey[300],
-                      child: Center(child: Icon(Icons.broken_image)),
-                    );
-                  },
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Image.memory(
+                    cameraImageBytes,
+                    height: 180,
+                    width: 180,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 180,
+                        width: 180,
+                        color: Colors.grey[300],
+                        child: Center(child: Icon(Icons.broken_image)),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),

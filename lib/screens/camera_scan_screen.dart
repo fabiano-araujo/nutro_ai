@@ -12,6 +12,7 @@ import 'package:camera/camera.dart';
 import 'dart:async';
 import '../widgets/credit_indicator.dart';
 import 'image_edit_screen.dart';
+import 'camera_tips_screen.dart';
 
 class CameraScanScreen extends StatefulWidget {
   const CameraScanScreen({Key? key}) : super(key: key);
@@ -53,7 +54,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     {
       'id': 'barcode',
       'label': 'Código de Barras',
-      'color': Color(0xFF21AAFF),
+      'color': Color(0xFF9C27B0),
       'icon': Icons.qr_code_scanner,
     },
   ];
@@ -91,7 +92,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
     _pageController = PageController(
       initialPage: initialIndex,
-      viewportFraction: 0.5, // Aumentado para dar mais espaço aos textos
+      viewportFraction: 0.28, // Reduzido para aproximar ainda mais os itens
     );
 
     // Adicionar verificação de sanidade para câmera presa em loading
@@ -738,9 +739,22 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         iconTheme: IconThemeData(color: Colors.white),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 8.0),
             child: CreditIndicator(),
           ),
+          IconButton(
+            icon: Icon(Icons.info, color: Colors.white, size: 26),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CameraTipsScreen(),
+                ),
+              );
+            },
+            tooltip: 'Dicas de captura',
+          ),
+          SizedBox(width: 8),
         ],
       ),
       body: Stack(
@@ -1104,11 +1118,11 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         }
       },
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 6, horizontal: 14),
-        width: 140, // Largura fixa mas suficiente para todos os textos
+        padding: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        width: 110, // Largura reduzida para aproximar ainda mais
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: isSelected ? color.withOpacity(0.15) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
         ),
         child: Text(
           label,

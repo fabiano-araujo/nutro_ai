@@ -82,11 +82,14 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
   String _formatDateTitle(BuildContext context) {
     final now = DateTime.now();
     final yesterday = now.subtract(Duration(days: 1));
+    final tomorrow = now.add(Duration(days: 1));
 
     if (_isSameDay(_selectedDate, now)) {
       return context.tr.translate('today');
     } else if (_isSameDay(_selectedDate, yesterday)) {
       return context.tr.translate('yesterday');
+    } else if (_isSameDay(_selectedDate, tomorrow)) {
+      return context.tr.translate('tomorrow');
     } else {
       final formatter = DateFormat('MMM. d, yyyy', 'pt_BR');
       return formatter.format(_selectedDate);
