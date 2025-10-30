@@ -12,6 +12,7 @@ import '../controllers/ai_tutor_controller.dart'; // Novo import para o controll
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/ad_manager.dart';
+import '../services/auth_service.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../providers/credit_provider.dart';
@@ -974,32 +975,84 @@ class AITutorScreenState extends State<AITutorScreen>
                           Positioned.fill(
                             child: Container(
                               color: currentScaffoldBackgroundColor,
-                              child: Center(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
                                 child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 32),
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        appLocalizations.translate('start_question'),
-                                        style: TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDarkMode
-                                              ? Colors.white
-                                              : AppTheme.textPrimaryColor,
-                                        ),
-                                        textAlign: TextAlign.center,
+                                      // Saudação personalizada
+                                      Consumer<AuthService>(
+                                        builder: (context, authService, child) {
+                                          final userName = authService.currentUser?.name?.split(' ').first ?? 'Olá';
+                                          return RichText(
+                                            text: TextSpan(
+                                              children: [
+                                                TextSpan(
+                                                  text: authService.isAuthenticated ? 'Olá, $userName,\n' : 'Olá,\n',
+                                                  style: TextStyle(
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.w300,
+                                                    color: isDarkMode
+                                                        ? Colors.white
+                                                        : AppTheme.textPrimaryColor,
+                                                    height: 1.2,
+                                                  ),
+                                                ),
+                                                TextSpan(
+                                                  text: 'Como posso\najudar você?',
+                                                  style: TextStyle(
+                                                    fontSize: 32,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isDarkMode
+                                                        ? Colors.white
+                                                        : AppTheme.textPrimaryColor,
+                                                    height: 1.2,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      SizedBox(height: 32),
+                                      // Botões de ação sugeridos
+                                      _buildSuggestionButton(
+                                        icon: '🍽️',
+                                        text: 'Registrar refeição',
+                                        isDarkMode: isDarkMode,
+                                        onTap: () {
+                                          _messageController.text = 'Quero registrar uma refeição';
+                                          _handleSendMessage();
+                                        },
                                       ),
                                       SizedBox(height: 12),
-                                      Text(
-                                        appLocalizations.translate('start_question_subtitle'),
-                                        style: AppTheme.bodyMedium.copyWith(
-                                          color: isDarkMode
-                                              ? Colors.white70
-                                              : AppTheme.textSecondaryColor,
-                                        ),
-                                        textAlign: TextAlign.center,
+                                      _buildSuggestionButton(
+                                        icon: '📸',
+                                        text: 'Tirar foto e analisar',
+                                        isDarkMode: isDarkMode,
+                                        onTap: () {
+                                          _handleImageSelection(ImageSource.camera);
+                                        },
+                                      ),
+                                      SizedBox(height: 12),
+                                      _buildSuggestionButton(
+                                        text: 'Perguntar sobre nutrição',
+                                        isDarkMode: isDarkMode,
+                                        onTap: () {
+                                          FocusScope.of(context).requestFocus();
+                                        },
+                                      ),
+                                      SizedBox(height: 12),
+                                      _buildSuggestionButton(
+                                        text: 'Ver meu progresso',
+                                        isDarkMode: isDarkMode,
+                                        onTap: () {
+                                          _messageController.text = 'Quero ver meu progresso nutricional';
+                                          _handleSendMessage();
+                                        },
                                       ),
                                     ],
                                   ),
@@ -1684,6 +1737,48 @@ class AITutorScreenState extends State<AITutorScreen>
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  // Widget para botões de sugestão na tela de boas-vindas
+  Widget _buildSuggestionButton({
+    String? icon,
+    required String text,
+    required bool isDarkMode,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(50),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDarkMode
+              ? Color(0xFF1E1E1E)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Text(
+                icon,
+                style: TextStyle(fontSize: 20),
+              ),
+              SizedBox(width: 12),
+            ],
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: isDarkMode ? Colors.white.withValues(alpha: 0.9) : Color(0xFF333333),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
