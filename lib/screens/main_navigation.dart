@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'tools_screen.dart';
-import 'camera_scan_screen.dart';
 import 'ai_tutor_screen.dart';
 import 'profile_screen.dart';
 import '../theme/app_theme.dart';
@@ -79,7 +78,6 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     AITutorScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
     ToolsScreen(), // Ferramentas (Tools) - Dark theme
-    CameraScanScreen(), // Digitalizar (Scan) - Direct camera access
     // Exibe LoginScreen se não autenticado, senão ProfileScreen
     Builder(
       builder: (context) {
@@ -155,11 +153,6 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(
               icon: Icon(Icons.lightbulb_outline),
               activeIcon: Icon(Icons.lightbulb),
-              label: '',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.camera_alt_outlined),
-              activeIcon: Icon(Icons.camera_alt),
               label: '',
             ),
             BottomNavigationBarItem(

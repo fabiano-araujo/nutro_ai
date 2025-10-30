@@ -39,6 +39,7 @@ import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
 import 'daily_meals_screen.dart';
 import 'food_search_screen.dart';
+import 'camera_scan_screen.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -108,6 +109,7 @@ class AITutorScreenState extends State<AITutorScreen>
   // Controllers para UI
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _inputFocusNode = FocusNode();
 
   // Para animação do ícone pulsante
   late AnimationController _animationController;
@@ -127,6 +129,54 @@ class AITutorScreenState extends State<AITutorScreen>
   Map<String, dynamic>? _toolData;
   bool _showToolTranscript =
       false; // Estado para controlar a visibilidade da transcrição no card
+
+  // Lista de sugestões para mostrar ao usuário
+  List<String> _suggestions = [];
+
+  // Método para mostrar sugestões baseado na ação
+  void _showSuggestionsForAction(String actionType) {
+    setState(() {
+      switch (actionType) {
+        case 'registrar_refeicao':
+          _suggestions = [
+            'Comi 2 pães de forma com 1 copo de leite',
+            'Comi um pedaço grande de bolo de chocolate',
+            '200g de feijão com 150g de arroz e carne',
+            '1 filé de frango cru 120g, salada e 2 colheres de arroz',
+          ];
+          break;
+        case 'perguntar_nutricao':
+          _suggestions = [
+            'Quantas calorias tem uma banana?',
+            'Qual a melhor proteína para ganho muscular?',
+            'Como montar um prato saudável?',
+            'Quais alimentos são ricos em ferro?',
+          ];
+          break;
+        case 'ver_progresso':
+          _suggestions = [
+            'Mostre meu consumo de calorias hoje',
+            'Como está minha evolução essa semana?',
+            'Já atingi minhas metas nutricionais?',
+            'Quantas proteínas consumi hoje?',
+          ];
+          break;
+        default:
+          _suggestions = [];
+      }
+    });
+    // Focar no input para o teclado subir
+    Future.delayed(Duration(milliseconds: 100), () {
+      _inputFocusNode.requestFocus();
+    });
+  }
+
+  // Método para limpar sugestões
+  void _clearSuggestions() {
+    setState(() {
+      _suggestions = [];
+    });
+  }
 
   // Implementação dos getters e métodos requeridos pelo AITutorSpeechMixin
   @override
@@ -382,6 +432,7 @@ class AITutorScreenState extends State<AITutorScreen>
 
     _messageController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
     _animationController.dispose();
     _controller.dispose();
 
@@ -970,8 +1021,8 @@ class AITutorScreenState extends State<AITutorScreen>
                             },
                           ),
 
-                        // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens)
-                        if (messages.isEmpty)
+                        // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens e não há sugestões)
+                        if (messages.isEmpty && _suggestions.isEmpty)
                           Positioned.fill(
                             child: Container(
                               color: currentScaffoldBackgroundColor,
@@ -1002,7 +1053,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                                   ),
                                                 ),
                                                 TextSpan(
-                                                  text: 'Como posso\najudar você?',
+                                                  text: 'Por onde\ncomençamos?',
                                                   style: TextStyle(
                                                     fontSize: 32,
                                                     fontWeight: FontWeight.bold,
@@ -1020,21 +1071,26 @@ class AITutorScreenState extends State<AITutorScreen>
                                       SizedBox(height: 32),
                                       // Botões de ação sugeridos
                                       _buildSuggestionButton(
-                                        icon: '🍽️',
+                                        icon: '🍎',
                                         text: 'Registrar refeição',
                                         isDarkMode: isDarkMode,
                                         onTap: () {
-                                          _messageController.text = 'Quero registrar uma refeição';
-                                          _handleSendMessage();
+                                          _showSuggestionsForAction('registrar_refeicao');
                                         },
                                       ),
                                       SizedBox(height: 12),
                                       _buildSuggestionButton(
                                         icon: '📸',
-                                        text: 'Tirar foto e analisar',
+                                        text: 'Analisar foto com IA',
                                         isDarkMode: isDarkMode,
                                         onTap: () {
-                                          _handleImageSelection(ImageSource.camera);
+                                          // Abrir tela da câmera
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => CameraScanScreen(),
+                                            ),
+                                          );
                                         },
                                       ),
                                       SizedBox(height: 12),
@@ -1042,7 +1098,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                         text: 'Perguntar sobre nutrição',
                                         isDarkMode: isDarkMode,
                                         onTap: () {
-                                          FocusScope.of(context).requestFocus();
+                                          _showSuggestionsForAction('perguntar_nutricao');
                                         },
                                       ),
                                       SizedBox(height: 12),
@@ -1050,8 +1106,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                         text: 'Ver meu progresso',
                                         isDarkMode: isDarkMode,
                                         onTap: () {
-                                          _messageController.text = 'Quero ver meu progresso nutricional';
-                                          _handleSendMessage();
+                                          _showSuggestionsForAction('ver_progresso');
                                         },
                                       ),
                                     ],
@@ -1073,6 +1128,43 @@ class AITutorScreenState extends State<AITutorScreen>
                         EdgeInsets.only(left: 16, right: 16, bottom: 6, top: 8),
                     child: Column(
                       children: [
+                        // Sugestões de prompts
+                        if (_suggestions.isNotEmpty)
+                          Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            height: 160,
+                            child: ListView.builder(
+                              itemCount: _suggestions.length,
+                              itemBuilder: (context, index) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    _messageController.text = _suggestions[index];
+                                    _clearSuggestions();
+                                    _handleSendMessage();
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.only(bottom: 8),
+                                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode
+                                          ? Color(0xFF2C2C2C)
+                                          : Color(0xFFF5F5F5),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _suggestions[index],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: isDarkMode
+                                            ? Colors.white.withValues(alpha: 0.9)
+                                            : Color(0xFF333333),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         // Exibir miniatura da imagem selecionada
                         if (hasSelectedImage && selectedImageBytes != null)
                           Padding(
@@ -1205,6 +1297,7 @@ class AITutorScreenState extends State<AITutorScreen>
                               Expanded(
                                 child: TextField(
                                   controller: _messageController,
+                                  focusNode: _inputFocusNode,
                                   decoration: InputDecoration(
                                     hintText:
                                         context.tr.translate('ask_anything') ??
@@ -1240,6 +1333,9 @@ class AITutorScreenState extends State<AITutorScreen>
                                       TextCapitalization.sentences,
                                   maxLines: null,
                                   onChanged: (text) {
+                                    if (_suggestions.isNotEmpty) {
+                                      _clearSuggestions();
+                                    }
                                     setState(() {});
                                   },
                                   enabled:

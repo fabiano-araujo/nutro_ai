@@ -7,12 +7,14 @@ class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
   final DateTime? selectedDate;
   final VoidCallback? onSearchPressed;
+  final VoidCallback? onProfilePressed;
 
   const WeeklyCalendar({
     Key? key,
     this.onDaySelected,
     this.selectedDate,
     this.onSearchPressed,
+    this.onProfilePressed,
   }) : super(key: key);
 
   @override
@@ -220,25 +222,39 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                 ),
               ),
 
-              // Ícone de pesquisa à direita
+              // Ícones à direita (pesquisa e perfil)
               SizedBox(
                 width: 90,
-                child: widget.onSearchPressed != null
-                    ? Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: EdgeInsets.only(right: 8),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.search,
-                              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                            ),
-                            tooltip: 'Pesquisar alimentos',
-                            onPressed: widget.onSearchPressed,
-                          ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (widget.onSearchPressed != null)
+                      IconButton(
+                        icon: Icon(
+                          Icons.search,
+                          color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                         ),
-                      )
-                    : SizedBox.shrink(),
+                        tooltip: 'Pesquisar alimentos',
+                        onPressed: widget.onSearchPressed,
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      ),
+                    if (widget.onProfilePressed != null)
+                      Padding(
+                        padding: EdgeInsets.only(left: 8, right: 8),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.person_outline,
+                            color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                          ),
+                          tooltip: 'Perfil',
+                          onPressed: widget.onProfilePressed,
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),

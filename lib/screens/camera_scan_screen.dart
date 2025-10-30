@@ -10,6 +10,7 @@ import 'document_scan_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 import 'package:camera/camera.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/credit_indicator.dart';
 import 'image_edit_screen.dart';
 import 'camera_tips_screen.dart';
@@ -97,6 +98,32 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
     // Adicionar verificação de sanidade para câmera presa em loading
     _setupSanityCheck();
+
+    // Verificar se é a primeira vez e mostrar dicas
+    _checkAndShowFirstTimeTips();
+  }
+
+  // Verificar se é a primeira vez usando a câmera e mostrar dicas
+  Future<void> _checkAndShowFirstTimeTips() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenCameraTips = prefs.getBool('has_seen_camera_tips') ?? false;
+
+    if (!hasSeenCameraTips) {
+      // Esperar um pouco para a tela carregar
+      await Future.delayed(Duration(milliseconds: 500));
+      if (mounted) {
+        // Marcar como já visto
+        await prefs.setBool('has_seen_camera_tips', true);
+
+        // Abrir tela de dicas
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CameraTipsScreen(),
+          ),
+        );
+      }
+    }
   }
 
   @override
