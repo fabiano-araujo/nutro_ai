@@ -268,7 +268,7 @@ final Map<String, String> itITTranslations = {
   'chemistry_hint': 'Scatta una foto di un problema di chimica',
   'history_hint': 'Scatta una foto di una domanda di storia',
   'ai_macros': 'Macro IA',
-  'ai_macros_hint': 'Scatta una foto del tuo cibo per calcolare i macro',
+  'ai_macros_hint': 'Il cibo deve essere ben illuminato e all\'interno dell\'inquadratura',
   'barcode': 'Codice a Barre',
   'barcode_hint': 'Scansiona il codice a barre del prodotto',
 

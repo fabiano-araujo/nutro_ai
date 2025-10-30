@@ -1188,7 +1188,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     switch (_selectedScanMode) {
       case 'ai_macros':
         return context.tr.translate('ai_macros_hint') ??
-            'Tire uma foto do seu alimento para calcular macros';
+            'Os alimentos devem estar bem iluminados e dentro do enquadramento';
       case 'barcode':
         return context.tr.translate('barcode_hint') ??
             'Escaneie o código de barras do produto';

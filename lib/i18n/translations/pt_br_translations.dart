@@ -695,7 +695,7 @@ final Map<String, String> ptBRTranslations = {
   'chemistry_hint': 'Tire uma foto de um problema de química',
   'history_hint': 'Tire uma foto de uma questão de história',
   'ai_macros': 'Macros com IA',
-  'ai_macros_hint': 'Tire uma foto do seu alimento para calcular macros',
+  'ai_macros_hint': 'Os alimentos devem estar bem iluminados e dentro do enquadramento',
   'barcode': 'Código de Barras',
   'barcode_hint': 'Escaneie o código de barras do produto',
 

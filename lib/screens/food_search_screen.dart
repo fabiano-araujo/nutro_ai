@@ -6,14 +6,18 @@ import '../theme/app_theme.dart';
 import '../models/food_model.dart';
 import '../models/Nutrient.dart';
 import '../models/FoodRegion.dart';
+import '../models/meal_model.dart';
 import 'food_page.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../helpers/scraper_helper.dart';
 import '../helpers/webview_helper.dart';
 import '../providers/food_history_provider.dart';
+import '../providers/daily_meals_provider.dart';
 
 class FoodSearchScreen extends StatefulWidget {
-  const FoodSearchScreen({Key? key}) : super(key: key);
+  final MealType? selectedMealType;
+
+  const FoodSearchScreen({Key? key, this.selectedMealType}) : super(key: key);
 
   @override
   State<FoodSearchScreen> createState() => _FoodSearchScreenState();
@@ -24,6 +28,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   final TextEditingController _searchController = TextEditingController();
   final ScraperHelper _scraperHelper = ScraperHelper();
   late TabController _tabController;
+  late MealType? _selectedMealType;
 
   bool _isSearching = false;
   List<Map<String, dynamic>> _searchResults = [];
@@ -33,6 +38,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _selectedMealType = widget.selectedMealType;
   }
 
   @override
@@ -158,14 +164,48 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          context.tr.translate('search_food'),
-          style: TextStyle(
-            color: textColor,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: _selectedMealType != null
+            ? DropdownButton<MealType>(
+                value: _selectedMealType,
+                underline: SizedBox.shrink(),
+                isDense: true,
+                dropdownColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                icon: SizedBox.shrink(),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                items: MealType.values.map((mealType) {
+                  final option = DailyMealsProvider.getMealTypeOption(mealType);
+                  return DropdownMenuItem<MealType>(
+                    value: mealType,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(option.emoji),
+                        SizedBox(width: 8),
+                        Text(option.name),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (MealType? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedMealType = newValue;
+                    });
+                  }
+                },
+              )
+            : Text(
+                context.tr.translate('search_food'),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
         actions: [
           IconButton(
             icon: Icon(
@@ -427,6 +467,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
             builder: (context) => FoodPage(
               food: food,
               foodUrl: foodUrl,
+              selectedMealType: _selectedMealType,
             ),
           ),
         );
@@ -561,7 +602,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => FoodPage(food: food),
+            builder: (context) => FoodPage(
+              food: food,
+              selectedMealType: _selectedMealType,
+            ),
           ),
         );
       },

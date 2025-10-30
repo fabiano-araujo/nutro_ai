@@ -610,11 +610,11 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
   }
 
   void _showAddFoodDialog(MealType type) {
-    // Navega para a tela de busca de alimentos
+    // Navega para a tela de busca de alimentos, passando o tipo de refeição
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const FoodSearchScreen(),
+        builder: (context) => FoodSearchScreen(selectedMealType: type),
       ),
     );
   }

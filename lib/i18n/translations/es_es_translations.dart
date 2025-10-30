@@ -450,7 +450,7 @@ final Map<String, String> esESTranslations = {
   'chemistry_hint': 'Toma una foto de un problema de química',
   'history_hint': 'Toma una foto de una pregunta de historia',
   'ai_macros': 'Macros con IA',
-  'ai_macros_hint': 'Toma una foto de tu comida para calcular macros',
+  'ai_macros_hint': 'Los alimentos deben estar bien iluminados y dentro del encuadre',
   'barcode': 'Código de Barras',
   'barcode_hint': 'Escanea el código de barras del producto',
 

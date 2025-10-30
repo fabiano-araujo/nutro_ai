@@ -20,11 +20,13 @@ import '../widgets/micro_nutrient_row.dart';
 class FoodPage extends StatefulWidget {
   final Food food;
   final String? foodUrl; // URL do FatSecret para carregar dados completos
+  final MealType? selectedMealType;
 
   const FoodPage({
     Key? key,
     required this.food,
     this.foodUrl,
+    this.selectedMealType,
   }) : super(key: key);
 
   @override
@@ -36,6 +38,7 @@ class _FoodPageState extends State<FoodPage> {
   late double _currentServingSize;
   String? _selectedPortionDescription;
   String? _currentServingUnit; // Store current unit
+  late MealType _selectedMealType; // Current selected meal type
 
   InAppWebViewController? _webViewController;
   Food? _fullFoodData;
@@ -45,6 +48,9 @@ class _FoodPageState extends State<FoodPage> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize selected meal type
+    _selectedMealType = widget.selectedMealType ?? MealType.breakfast;
 
     final baseServingSize = widget.food.nutrients?.first.servingSize ?? 100.0;
 
@@ -450,6 +456,65 @@ class _FoodPageState extends State<FoodPage> {
     }
   }
 
+  void _addToMeal(MealType mealType) {
+    // Use full data if available
+    final currentFood = _fullFoodData ?? widget.food;
+
+    // Create a Food object with the current serving size
+    final nutrient = currentFood.nutrients?.first;
+    final originalServing = nutrient?.servingSize ?? 100.0;
+    final scaleFactor = _currentServingSize / originalServing;
+
+    // Create a new Food with scaled nutrients
+    final scaledFood = currentFood.copyWith(
+      nutrients: currentFood.nutrients?.map((n) => n.copyWith(
+        servingSize: _currentServingSize,
+        calories: (n.calories ?? 0) * scaleFactor,
+        protein: (n.protein ?? 0) * scaleFactor,
+        carbohydrate: (n.carbohydrate ?? 0) * scaleFactor,
+        fat: (n.fat ?? 0) * scaleFactor,
+        saturatedFat: n.saturatedFat != null ? n.saturatedFat! * scaleFactor : null,
+        transFat: n.transFat != null ? n.transFat! * scaleFactor : null,
+        cholesterol: n.cholesterol != null ? (n.cholesterol! * scaleFactor).toDouble() : null,
+        sodium: n.sodium != null ? (n.sodium! * scaleFactor).toDouble() : null,
+        potassium: n.potassium != null ? (n.potassium! * scaleFactor).toDouble() : null,
+        dietaryFiber: n.dietaryFiber != null ? n.dietaryFiber! * scaleFactor : null,
+        sugars: n.sugars != null ? n.sugars! * scaleFactor : null,
+        vitaminA: n.vitaminA != null ? n.vitaminA! * scaleFactor : null,
+        vitaminC: n.vitaminC != null ? n.vitaminC! * scaleFactor : null,
+        vitaminD: n.vitaminD != null ? n.vitaminD! * scaleFactor : null,
+        vitaminB6: n.vitaminB6 != null ? n.vitaminB6! * scaleFactor : null,
+        vitaminB12: n.vitaminB12 != null ? n.vitaminB12! * scaleFactor : null,
+        calcium: n.calcium != null ? (n.calcium! * scaleFactor).toDouble() : null,
+        iron: n.iron != null ? n.iron! * scaleFactor : null,
+      )).toList(),
+    );
+
+    // Add to meal
+    Provider.of<DailyMealsProvider>(context, listen: false)
+        .addFoodToMeal(mealType, scaledFood);
+
+    // Add to history (recents and frequency)
+    final historyProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
+    historyProvider.addToRecents(scaledFood);
+    historyProvider.incrementFrequency(scaledFood);
+
+    // Get meal name
+    final option = DailyMealsProvider.getMealTypeOption(mealType);
+
+    // Close food page
+    Navigator.pop(context);
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${currentFood.name} added to ${option.name}'),
+        duration: Duration(seconds: 2),
+        backgroundColor: AppTheme.primaryColor,
+      ),
+    );
+  }
+
   void _showMealTypeSelector(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
@@ -502,60 +567,8 @@ class _FoodPageState extends State<FoodPage> {
 
                 return InkWell(
                   onTap: () {
-                    // Use full data if available
-                    final currentFood = _fullFoodData ?? widget.food;
-
-                    // Create a Food object with the current serving size
-                    final nutrient = currentFood.nutrients?.first;
-                    final originalServing = nutrient?.servingSize ?? 100.0;
-                    final scaleFactor = _currentServingSize / originalServing;
-
-                    // Create a new Food with scaled nutrients
-                    final scaledFood = currentFood.copyWith(
-                      nutrients: currentFood.nutrients?.map((n) => n.copyWith(
-                        servingSize: _currentServingSize,
-                        calories: (n.calories ?? 0) * scaleFactor,
-                        protein: (n.protein ?? 0) * scaleFactor,
-                        carbohydrate: (n.carbohydrate ?? 0) * scaleFactor,
-                        fat: (n.fat ?? 0) * scaleFactor,
-                        saturatedFat: n.saturatedFat != null ? n.saturatedFat! * scaleFactor : null,
-                        transFat: n.transFat != null ? n.transFat! * scaleFactor : null,
-                        cholesterol: n.cholesterol != null ? (n.cholesterol! * scaleFactor).toDouble() : null,
-                        sodium: n.sodium != null ? (n.sodium! * scaleFactor).toDouble() : null,
-                        potassium: n.potassium != null ? (n.potassium! * scaleFactor).toDouble() : null,
-                        dietaryFiber: n.dietaryFiber != null ? n.dietaryFiber! * scaleFactor : null,
-                        sugars: n.sugars != null ? n.sugars! * scaleFactor : null,
-                        vitaminA: n.vitaminA != null ? n.vitaminA! * scaleFactor : null,
-                        vitaminC: n.vitaminC != null ? n.vitaminC! * scaleFactor : null,
-                        vitaminD: n.vitaminD != null ? n.vitaminD! * scaleFactor : null,
-                        vitaminB6: n.vitaminB6 != null ? n.vitaminB6! * scaleFactor : null,
-                        vitaminB12: n.vitaminB12 != null ? n.vitaminB12! * scaleFactor : null,
-                        calcium: n.calcium != null ? (n.calcium! * scaleFactor).toDouble() : null,
-                        iron: n.iron != null ? n.iron! * scaleFactor : null,
-                      )).toList(),
-                    );
-
-                    // Add to meal
-                    Provider.of<DailyMealsProvider>(context, listen: false)
-                        .addFoodToMeal(mealType, scaledFood);
-
-                    // Add to history (recents and frequency)
-                    final historyProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
-                    historyProvider.addToRecents(scaledFood);
-                    historyProvider.incrementFrequency(scaledFood);
-
-                    // Close both dialogs
                     Navigator.pop(context); // Close meal type selector
-                    Navigator.pop(context); // Close food page
-
-                    // Show success message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${currentFood.name} added to ${option.name}'),
-                        duration: Duration(seconds: 2),
-                        backgroundColor: AppTheme.primaryColor,
-                      ),
-                    );
+                    _addToMeal(mealType);
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
@@ -838,6 +851,41 @@ class _FoodPageState extends State<FoodPage> {
                   icon: Icon(Icons.arrow_back, color: textColor),
                   onPressed: () => Navigator.pop(context),
                 ),
+                title: widget.selectedMealType != null
+                    ? DropdownButton<MealType>(
+                        value: _selectedMealType,
+                        underline: SizedBox.shrink(),
+                        isDense: true,
+                        dropdownColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                        icon: SizedBox.shrink(),
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        items: MealType.values.map((mealType) {
+                          final option = DailyMealsProvider.getMealTypeOption(mealType);
+                          return DropdownMenuItem<MealType>(
+                            value: mealType,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(option.emoji),
+                                SizedBox(width: 8),
+                                Text(option.name),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (MealType? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              _selectedMealType = newValue;
+                            });
+                          }
+                        },
+                      )
+                    : null,
                 actions: [
                   Consumer<FoodHistoryProvider>(
                     builder: (context, historyProvider, child) {
@@ -1429,7 +1477,13 @@ class _FoodPageState extends State<FoodPage> {
                 padding: EdgeInsets.all(16),
                 child: ElevatedButton(
                   onPressed: () {
-                    _showMealTypeSelector(context);
+                    if (widget.selectedMealType != null) {
+                      // Add directly to the selected meal type
+                      _addToMeal(_selectedMealType);
+                    } else {
+                      // Show meal type selector if no meal was pre-selected
+                      _showMealTypeSelector(context);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,

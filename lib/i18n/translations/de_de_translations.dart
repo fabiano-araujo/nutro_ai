@@ -313,7 +313,7 @@ final Map<String, String> deDETranslations = {
   'chemistry_hint': 'Fotografiere ein Chemieproblem',
   'history_hint': 'Fotografiere eine Geschichtsfrage',
   'ai_macros': 'KI-Makros',
-  'ai_macros_hint': 'Fotografiere dein Essen, um Makros zu berechnen',
+  'ai_macros_hint': 'Lebensmittel müssen gut beleuchtet und im Rahmen sein',
   'barcode': 'Barcode',
   'barcode_hint': 'Scanne den Produktbarcode',
 

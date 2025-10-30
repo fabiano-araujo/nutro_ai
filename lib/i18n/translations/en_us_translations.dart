@@ -529,7 +529,7 @@ final Map<String, String> enUSTranslations = {
   'chemistry_hint': 'Take a picture of a chemistry problem',
   'history_hint': 'Take a picture of a history question',
   'ai_macros': 'AI Macros',
-  'ai_macros_hint': 'Take a photo of your food to calculate macros',
+  'ai_macros_hint': 'Food must be well lit and within the frame',
   'barcode': 'Barcode',
   'barcode_hint': 'Scan the product barcode',
 
