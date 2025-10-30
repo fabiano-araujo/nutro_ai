@@ -100,7 +100,7 @@ class AITutorScreen extends StatefulWidget {
 }
 
 class AITutorScreenState extends State<AITutorScreen>
-    with TickerProviderStateMixin, AITutorSpeechMixin, TextToSpeechMixin {
+    with TickerProviderStateMixin, AITutorSpeechMixin, TextToSpeechMixin, WidgetsBindingObserver {
   // Controller que gerenciará o estado e lógica (será inicializado no initState)
   late AITutorController _controller;
 
@@ -135,6 +135,9 @@ class AITutorScreenState extends State<AITutorScreen>
   // Lista de sugestões para mostrar ao usuário
   List<String> _suggestions = [];
 
+  // Controlar estado anterior do teclado para detectar quando fecha
+  double _lastKeyboardHeight = 0;
+
   // Método para mostrar sugestões baseado na ação
   void _showSuggestionsForAction(String actionType) {
     setState(() {
@@ -167,17 +170,21 @@ class AITutorScreenState extends State<AITutorScreen>
           _suggestions = [];
       }
     });
-    // Focar no input para o teclado subir
-    Future.delayed(Duration(milliseconds: 100), () {
-      _inputFocusNode.requestFocus();
+    // Focar no input após construir o widget
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _inputFocusNode.requestFocus();
+      }
     });
   }
 
   // Método para limpar sugestões
   void _clearSuggestions() {
-    setState(() {
-      _suggestions = [];
-    });
+    if (mounted) {
+      setState(() {
+        _suggestions = [];
+      });
+    }
   }
 
   // Implementação dos getters e métodos requeridos pelo AITutorSpeechMixin
@@ -219,6 +226,9 @@ class AITutorScreenState extends State<AITutorScreen>
 
     // Adicionar listener para controlar a visibilidade do NutritionCard
     _scrollController.addListener(_handleScroll);
+
+    // Registrar observer para detectar mudanças no teclado
+    WidgetsBinding.instance.addObserver(this);
 
     bool isFromTool = false;
     String toolType = 'chat';
@@ -410,8 +420,32 @@ class AITutorScreenState extends State<AITutorScreen>
   }
 
   @override
+  void didChangeMetrics() {
+    // Detecta mudanças nas métricas (incluindo o teclado)
+    final bottomInset = View.of(context).viewInsets.bottom;
+
+    // Detectar apenas quando o teclado FECHA (estava aberto e agora fechou)
+    // Se tinha altura anterior > 0 e agora é 0, o teclado fechou
+    if (_lastKeyboardHeight > 0 && bottomInset == 0 && _suggestions.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _suggestions = [];
+          });
+        }
+      });
+    }
+
+    // Atualizar a altura anterior
+    _lastKeyboardHeight = bottomInset;
+  }
+
+  @override
   void dispose() {
     print('🧹 AITutorScreen - dispose chamado');
+
+    // Remover observer
+    WidgetsBinding.instance.removeObserver(this);
 
     // Remover registro no singleton manager
     aiTutorManager.unregister(this);
@@ -1036,19 +1070,58 @@ class AITutorScreenState extends State<AITutorScreen>
                             },
                           ),
 
+                        // Sugestões sobreposta (ocupam todo o espaço disponível)
+                        if (messages.isEmpty && _suggestions.isNotEmpty)
+                          Positioned.fill(
+                            child: Container(
+                              color: currentScaffoldBackgroundColor,
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: _suggestions.map((suggestion) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        _messageController.text = suggestion;
+                                        _clearSuggestions();
+                                        _handleSendMessage();
+                                      },
+                                      child: Container(
+                                        margin: EdgeInsets.only(bottom: 12),
+                                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                        decoration: BoxDecoration(
+                                          color: isDarkMode
+                                              ? Color(0xFF2C2C2C)
+                                              : Color(0xFFF5F5F5),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          suggestion,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isDarkMode
+                                                ? Colors.white.withValues(alpha: 0.9)
+                                                : Color(0xFF333333),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ),
+                          ),
+
                         // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens e não há sugestões)
                         if (messages.isEmpty && _suggestions.isEmpty)
                           Positioned.fill(
                             child: Container(
                               color: currentScaffoldBackgroundColor,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                       // Saudação personalizada
                                       Consumer<AuthService>(
                                         builder: (context, authService, child) {
@@ -1129,7 +1202,6 @@ class AITutorScreenState extends State<AITutorScreen>
                                 ),
                               ),
                             ),
-                          ),
                       ],
                     ),
                   ),
@@ -1143,43 +1215,6 @@ class AITutorScreenState extends State<AITutorScreen>
                         EdgeInsets.only(left: 16, right: 16, bottom: 6, top: 8),
                     child: Column(
                       children: [
-                        // Sugestões de prompts
-                        if (_suggestions.isNotEmpty)
-                          Container(
-                            margin: EdgeInsets.only(bottom: 12),
-                            height: 160,
-                            child: ListView.builder(
-                              itemCount: _suggestions.length,
-                              itemBuilder: (context, index) {
-                                return GestureDetector(
-                                  onTap: () {
-                                    _messageController.text = _suggestions[index];
-                                    _clearSuggestions();
-                                    _handleSendMessage();
-                                  },
-                                  child: Container(
-                                    margin: EdgeInsets.only(bottom: 8),
-                                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                    decoration: BoxDecoration(
-                                      color: isDarkMode
-                                          ? Color(0xFF2C2C2C)
-                                          : Color(0xFFF5F5F5),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      _suggestions[index],
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: isDarkMode
-                                            ? Colors.white.withValues(alpha: 0.9)
-                                            : Color(0xFF333333),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
                         // Exibir miniatura da imagem selecionada
                         if (hasSelectedImage && selectedImageBytes != null)
                           Padding(
