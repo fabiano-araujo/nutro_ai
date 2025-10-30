@@ -19,7 +19,8 @@ class FoodSearchScreen extends StatefulWidget {
   State<FoodSearchScreen> createState() => _FoodSearchScreenState();
 }
 
-class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerProviderStateMixin {
+class _FoodSearchScreenState extends State<FoodSearchScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScraperHelper _scraperHelper = ScraperHelper();
   late TabController _tabController;
@@ -50,7 +51,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       _isSearching = true;
     });
 
-    final url = 'https://mobile.fatsecret.com.br/calorias-nutrição/search?q=${Uri.encodeComponent(query)}';
+    final url =
+        'https://mobile.fatsecret.com.br/calorias-nutrição/search?q=${Uri.encodeComponent(query)}';
 
     // Carrega a URL
     await _scraperHelper.loadUrl(url);
@@ -96,10 +98,18 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
   }
 
   Food _convertToFood(Map<String, dynamic> data) {
-    final calories = double.tryParse((data['calorias'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
-    final protein = double.tryParse((data['proteina'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
-    final carbs = double.tryParse((data['carboidratos'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
-    final fat = double.tryParse((data['gordura'] ?? '0').toString().replaceAll(',', '.')) ?? 0.0;
+    final calories = double.tryParse(
+            (data['calorias'] ?? '0').toString().replaceAll(',', '.')) ??
+        0.0;
+    final protein = double.tryParse(
+            (data['proteina'] ?? '0').toString().replaceAll(',', '.')) ??
+        0.0;
+    final carbs = double.tryParse(
+            (data['carboidratos'] ?? '0').toString().replaceAll(',', '.')) ??
+        0.0;
+    final fat = double.tryParse(
+            (data['gordura'] ?? '0').toString().replaceAll(',', '.')) ??
+        0.0;
 
     return Food(
       name: data['nome'] ?? 'Unknown',
@@ -131,16 +141,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode
-        ? AppTheme.darkBackgroundColor
-        : AppTheme.backgroundColor;
+    final backgroundColor =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
-    final secondaryTextColor = isDarkMode
-        ? Color(0xFFAEB7CE)
-        : AppTheme.textSecondaryColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryTextColor =
+        isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -162,7 +169,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
         actions: [
           IconButton(
             icon: Icon(
-              Icons.barcode_reader, // Ícone de código de barras com linhas horizontais
+              Icons
+                  .barcode_reader, // Ícone de código de barras com linhas horizontais
               color: textColor,
             ),
             onPressed: () {
@@ -185,9 +193,9 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
             child: Container(
               decoration: BoxDecoration(
                 color: isDarkMode
-                    ? AppTheme.primaryColor.withValues(alpha: 0.15)
-                    : AppTheme.primaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(50),
+                    ? textColor.withValues(alpha: 0.15)
+                    : textColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(80),
               ),
               child: TextField(
                 controller: _searchController,
@@ -200,8 +208,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                   hintText: context.tr.translate('what_did_you_eat'),
                   hintStyle: TextStyle(
                     color: isDarkMode
-                        ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                        : AppTheme.primaryColor.withValues(alpha: 0.5),
+                        ? AppTheme.primaryColor.withValues(alpha: 1)
+                        : AppTheme.primaryColor.withValues(alpha: 1),
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
                   ),
@@ -210,7 +218,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                     color: AppTheme.primaryColor,
                     size: 22,
                   ),
+                  filled: false,
+                  fillColor: Colors.transparent,
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
@@ -245,16 +259,14 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                     indicatorWeight: 2.5,
                     indicatorSize: TabBarIndicatorSize.tab,
                     tabs: [
+                      Tab(text: 'Frequentes'),
                       Tab(text: context.tr.translate('recent')),
                       Tab(text: context.tr.translate('favorites')),
-                      Tab(text: 'Frequentes'),
                     ],
                   ),
                   Container(
                     height: 1,
-                    color: isDarkMode
-                        ? Color(0xFF2A2A2A)
-                        : Color(0xFFF0F0F0),
+                    color: isDarkMode ? Color(0xFF2A2A2A) : Color(0xFFFAFAFA),
                   ),
                 ],
               ),
@@ -286,15 +298,31 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                   child: Container(
                     color: backgroundColor,
                     child: _isSearching
-                        ? _buildSearchResults(isDarkMode, textColor, secondaryTextColor, cardColor)
+                        ? _buildSearchResults(isDarkMode, textColor,
+                            secondaryTextColor, cardColor)
                         : Consumer<FoodHistoryProvider>(
                             builder: (context, historyProvider, child) {
                               return TabBarView(
                                 controller: _tabController,
                                 children: [
-                                  _buildRecentList(historyProvider.recents, isDarkMode, textColor, secondaryTextColor, cardColor),
-                                  _buildFavoritesList(historyProvider.favorites, isDarkMode, textColor, secondaryTextColor, cardColor),
-                                  _buildFrequentList(historyProvider.frequents, isDarkMode, textColor, secondaryTextColor, cardColor),
+                                  _buildFrequentList(
+                                      historyProvider.frequents,
+                                      isDarkMode,
+                                      textColor,
+                                      secondaryTextColor,
+                                      cardColor),
+                                  _buildRecentList(
+                                      historyProvider.recents,
+                                      isDarkMode,
+                                      textColor,
+                                      secondaryTextColor,
+                                      cardColor),
+                                  _buildFavoritesList(
+                                      historyProvider.favorites,
+                                      isDarkMode,
+                                      textColor,
+                                      secondaryTextColor,
+                                      cardColor),
                                 ],
                               );
                             },
@@ -309,7 +337,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildSearchResults(bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+  Widget _buildSearchResults(bool isDarkMode, Color textColor,
+      Color secondaryTextColor, Color cardColor) {
     if (_isLoading) {
       return Center(
         child: Column(
@@ -359,7 +388,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
         final item = _searchResults[index];
-        return _buildFoodResultCard(item, isDarkMode, textColor, secondaryTextColor, cardColor);
+        return _buildFoodResultCard(
+            item, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
@@ -454,11 +484,14 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
               // Macros
               Row(
                 children: [
-                  _buildMacroChip('Cal', calories, 'kcal', Color(0xFF4CAF50), isDarkMode),
+                  _buildMacroChip(
+                      'Cal', calories, 'kcal', Color(0xFF4CAF50), isDarkMode),
                   SizedBox(width: 8),
-                  _buildMacroChip('P', protein, 'g', Color(0xFF9575CD), isDarkMode),
+                  _buildMacroChip(
+                      'P', protein, 'g', Color(0xFF9575CD), isDarkMode),
                   SizedBox(width: 8),
-                  _buildMacroChip('C', carbs, 'g', Color(0xFFA1887F), isDarkMode),
+                  _buildMacroChip(
+                      'C', carbs, 'g', Color(0xFFA1887F), isDarkMode),
                   SizedBox(width: 8),
                   _buildMacroChip('F', fat, 'g', Color(0xFF90A4AE), isDarkMode),
                 ],
@@ -470,7 +503,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildMacroChip(String label, String value, String unit, Color color, bool isDarkMode) {
+  Widget _buildMacroChip(
+      String label, String value, String unit, Color color, bool isDarkMode) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -501,7 +535,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildRecentList(List<Food> recentFoods, bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+  Widget _buildRecentList(List<Food> recentFoods, bool isDarkMode,
+      Color textColor, Color secondaryTextColor, Color cardColor) {
     if (recentFoods.isEmpty) {
       return Center(
         child: Column(
@@ -530,12 +565,14 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       itemCount: recentFoods.length,
       itemBuilder: (context, index) {
         final food = recentFoods[index];
-        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
+        return _buildFoodCard(
+            food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
 
-  Widget _buildFavoritesList(List<Food> favoriteFoods, bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+  Widget _buildFavoritesList(List<Food> favoriteFoods, bool isDarkMode,
+      Color textColor, Color secondaryTextColor, Color cardColor) {
     if (favoriteFoods.isEmpty) {
       return Center(
         child: Column(
@@ -564,12 +601,14 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       itemCount: favoriteFoods.length,
       itemBuilder: (context, index) {
         final food = favoriteFoods[index];
-        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
+        return _buildFoodCard(
+            food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
 
-  Widget _buildFrequentList(List<Food> frequentFoods, bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+  Widget _buildFrequentList(List<Food> frequentFoods, bool isDarkMode,
+      Color textColor, Color secondaryTextColor, Color cardColor) {
     if (frequentFoods.isEmpty) {
       return Center(
         child: Column(
@@ -598,25 +637,16 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
       itemCount: frequentFoods.length,
       itemBuilder: (context, index) {
         final food = frequentFoods[index];
-        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
+        return _buildFoodCard(
+            food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
 
-  Widget _buildFoodCard(Food food, bool isDarkMode, Color textColor, Color secondaryTextColor, Color cardColor) {
+  Widget _buildFoodCard(Food food, bool isDarkMode, Color textColor,
+      Color secondaryTextColor, Color cardColor) {
     return Container(
       margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -673,11 +703,19 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> with SingleTickerPr
                 ),
               ),
 
-              // Arrow
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: secondaryTextColor,
+              // Add button
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add,
+                  size: 20,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),

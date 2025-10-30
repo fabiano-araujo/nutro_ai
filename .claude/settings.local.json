@@ -14,7 +14,8 @@
       "Bash(yarn add:*)",
       "Bash(git merge:*)",
       "Bash(git push:*)",
-      "Read(//c/flutter/packages/flutter/lib/src/material/**)"
+      "Read(//c/flutter/packages/flutter/lib/src/material/**)",
+      "Bash(flutter clean:*)"
     ],
     "deny": [],
     "ask": []
