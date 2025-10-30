@@ -522,13 +522,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     }
 
     try {
-      // Definir as dimensões do retângulo de corte
+      // Definir as dimensões do quadrado de corte
       final Size screenSize = MediaQuery.of(context).size;
-      final double padding = 16.0;
-      final double rectWidth = screenSize.width - (padding * 2);
-      final double rectHeight = 180.0;
+      final double padding = 32.0;
+      final double squareSize = screenSize.width - (padding * 2);
 
-      // Calcular a posição vertical do retângulo para centralizá-lo mais para cima
+      // Calcular a posição vertical do quadrado para centralizá-lo
       final double appBarHeight = AppBar().preferredSize.height;
       final double statusBarHeight = MediaQuery.of(context).padding.top;
       final double buttonsAreaHeight =
@@ -542,7 +541,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
           appBarHeight + statusBarHeight + (availableHeight * 0.25);
 
       final Rect cutOutRect = Rect.fromLTWH(
-          padding, topOffset, rectWidth, rectHeight); // Usar LTWH para precisão
+          padding, topOffset, squareSize, squareSize); // Quadrado
 
       // Capturar imagem
       final XFile photo = await _cameraController!.takePicture();
@@ -579,11 +578,10 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       final imageBytes = await ImageUploadHelper.pickImageFromGallery();
       if (imageBytes != null) {
         final Size screenSize = MediaQuery.of(context).size;
-        final double padding = 16.0;
-        final double rectWidth = screenSize.width - (padding * 2);
-        final double rectHeight = 180.0;
+        final double padding = 32.0;
+        final double squareSize = screenSize.width - (padding * 2);
 
-        // Calcular a posição vertical do retângulo
+        // Calcular a posição vertical do quadrado
         final double appBarHeight = AppBar().preferredSize.height;
         final double statusBarHeight = MediaQuery.of(context).padding.top;
         final double buttonsAreaHeight = 180.0;
@@ -593,10 +591,10 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             buttonsAreaHeight;
         // Centralizar verticalmente na área disponível
         final double topOffset =
-            appBarHeight + statusBarHeight + (availableHeight * 0.4);
+            appBarHeight + statusBarHeight + (availableHeight * 0.25);
 
-        final Rect cutOutRect = Rect.fromLTWH(padding, topOffset, rectWidth,
-            rectHeight); // Usar LTWH para precisão
+        final Rect cutOutRect = Rect.fromLTWH(padding, topOffset, squareSize,
+            squareSize); // Quadrado
 
         setState(() {
           _capturedImage = imageBytes;
@@ -694,13 +692,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Definir as dimensões do retângulo de corte
+    // Definir as dimensões do quadrado de corte
     final Size screenSize = MediaQuery.of(context).size;
-    final double padding = 16.0;
-    final double rectWidth = screenSize.width - (padding * 2);
-    final double rectHeight = 180.0;
+    final double padding = 32.0;
+    final double squareSize = screenSize.width - (padding * 2);
 
-    // Calcular a posição vertical do retângulo para centralizá-lo mais para cima
+    // Calcular a posição vertical e horizontal do quadrado para centralizá-lo
     final double appBarHeight = AppBar().preferredSize.height;
     final double statusBarHeight = MediaQuery.of(context).padding.top;
     final double buttonsAreaHeight = 180.0; // Altura estimada da área inferior
@@ -711,7 +708,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         appBarHeight + statusBarHeight + (availableHeight * 0.25);
 
     final Rect cutOutRect = Rect.fromLTWH(
-        padding, topOffset, rectWidth, rectHeight); // Usar LTWH para precisão
+        padding, topOffset, squareSize, squareSize); // Quadrado
 
     // Texto da dica baseado no modo
     String hintText = '';

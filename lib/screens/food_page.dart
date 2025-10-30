@@ -857,10 +857,10 @@ class _FoodPageState extends State<FoodPage> {
                         underline: SizedBox.shrink(),
                         isDense: true,
                         dropdownColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-                        icon: SizedBox.shrink(),
+                        icon: Icon(Icons.arrow_drop_down, color: textColor, size: 24),
                         style: TextStyle(
                           color: textColor,
-                          fontSize: 18,
+                          fontSize: 20,
                           fontWeight: FontWeight.w600,
                         ),
                         items: MealType.values.map((mealType) {
@@ -870,9 +870,9 @@ class _FoodPageState extends State<FoodPage> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(option.emoji),
+                                Text(option.emoji, style: TextStyle(fontSize: 20)),
                                 SizedBox(width: 8),
-                                Text(option.name),
+                                Text(option.name, style: TextStyle(fontSize: 20)),
                               ],
                             ),
                           );
