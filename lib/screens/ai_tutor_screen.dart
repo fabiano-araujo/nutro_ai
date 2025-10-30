@@ -42,6 +42,7 @@ import 'food_search_screen.dart';
 import 'camera_scan_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
+import 'nutrition_goals_wizard_screen.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -1119,12 +1120,15 @@ class AITutorScreenState extends State<AITutorScreen>
                           Positioned.fill(
                             child: Container(
                               color: currentScaffoldBackgroundColor,
-                              child: SingleChildScrollView(
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                      // Saudação personalizada
+                              child: Align(
+                                alignment: Alignment(-1.0, -0.3), // À esquerda e mais próximo do topo
+                                child: SingleChildScrollView(
+                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Saudação personalizada (alinhada à esquerda)
                                       Consumer<AuthService>(
                                         builder: (context, authService, child) {
                                           final userName = authService.currentUser?.name?.split(' ').first;
@@ -1185,19 +1189,64 @@ class AITutorScreenState extends State<AITutorScreen>
                                         },
                                       ),
                                       SizedBox(height: 12),
-                                      _buildSuggestionButton(
-                                        text: 'Sugestões de refeições',
-                                        isDarkMode: isDarkMode,
-                                        onTap: () {
-                                          _showSuggestionsForAction('sugestoes_refeicoes');
-                                        },
-                                      ),
-                                      SizedBox(height: 12),
-                                      _buildSuggestionButton(
-                                        text: 'Perguntar sobre nutrição',
-                                        isDarkMode: isDarkMode,
-                                        onTap: () {
-                                          _showSuggestionsForAction('perguntar_nutricao');
+                                      // Botões condicionais baseados em se o usuário configurou metas
+                                      Consumer<NutritionGoalsProvider>(
+                                        builder: (context, nutritionProvider, child) {
+                                          if (!nutritionProvider.hasConfiguredGoals) {
+                                            // Usuário não configurou metas - mostrar botões para configurar
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                _buildSuggestionButton(
+                                                  text: 'Preencha suas informações pessoais',
+                                                  isDarkMode: isDarkMode,
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => const NutritionGoalsWizardScreen(),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                                SizedBox(height: 12),
+                                                _buildSuggestionButton(
+                                                  text: 'Defina seu objetivo nutricional',
+                                                  isDarkMode: isDarkMode,
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => const NutritionGoalsWizardScreen(),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ],
+                                            );
+                                          } else {
+                                            // Usuário já configurou - mostrar botões normais
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                _buildSuggestionButton(
+                                                  text: 'Sugestões de refeições',
+                                                  isDarkMode: isDarkMode,
+                                                  onTap: () {
+                                                    _showSuggestionsForAction('sugestoes_refeicoes');
+                                                  },
+                                                ),
+                                                SizedBox(height: 12),
+                                                _buildSuggestionButton(
+                                                  text: 'Perguntar sobre nutrição',
+                                                  isDarkMode: isDarkMode,
+                                                  onTap: () {
+                                                    _showSuggestionsForAction('perguntar_nutricao');
+                                                  },
+                                                ),
+                                              ],
+                                            );
+                                          }
                                         },
                                       ),
                                     ],
@@ -1205,6 +1254,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                 ),
                               ),
                             ),
+                          ),
                       ],
                     ),
                   ),

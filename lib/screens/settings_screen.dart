@@ -473,6 +473,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () => _showEditDietTypeDialog(theme, nutritionProvider),
               ),
               _buildFormulaRow(theme),
+              // Show body fat percentage only when Katch-McArdle is selected
+              if (nutritionProvider.formula == CalculationFormula.katchMcArdle)
+                _buildAccountRow(
+                  'Percentual de Gordura',
+                  nutritionProvider.bodyFat != null
+                      ? '${nutritionProvider.bodyFat!.toStringAsFixed(1)}%'
+                      : 'Não informado',
+                  Icons.fitness_center,
+                  theme,
+                  onTap: () => _showBodyFatDialog(theme, nutritionProvider),
+                ),
             ],
           ),
           const SizedBox(height: 24),
@@ -787,6 +798,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () {
                 provider.updateActivityAndGoals(formula: formula);
                 Navigator.pop(context);
+
+                // If Katch-McArdle is selected, show body fat input dialog
+                if (formula == CalculationFormula.katchMcArdle) {
+                  Future.delayed(const Duration(milliseconds: 300), () {
+                    _showBodyFatDialog(theme, provider);
+                  });
+                }
               },
             );
           }).toList(),
@@ -804,6 +822,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case CalculationFormula.katchMcArdle:
         return 'Requer percentual de gordura corporal';
     }
+  }
+
+  void _showBodyFatDialog(ThemeData theme, NutritionGoalsProvider provider) {
+    final controller = TextEditingController(
+      text: provider.bodyFat?.toStringAsFixed(1) ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Percentual de Gordura Corporal'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'A fórmula Katch-McArdle requer o percentual de gordura corporal para um cálculo mais preciso.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Percentual de Gordura (%)',
+                hintText: 'Ex: 20',
+                border: const OutlineInputBorder(),
+                suffixText: '%',
+                helperText: 'Entre 5% e 50%',
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final bodyFat = double.tryParse(controller.text);
+              if (bodyFat != null && bodyFat >= 5 && bodyFat <= 50) {
+                provider.updatePersonalInfo(bodyFat: bodyFat);
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Por favor, insira um valor entre 5 e 50'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNotificationRow(ThemeData theme, ColorScheme colorScheme) {

@@ -57,6 +57,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int _manualCarbsGoal = 250;
   int _manualFatGoal = 67;
 
+  // Track if user has configured goals
+  bool _hasConfiguredGoals = false;
+
   // Getters
   String get sex => _sex;
   int get age => _age;
@@ -71,6 +74,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int get proteinPercentage => _proteinPercentage;
   int get fatPercentage => _fatPercentage;
   bool get useCalculatedGoals => _useCalculatedGoals;
+  bool get hasConfiguredGoals => _hasConfiguredGoals;
 
   // Calculated goals
   int get caloriesGoal => _useCalculatedGoals ? _calculateCalories() : _manualCaloriesGoal;
@@ -86,6 +90,10 @@ class NutritionGoalsProvider extends ChangeNotifier {
   Future<void> _loadFromPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Check if user has configured goals (verifica se salvou o objetivo nutricional)
+      // Isso garante que passou por todo o wizard de configuração
+      _hasConfiguredGoals = prefs.containsKey('nutrition_fitnessGoal');
 
       _sex = prefs.getString('nutrition_sex') ?? 'male';
       _age = prefs.getInt('nutrition_age') ?? 30;
@@ -150,6 +158,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
       await prefs.setInt('nutrition_manualProtein', _manualProteinGoal);
       await prefs.setInt('nutrition_manualCarbs', _manualCarbsGoal);
       await prefs.setInt('nutrition_manualFat', _manualFatGoal);
+
+      // Mark as configured after first save
+      _hasConfiguredGoals = true;
     } catch (e) {
       print('Error saving nutrition goals: $e');
     }

@@ -27,7 +27,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   int _age = 30;
   double _weight = 70.0;
   double _height = 170.0;
-  double? _bodyFat;
 
   // Step 1: Activity & Goal
   ActivityLevel _selectedActivityLevel = ActivityLevel.moderatelyActive;
@@ -50,7 +49,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         _age = provider.age;
         _weight = provider.weight;
         _height = provider.height;
-        _bodyFat = provider.bodyFat;
         _selectedActivityLevel = provider.activityLevel;
         _selectedFitnessGoal = provider.fitnessGoal;
         _selectedDietType = provider.dietType;
@@ -97,7 +95,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
           age: _age,
           weight: _weight,
           height: _height,
-          bodyFat: _bodyFat,
         );
         break;
       case 1:
@@ -325,43 +322,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
             isDarkMode: isDarkMode,
           ),
           const SizedBox(height: 24),
-
-          // Body fat (optional)
-          Text(
-            'Percentual de Gordura Corporal (opcional)',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Necessário apenas para a fórmula Katch-McArdle',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: textColor.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            keyboardType: TextInputType.number,
-            style: TextStyle(color: textColor),
-            decoration: InputDecoration(
-              hintText: 'Ex: 20',
-              suffix: Text('%', style: TextStyle(color: textColor)),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: textColor.withValues(alpha: 0.3)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: AppTheme.primaryColor),
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onChanged: (value) {
-              final parsed = double.tryParse(value);
-              setState(() => _bodyFat = parsed);
-            },
-          ),
         ],
       ),
     );
