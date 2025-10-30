@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/macro_edit_bottom_sheet.dart';
 
 class NutritionGoalsWizardScreen extends StatefulWidget {
   final int startStep;
@@ -32,9 +31,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   ActivityLevel _selectedActivityLevel = ActivityLevel.moderatelyActive;
   FitnessGoal _selectedFitnessGoal = FitnessGoal.maintainWeight;
 
-  // Step 2: Diet Type
-  DietType _selectedDietType = DietType.balanced;
-
   @override
   void initState() {
     super.initState();
@@ -51,7 +47,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         _height = provider.height;
         _selectedActivityLevel = provider.activityLevel;
         _selectedFitnessGoal = provider.fitnessGoal;
-        _selectedDietType = provider.dietType;
       });
     });
   }
@@ -72,7 +67,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
       return;
     }
 
-    if (_currentStep < 3) {
+    if (_currentStep < 2) {
       setState(() => _currentStep++);
       _pageController.animateToPage(
         _currentStep,
@@ -104,14 +99,11 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         );
         break;
       case 2:
-        // Save fitness goal
+        // Save fitness goal e define diet type padrão (balanced)
         provider.updateActivityAndGoals(
           fitnessGoal: _selectedFitnessGoal,
         );
-        break;
-      case 3:
-        // Save diet type
-        provider.updateDietType(_selectedDietType);
+        provider.updateDietType(DietType.balanced);
         break;
     }
   }
@@ -184,7 +176,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 _buildPersonalInfoStep(theme, isDarkMode, textColor),
                 _buildActivityLevelStep(theme, isDarkMode, textColor),
                 _buildFitnessGoalStep(theme, isDarkMode, textColor),
-                _buildDietTypeStep(theme, isDarkMode, textColor),
               ],
             ),
           ),
@@ -200,7 +191,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Row(
-        children: List.generate(4, (index) {
+        children: List.generate(3, (index) {
           final isCompleted = index < _currentStep;
           final isCurrent = index == _currentStep;
 
@@ -218,7 +209,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     ),
                   ),
                 ),
-                if (index < 3) const SizedBox(width: 4),
+                if (index < 2) const SizedBox(width: 4),
               ],
             ),
           );
@@ -396,52 +387,6 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
       ),
     );
   }
-
-  Widget _buildDietTypeStep(ThemeData theme, bool isDarkMode, Color textColor) {
-    final provider = Provider.of<NutritionGoalsProvider>(context);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepHeader(
-            icon: Icons.restaurant_menu,
-            title: 'Tipo de Dieta',
-            subtitle: 'Escolha o tipo de dieta que melhor se adapta a você',
-            theme: theme,
-            textColor: textColor,
-          ),
-          const SizedBox(height: 32),
-
-          ...DietType.values.map((dietType) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildOptionCard(
-                title: provider.getDietTypeName(dietType),
-                subtitle: provider.getDietTypeDescription(dietType),
-                isSelected: _selectedDietType == dietType,
-                onTap: () {
-                  setState(() => _selectedDietType = dietType);
-
-                  // If custom is selected, open the macro edit dialog
-                  if (dietType == DietType.custom) {
-                    Future.delayed(const Duration(milliseconds: 100), () {
-                      _showCustomMacroDialog(theme, isDarkMode, textColor);
-                    });
-                  }
-                },
-                theme: theme,
-                isDarkMode: isDarkMode,
-                textColor: textColor,
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStepHeader({
     required IconData icon,
     required String title,
@@ -726,7 +671,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               child: Text(
                 widget.fromProfile
                     ? 'Salvar'
-                    : (_currentStep == 3 ? 'Concluir' : 'Próximo'),
+                    : (_currentStep == 2 ? 'Concluir' : 'Próximo'),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -739,31 +684,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   String _getGoalDescription(FitnessGoal goal) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return 'Déficit calórico de 500 kcal/dia';
+        return 'Diminuir os requisitos calóricos em 20 %';
+      case FitnessGoal.loseWeightSlowly:
+        return 'Diminuir os requisitos calóricos em 10 %';
       case FitnessGoal.maintainWeight:
-        return 'Manter peso atual';
+        return 'Não alterar os requisitos calóricos';
+      case FitnessGoal.gainWeightSlowly:
+        return 'Aumentar os requisitos calóricos em 10 %';
       case FitnessGoal.gainWeight:
-        return 'Superávit calórico de 300 kcal/dia';
-      case FitnessGoal.gainMuscle:
-        return 'Superávit calórico de 500 kcal/dia';
+        return 'Aumentar os requisitos calóricos em 20 %';
     }
-  }
-
-  void _showCustomMacroDialog(ThemeData theme, bool isDarkMode, Color textColor) {
-    final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => MacroEditBottomSheet(
-        provider: provider,
-        theme: theme,
-        isDarkMode: isDarkMode,
-        textColor: textColor,
-        cardColor: cardColor,
-      ),
-    );
   }
 }

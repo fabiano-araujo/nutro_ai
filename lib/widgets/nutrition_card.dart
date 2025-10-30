@@ -38,7 +38,7 @@ class NutritionCard extends StatelessWidget {
       onTap: onTap,
       child: Card(
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        elevation: 2,
+        elevation: 1,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),

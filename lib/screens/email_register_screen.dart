@@ -486,7 +486,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                           borderRadius:
                                               BorderRadius.circular(12),
                                         ),
-                                        elevation: 2,
+                                        elevation: 1,
                                       ),
                                     ),
                             ),

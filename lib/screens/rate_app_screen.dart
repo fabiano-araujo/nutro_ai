@@ -186,7 +186,7 @@ class _RateAppScreenState extends State<RateAppScreen> with SingleTickerProvider
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(30),
             ),
-            elevation: 5,
+            elevation: 1,
             shadowColor: primaryColor.withOpacity(0.5),
           ),
           child: Text(
@@ -268,7 +268,7 @@ class _RateAppScreenState extends State<RateAppScreen> with SingleTickerProvider
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),
-              elevation: 5,
+              elevation: 1,
               shadowColor: primaryColor.withOpacity(0.5),
             ),
             child: Text(

@@ -376,7 +376,7 @@ Por favor, forneça:
 
                   // Informações do vídeo
                   Card(
-                    elevation: 2,
+                    elevation: 1,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -464,7 +464,7 @@ Por favor, forneça:
                   if (_isTranscriptReady && _showFullTranscript) ...[
                     const SizedBox(height: 16),
                     Card(
-                      elevation: 2,
+                      elevation: 1,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(

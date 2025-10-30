@@ -179,7 +179,7 @@ class AchievementGrid extends StatelessWidget {
     final sortedAchievements = [...unlockedAchievements, ...lockedAchievements];
 
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -222,7 +222,7 @@ class AchievementGrid extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Container(
         padding: const EdgeInsets.all(32.0),
         child: Column(

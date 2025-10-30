@@ -135,7 +135,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
 
   Widget _buildLoadingState(bool isDarkMode) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
@@ -178,7 +178,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
 
   Widget _buildErrorState(bool isDarkMode) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       color: isDarkMode ? Color(0xFF2A2020) : Color(0xFFFEEDED),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -234,7 +234,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
 
   Widget _buildEmptyState(bool isDarkMode) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(

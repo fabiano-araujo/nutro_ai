@@ -1492,7 +1492,7 @@ class _FoodPageState extends State<FoodPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    elevation: 4,
+                    elevation: 1,
                     shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
                   ),
                   child: Text(

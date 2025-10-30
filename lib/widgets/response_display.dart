@@ -119,7 +119,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Card(
-        elevation: 2,
+        elevation: 1,
         margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
@@ -186,7 +186,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
     final texto = _streamingText ?? '';
 
     return Card(
-      elevation: 2,
+      elevation: 1,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
@@ -263,7 +263,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
 
   Widget _buildLoadingState(bool isDarkMode, BuildContext context) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
@@ -307,7 +307,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
 
   Widget _buildErrorState(bool isDarkMode, BuildContext context) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       color: isDarkMode ? Color(0xFF2A2020) : Color(0xFFFEEDED),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -365,7 +365,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
 
   Widget _buildEmptyState(bool isDarkMode, BuildContext context) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(

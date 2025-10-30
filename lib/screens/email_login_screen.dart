@@ -421,7 +421,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                           borderRadius:
                                               BorderRadius.circular(12),
                                         ),
-                                        elevation: 2,
+                                        elevation: 1,
                                       ),
                                     ),
                             ),

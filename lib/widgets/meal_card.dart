@@ -92,13 +92,6 @@ class _MealCardState extends State<MealCard> {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         children: [
@@ -335,14 +328,6 @@ class _FoodItem extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: isDarkMode ? Colors.white10 : Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: isDarkMode
-                              ? []
-                              : [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 4,
-                                  ),
-                                ],
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),

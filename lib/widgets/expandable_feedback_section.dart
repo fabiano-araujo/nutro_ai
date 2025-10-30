@@ -109,7 +109,7 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      elevation: 1,
       child: Column(
         children: [
           // Header with competency name, score, and expand button

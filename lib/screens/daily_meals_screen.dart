@@ -652,7 +652,7 @@ class _MealCard extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.zero,
-      elevation: 2,
+      elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),

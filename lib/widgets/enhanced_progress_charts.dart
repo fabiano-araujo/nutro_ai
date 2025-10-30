@@ -60,7 +60,7 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
     }
 
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -116,7 +116,7 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
 
   Widget _buildEmptyState() {
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Container(
         height: widget.height + 100,
         padding: const EdgeInsets.all(16.0),
@@ -409,7 +409,7 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
       ..sort((a, b) => b.value.averageScore.compareTo(a.value.averageScore));
 
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -445,7 +445,7 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
 
   Widget _buildEmptyState() {
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Container(
         height: widget.height + 80,
         padding: const EdgeInsets.all(16.0),
@@ -657,7 +657,7 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

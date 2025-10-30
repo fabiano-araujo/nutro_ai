@@ -109,7 +109,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        elevation: 2,
+                        elevation: 1,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,

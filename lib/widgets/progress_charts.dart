@@ -24,7 +24,7 @@ class ProgressLineChart extends StatelessWidget {
     }
 
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -57,7 +57,7 @@ class ProgressLineChart extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Container(
         height: height + 80,
         padding: const EdgeInsets.all(16.0),
@@ -155,7 +155,7 @@ class CompetencyBarChart extends StatelessWidget {
       ..sort((a, b) => b.value.averageScore.compareTo(a.value.averageScore));
 
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -186,7 +186,7 @@ class CompetencyBarChart extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Container(
         height: height + 80,
         padding: const EdgeInsets.all(16.0),
@@ -311,7 +311,7 @@ class ActivityHeatmap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4,
+      elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

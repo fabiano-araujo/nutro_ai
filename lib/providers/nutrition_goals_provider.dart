@@ -16,10 +16,11 @@ enum ActivityLevel {
 }
 
 enum FitnessGoal {
-  loseWeight, // Perder peso
-  maintainWeight, // Manter peso
-  gainWeight, // Ganhar peso
-  gainMuscle, // Ganhar massa muscular
+  loseWeight, // Perder peso (-20%)
+  loseWeightSlowly, // Perder peso lentamente (-10%)
+  maintainWeight, // Manter peso (0%)
+  gainWeightSlowly, // Aumentar peso lentamente (+10%)
+  gainWeight, // Aumentar peso (+20%)
 }
 
 enum DietType {
@@ -350,13 +351,15 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
     switch (_fitnessGoal) {
       case FitnessGoal.loseWeight:
-        return (tdee - 500).round(); // 500 calorie deficit
+        return (tdee * 0.8).round(); // Diminuir 20%
+      case FitnessGoal.loseWeightSlowly:
+        return (tdee * 0.9).round(); // Diminuir 10%
       case FitnessGoal.maintainWeight:
-        return tdee.round();
+        return tdee.round(); // Manter 0%
+      case FitnessGoal.gainWeightSlowly:
+        return (tdee * 1.1).round(); // Aumentar 10%
       case FitnessGoal.gainWeight:
-        return (tdee + 300).round(); // 300 calorie surplus
-      case FitnessGoal.gainMuscle:
-        return (tdee + 500).round(); // 500 calorie surplus
+        return (tdee * 1.2).round(); // Aumentar 20%
     }
   }
 
@@ -415,13 +418,15 @@ class NutritionGoalsProvider extends ChangeNotifier {
   String getFitnessGoalName(FitnessGoal goal) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return 'Perder Peso';
+        return 'Perder peso';
+      case FitnessGoal.loseWeightSlowly:
+        return 'Perder peso lentamente';
       case FitnessGoal.maintainWeight:
-        return 'Manter Peso';
+        return 'Manter o peso';
+      case FitnessGoal.gainWeightSlowly:
+        return 'Aumentar o peso lentamente';
       case FitnessGoal.gainWeight:
-        return 'Ganhar Peso';
-      case FitnessGoal.gainMuscle:
-        return 'Ganhar Massa Muscular';
+        return 'Aumentar o peso';
     }
   }
 
