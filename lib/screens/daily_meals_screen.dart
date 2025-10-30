@@ -20,6 +20,42 @@ class DailyMealsScreen extends StatefulWidget {
 class _DailyMealsScreenState extends State<DailyMealsScreen> {
   final Map<MealType, bool> _expandedMeals = {};
 
+  Future<void> _showDatePicker(BuildContext context) async {
+    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: mealsProvider.selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: isDarkMode
+                ? ColorScheme.dark(
+                    primary: AppTheme.primaryColor,
+                    onPrimary: Colors.white,
+                    surface: AppTheme.darkCardColor,
+                    onSurface: AppTheme.darkTextColor,
+                  )
+                : ColorScheme.light(
+                    primary: AppTheme.primaryColor,
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: AppTheme.textPrimaryColor,
+                  ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != mealsProvider.selectedDate) {
+      mealsProvider.setSelectedDate(picked);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -39,28 +75,58 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Diário de Refeições',
-          style: AppTheme.headingLarge.copyWith(
-            color: textColor,
-            fontSize: 20,
-          ),
+        title: Consumer<DailyMealsProvider>(
+          builder: (context, mealsProvider, child) {
+            final selectedDate = mealsProvider.selectedDate;
+            final today = DateTime.now();
+
+            // Normalizar as datas para comparação (zerar horas)
+            final normalizedToday = DateTime(today.year, today.month, today.day);
+            final normalizedSelected = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+            // Calcular a diferença em dias
+            final difference = normalizedSelected.difference(normalizedToday).inDays;
+
+            // Determinar o texto baseado na diferença
+            String dateText;
+            if (difference == 0) {
+              dateText = 'Hoje';
+            } else if (difference == -1) {
+              dateText = 'Ontem';
+            } else if (difference == 1) {
+              dateText = 'Amanhã';
+            } else {
+              dateText = '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}';
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Diário de Refeições',
+                  style: AppTheme.headingLarge.copyWith(
+                    color: textColor,
+                    fontSize: 20,
+                  ),
+                ),
+                Text(
+                  dateText,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: textColor.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         actions: [
-          // Load sample data button (for testing)
-          IconButton(
-            icon: Icon(Icons.restaurant_menu, color: textColor),
-            tooltip: 'Carregar dados de exemplo',
-            onPressed: () {
-              Provider.of<DailyMealsProvider>(context, listen: false)
-                  .loadSampleData();
-            },
-          ),
           IconButton(
             icon: Icon(Icons.calendar_today, color: textColor),
-            onPressed: () {
-              // TODO: Show date picker
-            },
+            tooltip: 'Selecionar data',
+            onPressed: () => _showDatePicker(context),
           ),
         ],
       ),
@@ -397,34 +463,31 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               value: '${totalCarbs.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
-            if (totalFiber > 0 || totalSugars > 0)
-              Container(
-                margin: EdgeInsets.only(left: 0, top: 8),
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(
-                      color: Color(0xFFA1887F).withValues(alpha: 0.3),
-                      width: 2,
-                    ),
+            Container(
+              margin: EdgeInsets.only(left: 0, top: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: Color(0xFFA1887F).withValues(alpha: 0.3),
+                    width: 2,
                   ),
                 ),
-                child: Column(
-                  children: [
-                    if (totalFiber > 0)
-                      _SubNutrientRow(
-                        label: 'Fibra Alimentar',
-                        value: '${totalFiber.toStringAsFixed(0)} g',
-                        isDarkMode: isDarkMode,
-                      ),
-                    if (totalSugars > 0)
-                      _SubNutrientRow(
-                        label: 'Açúcares',
-                        value: '${totalSugars.toStringAsFixed(0)} g',
-                        isDarkMode: isDarkMode,
-                      ),
-                  ],
-                ),
               ),
+              child: Column(
+                children: [
+                  _SubNutrientRow(
+                    label: 'Fibra Alimentar',
+                    value: '${totalFiber.toStringAsFixed(0)} g',
+                    isDarkMode: isDarkMode,
+                  ),
+                  _SubNutrientRow(
+                    label: 'Açúcares',
+                    value: '${totalSugars.toStringAsFixed(0)} g',
+                    isDarkMode: isDarkMode,
+                  ),
+                ],
+              ),
+            ),
 
             SizedBox(height: 12),
 
@@ -434,23 +497,22 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               value: '${totalFat.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
-            if (totalSaturatedFat > 0)
-              Container(
-                margin: EdgeInsets.only(left: 0, top: 8),
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(
-                      color: Color(0xFF9575CD).withValues(alpha: 0.3),
-                      width: 2,
-                    ),
+            Container(
+              margin: EdgeInsets.only(left: 0, top: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: Color(0xFF9575CD).withValues(alpha: 0.3),
+                    width: 2,
                   ),
                 ),
-                child: _SubNutrientRow(
-                  label: 'Gordura Saturada',
-                  value: '${totalSaturatedFat.toStringAsFixed(1)} g',
-                  isDarkMode: isDarkMode,
-                ),
               ),
+              child: _SubNutrientRow(
+                label: 'Gordura Saturada',
+                value: '${totalSaturatedFat.toStringAsFixed(1)} g',
+                isDarkMode: isDarkMode,
+              ),
+            ),
 
             SizedBox(height: 24),
 
@@ -471,93 +533,74 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             ),
 
             // Micronutrients List
-            if (totalCholesterol > 0)
-              _MicroNutrientRow(
-                label: 'Colesterol',
-                value: '${totalCholesterol.toStringAsFixed(0)} mg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalCholesterol > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Colesterol',
+              value: '${totalCholesterol.toStringAsFixed(0)} mg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalSodium > 0)
-              _MicroNutrientRow(
-                label: 'Sódio',
-                value: '${totalSodium.toStringAsFixed(0)} mg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalSodium > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Sódio',
+              value: '${totalSodium.toStringAsFixed(0)} mg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalPotassium > 0)
-              _MicroNutrientRow(
-                label: 'Potássio',
-                value: '${totalPotassium.toStringAsFixed(0)} mg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalPotassium > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Potássio',
+              value: '${totalPotassium.toStringAsFixed(0)} mg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalCalcium > 0)
-              _MicroNutrientRow(
-                label: 'Cálcio',
-                value: '${totalCalcium.toStringAsFixed(0)} mg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalCalcium > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Cálcio',
+              value: '${totalCalcium.toStringAsFixed(0)} mg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalIron > 0)
-              _MicroNutrientRow(
-                label: 'Ferro',
-                value: '${totalIron.toStringAsFixed(1)} mg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalIron > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Ferro',
+              value: '${totalIron.toStringAsFixed(1)} mg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalVitaminD > 0)
-              _MicroNutrientRow(
-                label: 'Vitamina D',
-                value: '${totalVitaminD.toStringAsFixed(1)} mcg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalVitaminD > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Vitamina D',
+              value: '${totalVitaminD.toStringAsFixed(1)} mcg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalVitaminA > 0)
-              _MicroNutrientRow(
-                label: 'Vitamina A',
-                value: '${totalVitaminA.toStringAsFixed(1)} mcg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalVitaminA > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Vitamina A',
+              value: '${totalVitaminA.toStringAsFixed(1)} mcg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalVitaminC > 0)
-              _MicroNutrientRow(
-                label: 'Vitamina C',
-                value: '${totalVitaminC.toStringAsFixed(1)} mg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalVitaminC > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Vitamina C',
+              value: '${totalVitaminC.toStringAsFixed(1)} mg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalVitaminB6 > 0)
-              _MicroNutrientRow(
-                label: 'Vitamina B6',
-                value: '${totalVitaminB6.toStringAsFixed(1)} mg',
-                isDarkMode: isDarkMode,
-              ),
-            if (totalVitaminB6 > 0)
-              SizedBox(height: 12),
+            _MicroNutrientRow(
+              label: 'Vitamina B6',
+              value: '${totalVitaminB6.toStringAsFixed(1)} mg',
+              isDarkMode: isDarkMode,
+            ),
+            SizedBox(height: 12),
 
-            if (totalVitaminB12 > 0)
-              _MicroNutrientRow(
-                label: 'Vitamina B12',
-                value: '${totalVitaminB12.toStringAsFixed(1)} mcg',
-                isDarkMode: isDarkMode,
-              ),
+            _MicroNutrientRow(
+              label: 'Vitamina B12',
+              value: '${totalVitaminB12.toStringAsFixed(1)} mcg',
+              isDarkMode: isDarkMode,
+            ),
           ],
         ),
       ),
