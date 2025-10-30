@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 import 'tools_screen.dart';
 import 'ai_tutor_screen.dart';
-import 'profile_screen.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../services/rate_app_service.dart';
-import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
-import 'login_screen.dart';
 
 // Controlador global para gerenciar a navegau00e7u00e3o entre abas
 class NavigationController {
@@ -78,17 +74,6 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     AITutorScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
     ToolsScreen(), // Ferramentas (Tools) - Dark theme
-    // Exibe LoginScreen se não autenticado, senão ProfileScreen
-    Builder(
-      builder: (context) {
-        final authService = Provider.of<AuthService>(context);
-        if (!authService.isAuthenticated) {
-          return const LoginScreen();
-        } else {
-          return const ProfileScreen();
-        }
-      },
-    ),
   ];
 
   @override
@@ -153,11 +138,6 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(
               icon: Icon(Icons.lightbulb_outline),
               activeIcon: Icon(Icons.lightbulb),
-              label: '',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
               label: '',
             ),
           ],
