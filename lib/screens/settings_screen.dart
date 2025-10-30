@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../providers/nutrition_goals_provider.dart';
+import '../services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final int? initialTab;
@@ -24,24 +25,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final StorageService _storageService = StorageService();
   String _selectedLanguage = 'en';
   ThemeMode _themeMode = ThemeMode.light;
-  String _units = 'Metric';
+  bool _useMetric = true;
   bool _mealReminders = true;
-
-  // Account (Conta) data
-  String _userName = 'Fabiano';
-  int _age = 28;
-  String _gender = 'Masculino';
-  String _height = '5 ft 11 in';
-  String _weight = '192,2 lb';
-  String _unitsSystem = 'Imperial(lb, ft)';
-
-  // Diet (Dieta) data
-  String _objective = '';
-  String _activityLevel = 'Moderadamente ativo';
-  String _restrictions = 'Nenhum';
-  String _dietType = 'Inteligência Artificial';
-  String _healthConditions = 'Nenhum';
-  bool _addExerciseCalories = true;
 
   @override
   void initState() {
@@ -99,10 +84,293 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await Share.share(shareMessage);
   }
 
+  // Edit dialogs
+  void _showEditNameDialog(String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Nome'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Nome',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              // TODO: Update user name on server
+              Navigator.pop(context);
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditAgeDialog(int currentAge) {
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final controller = TextEditingController(text: currentAge.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Idade'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Idade',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newAge = int.tryParse(controller.text);
+              if (newAge != null && newAge > 0 && newAge < 150) {
+                nutritionProvider.updatePersonalInfo(age: newAge);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditGenderDialog(String currentGender) {
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Gênero'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.male),
+              title: const Text('Masculino'),
+              trailing: currentGender == 'male' ? const Icon(Icons.check) : null,
+              onTap: () {
+                nutritionProvider.updatePersonalInfo(sex: 'male');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.female),
+              title: const Text('Feminino'),
+              trailing: currentGender == 'female' ? const Icon(Icons.check) : null,
+              onTap: () {
+                nutritionProvider.updatePersonalInfo(sex: 'female');
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditHeightDialog(double currentHeight, bool useMetric) {
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final controller = TextEditingController(
+      text: useMetric ? currentHeight.toString() : (currentHeight / 2.54).toStringAsFixed(0),
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Altura'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: useMetric ? 'Altura (cm)' : 'Altura (pol)',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newHeight = double.tryParse(controller.text);
+              if (newHeight != null && newHeight > 0) {
+                final heightInCm = useMetric ? newHeight : newHeight * 2.54;
+                nutritionProvider.updatePersonalInfo(height: heightInCm);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditWeightDialog(double currentWeight, bool useMetric) {
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final controller = TextEditingController(
+      text: useMetric ? currentWeight.toString() : (currentWeight * 2.20462).toStringAsFixed(1),
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Peso'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: useMetric ? 'Peso (kg)' : 'Peso (lb)',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newWeight = double.tryParse(controller.text);
+              if (newWeight != null && newWeight > 0) {
+                final weightInKg = useMetric ? newWeight : newWeight / 2.20462;
+                nutritionProvider.updatePersonalInfo(weight: weightInKg);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditGoalDialog(ThemeData theme, NutritionGoalsProvider provider) {
+    final goals = FitnessGoal.values;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Objetivo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: goals.map((goal) {
+            final isSelected = goal == provider.fitnessGoal;
+            return ListTile(
+              leading: Icon(
+                _getGoalIcon(goal),
+                color: isSelected ? theme.colorScheme.primary : null,
+              ),
+              title: Text(provider.getFitnessGoalName(goal)),
+              trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+              onTap: () {
+                provider.updateActivityAndGoals(fitnessGoal: goal);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  IconData _getGoalIcon(FitnessGoal goal) {
+    switch (goal) {
+      case FitnessGoal.loseWeight:
+        return Icons.trending_down;
+      case FitnessGoal.gainWeight:
+      case FitnessGoal.gainMuscle:
+        return Icons.trending_up;
+      case FitnessGoal.maintainWeight:
+        return Icons.trending_flat;
+    }
+  }
+
+  void _showEditActivityLevelDialog(ThemeData theme, NutritionGoalsProvider provider) {
+    final levels = ActivityLevel.values;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Nível de Atividade'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: levels.map((level) {
+            final isSelected = level == provider.activityLevel;
+            return ListTile(
+              leading: Icon(
+                Icons.directions_run,
+                color: isSelected ? theme.colorScheme.primary : null,
+              ),
+              title: Text(provider.getActivityLevelName(level)),
+              subtitle: Text(
+                provider.getActivityLevelDescription(level),
+                style: theme.textTheme.bodySmall,
+              ),
+              trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+              onTap: () {
+                provider.updateActivityAndGoals(activityLevel: level);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showEditDietTypeDialog(ThemeData theme, NutritionGoalsProvider provider) {
+    final dietTypes = DietType.values;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Tipo de Dieta'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: dietTypes.map((dietType) {
+              final isSelected = dietType == provider.dietType;
+              return ListTile(
+                leading: Icon(
+                  Icons.restaurant_menu,
+                  color: isSelected ? theme.colorScheme.primary : null,
+                ),
+                title: Text(provider.getDietTypeName(dietType)),
+                subtitle: Text(
+                  provider.getDietTypeDescription(dietType),
+                  style: theme.textTheme.bodySmall,
+                ),
+                trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+                onTap: () {
+                  provider.updateDietType(dietType);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final authService = Provider.of<AuthService>(context);
+    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -130,12 +398,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
             colorScheme: colorScheme,
             title: 'Conta',
             children: [
-              _buildAccountRow('Nome', _userName, Icons.person_outline, theme, onTap: () {}),
-              _buildAccountRow('Idade', _age.toString(), Icons.cake_outlined, theme, onTap: () {}),
-              _buildAccountRow('Gênero', _gender, Icons.wc_outlined, theme, onTap: () {}),
-              _buildAccountRow('Altura', _height, Icons.height, theme, onTap: () {}),
-              _buildAccountRow('Peso', _weight, Icons.monitor_weight_outlined, theme, onTap: () {}),
-              _buildAccountRow('Unidade', _unitsSystem, Icons.straighten, theme, onTap: () {}),
+              _buildAccountRow(
+                'Nome',
+                authService.isAuthenticated ? authService.currentUser?.name ?? 'Usuário' : 'Não logado',
+                Icons.person_outline,
+                theme,
+                onTap: () {
+                  if (authService.isAuthenticated) {
+                    _showEditNameDialog(authService.currentUser?.name ?? '');
+                  }
+                },
+              ),
+              _buildAccountRow(
+                'Idade',
+                '${nutritionProvider.age} anos',
+                Icons.cake_outlined,
+                theme,
+                onTap: () => _showEditAgeDialog(nutritionProvider.age),
+              ),
+              _buildAccountRow(
+                'Gênero',
+                nutritionProvider.sex == 'male' ? 'Masculino' : 'Feminino',
+                Icons.wc_outlined,
+                theme,
+                onTap: () => _showEditGenderDialog(nutritionProvider.sex),
+              ),
+              _buildAccountRow(
+                'Altura',
+                _useMetric
+                    ? '${nutritionProvider.height.toStringAsFixed(0)} cm'
+                    : '${(nutritionProvider.height / 2.54).toStringAsFixed(0)} pol',
+                Icons.height,
+                theme,
+                onTap: () => _showEditHeightDialog(nutritionProvider.height, _useMetric),
+              ),
+              _buildAccountRow(
+                'Peso',
+                _useMetric
+                    ? '${nutritionProvider.weight.toStringAsFixed(1)} kg'
+                    : '${(nutritionProvider.weight * 2.20462).toStringAsFixed(1)} lb',
+                Icons.monitor_weight_outlined,
+                theme,
+                onTap: () => _showEditWeightDialog(nutritionProvider.weight, _useMetric),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -146,18 +451,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             colorScheme: colorScheme,
             title: 'Dieta',
             children: [
-              _buildAccountRow('Objetivo', _objective.isEmpty ? 'Atualizar' : _objective, Icons.track_changes, theme,
-                onTap: () {}, isAction: _objective.isEmpty),
-              _buildAccountRow('Nível de Atividade', _activityLevel, Icons.directions_run, theme, onTap: () {}),
-              _buildAccountRow('Restrições', _restrictions, Icons.block, theme, onTap: () {}),
-              _buildAccountRow('Dieta', _dietType, Icons.restaurant_menu, theme, onTap: () {}),
-              _buildAccountRow('Condições de Saúde', _healthConditions, Icons.favorite_border, theme, onTap: () {}),
+              _buildAccountRow(
+                'Objetivo',
+                nutritionProvider.getFitnessGoalName(nutritionProvider.fitnessGoal),
+                Icons.track_changes,
+                theme,
+                onTap: () => _showEditGoalDialog(theme, nutritionProvider),
+              ),
+              _buildAccountRow(
+                'Nível de Atividade',
+                nutritionProvider.getActivityLevelName(nutritionProvider.activityLevel),
+                Icons.directions_run,
+                theme,
+                onTap: () => _showEditActivityLevelDialog(theme, nutritionProvider),
+              ),
+              _buildAccountRow(
+                'Dieta',
+                nutritionProvider.getDietTypeName(nutritionProvider.dietType),
+                Icons.restaurant_menu,
+                theme,
+                onTap: () => _showEditDietTypeDialog(theme, nutritionProvider),
+              ),
               _buildFormulaRow(theme),
-              _buildSwitchRow('Adicionar calorias de exercício ao objetivo diário', _addExerciseCalories, theme, colorScheme, (value) {
-                setState(() => _addExerciseCalories = value);
-              }),
-              _buildAccountRow('Detalhes Extras', '', Icons.description_outlined, theme, onTap: () {}),
-              _buildAccountRow('Lembretes Inteligentes', '', Icons.notifications_none, theme, onTap: () {}),
             ],
           ),
           const SizedBox(height: 24),
@@ -364,10 +679,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: ['Metric', 'Imperial'].map((unit) {
-                final isSelected = unit == _units;
+                final isSelected = (unit == 'Metric' && _useMetric) || (unit == 'Imperial' && !_useMetric);
                 return GestureDetector(
                   onTap: () {
-                    setState(() => _units = unit);
+                    setState(() => _useMetric = unit == 'Metric');
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -635,33 +950,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSwitchRow(
-    String label,
-    bool value,
-    ThemeData theme,
-    ColorScheme colorScheme,
-    Function(bool) onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: colorScheme.primary,
-          ),
-        ],
       ),
     );
   }

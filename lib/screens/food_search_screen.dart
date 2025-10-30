@@ -384,7 +384,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     }
 
     return ListView.builder(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
         final item = _searchResults[index];
@@ -394,6 +394,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     );
   }
 
+  String _buildSubtitle(Map<String, dynamic> item) {
+    final calories = item['calorias'] ?? '0';
+    final porcao = item['porcao'] ?? '100g';
+
+    return '$calories kcal • $porcao';
+  }
+
   Widget _buildFoodResultCard(
     Map<String, dynamic> item,
     bool isDarkMode,
@@ -401,137 +408,29 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     Color secondaryTextColor,
     Color cardColor,
   ) {
-    final calories = item['calorias'] ?? '0';
-    final protein = item['proteina'] ?? '0';
-    final carbs = item['carboidratos'] ?? '0';
-    final fat = item['gordura'] ?? '0';
+    return _FoodListItem(
+      emoji: '🍽️',
+      name: item['nome'] ?? 'Unknown',
+      subtitle: _buildSubtitle(item),
+      isDarkMode: isDarkMode,
+      textColor: textColor,
+      secondaryTextColor: secondaryTextColor,
+      onTap: () {
+        final food = _convertToFood(item);
+        final foodUrl = item['link'] != null
+            ? 'https://mobile.fatsecret.com.br${item['link']}'
+            : null;
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: () {
-          final food = _convertToFood(item);
-          final foodUrl = item['link'] != null
-              ? 'https://mobile.fatsecret.com.br${item['link']}'
-              : null;
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FoodPage(
-                food: food,
-                foodUrl: foodUrl,
-              ),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Food name
-              Text(
-                item['nome'] ?? 'Unknown',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
-              ),
-
-              // Brand
-              if (item['marca'] != null && item['marca'].isNotEmpty) ...[
-                SizedBox(height: 4),
-                Text(
-                  item['marca'],
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ],
-
-              SizedBox(height: 8),
-
-              // Description
-              if (item['descricao'] != null && item['descricao'].isNotEmpty)
-                Text(
-                  item['descricao'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: secondaryTextColor,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-              SizedBox(height: 12),
-
-              // Macros
-              Row(
-                children: [
-                  _buildMacroChip(
-                      'Cal', calories, 'kcal', Color(0xFF4CAF50), isDarkMode),
-                  SizedBox(width: 8),
-                  _buildMacroChip(
-                      'P', protein, 'g', Color(0xFF9575CD), isDarkMode),
-                  SizedBox(width: 8),
-                  _buildMacroChip(
-                      'C', carbs, 'g', Color(0xFFA1887F), isDarkMode),
-                  SizedBox(width: 8),
-                  _buildMacroChip('F', fat, 'g', Color(0xFF90A4AE), isDarkMode),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroChip(
-      String label, String value, String unit, Color color, bool isDarkMode) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.15 : 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color,
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FoodPage(
+              food: food,
+              foodUrl: foodUrl,
             ),
           ),
-          Text(
-            '$value$unit',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -561,7 +460,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     }
 
     return ListView.builder(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       itemCount: recentFoods.length,
       itemBuilder: (context, index) {
         final food = recentFoods[index];
@@ -597,7 +496,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     }
 
     return ListView.builder(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       itemCount: favoriteFoods.length,
       itemBuilder: (context, index) {
         final food = favoriteFoods[index];
@@ -633,7 +532,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     }
 
     return ListView.builder(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       itemCount: frequentFoods.length,
       itemBuilder: (context, index) {
         final food = frequentFoods[index];
@@ -645,20 +544,60 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
   Widget _buildFoodCard(Food food, bool isDarkMode, Color textColor,
       Color secondaryTextColor, Color cardColor) {
+    // Get serving size info
+    final servingInfo = food.nutrients?.isNotEmpty == true
+        ? '${food.nutrients!.first.servingSize.toStringAsFixed(0)}${food.nutrients!.first.servingUnit}'
+        : '100g';
+    final subtitle = '${food.calories} kcal • $servingInfo';
+
+    return _FoodListItem(
+      emoji: food.emoji,
+      name: food.name,
+      subtitle: subtitle,
+      isDarkMode: isDarkMode,
+      textColor: textColor,
+      secondaryTextColor: secondaryTextColor,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FoodPage(food: food),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FoodListItem extends StatelessWidget {
+  final String emoji;
+  final String name;
+  final String subtitle;
+  final bool isDarkMode;
+  final Color textColor;
+  final Color secondaryTextColor;
+  final VoidCallback onTap;
+
+  const _FoodListItem({
+    Key? key,
+    required this.emoji,
+    required this.name,
+    required this.subtitle,
+    required this.isDarkMode,
+    required this.textColor,
+    required this.secondaryTextColor,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.symmetric(vertical: 4),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FoodPage(food: food),
-            ),
-          );
-        },
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
               // Icon
@@ -671,51 +610,47 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 ),
                 child: Center(
                   child: Text(
-                    food.emoji,
+                    emoji,
                     style: TextStyle(fontSize: 24),
                   ),
                 ),
               ),
               SizedBox(width: 12),
 
-              // Name and calories
+              // Name and subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      food.name,
+                      name,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: textColor,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4),
                     Text(
-                      '${food.calories} kcal',
+                      subtitle,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: secondaryTextColor,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
 
               // Add button
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.add,
-                  size: 20,
-                  color: Colors.white,
-                ),
+              Icon(
+                Icons.add_circle_outline,
+                color: AppTheme.primaryColor,
+                size: 28,
               ),
             ],
           ),

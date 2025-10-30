@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/nutrition_card.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
+import 'food_search_screen.dart';
 
 class DailyMealsScreen extends StatefulWidget {
   const DailyMealsScreen({Key? key}) : super(key: key);
@@ -247,7 +248,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                   });
                 },
                 onAddFood: () {
-                  // TODO: Navigate to food search/selection
                   _showAddFoodDialog(type);
                 },
               ),
@@ -565,18 +565,11 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
   }
 
   void _showAddFoodDialog(MealType type) {
-    // Placeholder for food selection
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Adicionar Alimento'),
-        content: Text('Funcionalidade de adicionar alimento será implementada em breve.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
-          ),
-        ],
+    // Navega para a tela de busca de alimentos
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FoodSearchScreen(),
       ),
     );
   }

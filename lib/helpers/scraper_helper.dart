@@ -247,15 +247,24 @@ class ScraperHelper {
             const descricoes = linha.querySelectorAll('.nowrap.small-text');
 
             if (linkElement) {
+              // Extrai informações nutricionais básicas
               const descricao = descricoes[0]?.textContent.trim() || '';
+
+              // Extrai a porção (ex: "por 100 g", "por 1 concha (125g)", etc)
+              const regexPorcao = /por\\s+(.+?)\\s+-\\s+Calorias/;
+              const matchPorcao = descricao.match(regexPorcao);
+
+              // Extrai dados nutricionais
               const regex = /Calorias:\\s*(\\d+)kcal.*Gord:\\s*([\\d.,]+)g.*Carbs:\\s*([\\d.,]+)g.*Prot:\\s*([\\d.,]+)g/;
               const match = descricao.match(regex);
 
               const alimento = {
                 nome: linkElement.textContent.trim(),
                 marca: brandElement ? brandElement.textContent.trim().replace(/[()]/g, '') : null,
+                porcao: matchPorcao ? matchPorcao[1].trim() : null,
                 link: linkElement.getAttribute('href'),
                 descricao: descricao,
+                // Dados nutricionais extraídos
                 calorias: match ? match[1] : null,
                 gordura: match ? match[2] : null,
                 carboidratos: match ? match[3] : null,
