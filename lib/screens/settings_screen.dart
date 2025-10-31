@@ -290,9 +290,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   IconData _getGoalIcon(FitnessGoal goal) {
     switch (goal) {
       case FitnessGoal.loseWeight:
+      case FitnessGoal.loseWeightSlowly:
         return Icons.trending_down;
       case FitnessGoal.gainWeight:
-      case FitnessGoal.gainMuscle:
+      case FitnessGoal.gainWeightSlowly:
         return Icons.trending_up;
       case FitnessGoal.maintainWeight:
         return Icons.trending_flat;

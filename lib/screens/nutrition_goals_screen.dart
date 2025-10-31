@@ -725,13 +725,15 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   String _getGoalDetail(FitnessGoal goal) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return 'Déficit calórico de 500 kcal/dia';
+        return 'Diminuir calorias em 20%';
+      case FitnessGoal.loseWeightSlowly:
+        return 'Diminuir calorias em 10%';
       case FitnessGoal.maintainWeight:
         return 'Manter peso atual';
+      case FitnessGoal.gainWeightSlowly:
+        return 'Aumentar calorias em 10%';
       case FitnessGoal.gainWeight:
-        return 'Superávit de 300 kcal/dia';
-      case FitnessGoal.gainMuscle:
-        return 'Superávit de 500 kcal/dia';
+        return 'Aumentar calorias em 20%';
     }
   }
 }

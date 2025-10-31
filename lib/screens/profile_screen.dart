@@ -422,9 +422,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   IconData _getGoalIcon(FitnessGoal goal) {
     switch (goal) {
       case FitnessGoal.loseWeight:
+      case FitnessGoal.loseWeightSlowly:
         return Icons.trending_down;
       case FitnessGoal.gainWeight:
-      case FitnessGoal.gainMuscle:
+      case FitnessGoal.gainWeightSlowly:
         return Icons.trending_up;
       case FitnessGoal.maintainWeight:
         return Icons.trending_flat;
@@ -435,10 +436,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     switch (goal) {
       case FitnessGoal.loseWeight:
         return 'Perder Peso';
+      case FitnessGoal.loseWeightSlowly:
+        return 'Perder Peso Lento';
       case FitnessGoal.gainWeight:
         return 'Ganhar Peso';
-      case FitnessGoal.gainMuscle:
-        return 'Ganhar Massa';
+      case FitnessGoal.gainWeightSlowly:
+        return 'Ganhar Peso Lento';
       case FitnessGoal.maintainWeight:
         return 'Manter Peso';
     }
