@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -39,6 +40,9 @@ class AITutorController with ChangeNotifier {
   // Estado da conversa
   String? _currentConversationId;
   int? _currentlySpeakingMessageIndex;
+
+  // Data selecionada atual para as mensagens (formato yyyy-MM-dd)
+  DateTime _selectedDate = DateTime.now();
 
   // Estados de carregamento
   bool _isLoading = false;
@@ -81,6 +85,7 @@ class AITutorController with ChangeNotifier {
   Uint8List? get selectedImageBytes => _selectedImageBytes;
   String? get currentConversationId => _currentConversationId;
   int? get currentlySpeakingMessageIndex => _currentlySpeakingMessageIndex;
+  DateTime get selectedDate => _selectedDate;
 
   AITutorController({
     required this.speechMixin,
@@ -90,9 +95,15 @@ class AITutorController with ChangeNotifier {
     this.toolType = 'chat',
     this.rawInitialPromptJson,
     List<Map<String, dynamic>>? initialMessages,
+    DateTime? initialDate,
   }) {
+    // Inicializar a data selecionada
+    if (initialDate != null) {
+      _selectedDate = DateTime(initialDate.year, initialDate.month, initialDate.day);
+    }
+
     print(
-        '🤖 AITutorController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}');
+        '🤖 AITutorController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}, selectedDate: ${_formatDateKey(_selectedDate)}');
     if (initialMessages != null && initialMessages.isNotEmpty) {
       // Prioridade máxima: se mensagens iniciais são fornecidas, usá-las.
       _messages = initialMessages;
@@ -856,6 +867,9 @@ Pergunta atual: $message
   /// Limpa recursos ao destruir o controller
   @override
   void dispose() {
+    // Salvar mensagens da data atual antes de destruir
+    _saveMessagesForCurrentDate();
+
     _aiStreamSubscription?.cancel();
     // Se o usuário enviou mensagem nesta sessão, checar se deve mostrar rate_app
     if (_userSentMessage) {
@@ -1531,6 +1545,117 @@ Pergunta atual: $message
       notifyListeners();
       print(
           '💬 AITutorController: Resposta histórica da ferramenta substituiu notifier vazio.');
+    }
+  }
+
+  /// Formata a data para usar como chave de armazenamento (yyyy-MM-dd)
+  String _formatDateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Muda a data selecionada e carrega as mensagens dessa data
+  Future<void> changeSelectedDate(DateTime newDate) async {
+    print('📅 AITutorController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
+
+    // Salvar mensagens da data atual antes de mudar
+    await _saveMessagesForCurrentDate();
+
+    // Atualizar a data selecionada
+    _selectedDate = DateTime(newDate.year, newDate.month, newDate.day);
+
+    // Carregar mensagens da nova data
+    await _loadMessagesForDate(_selectedDate);
+
+    notifyListeners();
+  }
+
+  /// Salva as mensagens da data atual
+  Future<void> _saveMessagesForCurrentDate() async {
+    if (_messages.isEmpty) {
+      print('💾 AITutorController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
+      return;
+    }
+
+    try {
+      final dateKey = _formatDateKey(_selectedDate);
+      final storageKey = 'nutrition_chat_$dateKey';
+
+      // Converter mensagens para formato serializável
+      final messagesData = _messages.map((msg) {
+        final data = <String, dynamic>{
+          'isUser': msg['isUser'],
+          'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toString(),
+        };
+
+        if (msg.containsKey('message')) {
+          data['message'] = msg['message'];
+        }
+
+        if (msg.containsKey('hasImage') && msg['hasImage'] == true) {
+          data['hasImage'] = true;
+          // Converter bytes da imagem para base64 para armazenamento
+          if (msg.containsKey('imageBytes')) {
+            // Armazenar imagens seria muito pesado, então apenas marcamos que tinha uma imagem
+            data['hadImage'] = true;
+          }
+        }
+
+        // Se tiver um notifier, pegar a mensagem dele
+        if (msg.containsKey('notifier')) {
+          final notifier = msg['notifier'] as MessageNotifier?;
+          if (notifier != null && notifier.message.isNotEmpty) {
+            data['message'] = notifier.message;
+          }
+        }
+
+        return data;
+      }).toList();
+
+      await _storageService.saveData(storageKey, {'messages': messagesData});
+      print('✅ AITutorController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
+    } catch (e) {
+      print('❌ AITutorController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
+    }
+  }
+
+  /// Carrega as mensagens de uma data específica
+  Future<void> _loadMessagesForDate(DateTime date) async {
+    try {
+      final dateKey = _formatDateKey(date);
+      final storageKey = 'nutrition_chat_$dateKey';
+
+      final data = await _storageService.getData(storageKey);
+
+      if (data == null || data.isEmpty) {
+        print('📭 AITutorController - Nenhuma mensagem encontrada para data $dateKey');
+        _messages = [];
+        return;
+      }
+
+      final List<dynamic> messagesData = data['messages'] ?? [];
+      _messages = messagesData.map((msgData) {
+        final msg = <String, dynamic>{
+          'isUser': msgData['isUser'] ?? false,
+          'timestamp': msgData['timestamp'] != null
+              ? DateTime.parse(msgData['timestamp'])
+              : DateTime.now(),
+        };
+
+        if (msgData.containsKey('message')) {
+          msg['message'] = msgData['message'];
+        }
+
+        if (msgData.containsKey('hadImage') && msgData['hadImage'] == true) {
+          msg['hadImage'] = true; // Marcar que tinha uma imagem
+        }
+
+        return msg;
+      }).toList();
+
+      print('✅ AITutorController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
+    } catch (e) {
+      print('❌ AITutorController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
+      _messages = [];
     }
   }
 }

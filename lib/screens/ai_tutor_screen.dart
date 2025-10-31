@@ -348,6 +348,10 @@ class AITutorScreenState extends State<AITutorScreen>
     bool loadingExistingConversation =
         widget.conversationId != null || conversationIdFromToolData != null;
 
+    // Obter a data selecionada do provider
+    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+    final selectedDate = mealsProvider.selectedDate;
+
     // Inicializar o controller com as opções corretas
     _controller = AITutorController(
       speechMixin: _speechMixinRef,
@@ -360,6 +364,7 @@ class AITutorScreenState extends State<AITutorScreen>
           : null, // Passa o JSON completo se for ferramenta
       initialMessages:
           messagesFromToolData, // Passa as mensagens extraídas do toolData, se houver
+      initialDate: selectedDate, // Passa a data inicial do calendário
     );
 
     // Lógica de ação PÓS-inicialização do controller
@@ -960,9 +965,11 @@ class AITutorScreenState extends State<AITutorScreen>
                       final authService = Provider.of<AuthService>(context);
                       return WeeklyCalendar(
                         selectedDate: mealsProvider.selectedDate,
-                        onDaySelected: (date) {
+                        onDaySelected: (date) async {
                           print('Data selecionada: $date');
                           mealsProvider.setSelectedDate(date);
+                          // Carregar mensagens da data selecionada
+                          await _controller.changeSelectedDate(date);
                         },
                         onSearchPressed: () {
                           Navigator.push(
