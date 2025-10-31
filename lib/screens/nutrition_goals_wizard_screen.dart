@@ -360,7 +360,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildStepHeader(
-            icon: Icons.track_changes,
+            icon: Icons.center_focus_strong,
             title: 'Seu Objetivo',
             subtitle: 'O que você deseja alcançar?',
             theme: theme,

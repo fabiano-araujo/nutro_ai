@@ -4,6 +4,7 @@ import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/macro_edit_bottom_sheet.dart';
 import 'nutrition_goals_wizard_screen.dart';
+import 'diet_type_selection_screen.dart';
 
 class NutritionGoalsScreen extends StatefulWidget {
   const NutritionGoalsScreen({Key? key}) : super(key: key);
@@ -51,7 +52,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
 
                 const SizedBox(height: 16),
 
-                // Diet Type Card (moved here to be close to macros)
+                // Diet Type Card
                 _buildDietTypeCard(provider, theme, isDarkMode, textColor),
 
                 const SizedBox(height: 12),
@@ -294,13 +295,22 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
       theme: theme,
       textColor: textColor,
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const NutritionGoalsWizardScreen(startStep: 3),
-          ),
-        );
+        _showDietTypeDialog(provider, theme, isDarkMode, textColor);
       },
+    );
+  }
+
+  void _showDietTypeDialog(
+    NutritionGoalsProvider provider,
+    ThemeData theme,
+    bool isDarkMode,
+    Color textColor,
+  ) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DietTypeSelectionScreen(),
+      ),
     );
   }
 

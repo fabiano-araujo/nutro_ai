@@ -567,7 +567,7 @@ final Map<String, String> ptBRTranslations = {
   'quotes': 'Citações',
 
   // Assistente de aprendizagem
-  'ask_anything': 'O que você comeu ou se exercitou?',
+  'ask_anything': 'O que você comeu?',
   'explain_concepts': 'Explique conceitos',
   'explique_conceitos': 'Explique conceitos',
   'quiz_generator': 'Gerador de quiz',
@@ -728,7 +728,7 @@ final Map<String, String> ptBRTranslations = {
 
   // Tela AI Tutor
   'ai_tutor_title': 'Assistente de Estudos',
-  'ask_anything': 'O que você comeu ou se exercitou?',
+  'ask_anything': 'O que você comeu?',
 
   // Tela de Assinatura
   'premium_plans': 'Planos Premium',

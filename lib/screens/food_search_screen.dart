@@ -298,15 +298,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                     indicatorColor: AppTheme.primaryColor,
                     indicatorWeight: 2.5,
                     indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: isDarkMode ? Color(0xFF48484A) : Color(0xFFD1D1D6),
+                    dividerHeight: 1,
                     tabs: [
                       Tab(text: 'Frequentes'),
                       Tab(text: context.tr.translate('recent')),
                       Tab(text: context.tr.translate('favorites')),
                     ],
-                  ),
-                  Container(
-                    height: 1,
-                    color: isDarkMode ? Color(0xFF2A2A2A) : Color(0xFFFAFAFA),
                   ),
                 ],
               ),

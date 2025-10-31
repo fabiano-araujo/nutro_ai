@@ -1402,9 +1402,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                   controller: _messageController,
                                   focusNode: _inputFocusNode,
                                   decoration: InputDecoration(
-                                    hintText:
-                                        context.tr.translate('ask_anything') ??
-                                            "Pergunte qualquer coisa",
+                                    hintText: context.tr.translate('ask_anything'),
                                     hintStyle: TextStyle(
                                       fontSize: 15,
                                       color: isListening
