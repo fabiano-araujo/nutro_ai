@@ -962,7 +962,6 @@ class AITutorScreenState extends State<AITutorScreen>
                   // Calendário semanal
                   Consumer<DailyMealsProvider>(
                     builder: (context, mealsProvider, child) {
-                      final authService = Provider.of<AuthService>(context);
                       return WeeklyCalendar(
                         selectedDate: mealsProvider.selectedDate,
                         onDaySelected: (date) async {
@@ -979,18 +978,6 @@ class AITutorScreenState extends State<AITutorScreen>
                             ),
                           );
                         },
-                        onProfilePressed: () {
-                          final authService = Provider.of<AuthService>(context, listen: false);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => authService.isAuthenticated
-                                  ? const ProfileScreen()
-                                  : const LoginScreen(),
-                            ),
-                          );
-                        },
-                        profileImageUrl: authService.currentUser?.photo,
                       );
                     },
                   ),

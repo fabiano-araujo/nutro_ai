@@ -32,13 +32,28 @@ enum DietType {
   custom, // Personalizada
 }
 
+enum HeightUnit {
+  cm, // Centimeters
+  ft, // Feet and inches
+}
+
+enum WeightUnit {
+  kg, // Kilograms
+  lbs, // Pounds
+  stLbs, // Stone and pounds
+}
+
 class NutritionGoalsProvider extends ChangeNotifier {
   // Personal information
   String _sex = 'male'; // 'male' or 'female'
   int _age = 30;
-  double _weight = 70.0; // kg
-  double _height = 170.0; // cm
+  double _weight = 70.0; // always stored in kg internally
+  double _height = 170.0; // always stored in cm internally
   double? _bodyFat; // optional, for Katch-McArdle formula
+
+  // Measurement units
+  HeightUnit _heightUnit = HeightUnit.cm;
+  WeightUnit _weightUnit = WeightUnit.kg;
 
   // Activity and goals
   ActivityLevel _activityLevel = ActivityLevel.moderatelyActive;
@@ -64,9 +79,11 @@ class NutritionGoalsProvider extends ChangeNotifier {
   // Getters
   String get sex => _sex;
   int get age => _age;
-  double get weight => _weight;
-  double get height => _height;
+  double get weight => _weight; // Always returns kg
+  double get height => _height; // Always returns cm
   double? get bodyFat => _bodyFat;
+  HeightUnit get heightUnit => _heightUnit;
+  WeightUnit get weightUnit => _weightUnit;
   ActivityLevel get activityLevel => _activityLevel;
   FitnessGoal get fitnessGoal => _fitnessGoal;
   CalculationFormula get formula => _formula;
@@ -124,6 +141,13 @@ class NutritionGoalsProvider extends ChangeNotifier {
       _manualCarbsGoal = prefs.getInt('nutrition_manualCarbs') ?? 250;
       _manualFatGoal = prefs.getInt('nutrition_manualFat') ?? 67;
 
+      // Load measurement units
+      final heightUnitIndex = prefs.getInt('nutrition_heightUnit') ?? 0;
+      _heightUnit = HeightUnit.values[heightUnitIndex];
+
+      final weightUnitIndex = prefs.getInt('nutrition_weightUnit') ?? 0;
+      _weightUnit = WeightUnit.values[weightUnitIndex];
+
       notifyListeners();
     } catch (e) {
       print('Error loading nutrition goals: $e');
@@ -159,6 +183,10 @@ class NutritionGoalsProvider extends ChangeNotifier {
       await prefs.setInt('nutrition_manualProtein', _manualProteinGoal);
       await prefs.setInt('nutrition_manualCarbs', _manualCarbsGoal);
       await prefs.setInt('nutrition_manualFat', _manualFatGoal);
+
+      // Save measurement units
+      await prefs.setInt('nutrition_heightUnit', _heightUnit.index);
+      await prefs.setInt('nutrition_weightUnit', _weightUnit.index);
 
       // Mark as configured after first save
       _hasConfiguredGoals = true;
@@ -382,6 +410,104 @@ class NutritionGoalsProvider extends ChangeNotifier {
     final calories = _calculateCalories();
     final fatCalories = calories * (_fatPercentage / 100);
     return (fatCalories / 9).round(); // 9 calories per gram of fat
+  }
+
+  // Unit conversion methods
+  void setHeightUnit(HeightUnit unit) {
+    _heightUnit = unit;
+    _saveToPreferences();
+    notifyListeners();
+  }
+
+  void setWeightUnit(WeightUnit unit) {
+    _weightUnit = unit;
+    _saveToPreferences();
+    notifyListeners();
+  }
+
+  void toggleHeightUnit() {
+    _heightUnit = _heightUnit == HeightUnit.cm ? HeightUnit.ft : HeightUnit.cm;
+    _saveToPreferences();
+    notifyListeners();
+  }
+
+  void toggleWeightUnit() {
+    switch (_weightUnit) {
+      case WeightUnit.kg:
+        _weightUnit = WeightUnit.lbs;
+        break;
+      case WeightUnit.lbs:
+        _weightUnit = WeightUnit.stLbs;
+        break;
+      case WeightUnit.stLbs:
+        _weightUnit = WeightUnit.kg;
+        break;
+    }
+    _saveToPreferences();
+    notifyListeners();
+  }
+
+  // Convert height from cm to feet/inches
+  Map<String, int> heightInFeet() {
+    final totalInches = (_height / 2.54).round();
+    return {
+      'feet': totalInches ~/ 12,
+      'inches': totalInches % 12,
+    };
+  }
+
+  // Convert height from feet/inches to cm
+  static double heightToCm(int feet, int inches) {
+    final totalInches = (feet * 12) + inches;
+    return totalInches * 2.54;
+  }
+
+  // Convert weight from kg to lbs
+  double weightInLbs() {
+    return _weight * 2.20462;
+  }
+
+  // Convert weight from lbs to kg
+  static double weightToKg(double lbs) {
+    return lbs / 2.20462;
+  }
+
+  // Convert weight to stone and pounds
+  Map<String, int> weightInStLbs() {
+    final totalLbs = (_weight * 2.20462).round();
+    return {
+      'stone': totalLbs ~/ 14,
+      'pounds': totalLbs % 14,
+    };
+  }
+
+  // Convert weight from stone/pounds to kg
+  static double weightStLbsToKg(int stone, int pounds) {
+    final totalLbs = (stone * 14) + pounds;
+    return totalLbs / 2.20462;
+  }
+
+  // Get formatted height string for display
+  String getFormattedHeight() {
+    if (_heightUnit == HeightUnit.cm) {
+      return '${_height.toStringAsFixed(0)} cm';
+    } else {
+      final heightData = heightInFeet();
+      return '${heightData['feet']}\' ${heightData['inches']}"';
+    }
+  }
+
+  // Get formatted weight string for display
+  String getFormattedWeight() {
+    switch (_weightUnit) {
+      case WeightUnit.kg:
+        return '${_weight.toStringAsFixed(1)} kg';
+      case WeightUnit.lbs:
+        return '${weightInLbs().toStringAsFixed(1)} lbs';
+      case WeightUnit.stLbs:
+        final weightData = weightInStLbs();
+        return '${weightData['stone']} st ${weightData['pounds']} lbs';
+    }
   }
 
   // Helper methods for UI

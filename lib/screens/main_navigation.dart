@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'tools_screen.dart';
 import 'ai_tutor_screen.dart';
+import 'profile_screen.dart';
+import 'login_screen.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../services/rate_app_service.dart';
+import '../services/auth_service.dart';
 
 // Controlador global para gerenciar a navegau00e7u00e3o entre abas
 class NavigationController {
@@ -26,6 +30,22 @@ class NavigationController {
 }
 
 final navigationController = NavigationController();
+
+// Wrapper para a tela de perfil que decide qual tela mostrar
+class ProfileTabWrapper extends StatelessWidget {
+  const ProfileTabWrapper({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        return authService.isAuthenticated
+            ? const ProfileScreen()
+            : const LoginScreen();
+      },
+    );
+  }
+}
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
@@ -74,7 +94,40 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     AITutorScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
     ToolsScreen(), // Ferramentas (Tools) - Dark theme
+    ProfileTabWrapper(), // Perfil/Login - TERCEIRA ABA
   ];
+
+  // Método para construir o ícone de perfil
+  Widget _buildProfileIcon(AuthService authService, bool isSelected, bool isDarkMode) {
+    final hasPhoto = authService.currentUser?.photo != null &&
+                      authService.currentUser!.photo!.isNotEmpty;
+
+    if (hasPhoto) {
+      return Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected
+                ? (isDarkMode ? Colors.white : Colors.black)
+                : (isDarkMode ? Colors.grey[600]! : Colors.grey[700]!),
+            width: isSelected ? 2.5 : 2,
+          ),
+        ),
+        child: CircleAvatar(
+          radius: 13,
+          backgroundImage: NetworkImage(authService.currentUser!.photo!),
+          backgroundColor: Colors.transparent,
+        ),
+      );
+    } else {
+      return Icon(
+        isSelected ? Icons.person : Icons.person_outline,
+        size: 26,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,30 +170,39 @@ class _MainNavigationState extends State<MainNavigation> {
           index: _currentIndex,
           children: _screens,
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            navigationController.changeTab(index);
+        bottomNavigationBar: Consumer<AuthService>(
+          builder: (context, authService, child) {
+            return BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                navigationController.changeTab(index);
+              },
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              elevation: 0,
+              type: BottomNavigationBarType.fixed,
+              showSelectedLabels: false,
+              showUnselectedLabels: false,
+              selectedItemColor: selectedIconColor,
+              unselectedItemColor: unselectedIconColor,
+              items: [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.chat_bubble_outline),
+                  activeIcon: Icon(Icons.chat_bubble),
+                  label: '',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.lightbulb_outline),
+                  activeIcon: Icon(Icons.lightbulb),
+                  label: '',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildProfileIcon(authService, false, isDarkMode),
+                  activeIcon: _buildProfileIcon(authService, true, isDarkMode),
+                  label: '',
+                ),
+              ],
+            );
           },
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          selectedItemColor: selectedIconColor,
-          unselectedItemColor: unselectedIconColor,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
-              label: '',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.lightbulb_outline),
-              activeIcon: Icon(Icons.lightbulb),
-              label: '',
-            ),
-          ],
         ),
       ),
     );

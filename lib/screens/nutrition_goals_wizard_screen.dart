@@ -24,8 +24,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   // Step 0: Personal Info
   String _selectedSex = 'male';
   int _age = 30;
-  double _weight = 70.0;
-  double _height = 170.0;
+  double _weight = 70.0; // Always stored in kg internally
+  double _height = 170.0; // Always stored in cm internally
+
+  // Text controllers for inputs
+  final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _heightInchesController = TextEditingController();
+  final TextEditingController _weightController = TextEditingController();
+  final TextEditingController _weightPoundsController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
 
   // Step 1: Activity & Goal
   ActivityLevel _selectedActivityLevel = ActivityLevel.moderatelyActive;
@@ -47,13 +54,52 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         _height = provider.height;
         _selectedActivityLevel = provider.activityLevel;
         _selectedFitnessGoal = provider.fitnessGoal;
+
+        // Initialize text controllers based on current units
+        _ageController.text = _age.toString();
+        _updateHeightController(provider);
+        _updateWeightController(provider);
       });
     });
+  }
+
+  void _updateHeightController(NutritionGoalsProvider provider) {
+    if (provider.heightUnit == HeightUnit.cm) {
+      _heightController.text = _height.toStringAsFixed(0);
+      _heightInchesController.clear();
+    } else {
+      final heightData = provider.heightInFeet();
+      _heightController.text = heightData['feet'].toString();
+      _heightInchesController.text = heightData['inches'].toString();
+    }
+  }
+
+  void _updateWeightController(NutritionGoalsProvider provider) {
+    switch (provider.weightUnit) {
+      case WeightUnit.kg:
+        _weightController.text = _weight.toStringAsFixed(1);
+        _weightPoundsController.clear();
+        break;
+      case WeightUnit.lbs:
+        _weightController.text = provider.weightInLbs().toStringAsFixed(1);
+        _weightPoundsController.clear();
+        break;
+      case WeightUnit.stLbs:
+        final weightData = provider.weightInStLbs();
+        _weightController.text = weightData['stone'].toString();
+        _weightPoundsController.text = weightData['pounds'].toString();
+        break;
+    }
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _heightController.dispose();
+    _heightInchesController.dispose();
+    _weightController.dispose();
+    _weightPoundsController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -272,45 +318,22 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
           const SizedBox(height: 24),
 
           // Age
-          _buildNumberInput(
-            label: 'Idade',
-            value: _age.toDouble(),
-            unit: 'anos',
-            min: 10,
-            max: 100,
-            onChanged: (value) => setState(() => _age = value.toInt()),
-            theme: theme,
-            textColor: textColor,
-            isDarkMode: isDarkMode,
-          ),
+          _buildAgeInput(theme, textColor, isDarkMode),
           const SizedBox(height: 24),
 
           // Height
-          _buildNumberInput(
-            label: 'Altura',
-            value: _height,
-            unit: 'cm',
-            min: 100,
-            max: 250,
-            onChanged: (value) => setState(() => _height = value),
-            theme: theme,
-            textColor: textColor,
-            isDarkMode: isDarkMode,
+          Consumer<NutritionGoalsProvider>(
+            builder: (context, provider, child) {
+              return _buildHeightInput(theme, textColor, isDarkMode, provider);
+            },
           ),
           const SizedBox(height: 24),
 
           // Weight
-          _buildNumberInput(
-            label: 'Peso',
-            value: _weight,
-            unit: 'kg',
-            min: 30,
-            max: 200,
-            decimals: 1,
-            onChanged: (value) => setState(() => _weight = value),
-            theme: theme,
-            textColor: textColor,
-            isDarkMode: isDarkMode,
+          Consumer<NutritionGoalsProvider>(
+            builder: (context, provider, child) {
+              return _buildWeightInput(theme, textColor, isDarkMode, provider);
+            },
           ),
           const SizedBox(height: 24),
         ],
@@ -471,18 +494,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildNumberInput({
-    required String label,
-    required double value,
-    required String unit,
-    required double min,
-    required double max,
-    int decimals = 0,
-    required Function(double) onChanged,
-    required ThemeData theme,
-    required Color textColor,
-    required bool isDarkMode,
-  }) {
+  Widget _buildAgeInput(ThemeData theme, Color textColor, bool isDarkMode) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
 
     return Container(
@@ -499,7 +511,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label,
+            'Idade',
             style: theme.textTheme.titleMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
@@ -507,55 +519,414 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              IconButton(
-                onPressed: () {
-                  final newValue = value - (decimals > 0 ? 0.5 : 1);
-                  if (newValue >= min) onChanged(newValue);
-                },
-                icon: const Icon(Icons.remove_circle_outline),
-                color: AppTheme.primaryColor,
-                iconSize: 32,
+              Expanded(
+                child: TextField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  onChanged: (value) {
+                    final age = int.tryParse(value);
+                    if (age != null && age >= 10 && age <= 100) {
+                      setState(() => _age = age);
+                    }
+                  },
+                ),
               ),
               const SizedBox(width: 16),
-              Column(
-                children: [
-                  Text(
-                    decimals > 0 ? value.toStringAsFixed(decimals) : value.toStringAsFixed(0),
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      color: textColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    unit,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: textColor.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              IconButton(
-                onPressed: () {
-                  final newValue = value + (decimals > 0 ? 0.5 : 1);
-                  if (newValue <= max) onChanged(newValue);
-                },
-                icon: const Icon(Icons.add_circle_outline),
-                color: AppTheme.primaryColor,
-                iconSize: 32,
+              Text(
+                'anos',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: textColor.withValues(alpha: 0.6),
+                ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeightInput(ThemeData theme, Color textColor, bool isDarkMode, NutritionGoalsProvider provider) {
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final isCm = provider.heightUnit == HeightUnit.cm;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Altura',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 16),
-          Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: ((max - min) * (decimals > 0 ? 2 : 1)).toInt(),
-            activeColor: AppTheme.primaryColor,
-            onChanged: onChanged,
+          Row(
+            children: [
+              if (isCm) ...[
+                Expanded(
+                  child: TextField(
+                    controller: _heightController,
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: AppTheme.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onChanged: (value) {
+                      final height = double.tryParse(value);
+                      if (height != null && height >= 100 && height <= 250) {
+                        setState(() => _height = height);
+                      }
+                    },
+                  ),
+                ),
+              ] else ...[
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: _heightController,
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: AppTheme.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      suffixText: "'",
+                      suffixStyle: theme.textTheme.bodyLarge?.copyWith(
+                        color: textColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      final feet = int.tryParse(value) ?? 0;
+                      final inches = int.tryParse(_heightInchesController.text) ?? 0;
+                      final heightCm = NutritionGoalsProvider.heightToCm(feet, inches);
+                      if (heightCm >= 100 && heightCm <= 250) {
+                        setState(() => _height = heightCm);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: _heightInchesController,
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: AppTheme.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      suffixText: '"',
+                      suffixStyle: theme.textTheme.bodyLarge?.copyWith(
+                        color: textColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      final feet = int.tryParse(_heightController.text) ?? 0;
+                      final inches = int.tryParse(value) ?? 0;
+                      final heightCm = NutritionGoalsProvider.heightToCm(feet, inches);
+                      if (heightCm >= 100 && heightCm <= 250) {
+                        setState(() => _height = heightCm);
+                      }
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () {
+                  provider.toggleHeightUnit();
+                  _updateHeightController(provider);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isCm ? 'cm' : 'ft',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightInput(ThemeData theme, Color textColor, bool isDarkMode, NutritionGoalsProvider provider) {
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final String unitLabel;
+    final bool showSecondField = provider.weightUnit == WeightUnit.stLbs;
+
+    switch (provider.weightUnit) {
+      case WeightUnit.kg:
+        unitLabel = 'kg';
+        break;
+      case WeightUnit.lbs:
+        unitLabel = 'lbs';
+        break;
+      case WeightUnit.stLbs:
+        unitLabel = 'st & lbs';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Peso',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              if (!showSecondField) ...[
+                Expanded(
+                  child: TextField(
+                    controller: _weightController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: AppTheme.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onChanged: (value) {
+                      final weight = double.tryParse(value);
+                      if (weight != null) {
+                        if (provider.weightUnit == WeightUnit.kg) {
+                          if (weight >= 30 && weight <= 200) {
+                            setState(() => _weight = weight);
+                          }
+                        } else if (provider.weightUnit == WeightUnit.lbs) {
+                          final weightKg = NutritionGoalsProvider.weightToKg(weight);
+                          if (weightKg >= 30 && weightKg <= 200) {
+                            setState(() => _weight = weightKg);
+                          }
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ] else ...[
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: _weightController,
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: AppTheme.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      suffixText: 'st',
+                      suffixStyle: theme.textTheme.bodyMedium?.copyWith(
+                        color: textColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      final stone = int.tryParse(value) ?? 0;
+                      final pounds = int.tryParse(_weightPoundsController.text) ?? 0;
+                      final weightKg = NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
+                      if (weightKg >= 30 && weightKg <= 200) {
+                        setState(() => _weight = weightKg);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: _weightPoundsController,
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: AppTheme.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      suffixText: 'lbs',
+                      suffixStyle: theme.textTheme.bodyMedium?.copyWith(
+                        color: textColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      final stone = int.tryParse(_weightController.text) ?? 0;
+                      final pounds = int.tryParse(value) ?? 0;
+                      final weightKg = NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
+                      if (weightKg >= 30 && weightKg <= 200) {
+                        setState(() => _weight = weightKg);
+                      }
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () {
+                  provider.toggleWeightUnit();
+                  _updateWeightController(provider);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    unitLabel,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
