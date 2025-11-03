@@ -100,7 +100,8 @@ class AIService {
       {String subject = '',
       String languageCode = 'pt_BR',
       String quality = 'bom',
-      String userId = ''}) async* {
+      String userId = '',
+      String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando nova solicitação de resposta');
     try {
       final systemContent =
@@ -137,6 +138,7 @@ class AIService {
         'model': quality, // Usar o parâmetro de qualidade passado
         'streaming': true,
         'userId': userId, // Adicionando o userId na requisição
+        'agentType': agentType, // Tipo de agent a ser usado
       });
 
       print('🔄 Aguardando resposta da nova API...');
@@ -278,7 +280,8 @@ class AIService {
   Stream<String> processImageStream(Uint8List imageBytes, String prompt,
       {String languageCode = 'pt_BR',
       String quality = 'baixo',
-      String userId = ''}) async* {
+      String userId = '',
+      String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando processamento de imagem com streaming');
 
     try {
@@ -313,6 +316,7 @@ class AIService {
         'streaming': true,
         'imageBase64': 'data:image/jpeg;base64,' + imageBase64,
         'userId': userId, // Adicionando o userId na requisição
+        'agentType': agentType, // Tipo de agent a ser usado
       });
 
       print('🔄 Aguardando resposta da nova API para a imagem...');
@@ -429,7 +433,8 @@ class AIService {
   Future<String> processImage(Uint8List imageBytes, String prompt,
       {String languageCode = 'pt_BR',
       String quality = 'baixo',
-      String userId = ''}) async {
+      String userId = '',
+      String agentType = 'nutrition'}) async {
     try {
       final completer = Completer<String>();
       final buffer = StringBuffer();
@@ -440,6 +445,7 @@ class AIService {
         languageCode: languageCode,
         quality: quality,
         userId: userId, // Passando o userId para o método de streaming
+        agentType: agentType, // Passando o agentType
       );
 
       final subscription = stream.listen(
@@ -532,7 +538,8 @@ class AIService {
       {int? targetWordCount,
       String languageCode = 'pt_BR',
       String quality = 'mediano',
-      String userId = ''}) async* {
+      String userId = '',
+      String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando aprimoramento de texto com streaming');
 
     try {
@@ -591,6 +598,7 @@ class AIService {
         'model': quality,
         'streaming': true,
         'userId': userId, // Adicionando o userId na requisição
+        'agentType': agentType, // Tipo de agent a ser usado
       });
 
       print('🔄 Aguardando resposta da API para melhoria de texto...');
@@ -710,7 +718,8 @@ class AIService {
       {int? targetWordCount,
       String languageCode = 'pt_BR',
       String quality = 'mediano',
-      String userId = ''}) async {
+      String userId = '',
+      String agentType = 'nutrition'}) async {
     try {
       final completer = Completer<String>();
       final buffer = StringBuffer();
@@ -722,6 +731,7 @@ class AIService {
         languageCode: languageCode,
         quality: quality,
         userId: userId, // Passando o userId para o método de streaming
+        agentType: agentType, // Passando o agentType
       );
 
       final subscription = stream.listen(
@@ -756,7 +766,8 @@ class AIService {
       {String summaryLength = 'medium',
       String languageCode = 'pt_BR',
       String quality = 'mediano',
-      String userId = ''}) async* {
+      String userId = '',
+      String agentType = 'nutrition'}) async* {
     print(
         '📡 AIService.summarizeDocumentStream - Iniciando com tamanho: $summaryLength, tamanho do documento: ${documentText.length} caracteres');
 
@@ -803,11 +814,13 @@ class AIService {
         'temperature': 0.3,
         'model': quality,
         'streaming': true,
-        'userId': userId, // Adicionando o userId na requisição
+        'userId': userId,
+        'agentType': agentType,
       });
 
       print(
           '🚀 AIService.summarizeDocumentStream - Enviando requisição para a nova API');
+
       final response = await http.Client().send(request);
 
       if (response.statusCode == 200) {
@@ -927,7 +940,8 @@ class AIService {
       {String summaryLength = 'medium',
       String languageCode = 'pt_BR',
       String quality = 'mediano',
-      String userId = ''}) async {
+      String userId = '',
+      String agentType = 'nutrition'}) async {
     try {
       final completer = Completer<String>();
       final buffer = StringBuffer();
@@ -938,6 +952,7 @@ class AIService {
         languageCode: languageCode,
         quality: quality,
         userId: userId, // Passando o userId para o método de streaming
+        agentType: agentType, // Passando o agentType
       );
 
       final subscription = stream.listen(
@@ -972,7 +987,8 @@ class AIService {
       String code, String language, String requestType,
       {String languageCode = 'pt_BR',
       String quality = 'bom',
-      String userId = ''}) async* {
+      String userId = '',
+      String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando ajuda com código (streaming)');
 
     try {
@@ -1022,10 +1038,12 @@ class AIService {
         'temperature': 0.3,
         'model': quality,
         'streaming': true,
-        'userId': userId, // Adicionando o userId na requisição
+        'userId': userId,
+        'agentType': agentType,
       });
 
       print('🔄 Aguardando resposta da API para ajuda com código...');
+
       final response = await http.Client().send(request);
 
       if (response.statusCode == 200) {
@@ -1141,7 +1159,8 @@ class AIService {
   Future<String> getCodeHelp(String code, String language, String requestType,
       {String languageCode = 'pt_BR',
       String quality = 'bom',
-      String userId = ''}) async {
+      String userId = '',
+      String agentType = 'nutrition'}) async {
     try {
       final completer = Completer<String>();
       final buffer = StringBuffer();
@@ -1153,6 +1172,7 @@ class AIService {
         languageCode: languageCode,
         quality: quality,
         userId: userId, // Passando o userId para o método de streaming
+        agentType: agentType, // Passando o agentType
       );
 
       final subscription = stream.listen(
@@ -1187,7 +1207,8 @@ class AIService {
       {String videoTitle = '',
       String languageCode = 'pt_BR',
       String quality = 'ruim',
-      String userId = ''}) async* {
+      String userId = '',
+      String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando resumo de transcrição do YouTube (streaming)');
 
     try {
@@ -1235,10 +1256,12 @@ $transcript
         'temperature': 0.3,
         'model': quality,
         'streaming': true,
-        'userId': userId, // Adicionando o userId na requisição
+        'userId': userId,
+        'agentType': agentType,
       });
 
       print('🔄 Aguardando resposta da API para resumo de vídeo...');
+
       final response = await http.Client().send(request);
 
       if (response.statusCode == 200) {
@@ -1355,7 +1378,8 @@ $transcript
       {String videoTitle = '',
       String languageCode = 'pt_BR',
       String quality = 'ruim',
-      String userId = ''}) async {
+      String userId = '',
+      String agentType = 'nutrition'}) async {
     try {
       final completer = Completer<String>();
       final buffer = StringBuffer();
@@ -1366,6 +1390,7 @@ $transcript
         languageCode: languageCode,
         quality: quality,
         userId: userId, // Passando o userId para o método de streaming
+        agentType: agentType, // Passando o agentType
       );
 
       final subscription = stream.listen(
