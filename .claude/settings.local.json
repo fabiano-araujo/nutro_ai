@@ -37,7 +37,9 @@
       "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 30 --nostream\")",
       "Bash(flutter run:*)",
       "Bash(flutter devices:*)",
-      "Bash(flutter emulators:*)"
+      "Bash(flutter emulators:*)",
+      "Bash(node deploy.js:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

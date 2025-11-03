@@ -403,7 +403,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
           isDarkMode: isDarkMode,
           title: 'Informações Pessoais',
           subtitle: '${provider.sex == "male" ? "Masculino" : "Feminino"}, ${provider.age} anos',
-          details: '${provider.height.toStringAsFixed(0)} cm, ${provider.weight.toStringAsFixed(1)} kg',
+          details: '${provider.getFormattedHeight()}, ${provider.getFormattedWeight()}',
           icon: Icons.person,
           iconColor: Colors.blue,
           theme: theme,

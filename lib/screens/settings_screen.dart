@@ -25,7 +25,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final StorageService _storageService = StorageService();
   String _selectedLanguage = 'en';
   ThemeMode _themeMode = ThemeMode.light;
-  bool _useMetric = true;
   bool _mealReminders = true;
 
   @override
@@ -183,23 +182,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showEditHeightDialog(double currentHeight, bool useMetric) {
-    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-    final controller = TextEditingController(
-      text: useMetric ? currentHeight.toString() : (currentHeight / 2.54).toStringAsFixed(0),
-    );
+  void _showEditHeightDialog(NutritionGoalsProvider provider) {
+    late final TextEditingController feetController;
+    late final TextEditingController inchesController;
+    late final TextEditingController cmController;
+
+    if (provider.heightUnit == HeightUnit.cm) {
+      cmController = TextEditingController(text: provider.height.toStringAsFixed(0));
+    } else {
+      final heightData = provider.heightInFeet();
+      feetController = TextEditingController(text: heightData['feet'].toString());
+      inchesController = TextEditingController(text: heightData['inches'].toString());
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Altura'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: useMetric ? 'Altura (cm)' : 'Altura (pol)',
-            border: const OutlineInputBorder(),
-          ),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Editar Altura'),
+            TextButton(
+              onPressed: () {
+                provider.toggleHeightUnit();
+                Navigator.pop(context);
+                _showEditHeightDialog(provider);
+              },
+              child: Text(
+                provider.heightUnit == HeightUnit.cm ? 'cm' : 'ft',
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              ),
+            ),
+          ],
         ),
+        content: provider.heightUnit == HeightUnit.cm
+            ? TextField(
+                controller: cmController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Altura (cm)',
+                  border: OutlineInputBorder(),
+                ),
+              )
+            : Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: feetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Pés',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: inchesController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Polegadas',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -207,10 +256,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () {
-              final newHeight = double.tryParse(controller.text);
-              if (newHeight != null && newHeight > 0) {
-                final heightInCm = useMetric ? newHeight : newHeight * 2.54;
-                nutritionProvider.updatePersonalInfo(height: heightInCm);
+              double heightInCm;
+              if (provider.heightUnit == HeightUnit.cm) {
+                heightInCm = double.tryParse(cmController.text) ?? provider.height;
+              } else {
+                final feet = int.tryParse(feetController.text) ?? 0;
+                final inches = int.tryParse(inchesController.text) ?? 0;
+                heightInCm = NutritionGoalsProvider.heightToCm(feet, inches);
+              }
+
+              if (heightInCm >= 50 && heightInCm <= 300) {
+                provider.updatePersonalInfo(height: heightInCm);
                 Navigator.pop(context);
               }
             },
@@ -221,23 +277,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showEditWeightDialog(double currentWeight, bool useMetric) {
-    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-    final controller = TextEditingController(
-      text: useMetric ? currentWeight.toString() : (currentWeight * 2.20462).toStringAsFixed(1),
-    );
+  void _showEditWeightDialog(NutritionGoalsProvider provider) {
+    late final TextEditingController kgController;
+    late final TextEditingController lbsController;
+    late final TextEditingController stoneController;
+    late final TextEditingController poundsController;
+
+    switch (provider.weightUnit) {
+      case WeightUnit.kg:
+        kgController = TextEditingController(text: provider.weight.toStringAsFixed(1));
+        break;
+      case WeightUnit.lbs:
+        lbsController = TextEditingController(text: provider.weightInLbs().toStringAsFixed(1));
+        break;
+      case WeightUnit.stLbs:
+        final weightData = provider.weightInStLbs();
+        stoneController = TextEditingController(text: weightData['stone'].toString());
+        poundsController = TextEditingController(text: weightData['pounds'].toString());
+        break;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Peso'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: useMetric ? 'Peso (kg)' : 'Peso (lb)',
-            border: const OutlineInputBorder(),
-          ),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Editar Peso'),
+            TextButton(
+              onPressed: () {
+                provider.toggleWeightUnit();
+                Navigator.pop(context);
+                _showEditWeightDialog(provider);
+              },
+              child: Text(
+                provider.weightUnit == WeightUnit.kg
+                    ? 'kg'
+                    : provider.weightUnit == WeightUnit.lbs
+                        ? 'lbs'
+                        : 'st',
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              ),
+            ),
+          ],
         ),
+        content: provider.weightUnit == WeightUnit.kg
+            ? TextField(
+                controller: kgController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Peso (kg)',
+                  border: OutlineInputBorder(),
+                ),
+              )
+            : provider.weightUnit == WeightUnit.lbs
+                ? TextField(
+                    controller: lbsController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Peso (lbs)',
+                      border: OutlineInputBorder(),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: stoneController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Stone',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: poundsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Pounds',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -245,10 +371,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () {
-              final newWeight = double.tryParse(controller.text);
-              if (newWeight != null && newWeight > 0) {
-                final weightInKg = useMetric ? newWeight : newWeight / 2.20462;
-                nutritionProvider.updatePersonalInfo(weight: weightInKg);
+              double weightInKg;
+              switch (provider.weightUnit) {
+                case WeightUnit.kg:
+                  weightInKg = double.tryParse(kgController.text) ?? provider.weight;
+                  break;
+                case WeightUnit.lbs:
+                  final lbs = double.tryParse(lbsController.text) ?? provider.weightInLbs();
+                  weightInKg = NutritionGoalsProvider.weightToKg(lbs);
+                  break;
+                case WeightUnit.stLbs:
+                  final stone = int.tryParse(stoneController.text) ?? 0;
+                  final pounds = int.tryParse(poundsController.text) ?? 0;
+                  weightInKg = NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
+                  break;
+              }
+
+              if (weightInKg >= 20 && weightInKg <= 300) {
+                provider.updatePersonalInfo(weight: weightInKg);
                 Navigator.pop(context);
               }
             },
@@ -426,21 +566,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _buildAccountRow(
                 'Altura',
-                _useMetric
-                    ? '${nutritionProvider.height.toStringAsFixed(0)} cm'
-                    : '${(nutritionProvider.height / 2.54).toStringAsFixed(0)} pol',
+                nutritionProvider.getFormattedHeight(),
                 Icons.height,
                 theme,
-                onTap: () => _showEditHeightDialog(nutritionProvider.height, _useMetric),
+                onTap: () => _showEditHeightDialog(nutritionProvider),
               ),
               _buildAccountRow(
                 'Peso',
-                _useMetric
-                    ? '${nutritionProvider.weight.toStringAsFixed(1)} kg'
-                    : '${(nutritionProvider.weight * 2.20462).toStringAsFixed(1)} lb',
+                nutritionProvider.getFormattedWeight(),
                 Icons.monitor_weight_outlined,
                 theme,
-                onTap: () => _showEditWeightDialog(nutritionProvider.weight, _useMetric),
+                onTap: () => _showEditWeightDialog(nutritionProvider),
               ),
             ],
           ),
@@ -506,7 +642,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             colorScheme: colorScheme,
             title: 'Preferences',
             children: [
-              _buildUnitsRow(theme, colorScheme),
               _buildLanguageRow(theme),
             ],
           ),
@@ -673,50 +808,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case ThemeMode.system:
         return 'Auto';
     }
-  }
-
-  Widget _buildUnitsRow(ThemeData theme, ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text('Units', style: theme.textTheme.bodyLarge),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: ['Metric', 'Imperial'].map((unit) {
-                final isSelected = (unit == 'Metric' && _useMetric) || (unit == 'Imperial' && !_useMetric);
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _useMetric = unit == 'Metric');
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isSelected ? colorScheme.primary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      unit,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildLanguageRow(ThemeData theme) {
