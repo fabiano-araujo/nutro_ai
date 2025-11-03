@@ -361,8 +361,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildOptionCard(
-                title: provider.getActivityLevelName(level),
-                subtitle: provider.getActivityLevelDescription(level),
+                title: provider.getActivityLevelName(level, context),
+                subtitle: provider.getActivityLevelDescription(level, context),
                 isSelected: _selectedActivityLevel == level,
                 onTap: () => setState(() => _selectedActivityLevel = level),
                 theme: theme,
@@ -396,7 +396,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildOptionCard(
-                title: provider.getFitnessGoalName(goal),
+                title: provider.getFitnessGoalName(goal, context),
                 subtitle: _getGoalDescription(goal),
                 isSelected: _selectedFitnessGoal == goal,
                 onTap: () => setState(() => _selectedFitnessGoal = goal),

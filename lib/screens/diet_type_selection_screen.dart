@@ -106,7 +106,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  provider.getDietTypeName(dietType),
+                                  provider.getDietTypeName(dietType, context),
                                   style: theme.textTheme.bodyLarge?.copyWith(
                                     color: isSelected ? AppTheme.primaryColor : textColor,
                                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -114,7 +114,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  provider.getDietTypeDescription(dietType),
+                                  provider.getDietTypeDescription(dietType, context),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: textColor.withValues(alpha: 0.6),
                                   ),

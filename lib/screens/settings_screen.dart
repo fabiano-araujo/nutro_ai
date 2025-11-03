@@ -89,25 +89,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Nome'),
+        title: Text(context.tr.translate('edit_name')),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Nome',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.tr.translate('name'),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
               // TODO: Update user name on server
               Navigator.pop(context);
             },
-            child: const Text('Salvar'),
+            child: Text(context.tr.translate('save')),
           ),
         ],
       ),
@@ -120,19 +120,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Idade'),
+        title: Text(context.tr.translate('edit_age')),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Idade',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.tr.translate('age'),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -142,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Salvar'),
+            child: Text(context.tr.translate('save')),
           ),
         ],
       ),
@@ -154,13 +154,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Gênero'),
+        title: Text(context.tr.translate('edit_gender')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.male),
-              title: const Text('Masculino'),
+              title: Text(context.tr.translate('male')),
               trailing: currentGender == 'male' ? const Icon(Icons.check) : null,
               onTap: () {
                 nutritionProvider.updatePersonalInfo(sex: 'male');
@@ -169,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.female),
-              title: const Text('Feminino'),
+              title: Text(context.tr.translate('female')),
               trailing: currentGender == 'female' ? const Icon(Icons.check) : null,
               onTap: () {
                 nutritionProvider.updatePersonalInfo(sex: 'female');
@@ -201,7 +201,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Editar Altura'),
+            Text(context.tr.translate('edit_height')),
             TextButton(
               onPressed: () {
                 provider.toggleHeightUnit();
@@ -219,9 +219,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? TextField(
                 controller: cmController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Altura (cm)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.tr.translate('height_cm'),
+                  border: const OutlineInputBorder(),
                 ),
               )
             : Row(
@@ -230,9 +230,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: TextField(
                       controller: feetController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Pés',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: context.tr.translate('feet'),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ),
@@ -241,9 +241,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: TextField(
                       controller: inchesController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Polegadas',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: context.tr.translate('inches'),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ),
@@ -252,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -270,7 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Salvar'),
+            child: Text(context.tr.translate('save')),
           ),
         ],
       ),
@@ -303,7 +303,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Editar Peso'),
+            Text(context.tr.translate('edit_weight')),
             TextButton(
               onPressed: () {
                 provider.toggleWeightUnit();
@@ -325,18 +325,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? TextField(
                 controller: kgController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Peso (kg)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.tr.translate('weight_kg'),
+                  border: const OutlineInputBorder(),
                 ),
               )
             : provider.weightUnit == WeightUnit.lbs
                 ? TextField(
                     controller: lbsController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Peso (lbs)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: context.tr.translate('weight_lbs'),
+                      border: const OutlineInputBorder(),
                     ),
                   )
                 : Row(
@@ -345,9 +345,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: TextField(
                           controller: stoneController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Stone',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: context.tr.translate('stone'),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                       ),
@@ -356,9 +356,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: TextField(
                           controller: poundsController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Pounds',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: context.tr.translate('pounds'),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                       ),
@@ -367,7 +367,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -392,7 +392,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Salvar'),
+            child: Text(context.tr.translate('save')),
           ),
         ],
       ),
@@ -403,8 +403,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final goals = FitnessGoal.values;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Objetivo'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr.translate('edit_goal')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: goals.map((goal) {
@@ -414,11 +414,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _getGoalIcon(goal),
                 color: isSelected ? theme.colorScheme.primary : null,
               ),
-              title: Text(provider.getFitnessGoalName(goal)),
+              title: Text(provider.getFitnessGoalName(goal, dialogContext)),
               trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
               onTap: () {
                 provider.updateActivityAndGoals(fitnessGoal: goal);
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
             );
           }).toList(),
@@ -444,8 +444,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final levels = ActivityLevel.values;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Nível de Atividade'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr.translate('edit_activity_level')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: levels.map((level) {
@@ -455,15 +455,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icons.directions_run,
                 color: isSelected ? theme.colorScheme.primary : null,
               ),
-              title: Text(provider.getActivityLevelName(level)),
+              title: Text(provider.getActivityLevelName(level, dialogContext)),
               subtitle: Text(
-                provider.getActivityLevelDescription(level),
+                provider.getActivityLevelDescription(level, dialogContext),
                 style: theme.textTheme.bodySmall,
               ),
               trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
               onTap: () {
                 provider.updateActivityAndGoals(activityLevel: level);
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
             );
           }).toList(),
@@ -476,8 +476,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final dietTypes = DietType.values;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Tipo de Dieta'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr.translate('edit_diet_type')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -488,15 +488,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Icons.restaurant_menu,
                   color: isSelected ? theme.colorScheme.primary : null,
                 ),
-                title: Text(provider.getDietTypeName(dietType)),
+                title: Text(provider.getDietTypeName(dietType, dialogContext)),
                 subtitle: Text(
-                  provider.getDietTypeDescription(dietType),
+                  provider.getDietTypeDescription(dietType, dialogContext),
                   style: theme.textTheme.bodySmall,
                 ),
                 trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
                 onTap: () {
                   provider.updateDietType(dietType);
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
               );
             }).toList(),
@@ -537,11 +537,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionCard(
             theme: theme,
             colorScheme: colorScheme,
-            title: 'Conta',
+            title: context.tr.translate('account'),
             children: [
               _buildAccountRow(
-                'Nome',
-                authService.isAuthenticated ? authService.currentUser?.name ?? 'Usuário' : 'Não logado',
+                context.tr.translate('name'),
+                authService.isAuthenticated ? authService.currentUser?.name ?? context.tr.translate('user') : context.tr.translate('not_logged_in'),
                 Icons.person_outline,
                 theme,
                 onTap: () {
@@ -551,28 +551,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               _buildAccountRow(
-                'Idade',
-                '${nutritionProvider.age} anos',
+                context.tr.translate('age'),
+                '${nutritionProvider.age}${context.tr.translate('years_suffix')}',
                 Icons.cake_outlined,
                 theme,
                 onTap: () => _showEditAgeDialog(nutritionProvider.age),
               ),
               _buildAccountRow(
-                'Gênero',
-                nutritionProvider.sex == 'male' ? 'Masculino' : 'Feminino',
+                context.tr.translate('gender'),
+                nutritionProvider.sex == 'male' ? context.tr.translate('male') : context.tr.translate('female'),
                 Icons.wc_outlined,
                 theme,
                 onTap: () => _showEditGenderDialog(nutritionProvider.sex),
               ),
               _buildAccountRow(
-                'Altura',
+                context.tr.translate('height'),
                 nutritionProvider.getFormattedHeight(),
                 Icons.height,
                 theme,
                 onTap: () => _showEditHeightDialog(nutritionProvider),
               ),
               _buildAccountRow(
-                'Peso',
+                context.tr.translate('weight'),
                 nutritionProvider.getFormattedWeight(),
                 Icons.monitor_weight_outlined,
                 theme,
@@ -586,25 +586,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionCard(
             theme: theme,
             colorScheme: colorScheme,
-            title: 'Dieta',
+            title: context.tr.translate('diet'),
             children: [
               _buildAccountRow(
-                'Objetivo',
-                nutritionProvider.getFitnessGoalName(nutritionProvider.fitnessGoal),
+                context.tr.translate('goal'),
+                nutritionProvider.getFitnessGoalName(nutritionProvider.fitnessGoal, context),
                 Icons.track_changes,
                 theme,
                 onTap: () => _showEditGoalDialog(theme, nutritionProvider),
               ),
               _buildAccountRow(
-                'Nível de Atividade',
-                nutritionProvider.getActivityLevelName(nutritionProvider.activityLevel),
+                context.tr.translate('activity_level'),
+                nutritionProvider.getActivityLevelName(nutritionProvider.activityLevel, context),
                 Icons.directions_run,
                 theme,
                 onTap: () => _showEditActivityLevelDialog(theme, nutritionProvider),
               ),
               _buildAccountRow(
-                'Dieta',
-                nutritionProvider.getDietTypeName(nutritionProvider.dietType),
+                context.tr.translate('diet'),
+                nutritionProvider.getDietTypeName(nutritionProvider.dietType, context),
                 Icons.restaurant_menu,
                 theme,
                 onTap: () => _showEditDietTypeDialog(theme, nutritionProvider),
@@ -613,10 +613,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Show body fat percentage only when Katch-McArdle is selected
               if (nutritionProvider.formula == CalculationFormula.katchMcArdle)
                 _buildAccountRow(
-                  'Percentual de Gordura',
+                  context.tr.translate('body_fat_percentage'),
                   nutritionProvider.bodyFat != null
                       ? '${nutritionProvider.bodyFat!.toStringAsFixed(1)}%'
-                      : 'Não informado',
+                      : context.tr.translate('not_informed'),
                   Icons.fitness_center,
                   theme,
                   onTap: () => _showBodyFatDialog(theme, nutritionProvider),
@@ -640,7 +640,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionCard(
             theme: theme,
             colorScheme: colorScheme,
-            title: 'Preferences',
+            title: context.tr.translate('preferences'),
             children: [
               _buildLanguageRow(theme),
             ],
@@ -651,7 +651,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionCard(
             theme: theme,
             colorScheme: colorScheme,
-            title: 'Notifications',
+            title: context.tr.translate('notifications'),
             children: [
               _buildNotificationRow(theme, colorScheme),
             ],
@@ -855,8 +855,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Consumer<NutritionGoalsProvider>(
       builder: (context, provider, child) {
         return _buildAccountRow(
-          'Fórmula de Cálculo',
-          provider.getFormulaName(provider.formula),
+          context.tr.translate('calculation_formula'),
+          provider.getFormulaName(provider.formula, context),
           Icons.calculate,
           theme,
           onTap: () => _showFormulaDialog(theme, provider),
@@ -870,8 +870,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Fórmula de Cálculo'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr.translate('calculation_formula')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: formulas.map((formula) {
@@ -881,7 +881,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icons.calculate,
                 color: isSelected ? theme.colorScheme.primary : null,
               ),
-              title: Text(provider.getFormulaName(formula)),
+              title: Text(provider.getFormulaName(formula, dialogContext)),
               subtitle: Text(
                 _getFormulaDescription(formula),
                 style: theme.textTheme.bodySmall,
@@ -889,7 +889,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
               onTap: () {
                 provider.updateActivityAndGoals(formula: formula);
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
 
                 // If Katch-McArdle is selected, show body fat input dialog
                 if (formula == CalculationFormula.katchMcArdle) {
@@ -908,11 +908,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _getFormulaDescription(CalculationFormula formula) {
     switch (formula) {
       case CalculationFormula.mifflinStJeor:
-        return 'Mais precisa para a maioria das pessoas';
+        return context.tr.translate('formula_mifflin_description');
       case CalculationFormula.harrisBenedict:
-        return 'Fórmula tradicional e bem estabelecida';
+        return context.tr.translate('formula_harris_description');
       case CalculationFormula.katchMcArdle:
-        return 'Requer percentual de gordura corporal';
+        return context.tr.translate('formula_katch_description');
     }
   }
 
@@ -924,13 +924,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Percentual de Gordura Corporal'),
+        title: Text(context.tr.translate('body_fat_percentage_full')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'A fórmula Katch-McArdle requer o percentual de gordura corporal para um cálculo mais preciso.',
+              context.tr.translate('katch_mcardle_description'),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
@@ -938,11 +938,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               controller: controller,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Percentual de Gordura (%)',
-                hintText: 'Ex: 20',
+                labelText: context.tr.translate('body_fat_percentage_label'),
+                hintText: context.tr.translate('body_fat_example'),
                 border: const OutlineInputBorder(),
                 suffixText: '%',
-                helperText: 'Entre 5% e 50%',
+                helperText: context.tr.translate('body_fat_range'),
               ),
               autofocus: true,
             ),
@@ -951,7 +951,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -961,14 +961,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(context);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Por favor, insira um valor entre 5 e 50'),
+                  SnackBar(
+                    content: Text(context.tr.translate('body_fat_validation_error')),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
-            child: const Text('Salvar'),
+            child: Text(context.tr.translate('save')),
           ),
         ],
       ),
@@ -985,12 +985,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Meal Reminders',
+                  context.tr.translate('meal_reminders'),
                   style: theme.textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Get notified for your meals.',
+                  context.tr.translate('meal_reminders_description'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
                   ),

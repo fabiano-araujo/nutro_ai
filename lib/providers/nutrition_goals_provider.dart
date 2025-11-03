@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../i18n/app_localizations_extension.dart';
 
 enum CalculationFormula {
   mifflinStJeor,
@@ -511,93 +512,96 @@ class NutritionGoalsProvider extends ChangeNotifier {
   }
 
   // Helper methods for UI
-  String getActivityLevelName(ActivityLevel level) {
+  String getActivityLevelName(ActivityLevel level, BuildContext context) {
     switch (level) {
       case ActivityLevel.sedentary:
-        return 'Sedentário';
+        return context.tr.translate('activity_sedentary');
       case ActivityLevel.lightlyActive:
-        return 'Levemente Ativo';
+        return context.tr.translate('activity_lightly_active');
       case ActivityLevel.moderatelyActive:
-        return 'Moderadamente Ativo';
+        return context.tr.translate('activity_moderately_active');
       case ActivityLevel.veryActive:
-        return 'Muito Ativo';
+        return context.tr.translate('activity_very_active');
       case ActivityLevel.extremelyActive:
-        return 'Extremamente Ativo';
+        return context.tr.translate('activity_extremely_active');
     }
   }
 
-  String getActivityLevelDescription(ActivityLevel level) {
+  String getActivityLevelDescription(ActivityLevel level, BuildContext context) {
     switch (level) {
       case ActivityLevel.sedentary:
-        return 'Pouco ou nenhum exercício';
+        return context.tr.translate('activity_sedentary_desc');
       case ActivityLevel.lightlyActive:
-        return 'Exercício leve 1-3 dias/semana';
+        return context.tr.translate('activity_lightly_active_desc');
       case ActivityLevel.moderatelyActive:
-        return 'Exercício moderado 3-5 dias/semana';
+        return context.tr.translate('activity_moderately_active_desc');
       case ActivityLevel.veryActive:
-        return 'Exercício intenso 6-7 dias/semana';
+        return context.tr.translate('activity_very_active_desc');
       case ActivityLevel.extremelyActive:
-        return 'Exercício muito intenso, trabalho físico';
+        return context.tr.translate('activity_extremely_active_desc');
     }
   }
 
-  String getFitnessGoalName(FitnessGoal goal) {
+  String getFitnessGoalName(FitnessGoal goal, BuildContext context) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return 'Perder peso';
+        return context.tr.translate('goal_lose_weight');
       case FitnessGoal.loseWeightSlowly:
-        return 'Perder peso lentamente';
+        return context.tr.translate('goal_lose_weight_slowly');
       case FitnessGoal.maintainWeight:
-        return 'Manter o peso';
+        return context.tr.translate('goal_maintain_weight');
       case FitnessGoal.gainWeightSlowly:
-        return 'Aumentar o peso lentamente';
+        return context.tr.translate('goal_gain_weight_slowly');
       case FitnessGoal.gainWeight:
-        return 'Aumentar o peso';
+        return context.tr.translate('goal_gain_weight');
     }
   }
 
-  String getFormulaName(CalculationFormula formula) {
+  String getFormulaName(CalculationFormula formula, BuildContext context) {
     switch (formula) {
       case CalculationFormula.mifflinStJeor:
-        return 'Mifflin-St Jeor';
+        return context.tr.translate('formula_mifflin');
       case CalculationFormula.harrisBenedict:
-        return 'Harris-Benedict';
+        return context.tr.translate('formula_harris');
       case CalculationFormula.katchMcArdle:
-        return 'Katch-McArdle';
+        return context.tr.translate('formula_katch');
     }
   }
 
-  String getDietTypeName(DietType type) {
+  String getDietTypeName(DietType type, BuildContext context) {
     switch (type) {
       case DietType.standard:
-        return 'Padrão';
+        return context.tr.translate('diet_standard');
       case DietType.balanced:
-        return 'Equilibrada';
+        return context.tr.translate('diet_balanced');
       case DietType.ketogenic:
-        return 'Cetogênica';
+        return context.tr.translate('diet_ketogenic');
       case DietType.lowCarb:
-        return 'Low Carb';
+        return context.tr.translate('diet_low_carb');
       case DietType.highProtein:
-        return 'High Protein';
+        return context.tr.translate('diet_high_protein');
       case DietType.custom:
-        return 'Personalizada';
+        return context.tr.translate('diet_custom');
     }
   }
 
-  String getDietTypeDescription(DietType type) {
+  String getDietTypeDescription(DietType type, BuildContext context) {
     switch (type) {
       case DietType.standard:
-        return '40% Carbs, 30% Proteína, 30% Gordura';
+        return context.tr.translate('diet_standard_desc');
       case DietType.balanced:
-        return '50% Carbs, 20% Proteína, 30% Gordura';
+        return context.tr.translate('diet_balanced_desc');
       case DietType.ketogenic:
-        return '5% Carbs, 25% Proteína, 70% Gordura';
+        return context.tr.translate('diet_ketogenic_desc');
       case DietType.lowCarb:
-        return '20% Carbs, 40% Proteína, 40% Gordura';
+        return context.tr.translate('diet_low_carb_desc');
       case DietType.highProtein:
-        return '30% Carbs, 40% Proteína, 30% Gordura';
+        return context.tr.translate('diet_high_protein_desc');
       case DietType.custom:
-        return '$_carbsPercentage% Carbs, $_proteinPercentage% Proteína, $_fatPercentage% Gordura';
+        return context.tr.translate('diet_custom_desc')
+            .replaceAll('{carbs}', '$_carbsPercentage')
+            .replaceAll('{protein}', '$_proteinPercentage')
+            .replaceAll('{fat}', '$_fatPercentage');
     }
   }
 }

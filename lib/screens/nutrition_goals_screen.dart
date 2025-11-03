@@ -53,7 +53,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 const SizedBox(height: 16),
 
                 // Diet Type Card
-                _buildDietTypeCard(provider, theme, isDarkMode, textColor),
+                _buildDietTypeCard(context, provider, theme, isDarkMode, textColor),
 
                 const SizedBox(height: 12),
 
@@ -63,7 +63,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 const SizedBox(height: 24),
 
                 // Configuration section
-                _buildCalculatedConfigSection(provider, theme, isDarkMode, textColor),
+                _buildCalculatedConfigSection(context, provider, theme, isDarkMode, textColor),
 
                 const SizedBox(height: 80),
               ],
@@ -277,6 +277,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   }
 
   Widget _buildDietTypeCard(
+    BuildContext context,
     NutritionGoalsProvider provider,
     ThemeData theme,
     bool isDarkMode,
@@ -288,8 +289,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
       cardColor: cardColor,
       isDarkMode: isDarkMode,
       title: 'Tipo de Dieta',
-      subtitle: provider.getDietTypeName(provider.dietType),
-      details: provider.getDietTypeDescription(provider.dietType),
+      subtitle: provider.getDietTypeName(provider.dietType, context),
+      details: provider.getDietTypeDescription(provider.dietType, context),
       icon: Icons.restaurant_menu,
       iconColor: Colors.orange,
       theme: theme,
@@ -378,6 +379,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   }
 
   Widget _buildCalculatedConfigSection(
+    BuildContext context,
     NutritionGoalsProvider provider,
     ThemeData theme,
     bool isDarkMode,
@@ -424,8 +426,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
           cardColor: cardColor,
           isDarkMode: isDarkMode,
           title: 'Nível de Atividade',
-          subtitle: provider.getActivityLevelName(provider.activityLevel),
-          details: provider.getActivityLevelDescription(provider.activityLevel),
+          subtitle: provider.getActivityLevelName(provider.activityLevel, context),
+          details: provider.getActivityLevelDescription(provider.activityLevel, context),
           icon: Icons.directions_run,
           iconColor: Colors.green,
           theme: theme,
@@ -446,7 +448,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
           cardColor: cardColor,
           isDarkMode: isDarkMode,
           title: 'Objetivo',
-          subtitle: provider.getFitnessGoalName(provider.fitnessGoal),
+          subtitle: provider.getFitnessGoalName(provider.fitnessGoal, context),
           details: _getGoalDetail(provider.fitnessGoal),
           icon: Icons.track_changes,
           iconColor: Colors.purple,
