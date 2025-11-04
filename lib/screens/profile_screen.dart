@@ -153,7 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final dailyCalories = nutritionProvider.caloriesGoal.toDouble();
         final bmi = _calculateBMI(nutritionProvider.weight, nutritionProvider.height);
         final bmiColor = _getBMIColor(bmi);
-        final bmiCategory = _getBMICategory(bmi);
+        final bmiCategory = _getBMICategory(bmi, context);
 
     return Container(
       decoration: BoxDecoration(
@@ -338,7 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Objetivo',
+                              context.tr.translate('profile_goal'),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w500,
@@ -348,7 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _getGoalText(nutritionProvider.fitnessGoal),
+                          _getGoalText(nutritionProvider.fitnessGoal, context),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.primary,
@@ -389,7 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Meta Diária',
+                              context.tr.translate('profile_daily_target'),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w500,
@@ -432,18 +432,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  String _getGoalText(FitnessGoal goal) {
+  String _getGoalText(FitnessGoal goal, BuildContext context) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return 'Perder Peso';
+        return context.tr.translate('goal_lose_weight');
       case FitnessGoal.loseWeightSlowly:
-        return 'Perder Peso Lento';
+        return context.tr.translate('goal_lose_weight_slowly');
       case FitnessGoal.gainWeight:
-        return 'Ganhar Peso';
+        return context.tr.translate('goal_gain_weight');
       case FitnessGoal.gainWeightSlowly:
-        return 'Ganhar Peso Lento';
+        return context.tr.translate('goal_gain_weight_slowly');
       case FitnessGoal.maintainWeight:
-        return 'Manter Peso';
+        return context.tr.translate('goal_maintain_weight');
     }
   }
 
@@ -453,15 +453,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return weight / (heightInMeters * heightInMeters);
   }
 
-  String _getBMICategory(double bmi) {
+  String _getBMICategory(double bmi, BuildContext context) {
     if (bmi < 18.5) {
-      return 'Abaixo do peso';
+      return context.tr.translate('bmi_underweight');
     } else if (bmi < 25) {
-      return 'Peso normal';
+      return context.tr.translate('bmi_normal_weight');
     } else if (bmi < 30) {
-      return 'Sobrepeso';
+      return context.tr.translate('bmi_overweight');
     } else {
-      return 'Obesidade';
+      return context.tr.translate('bmi_obesity');
     }
   }
 
@@ -500,7 +500,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Metas Diárias de Macros',
+                context.tr.translate('profile_daily_macro_goals'),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -516,7 +516,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Calculado automaticamente com base em seus objetivos, ou definir manualmente.',
+            context.tr.translate('profile_auto_calculated_description'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
             ),
@@ -525,9 +525,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMacroColumn('${nutritionProvider.carbsPercentage}%', 'Carboidratos', theme),
-              _buildMacroColumn('${nutritionProvider.proteinPercentage}%', 'Proteínas', theme),
-              _buildMacroColumn('${nutritionProvider.fatPercentage}%', 'Gorduras', theme),
+              _buildMacroColumn('${nutritionProvider.carbsPercentage}%', context.tr.translate('carbohydrates'), theme),
+              _buildMacroColumn('${nutritionProvider.proteinPercentage}%', context.tr.translate('protein'), theme),
+              _buildMacroColumn('${nutritionProvider.fatPercentage}%', context.tr.translate('fats'), theme),
             ],
           ),
           const SizedBox(height: 16),
@@ -672,7 +672,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Calorias consumidas diariamente',
+            context.tr.translate('profile_daily_calories_consumed'),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -681,11 +681,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildPeriodChip('7 dias', theme, colorScheme),
+              _buildPeriodChip('7 dias', context.tr.translate('profile_7_days'), theme, colorScheme),
               const SizedBox(width: 8),
-              _buildPeriodChip('30 dias', theme, colorScheme),
+              _buildPeriodChip('30 dias', context.tr.translate('profile_30_days'), theme, colorScheme),
               const SizedBox(width: 8),
-              _buildPeriodChip('90 dias', theme, colorScheme),
+              _buildPeriodChip('90 dias', context.tr.translate('profile_90_days'), theme, colorScheme),
             ],
           ),
           const SizedBox(height: 24),
@@ -814,9 +814,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem('Consumido', colorScheme.primary, theme, false),
+              _buildLegendItem(context.tr.translate('profile_consumed'), colorScheme.primary, theme, false),
               const SizedBox(width: 24),
-              _buildLegendItem('Meta Diária', Colors.orange, theme, true),
+              _buildLegendItem(context.tr.translate('profile_daily_target'), Colors.orange, theme, true),
             ],
           ),
         ],
@@ -824,7 +824,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPeriodChip(String period, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildPeriodChip(String period, String label, ThemeData theme, ColorScheme colorScheme) {
     final isSelected = _selectedPeriod == period;
     return GestureDetector(
       onTap: () {
@@ -837,7 +837,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          period,
+          label,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -916,7 +916,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Média de macronutrientes diários',
+            context.tr.translate('profile_daily_macros_average'),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -925,11 +925,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildMacroPeriodChip('7 dias', theme, colorScheme),
+              _buildMacroPeriodChip('7 dias', context.tr.translate('profile_7_days'), theme, colorScheme),
               const SizedBox(width: 8),
-              _buildMacroPeriodChip('30 dias', theme, colorScheme),
+              _buildMacroPeriodChip('30 dias', context.tr.translate('profile_30_days'), theme, colorScheme),
               const SizedBox(width: 8),
-              _buildMacroPeriodChip('90 dias', theme, colorScheme),
+              _buildMacroPeriodChip('90 dias', context.tr.translate('profile_90_days'), theme, colorScheme),
             ],
           ),
           const SizedBox(height: 24),
@@ -946,16 +946,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       String label = '';
                       switch (groupIndex) {
                         case 0:
-                          label = 'Proteína';
+                          label = context.tr.translate('protein_full');
                           break;
                         case 1:
-                          label = 'Carboidrato';
+                          label = context.tr.translate('carbohydrate');
                           break;
                         case 2:
-                          label = 'Gordura';
+                          label = context.tr.translate('fat');
                           break;
                         case 3:
-                          label = 'Fibra';
+                          label = context.tr.translate('fiber');
                           break;
                       }
                       return BarTooltipItem(
@@ -982,19 +982,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Color color = Colors.black;
                         switch (value.toInt()) {
                           case 0:
-                            text = 'Proteína';
+                            text = context.tr.translate('protein_full');
                             color = const Color(0xFF9575CD); // Purple
                             break;
                           case 1:
-                            text = 'Carboidrato';
+                            text = context.tr.translate('carbohydrate');
                             color = const Color(0xFFA1887F); // Brown
                             break;
                           case 2:
-                            text = 'Gordura';
+                            text = context.tr.translate('fat');
                             color = const Color(0xFF90A4AE); // Blue-grey
                             break;
                           case 3:
-                            text = 'Fibra';
+                            text = context.tr.translate('fiber');
                             color = const Color(0xFF81C784); // Verde suave
                             break;
                         }
@@ -1121,10 +1121,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
-              _buildMacroLegendItem('Proteína: ${avgProtein.toStringAsFixed(1)}g', const Color(0xFF9575CD), theme),
-              _buildMacroLegendItem('Carboidrato: ${avgCarbs.toStringAsFixed(1)}g', const Color(0xFFA1887F), theme),
-              _buildMacroLegendItem('Gordura: ${avgFat.toStringAsFixed(1)}g', const Color(0xFF90A4AE), theme),
-              _buildMacroLegendItem('Fibra: ${avgFiber.toStringAsFixed(1)}g', const Color(0xFF81C784), theme),
+              _buildMacroLegendItem('${context.tr.translate('protein_full')}: ${avgProtein.toStringAsFixed(1)}g', const Color(0xFF9575CD), theme),
+              _buildMacroLegendItem('${context.tr.translate('carbohydrate')}: ${avgCarbs.toStringAsFixed(1)}g', const Color(0xFFA1887F), theme),
+              _buildMacroLegendItem('${context.tr.translate('fat')}: ${avgFat.toStringAsFixed(1)}g', const Color(0xFF90A4AE), theme),
+              _buildMacroLegendItem('${context.tr.translate('fiber')}: ${avgFiber.toStringAsFixed(1)}g', const Color(0xFF81C784), theme),
             ],
           ),
         ],
@@ -1132,7 +1132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMacroPeriodChip(String period, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildMacroPeriodChip(String period, String label, ThemeData theme, ColorScheme colorScheme) {
     final isSelected = _selectedMacroPeriod == period;
     return GestureDetector(
       onTap: () {
@@ -1145,7 +1145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          period,
+          label,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -1189,7 +1189,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: theme.scaffoldBackgroundColor,
         automaticallyImplyLeading: false,
         title: Text(
-          'Profile & Settings',
+          context.tr.translate('profile_and_settings'),
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),

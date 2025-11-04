@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class NutritionGoalsWizardScreen extends StatefulWidget {
   final int startStep;
@@ -174,8 +175,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     Navigator.pop(context);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Metas configuradas com sucesso!'),
+      SnackBar(
+        content: Text(context.tr.translate('goals_configured_successfully')),
         backgroundColor: Colors.green,
       ),
     );
@@ -198,7 +199,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Configurar Metas',
+          context.tr.translate('configure_goals'),
           style: AppTheme.headingLarge.copyWith(
             color: textColor,
             fontSize: 20,
@@ -272,8 +273,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         children: [
           _buildStepHeader(
             icon: Icons.person,
-            title: 'Informações Pessoais',
-            subtitle: 'Precisamos conhecer um pouco sobre você',
+            title: context.tr.translate('personal_info_title'),
+            subtitle: context.tr.translate('personal_info_subtitle'),
             theme: theme,
             textColor: textColor,
           ),
@@ -281,7 +282,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
 
           // Sex selection
           Text(
-            'Sexo',
+            context.tr.translate('sex'),
             style: theme.textTheme.titleMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
@@ -293,7 +294,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               Expanded(
                 child: _buildSelectableCard(
                   icon: Icons.male,
-                  label: 'Masculino',
+                  label: context.tr.translate('male'),
                   isSelected: _selectedSex == 'male',
                   onTap: () => setState(() => _selectedSex = 'male'),
                   theme: theme,
@@ -305,7 +306,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               Expanded(
                 child: _buildSelectableCard(
                   icon: Icons.female,
-                  label: 'Feminino',
+                  label: context.tr.translate('female'),
                   isSelected: _selectedSex == 'female',
                   onTap: () => setState(() => _selectedSex = 'female'),
                   theme: theme,
@@ -349,8 +350,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         children: [
           _buildStepHeader(
             icon: Icons.directions_run,
-            title: 'Nível de Atividade',
-            subtitle: 'Como você se mantém ativo no dia a dia?',
+            title: context.tr.translate('activity_level'),
+            subtitle: context.tr.translate('activity_level_subtitle'),
             theme: theme,
             textColor: textColor,
           ),
@@ -384,8 +385,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         children: [
           _buildStepHeader(
             icon: Icons.center_focus_strong,
-            title: 'Seu Objetivo',
-            subtitle: 'O que você deseja alcançar?',
+            title: context.tr.translate('your_goal'),
+            subtitle: context.tr.translate('your_goal_subtitle'),
             theme: theme,
             textColor: textColor,
           ),
@@ -511,7 +512,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Idade',
+            context.tr.translate('age'),
             style: theme.textTheme.titleMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
@@ -555,7 +556,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               ),
               const SizedBox(width: 16),
               Text(
-                'anos',
+                context.tr.translate('years'),
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: textColor.withValues(alpha: 0.6),
                 ),
@@ -585,7 +586,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Altura',
+            context.tr.translate('height'),
             style: theme.textTheme.titleMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
@@ -770,7 +771,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Peso',
+            context.tr.translate('weight'),
             style: theme.textTheme.titleMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
@@ -1021,7 +1022,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                   ),
                 ),
                 child: Text(
-                  'Voltar',
+                  context.tr.translate('back'),
                   style: TextStyle(color: textColor),
                 ),
               ),
@@ -1041,8 +1042,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               ),
               child: Text(
                 widget.fromProfile
-                    ? 'Salvar'
-                    : (_currentStep == 2 ? 'Concluir' : 'Próximo'),
+                    ? context.tr.translate('save')
+                    : (_currentStep == 2 ? context.tr.translate('finish') : context.tr.translate('next')),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -1055,15 +1056,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   String _getGoalDescription(FitnessGoal goal) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return 'Diminuir os requisitos calóricos em 20 %';
+        return context.tr.translate('goal_desc_lose_weight');
       case FitnessGoal.loseWeightSlowly:
-        return 'Diminuir os requisitos calóricos em 10 %';
+        return context.tr.translate('goal_desc_lose_weight_slowly');
       case FitnessGoal.maintainWeight:
-        return 'Não alterar os requisitos calóricos';
+        return context.tr.translate('goal_desc_maintain_weight');
       case FitnessGoal.gainWeightSlowly:
-        return 'Aumentar os requisitos calóricos em 10 %';
+        return context.tr.translate('goal_desc_gain_weight_slowly');
       case FitnessGoal.gainWeight:
-        return 'Aumentar os requisitos calóricos em 20 %';
+        return context.tr.translate('goal_desc_gain_weight');
     }
   }
 }

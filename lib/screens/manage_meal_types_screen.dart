@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../theme/app_theme.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class ManageMealTypesScreen extends StatefulWidget {
   const ManageMealTypesScreen({Key? key}) : super(key: key);
@@ -31,7 +32,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Gerenciar Refeições',
+          context.tr.translate('manage_meals'),
           style: AppTheme.headingLarge.copyWith(
             color: textColor,
             fontSize: 20,
@@ -40,7 +41,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: textColor),
-            tooltip: 'Restaurar Padrão',
+            tooltip: context.tr.translate('restore_default'),
             onPressed: _showResetDialog,
           ),
         ],
@@ -59,7 +60,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Nenhuma refeição cadastrada',
+                    context.tr.translate('no_meals_registered'),
                     style: TextStyle(
                       fontSize: 16,
                       color: textColor.withValues(alpha: 0.5),
@@ -117,7 +118,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                           Icon(Icons.save, size: 20),
                           SizedBox(width: 8),
                           Text(
-                            'Salvar Mudanças',
+                            context.tr.translate('save_changes'),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -150,17 +151,17 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: Text('Adicionar Refeição'),
+            title: Text(context.tr.translate('add_meal')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
                   decoration: InputDecoration(
-                    labelText: 'Nome da Refeição',
+                    labelText: context.tr.translate('meal_name'),
                     border: OutlineInputBorder(),
                   ),
                   autofocus: true,
@@ -168,7 +169,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                 SizedBox(height: 16),
                 Row(
                   children: [
-                    Text('Emoji: '),
+                    Text(context.tr.translate('emoji_label')),
                     SizedBox(width: 12),
                     GestureDetector(
                       onTap: () {
@@ -197,7 +198,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Cancelar'),
+                child: Text(context.tr.translate('cancel')),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -207,7 +208,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                     Navigator.pop(context);
                   }
                 },
-                child: Text('Adicionar'),
+                child: Text(context.tr.translate('add')),
               ),
             ],
           );
@@ -222,17 +223,17 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: Text('Editar Refeição'),
+            title: Text(context.tr.translate('edit_meal')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
                   decoration: InputDecoration(
-                    labelText: 'Nome da Refeição',
+                    labelText: context.tr.translate('meal_name'),
                     border: OutlineInputBorder(),
                   ),
                   autofocus: true,
@@ -240,7 +241,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                 SizedBox(height: 16),
                 Row(
                   children: [
-                    Text('Emoji: '),
+                    Text(context.tr.translate('emoji_label')),
                     SizedBox(width: 12),
                     GestureDetector(
                       onTap: () {
@@ -269,7 +270,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Cancelar'),
+                child: Text(context.tr.translate('cancel')),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -283,7 +284,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                     Navigator.pop(context);
                   }
                 },
-                child: Text('Salvar'),
+                child: Text(context.tr.translate('save')),
               ),
             ],
           );
@@ -295,15 +296,15 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
   void _showDeleteDialog(MealTypeConfig mealType) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Excluir Refeição'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr.translate('delete_meal')),
         content: Text(
-          'Tem certeza que deseja excluir "${mealType.name}"?',
+          context.tr.translate('delete_meal_confirmation').replaceAll('{mealName}', mealType.name),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.tr.translate('cancel')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -312,9 +313,9 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
             onPressed: () {
               Provider.of<MealTypesProvider>(context, listen: false)
                   .deleteMealType(mealType.id);
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
-            child: Text('Excluir'),
+            child: Text(context.tr.translate('delete')),
           ),
         ],
       ),
@@ -330,7 +331,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
           children: [
             Icon(Icons.check_circle, color: Colors.white),
             SizedBox(width: 12),
-            Text('Mudanças salvas com sucesso!'),
+            Text(context.tr.translate('changes_saved_successfully')),
           ],
         ),
         backgroundColor: Colors.green,
@@ -347,23 +348,23 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
   void _showResetDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Restaurar Padrão'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr.translate('restore_default')),
         content: Text(
-          'Deseja restaurar as refeições padrão? Isso irá remover todas as suas personalizações.',
+          context.tr.translate('restore_default_confirmation'),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.tr.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () {
               Provider.of<MealTypesProvider>(context, listen: false)
                   .resetToDefaults();
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
-            child: Text('Restaurar'),
+            child: Text(context.tr.translate('restore')),
           ),
         ],
       ),
@@ -386,8 +387,8 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Selecione um Emoji'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr.translate('select_emoji')),
         content: Container(
           width: double.maxFinite,
           height: 300,
@@ -402,7 +403,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
               return GestureDetector(
                 onTap: () {
                   onEmojiSelected(emojis[index]);
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
                 child: Container(
                   decoration: BoxDecoration(
@@ -422,8 +423,8 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Fechar'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.tr.translate('cancel')),
           ),
         ],
       ),

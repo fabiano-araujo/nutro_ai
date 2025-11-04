@@ -47,7 +47,8 @@
       "Bash(curl:*)",
       "Bash(python -m json.tool:*)",
       "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && git log --oneline -5\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && git stash && git pull && yarn build && pm2 restart index\")"
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && git stash && git pull && yarn build && pm2 restart index\")",
+      "Bash(start dieta_apitest-agents.html)"
     ],
     "deny": [],
     "ask": []

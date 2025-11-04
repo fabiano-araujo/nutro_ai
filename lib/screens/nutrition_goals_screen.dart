@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/macro_edit_bottom_sheet.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'diet_type_selection_screen.dart';
+import '../i18n/app_localizations.dart';
 
 class NutritionGoalsScreen extends StatefulWidget {
   const NutritionGoalsScreen({Key? key}) : super(key: key);
@@ -31,7 +32,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Metas Nutricionais',
+          AppLocalizations.of(context).translate('nutrition_goals'),
           style: AppTheme.headingLarge.copyWith(
             color: textColor,
             fontSize: 20,
@@ -106,7 +107,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Suas Metas Diárias',
+                AppLocalizations.of(context).translate('your_daily_goals'),
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: textColor,
                   fontWeight: FontWeight.bold,
@@ -163,7 +164,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                   ),
                 ),
                 Text(
-                  'kcal / dia',
+                  AppLocalizations.of(context).translate('kcal_per_day'),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: textColor.withValues(alpha: 0.6),
                   ),
@@ -187,9 +188,10 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             children: [
               Expanded(
                 child: _buildMacroColumn(
+                  context: context,
                   icon: Icons.restaurant_menu,
                   iconColor: const Color(0xFF9575CD),
-                  label: 'Proteína',
+                  label: AppLocalizations.of(context).translate('protein_full'),
                   value: '${provider.proteinGoal}g',
                   percentage: '${provider.proteinPercentage}%',
                   theme: theme,
@@ -203,9 +205,10 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               ),
               Expanded(
                 child: _buildMacroColumn(
+                  context: context,
                   icon: Icons.bakery_dining,
                   iconColor: const Color(0xFFA1887F),
-                  label: 'Carboidratos',
+                  label: AppLocalizations.of(context).translate('carbohydrates'),
                   value: '${provider.carbsGoal}g',
                   percentage: '${provider.carbsPercentage}%',
                   theme: theme,
@@ -219,9 +222,10 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               ),
               Expanded(
                 child: _buildMacroColumn(
+                  context: context,
                   icon: Icons.opacity,
                   iconColor: const Color(0xFF90A4AE),
-                  label: 'Gorduras',
+                  label: AppLocalizations.of(context).translate('fats'),
                   value: '${provider.fatGoal}g',
                   percentage: '${provider.fatPercentage}%',
                   theme: theme,
@@ -236,6 +240,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   }
 
   Widget _buildMacroColumn({
+    required BuildContext context,
     required IconData icon,
     required Color iconColor,
     required String label,
@@ -288,7 +293,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     return _buildInfoCard(
       cardColor: cardColor,
       isDarkMode: isDarkMode,
-      title: 'Tipo de Dieta',
+      title: AppLocalizations.of(context).translate('diet_type'),
       subtitle: provider.getDietTypeName(provider.dietType, context),
       details: provider.getDietTypeDescription(provider.dietType, context),
       icon: Icons.restaurant_menu,
@@ -352,7 +357,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Editar Macronutrientes',
+                    AppLocalizations.of(context).translate('edit_macronutrients'),
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w600,
@@ -360,7 +365,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Ajuste as porcentagens ou valores em gramas',
+                    AppLocalizations.of(context).translate('adjust_percentages_or_grams'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: textColor.withValues(alpha: 0.6),
                     ),
@@ -391,7 +396,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Configuração',
+          AppLocalizations.of(context).translate('configuration'),
           style: theme.textTheme.titleLarge?.copyWith(
             color: textColor,
             fontWeight: FontWeight.bold,
@@ -403,8 +408,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         _buildInfoCard(
           cardColor: cardColor,
           isDarkMode: isDarkMode,
-          title: 'Informações Pessoais',
-          subtitle: '${provider.sex == "male" ? "Masculino" : "Feminino"}, ${provider.age} anos',
+          title: AppLocalizations.of(context).translate('personal_information'),
+          subtitle: '${provider.sex == "male" ? AppLocalizations.of(context).translate('male') : AppLocalizations.of(context).translate('female')}, ${provider.age} ${AppLocalizations.of(context).translate('years_old')}',
           details: '${provider.getFormattedHeight()}, ${provider.getFormattedWeight()}',
           icon: Icons.person,
           iconColor: Colors.blue,
@@ -425,7 +430,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         _buildInfoCard(
           cardColor: cardColor,
           isDarkMode: isDarkMode,
-          title: 'Nível de Atividade',
+          title: AppLocalizations.of(context).translate('activity_level_title'),
           subtitle: provider.getActivityLevelName(provider.activityLevel, context),
           details: provider.getActivityLevelDescription(provider.activityLevel, context),
           icon: Icons.directions_run,
@@ -447,9 +452,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         _buildInfoCard(
           cardColor: cardColor,
           isDarkMode: isDarkMode,
-          title: 'Objetivo',
+          title: AppLocalizations.of(context).translate('objective'),
           subtitle: provider.getFitnessGoalName(provider.fitnessGoal, context),
-          details: _getGoalDetail(provider.fitnessGoal),
+          details: _getGoalDetail(provider.fitnessGoal, context),
           icon: Icons.track_changes,
           iconColor: Colors.purple,
           theme: theme,
@@ -478,7 +483,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               );
             },
             icon: const Icon(Icons.auto_awesome),
-            label: const Text('Configurar Tudo Novamente'),
+            label: Text(AppLocalizations.of(context).translate('configure_everything_again')),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
@@ -609,7 +614,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: cardColor,
         title: Text(
-          'Editar Metas Manualmente',
+          AppLocalizations.of(context).translate('edit_goals_manually'),
           style: TextStyle(color: textColor),
         ),
         content: SingleChildScrollView(
@@ -621,7 +626,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 keyboardType: TextInputType.number,
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  labelText: 'Calorias (kcal)',
+                  labelText: AppLocalizations.of(context).translate('calories_kcal'),
                   labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
                   prefixIcon: Icon(Icons.local_fire_department, color: Colors.orange),
                   enabledBorder: OutlineInputBorder(
@@ -640,7 +645,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 keyboardType: TextInputType.number,
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  labelText: 'Proteína (g)',
+                  labelText: AppLocalizations.of(context).translate('protein_g'),
                   labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
                   prefixIcon: Icon(Icons.restaurant_menu, color: const Color(0xFF9575CD)),
                   enabledBorder: OutlineInputBorder(
@@ -659,7 +664,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 keyboardType: TextInputType.number,
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  labelText: 'Carboidratos (g)',
+                  labelText: AppLocalizations.of(context).translate('carbohydrates_g'),
                   labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
                   prefixIcon: Icon(Icons.bakery_dining, color: const Color(0xFFA1887F)),
                   enabledBorder: OutlineInputBorder(
@@ -678,7 +683,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 keyboardType: TextInputType.number,
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  labelText: 'Gorduras (g)',
+                  labelText: AppLocalizations.of(context).translate('fats_g'),
                   labelStyle: TextStyle(color: textColor.withValues(alpha: 0.7)),
                   prefixIcon: Icon(Icons.opacity, color: const Color(0xFF90A4AE)),
                   enabledBorder: OutlineInputBorder(
@@ -697,7 +702,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: textColor.withValues(alpha: 0.7))),
+            child: Text(AppLocalizations.of(context).translate('cancel'), style: TextStyle(color: textColor.withValues(alpha: 0.7))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -716,8 +721,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               Navigator.pop(context);
 
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Metas atualizadas com sucesso!'),
+                SnackBar(
+                  content: Text(AppLocalizations.of(context).translate('goals_updated_successfully')),
                   backgroundColor: Colors.green,
                   duration: Duration(seconds: 2),
                 ),
@@ -727,25 +732,25 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Salvar'),
+            child: Text(AppLocalizations.of(context).translate('save')),
           ),
         ],
       ),
     );
   }
 
-  String _getGoalDetail(FitnessGoal goal) {
+  String _getGoalDetail(FitnessGoal goal, BuildContext context) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return 'Diminuir calorias em 20%';
+        return AppLocalizations.of(context).translate('decrease_calories_20');
       case FitnessGoal.loseWeightSlowly:
-        return 'Diminuir calorias em 10%';
+        return AppLocalizations.of(context).translate('decrease_calories_10');
       case FitnessGoal.maintainWeight:
-        return 'Manter peso atual';
+        return AppLocalizations.of(context).translate('maintain_current_weight');
       case FitnessGoal.gainWeightSlowly:
-        return 'Aumentar calorias em 10%';
+        return AppLocalizations.of(context).translate('increase_calories_10');
       case FitnessGoal.gainWeight:
-        return 'Aumentar calorias em 20%';
+        return AppLocalizations.of(context).translate('increase_calories_20');
     }
   }
 }
