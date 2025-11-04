@@ -926,4 +926,17 @@ final Map<String, String> ptBRTranslations = {
   'diet_low_carb_desc': '20% Carbs, 40% Proteína, 40% Gordura',
   'diet_high_protein_desc': '30% Carbs, 40% Proteína, 30% Gordura',
   'diet_custom_desc': '{carbs}% Carbs, {protein}% Proteína, {fat}% Gordura',
+
+  // AI Tutor Welcome Screen
+  'ai_tutor_greeting': 'Olá, {userName},',
+  'ai_tutor_where_start': 'Por onde\ncomecçamos?',
+  'ai_tutor_log_meal': 'Registrar refeição',
+  'ai_tutor_analyze_photo': 'Analisar foto com IA',
+  'ai_tutor_fill_personal_info': 'Preencha suas informações pessoais',
+  'ai_tutor_set_nutrition_goal': 'Defina seu objetivo nutricional',
+  'ai_tutor_meal_suggestions': 'Sugestões de refeições',
+  'ai_tutor_ask_nutrition': 'Perguntar sobre nutrição',
+
+  // Daily Meals Screen - Additional Keys
+  'meals': 'Refeições',
 };

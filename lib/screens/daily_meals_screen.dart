@@ -199,7 +199,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Refeições',
+                        AppLocalizations.of(context).translate('meals'),
                         style: AppTheme.headingMedium.copyWith(
                           color: textColor,
                           fontSize: 18,
@@ -208,7 +208,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                       ),
                       IconButton(
                         icon: Icon(Icons.edit, color: textColor),
-                        tooltip: 'Editar refeições',
+                        tooltip: AppLocalizations.of(context).translate('edit_meals'),
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -264,7 +264,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Nenhuma refeição configurada',
+                    AppLocalizations.of(context).translate('no_meals_configured'),
                     style: TextStyle(
                       fontSize: 16,
                       color: textColor.withValues(alpha: 0.5),
@@ -272,7 +272,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Configure suas refeições nas configurações',
+                    AppLocalizations.of(context).translate('configure_meals_in_settings'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -427,7 +427,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           children: [
             // Macronutrients Section Header
             Text(
-              'Macronutrientes',
+              AppLocalizations.of(context).translate('macronutrients'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -443,7 +443,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
             // Calories
             _MacroNutrientRow(
-              label: 'Calorias',
+              label: AppLocalizations.of(context).translate('calories'),
               value: '$totalCalories kcal',
               isDarkMode: isDarkMode,
             ),
@@ -452,7 +452,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
             // Protein
             _MacroNutrientRow(
-              label: 'Proteína',
+              label: AppLocalizations.of(context).translate('protein_full'),
               value: '${totalProtein.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
@@ -461,7 +461,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
             // Total Carbohydrates
             _MacroNutrientRow(
-              label: 'Carboidratos Totais',
+              label: AppLocalizations.of(context).translate('total_carbohydrates'),
               value: '${totalCarbs.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
@@ -478,12 +478,12 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               child: Column(
                 children: [
                   _SubNutrientRow(
-                    label: 'Fibra Alimentar',
+                    label: AppLocalizations.of(context).translate('dietary_fiber'),
                     value: '${totalFiber.toStringAsFixed(0)} g',
                     isDarkMode: isDarkMode,
                   ),
                   _SubNutrientRow(
-                    label: 'Açúcares',
+                    label: AppLocalizations.of(context).translate('sugars'),
                     value: '${totalSugars.toStringAsFixed(0)} g',
                     isDarkMode: isDarkMode,
                   ),
@@ -495,7 +495,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
             // Total Fat
             _MacroNutrientRow(
-              label: 'Gordura Total',
+              label: AppLocalizations.of(context).translate('total_fat'),
               value: '${totalFat.toStringAsFixed(0)} g',
               isDarkMode: isDarkMode,
             ),
@@ -510,7 +510,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 ),
               ),
               child: _SubNutrientRow(
-                label: 'Gordura Saturada',
+                label: AppLocalizations.of(context).translate('saturated_fat'),
                 value: '${totalSaturatedFat.toStringAsFixed(1)} g',
                 isDarkMode: isDarkMode,
               ),
@@ -520,7 +520,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
             // Micronutrients Section Header
             Text(
-              'Micronutrientes',
+              AppLocalizations.of(context).translate('micronutrients'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -536,70 +536,70 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
             // Micronutrients List
             _MicroNutrientRow(
-              label: 'Colesterol',
+              label: AppLocalizations.of(context).translate('cholesterol'),
               value: '${totalCholesterol.toStringAsFixed(0)} mg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Sódio',
+              label: AppLocalizations.of(context).translate('sodium'),
               value: '${totalSodium.toStringAsFixed(0)} mg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Potássio',
+              label: AppLocalizations.of(context).translate('potassium'),
               value: '${totalPotassium.toStringAsFixed(0)} mg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Cálcio',
+              label: AppLocalizations.of(context).translate('calcium'),
               value: '${totalCalcium.toStringAsFixed(0)} mg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Ferro',
+              label: AppLocalizations.of(context).translate('iron'),
               value: '${totalIron.toStringAsFixed(1)} mg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Vitamina D',
+              label: AppLocalizations.of(context).translate('vitamin_d'),
               value: '${totalVitaminD.toStringAsFixed(1)} mcg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Vitamina A',
+              label: AppLocalizations.of(context).translate('vitamin_a'),
               value: '${totalVitaminA.toStringAsFixed(1)} mcg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Vitamina C',
+              label: AppLocalizations.of(context).translate('vitamin_c'),
               value: '${totalVitaminC.toStringAsFixed(1)} mg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Vitamina B6',
+              label: AppLocalizations.of(context).translate('vitamin_b6'),
               value: '${totalVitaminB6.toStringAsFixed(1)} mg',
               isDarkMode: isDarkMode,
             ),
             SizedBox(height: 12),
 
             _MicroNutrientRow(
-              label: 'Vitamina B12',
+              label: AppLocalizations.of(context).translate('vitamin_b12'),
               value: '${totalVitaminB12.toStringAsFixed(1)} mcg',
               isDarkMode: isDarkMode,
             ),
@@ -834,7 +834,7 @@ class _MealCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Macros Totais',
+                  AppLocalizations.of(context).translate('total_macros'),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -846,19 +846,19 @@ class _MealCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _MacroInfo(
-                      label: 'Proteína',
+                      label: AppLocalizations.of(context).translate('protein_full'),
                       value: '${meal!.totalProtein.toStringAsFixed(0)}g',
                       color: Color(0xFF9575CD),
                       isDarkMode: isDarkMode,
                     ),
                     _MacroInfo(
-                      label: 'Carboidratos',
+                      label: AppLocalizations.of(context).translate('carbs'),
                       value: '${meal!.totalCarbs.toStringAsFixed(0)}g',
                       color: Color(0xFFA1887F),
                       isDarkMode: isDarkMode,
                     ),
                     _MacroInfo(
-                      label: 'Gorduras',
+                      label: AppLocalizations.of(context).translate('fats'),
                       value: '${meal!.totalFat.toStringAsFixed(0)}g',
                       color: Color(0xFF90A4AE),
                       isDarkMode: isDarkMode,
@@ -875,7 +875,7 @@ class _MealCard extends StatelessWidget {
           TextButton.icon(
             onPressed: onAddFood,
             icon: Icon(Icons.add, size: 18),
-            label: Text('Adicionar mais alimentos'),
+            label: Text(AppLocalizations.of(context).translate('add_more_foods')),
             style: TextButton.styleFrom(
               foregroundColor: AppTheme.primaryColor,
             ),

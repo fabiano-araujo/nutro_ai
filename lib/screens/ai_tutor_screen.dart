@@ -1131,7 +1131,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                               children: [
                                                 if (authService.isAuthenticated)
                                                   TextSpan(
-                                                    text: 'Olá, $userName,\n',
+                                                    text: AppLocalizations.of(context).translate('ai_tutor_greeting').replaceAll('{userName}', userName ?? '') + '\n',
                                                     style: TextStyle(
                                                       fontSize: 24,
                                                       fontWeight: FontWeight.w300,
@@ -1142,7 +1142,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                                     ),
                                                   ),
                                                 TextSpan(
-                                                  text: 'Por onde\ncomeçamos?',
+                                                  text: AppLocalizations.of(context).translate('ai_tutor_where_start'),
                                                   style: TextStyle(
                                                     fontSize: 32,
                                                     fontWeight: FontWeight.bold,
@@ -1161,7 +1161,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                       // Botões de ação sugeridos
                                       _buildSuggestionButton(
                                         icon: '🍎',
-                                        text: 'Registrar refeição',
+                                        text: AppLocalizations.of(context).translate('ai_tutor_log_meal'),
                                         isDarkMode: isDarkMode,
                                         onTap: () {
                                           _showSuggestionsForAction('registrar_refeicao');
@@ -1170,7 +1170,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                       SizedBox(height: 12),
                                       _buildSuggestionButton(
                                         icon: '📸',
-                                        text: 'Analisar foto com IA',
+                                        text: AppLocalizations.of(context).translate('ai_tutor_analyze_photo'),
                                         isDarkMode: isDarkMode,
                                         onTap: () {
                                           // Abrir tela da câmera
@@ -1192,7 +1192,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 _buildSuggestionButton(
-                                                  text: 'Preencha suas informações pessoais',
+                                                  text: AppLocalizations.of(context).translate('ai_tutor_fill_personal_info'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
                                                     Navigator.push(
@@ -1205,7 +1205,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                                 ),
                                                 SizedBox(height: 12),
                                                 _buildSuggestionButton(
-                                                  text: 'Defina seu objetivo nutricional',
+                                                  text: AppLocalizations.of(context).translate('ai_tutor_set_nutrition_goal'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
                                                     Navigator.push(
@@ -1224,7 +1224,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 _buildSuggestionButton(
-                                                  text: 'Sugestões de refeições',
+                                                  text: AppLocalizations.of(context).translate('ai_tutor_meal_suggestions'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
                                                     _showSuggestionsForAction('sugestoes_refeicoes');
@@ -1232,7 +1232,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                                 ),
                                                 SizedBox(height: 12),
                                                 _buildSuggestionButton(
-                                                  text: 'Perguntar sobre nutrição',
+                                                  text: AppLocalizations.of(context).translate('ai_tutor_ask_nutrition'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
                                                     _showSuggestionsForAction('perguntar_nutricao');

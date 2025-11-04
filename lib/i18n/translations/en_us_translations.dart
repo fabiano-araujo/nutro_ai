@@ -743,4 +743,17 @@ final Map<String, String> enUSTranslations = {
   'diet_low_carb_desc': '20% Carbs, 40% Protein, 40% Fat',
   'diet_high_protein_desc': '30% Carbs, 40% Protein, 30% Fat',
   'diet_custom_desc': '{carbs}% Carbs, {protein}% Protein, {fat}% Fat',
+
+  // AI Tutor Welcome Screen
+  'ai_tutor_greeting': 'Hello, {userName},',
+  'ai_tutor_where_start': 'Where do we\nstart?',
+  'ai_tutor_log_meal': 'Log meal',
+  'ai_tutor_analyze_photo': 'Analyze photo with AI',
+  'ai_tutor_fill_personal_info': 'Fill in your personal information',
+  'ai_tutor_set_nutrition_goal': 'Set your nutrition goal',
+  'ai_tutor_meal_suggestions': 'Meal suggestions',
+  'ai_tutor_ask_nutrition': 'Ask about nutrition',
+
+  // Daily Meals Screen - Additional Keys
+  'meals': 'Meals',
 };
