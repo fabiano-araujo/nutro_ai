@@ -585,16 +585,14 @@ class AITutorController with ChangeNotifier {
       final languageCode =
           _aiService.getCurrentLanguageCode(languageController);
 
-      // Determinar a qualidade com base no tipo de ferramenta (sem analisar JSON aqui)
-      String quality = 'bom';
-      if (toolType == 'youtube') {
-        quality = 'baixo';
-        print(
-            '📱 Usando qualidade BAIXO para ferramenta do tipo: $toolType em _processMessageForAI');
-      } else {
-        print(
-            '📱 Usando qualidade padrão (BOM) para ferramenta do tipo: $toolType em _processMessageForAI');
-      }
+      // Usar qualidade padrão (vazio = modelo padrão do servidor)
+      String quality = '';
+      print(
+          '📱 Usando qualidade padrão (modelo padrão do servidor) para o tutor de nutrição');
+
+      // Usar provider Hyperbolic para o agent nutricional
+      String provider = 'Hyperbolic';
+      print('🔌 Usando provider Hyperbolic para o agent nutricional');
 
       // Obter o usuário logado para pegar o ID
       final authService = Provider.of<AuthService>(context, listen: false);
@@ -616,7 +614,8 @@ class AITutorController with ChangeNotifier {
           languageCode: languageCode,
           quality: quality, // Usar a qualidade determinada pelo toolType
           userId: userId, // Passando o ID do usuário logado
-          agentType: 'nutrition' // Usando o agent de nutrição
+          agentType: 'nutrition', // Usando o agent de nutrição
+          provider: provider // Usando o provider Hyperbolic
           );
 
       // Usar o Helper para lidar com o stream

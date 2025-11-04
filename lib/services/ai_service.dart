@@ -101,7 +101,8 @@ class AIService {
       String languageCode = 'pt_BR',
       String quality = 'bom',
       String userId = '',
-      String agentType = 'nutrition'}) async* {
+      String agentType = 'nutrition',
+      String provider = ''}) async* {
     print('\n🚀 Iniciando nova solicitação de resposta');
     try {
       final systemContent =
@@ -132,14 +133,21 @@ class AIService {
       });
 
       // Novo formato de corpo da requisição
-      request.body = jsonEncode({
+      final requestBody = {
         'prompt': '$systemContent\n\nUsuário: $question',
         'temperature': 0.5,
         'model': quality, // Usar o parâmetro de qualidade passado
         'streaming': true,
         'userId': userId, // Adicionando o userId na requisição
         'agentType': agentType, // Tipo de agent a ser usado
-      });
+      };
+
+      // Adicionar provider se especificado
+      if (provider.isNotEmpty) {
+        requestBody['provider'] = provider;
+      }
+
+      request.body = jsonEncode(requestBody);
 
       print('🔄 Aguardando resposta da nova API...');
       final response = await http.Client().send(request);
