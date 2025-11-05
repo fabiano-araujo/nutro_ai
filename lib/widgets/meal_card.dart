@@ -88,16 +88,18 @@ class _MealCardState extends State<MealCard> {
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
+    return Card(
+      margin: EdgeInsets.only(top: 0, bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
       ),
+      color: backgroundColor,
       child: Column(
         children: [
           // Food Items - Always visible at top
           Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Column(
               children: [
                 ...widget.meal.foods.asMap().entries.map((entry) {

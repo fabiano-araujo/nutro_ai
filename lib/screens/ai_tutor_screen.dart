@@ -37,12 +37,14 @@ import 'dart:convert';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
+import '../widgets/food_json_display.dart';
 import 'daily_meals_screen.dart';
 import 'food_search_screen.dart';
 import 'camera_scan_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
+import '../utils/food_json_parser.dart';
 
 // Singleton para gerenciar o estado da tela AITutor em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -1533,33 +1535,74 @@ class AITutorScreenState extends State<AITutorScreen>
       imageBytes = messageData['imageBytes'];
     }
 
+    // Verificar se a mensagem contém JSON de alimentos (apenas para mensagens da IA)
+    final bool hasFoodJson = !isUser && FoodJsonParser.containsFoodJson(message);
+    final String displayMessage = hasFoodJson
+        ? FoodJsonParser.removeJsonFromMessage(message)
+        : message;
+
     // Se for notificador, vamos usar um ChangeNotifierProvider para atualizar apenas este widget
     if (usingNotifier) {
       return ChangeNotifierProvider.value(
         value: messageData as MessageNotifier,
         child: Consumer<MessageNotifier>(
           builder: (context, notifier, _) {
-            return MessageUIHelper.buildSimpleMessageBubble(
-              context: context,
-              message: notifier.message,
-              isUser: isUser,
-              isError: notifier.isError,
-              isStreaming: notifier.isStreaming,
-              onLongPress: () => _showMessageOptions(notifier.message),
+            final hasJsonInNotifier = FoodJsonParser.containsFoodJson(notifier.message);
+            final cleanMessage = hasJsonInNotifier
+                ? FoodJsonParser.removeJsonFromMessage(notifier.message)
+                : notifier.message;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MessageUIHelper.buildSimpleMessageBubble(
+                  context: context,
+                  message: cleanMessage,
+                  isUser: isUser,
+                  isError: notifier.isError,
+                  isStreaming: notifier.isStreaming,
+                  onLongPress: () => _showMessageOptions(notifier.message),
+                ),
+                if (hasJsonInNotifier && !notifier.isStreaming)
+                  Consumer<DailyMealsProvider>(
+                    builder: (context, mealsProvider, _) {
+                      return FoodJsonDisplay(
+                        message: notifier.message,
+                        isDarkMode: isDarkMode,
+                        selectedDate: mealsProvider.selectedDate,
+                      );
+                    },
+                  ),
+              ],
             );
           },
         ),
       );
     } else {
       // Se não for notificador, usamos a forma tradicional
-      return MessageUIHelper.buildSimpleMessageBubble(
-        context: context,
-        message: message,
-        isUser: isUser,
-        isError: isError,
-        isStreaming: isStreaming,
-        onLongPress: () => _showMessageOptions(message),
-        imageBytes: imageBytes,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MessageUIHelper.buildSimpleMessageBubble(
+            context: context,
+            message: displayMessage,
+            isUser: isUser,
+            isError: isError,
+            isStreaming: isStreaming,
+            onLongPress: () => _showMessageOptions(message),
+            imageBytes: imageBytes,
+          ),
+          if (hasFoodJson && !isStreaming)
+            Consumer<DailyMealsProvider>(
+              builder: (context, mealsProvider, _) {
+                return FoodJsonDisplay(
+                  message: message,
+                  isDarkMode: isDarkMode,
+                  selectedDate: mealsProvider.selectedDate,
+                );
+              },
+            ),
+        ],
       );
     }
   }

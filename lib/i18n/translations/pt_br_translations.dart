@@ -1017,4 +1017,10 @@ final Map<String, String> ptBRTranslations = {
   'goal_desc_maintain_weight': 'Não alterar os requisitos calóricos',
   'goal_desc_gain_weight_slowly': 'Aumentar os requisitos calóricos em 10%',
   'goal_desc_gain_weight': 'Aumentar os requisitos calóricos em 20%',
+
+  // Food JSON Display
+  'detected_foods': 'Alimentos Detectados',
+  'foods_added': 'Alimentos Adicionados',
+  'add_to_day': 'Adicionar ao Dia',
+  'foods_added_successfully': 'Alimentos adicionados com sucesso!',
 };

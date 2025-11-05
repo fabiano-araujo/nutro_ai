@@ -9,6 +9,9 @@ import '../i18n/language_controller.dart'; // Importar para obter o título trad
 import '../i18n/app_localizations.dart';
 import 'dart:convert';
 import 'dart:math' as math;
+import '../utils/food_json_parser.dart';
+import '../providers/daily_meals_provider.dart';
+import '../models/meal_model.dart';
 
 class AIInteractionHelper {
   /// Lida com o stream de resposta da IA, atualiza o notifier e salva no histórico.
@@ -170,6 +173,33 @@ class AIInteractionHelper {
         final responseContent = messageNotifier.message;
         print(
             '📊 AIInteractionHelper - Resposta final: ${responseContent.length} caracteres');
+
+        // Detectar e adicionar alimentos automaticamente se houver JSON
+        if (FoodJsonParser.containsFoodJson(responseContent)) {
+          print('🍽️ AIInteractionHelper - JSON de alimentos detectado na resposta');
+          try {
+            final jsonStr = FoodJsonParser.extractFoodJson(responseContent);
+            if (jsonStr != null) {
+              final foods = FoodJsonParser.parseFoodJson(jsonStr);
+              if (foods != null && foods.isNotEmpty) {
+                // Obter o provider de refeições
+                if (context.mounted) {
+                  final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+
+                  // Adicionar cada alimento como refeição livre
+                  for (final food in foods) {
+                    mealsProvider.addFoodToMeal(MealType.freeMeal, food);
+                    print('🍽️ AIInteractionHelper - Alimento adicionado: ${food.name}');
+                  }
+
+                  print('✅ AIInteractionHelper - ${foods.length} alimentos adicionados automaticamente');
+                }
+              }
+            }
+          } catch (e) {
+            print('❌ AIInteractionHelper - Erro ao processar JSON de alimentos: $e');
+          }
+        }
 
         // Marcar que não está mais em streaming
         messageNotifier.setStreaming(false);

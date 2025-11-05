@@ -11,7 +11,11 @@
       "Bash(start dieta_api/test-agents.html)",
       "Bash(yarn build)",
       "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 50 --nostream | grep -A 5 -B 5 ''teste\\|response_format\\|JSON mode'' | tail -30\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 20 --nostream | grep -A 5 -B 5 ''response_format\\|JSON mode'' | tail -15\")"
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 20 --nostream | grep -A 5 -B 5 ''response_format\\|JSON mode'' | tail -15\")",
+      "Bash(flutter emulators:*)",
+      "Bash(dir \"c:\\Users\\Fabiano\\AndroidStudioProjects\\nutro_ia\\assets\\i18n\" /b)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter devices:*)"
     ],
     "deny": [],
     "ask": []
