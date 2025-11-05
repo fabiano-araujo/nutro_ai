@@ -15,7 +15,8 @@
       "Bash(flutter emulators:*)",
       "Bash(dir \"c:\\Users\\Fabiano\\AndroidStudioProjects\\nutro_ia\\assets\\i18n\" /b)",
       "Bash(flutter analyze:*)",
-      "Bash(flutter devices:*)"
+      "Bash(flutter devices:*)",
+      "Bash(flutter run:*)"
     ],
     "deny": [],
     "ask": []

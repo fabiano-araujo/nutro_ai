@@ -122,7 +122,8 @@ class AITutorScreenState extends State<AITutorScreen>
   // Controle de scroll do header (calendário + nutrition card, SEM o AppBar)
   double _headerOffset = 0.0; // Offset vertical do header (0 = visível, negativo = escondido)
   double _lastScrollPosition = 0.0;
-  static const double _maxHeaderHeight = 235.0; // 75 (calendário) + 160 (nutrition card + margem)
+  double _maxHeaderHeight = 235.0; // Altura inicial estimada, será calculada dinamicamente
+  final GlobalKey _headerKey = GlobalKey(); // Key para medir a altura real do header
 
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
@@ -235,6 +236,11 @@ class AITutorScreenState extends State<AITutorScreen>
 
     // Registrar observer para detectar mudanças no teclado
     WidgetsBinding.instance.addObserver(this);
+
+    // Calcular a altura real do header após o primeiro frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _calculateHeaderHeight();
+    });
 
     bool isFromTool = false;
     String toolType = 'chat';
@@ -527,6 +533,24 @@ class AITutorScreenState extends State<AITutorScreen>
         duration: Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
+    }
+  }
+
+  // Método para calcular a altura real do header após o build
+  void _calculateHeaderHeight() {
+    try {
+      final RenderBox? renderBox = _headerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox != null && renderBox.hasSize) {
+        final newHeight = renderBox.size.height;
+        if (newHeight > 0 && newHeight != _maxHeaderHeight) {
+          setState(() {
+            _maxHeaderHeight = newHeight;
+            print('Header height calculado dinamicamente: $_maxHeaderHeight px');
+          });
+        }
+      }
+    } catch (e) {
+      print('Erro ao calcular altura do header: $e');
     }
   }
 
@@ -1022,6 +1046,7 @@ class AITutorScreenState extends State<AITutorScreen>
                         child: Transform.translate(
                           offset: Offset(0, _headerOffset),
                           child: Column(
+                            key: _headerKey, // Key para medir a altura real do header
                             mainAxisSize: MainAxisSize.min,
                             children: [
                             // Calendário semanal (apenas os dias da semana, sem AppBar)
@@ -1051,6 +1076,11 @@ class AITutorScreenState extends State<AITutorScreen>
                             // Nutrition card
                             Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
                               builder: (context, nutritionProvider, mealsProvider, child) {
+                                // Recalcular altura quando o conteúdo mudar
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  _calculateHeaderHeight();
+                                });
+
                                 // Ocultar o card se não houver refeições registradas no dia
                                 if (mealsProvider.todayMeals.isEmpty) {
                                   return SizedBox.shrink();

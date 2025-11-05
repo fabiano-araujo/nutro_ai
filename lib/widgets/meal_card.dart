@@ -98,9 +98,121 @@ class _MealCardState extends State<MealCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header - Nome da refeição com ícones
+          // Food Items
+          if (widget.meal.foods.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...widget.meal.foods.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final food = entry.value;
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: _FoodItem(
+                        food: food,
+                        isExpanded: expandedFoods[index] ?? false,
+                        onToggle: () => toggleFood(index),
+                        onEdit: widget.onEditFood,
+                        isDarkMode: isDarkMode,
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+
+          // Macros Summary
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SizedBox(
+              height: 70,
+              child: Row(
+                children: [
+                  // Calories - Container retangular maior
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Container(
+                        height: 54,
+                        padding: EdgeInsets.symmetric(vertical: 7, horizontal: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.primaryColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
+                              AppTheme.primaryColor.withValues(alpha: isDarkMode ? 0.12 : 0.08),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.primaryColor.withValues(alpha: isDarkMode ? 0.3 : 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: _MacroCardModern(
+                          label: context.tr.translate('calories'),
+                          value: widget.meal.totalCalories.toStringAsFixed(0),
+                          unit: 'kcal',
+                          color: AppTheme.primaryColor,
+                          isDarkMode: isDarkMode,
+                          isMain: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  // P, C, F - Quadrados menores
+                  Expanded(
+                    flex: 3,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _MacroCardModern(
+                            label: context.tr.translate('protein'),
+                            value: widget.meal.totalProtein.toStringAsFixed(1),
+                            unit: 'g',
+                            color: Color(0xFF9575CD),
+                            isDarkMode: isDarkMode,
+                            isMain: false,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: _MacroCardModern(
+                            label: context.tr.translate('carbs'),
+                            value: widget.meal.totalCarbs.toStringAsFixed(1),
+                            unit: 'g',
+                            color: Color(0xFFA1887F),
+                            isDarkMode: isDarkMode,
+                            isMain: false,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: _MacroCardModern(
+                            label: context.tr.translate('fats'),
+                            value: widget.meal.totalFat.toStringAsFixed(1),
+                            unit: 'g',
+                            color: Color(0xFF90A4AE),
+                            isDarkMode: isDarkMode,
+                            isMain: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Header - Nome da refeição com ícones (no final)
           Container(
-            padding: EdgeInsets.fromLTRB(20, 16, 16, 12),
+            padding: EdgeInsets.fromLTRB(20, 0, 16, 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -116,7 +228,7 @@ class _MealCardState extends State<MealCard> {
                           Text(
                             getMealTypeName(widget.meal.type),
                             style: AppTheme.headingSmall.copyWith(
-                              color: textColor,
+                              color: secondaryTextColor,
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.5,
@@ -180,7 +292,7 @@ class _MealCardState extends State<MealCard> {
           // Meal Options - Show when clicked
           if (showMealOptions)
             Container(
-              margin: EdgeInsets.symmetric(horizontal: 16),
+              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isDarkMode
@@ -224,7 +336,7 @@ class _MealCardState extends State<MealCard> {
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                  color: isSelected ? AppTheme.primaryColor : textColor,
+                                  color: isSelected ? AppTheme.primaryColor : secondaryTextColor,
                                 ),
                               ),
                             ],
@@ -238,125 +350,6 @@ class _MealCardState extends State<MealCard> {
             ),
 
           if (showMealOptions) SizedBox(height: 16),
-
-          // Food Items
-          if (widget.meal.foods.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ...widget.meal.foods.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final food = entry.value;
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: _FoodItem(
-                        food: food,
-                        isExpanded: expandedFoods[index] ?? false,
-                        onToggle: () => toggleFood(index),
-                        onEdit: widget.onEditFood,
-                        isDarkMode: isDarkMode,
-                      ),
-                    );
-                  }).toList(),
-                ],
-              ),
-            ),
-
-          // Divider
-          if (widget.meal.foods.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Container(
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      secondaryTextColor.withValues(alpha: 0.15),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Macros Summary - Destaque visual
-          Container(
-            margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDarkMode
-                    ? [
-                        AppTheme.primaryColor.withValues(alpha: 0.08),
-                        AppTheme.primaryColor.withValues(alpha: 0.04),
-                      ]
-                    : [
-                        AppTheme.primaryColor.withValues(alpha: 0.05),
-                        AppTheme.primaryColor.withValues(alpha: 0.02),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDarkMode
-                    ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                    : AppTheme.primaryColor.withValues(alpha: 0.08),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: _MacroCardModern(
-                    label: context.tr.translate('calories'),
-                    value: widget.meal.totalCalories.toStringAsFixed(0),
-                    unit: 'kcal',
-                    color: AppTheme.primaryColor,
-                    isDarkMode: isDarkMode,
-                    isMain: true,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: _MacroCardModern(
-                    label: context.tr.translate('protein'),
-                    value: widget.meal.totalProtein.toStringAsFixed(1),
-                    unit: 'g',
-                    color: Color(0xFF9575CD),
-                    isDarkMode: isDarkMode,
-                    isMain: false,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _MacroCardModern(
-                    label: context.tr.translate('carbs'),
-                    value: widget.meal.totalCarbs.toStringAsFixed(1),
-                    unit: 'g',
-                    color: Color(0xFFA1887F),
-                    isDarkMode: isDarkMode,
-                    isMain: false,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _MacroCardModern(
-                    label: context.tr.translate('fats'),
-                    value: widget.meal.totalFat.toStringAsFixed(1),
-                    unit: 'g',
-                    color: Color(0xFF90A4AE),
-                    isDarkMode: isDarkMode,
-                    isMain: false,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -408,30 +401,30 @@ class _FoodItem extends StatelessWidget {
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.all(12),
+                padding: EdgeInsets.all(10),
                 child: Row(
                   children: [
                     // Food Image/Emoji
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: isDarkMode ? Colors.white10 : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         child: food.imageUrl != null
                             ? Image.network(
                                 food.imageUrl!,
-                                width: 48,
-                                height: 48,
+                                width: 42,
+                                height: 42,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Center(
                                     child: Text(
                                       food.emoji,
-                                      style: TextStyle(fontSize: 24),
+                                      style: TextStyle(fontSize: 20),
                                     ),
                                   );
                                 },
@@ -440,7 +433,7 @@ class _FoodItem extends StatelessWidget {
                                   return Center(
                                     child: Text(
                                       food.emoji,
-                                      style: TextStyle(fontSize: 24),
+                                      style: TextStyle(fontSize: 20),
                                     ),
                                   );
                                 },
@@ -448,7 +441,7 @@ class _FoodItem extends StatelessWidget {
                             : Center(
                                 child: Text(
                                   food.emoji,
-                                  style: TextStyle(fontSize: 24),
+                                  style: TextStyle(fontSize: 20),
                                 ),
                               ),
                       ),
@@ -458,22 +451,23 @@ class _FoodItem extends StatelessWidget {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             food.name,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: textColor,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          SizedBox(height: 2),
+                          SizedBox(height: 1),
                           Text(
                             food.amount ?? '',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               color: secondaryTextColor,
                             ),
                           ),
@@ -483,39 +477,40 @@ class _FoodItem extends StatelessWidget {
                     // Calories + Expand
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Row(
                           children: [
                             Text(
                               '${food.calories}',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: textColor,
+                                color: AppTheme.primaryColor,
                               ),
                             ),
                             SizedBox(width: 2),
                             Text(
                               'kcal',
                               style: TextStyle(
-                                fontSize: 11,
-                                color: secondaryTextColor,
+                                fontSize: 10,
+                                color: AppTheme.primaryColor.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
                         ),
                       ],
                     ),
-                    SizedBox(width: 8),
+                    SizedBox(width: 6),
                     InkWell(
                       onTap: onToggle,
                       child: Container(
-                        padding: EdgeInsets.all(4),
+                        padding: EdgeInsets.all(2),
                         child: Icon(
                           isExpanded
                               ? Icons.keyboard_arrow_up
                               : Icons.keyboard_arrow_down,
-                          size: 20,
+                          size: 18,
                           color: secondaryTextColor,
                         ),
                       ),
@@ -528,52 +523,6 @@ class _FoodItem extends StatelessWidget {
               if (isExpanded)
                 Padding(
                   padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _MacroCard(
-                          label: 'P',
-                          fullName: context.tr.translate('protein'),
-                          value: food.protein.toStringAsFixed(1),
-                          unit: 'g',
-                          color: Color(0xFF9575CD),
-                          isDarkMode: isDarkMode,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _MacroCard(
-                          label: 'C',
-                          fullName: context.tr.translate('carbs'),
-                          value: food.carbs.toStringAsFixed(1),
-                          unit: 'g',
-                          color: Color(0xFFA1887F),
-                          isDarkMode: isDarkMode,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _MacroCard(
-                          label: 'F',
-                          fullName: context.tr.translate('fats'),
-                          value: food.fat.toStringAsFixed(1),
-                          unit: 'g',
-                          color: Color(0xFF90A4AE),
-                          isDarkMode: isDarkMode,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MacroCard extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
@@ -709,37 +658,38 @@ class _MacroCardModern extends StatelessWidget {
       // Card principal para calorias
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 8,
               fontWeight: FontWeight.w700,
               color: color.withValues(alpha: 0.7),
-              letterSpacing: 0.8,
+              letterSpacing: 0.6,
             ),
           ),
-          SizedBox(height: 4),
+          SizedBox(height: 1),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 32,
+                  fontSize: 24,
                   fontWeight: FontWeight.w800,
                   color: color,
                   height: 1,
-                  letterSpacing: -1,
+                  letterSpacing: -0.8,
                 ),
               ),
-              SizedBox(width: 4),
+              SizedBox(width: 2),
               Padding(
-                padding: EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(bottom: 2),
                 child: Text(
                   unit,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: color.withValues(alpha: 0.7),
                   ),
@@ -751,50 +701,54 @@ class _MacroCardModern extends StatelessWidget {
       );
     } else {
       // Cards secundários para macros
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDarkMode ? 0.2 : 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
+      return Container(
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDarkMode ? 0.25 : 0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
               label.substring(0, 1).toUpperCase(),
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
                 color: color,
               ),
             ),
-          ),
-          SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
-                  height: 1,
+            SizedBox(height: 3),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                    height: 1,
+                  ),
                 ),
-              ),
-              Text(
-                unit,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: color.withValues(alpha: 0.6),
+                Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode
+                        ? AppTheme.darkTextColor.withValues(alpha: 0.6)
+                        : AppTheme.textPrimaryColor.withValues(alpha: 0.6),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       );
     }
   }
