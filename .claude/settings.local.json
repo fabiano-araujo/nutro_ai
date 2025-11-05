@@ -16,7 +16,10 @@
       "Bash(dir \"c:\\Users\\Fabiano\\AndroidStudioProjects\\nutro_ia\\assets\\i18n\" /b)",
       "Bash(flutter analyze:*)",
       "Bash(flutter devices:*)",
-      "Bash(flutter run:*)"
+      "Bash(flutter run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": []

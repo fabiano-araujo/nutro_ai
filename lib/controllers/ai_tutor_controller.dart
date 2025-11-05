@@ -702,9 +702,19 @@ class AITutorController with ChangeNotifier {
             '⚠️ AITutorController - Nenhum usuário autenticado, usando ID vazio');
       }
 
+      // Para imagens, usar modelo específico e agent free-image
+      String quality = 'google/gemma-3-27b-it'; // Modelo específico para análise de imagem
+      String agentType = 'free-image'; // Agent especializado em análise de imagem
+      String provider = 'Hyperbolic'; // Provider para análise de imagem
+
+      print('📸 Usando modelo $quality com agent $agentType via provider $provider para análise de imagem');
+
       // Obter o stream da IA para imagem
       final stream = _aiService.processImageStream(imageBytes, prompt,
           languageCode: languageCode,
+          quality: quality,
+          agentType: agentType,
+          provider: provider,
           userId: userId // Passando o ID do usuário logado
           );
 

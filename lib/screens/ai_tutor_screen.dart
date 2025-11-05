@@ -416,6 +416,10 @@ class AITutorScreenState extends State<AITutorScreen>
     } else {
       print(
           '📱 AITutorScreen: Controller inicializado com histórico ou initialToolResponse. Nenhuma ação de prompt adicional.');
+      // Rolar até a última resposta da IA ao carregar uma conversa existente
+      Future.delayed(Duration(milliseconds: 500), () {
+        _scrollToLastAiResponse();
+      });
     }
 
     if (!kIsWeb && Platform.isAndroid) {
@@ -525,15 +529,52 @@ class AITutorScreenState extends State<AITutorScreen>
     ScreenUtils.keepScreenOn(keepOn);
   }
 
-  // Método para rolar para o final da lista
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+  // Método para rolar até o início da última resposta da IA
+  void _scrollToLastAiResponse({bool animate = false}) {
+    if (!_scrollController.hasClients) return;
+
+    final messages = _controller.messages;
+    if (messages.isEmpty) return;
+
+    // Encontrar o índice da última mensagem da IA (isUser == false)
+    int lastAiMessageIndex = -1;
+    for (int i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]['isUser'] == false) {
+        lastAiMessageIndex = i;
+        break;
+      }
     }
+
+    // Se não encontrou mensagem da IA, não faz nada
+    if (lastAiMessageIndex == -1) return;
+
+    // Aguardar o próximo frame para garantir que as mensagens foram renderizadas
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients || !mounted) return;
+
+      // Ajustar índice considerando o card de ferramentas (se existir)
+      final adjustedIndex = _toolData != null ? lastAiMessageIndex + 1 : lastAiMessageIndex;
+
+      // Estimar a posição baseada no índice
+      // Altura média estimada por mensagem: 100px (pode variar)
+      final estimatedItemHeight = 100.0;
+      final targetPosition = adjustedIndex * estimatedItemHeight;
+
+      // Rolar até a posição estimada, mas não ultrapassar o máximo
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final scrollPosition = targetPosition.clamp(0.0, maxScroll);
+
+      if (animate) {
+        _scrollController.animateTo(
+          scrollPosition,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      } else {
+        // Scroll instantâneo sem animação
+        _scrollController.jumpTo(scrollPosition);
+      }
+    });
   }
 
   // Método para calcular a altura real do header após o build
@@ -769,9 +810,9 @@ class AITutorScreenState extends State<AITutorScreen>
     if (hadEnoughCredits) {
       _messageController.clear();
 
-      // Rolar para o final para mostrar a nova mensagem
+      // Rolar até o início da última resposta da IA com animação
       Future.delayed(Duration(milliseconds: 100), () {
-        _scrollToBottom();
+        _scrollToLastAiResponse(animate: true);
       });
     }
   }
@@ -913,10 +954,10 @@ class AITutorScreenState extends State<AITutorScreen>
                     final hadEnoughCredits =
                         await _controller.regenerateLastResponse(context);
 
-                    // Após iniciar a regeneração, rolar para o final da lista (apenas se houver créditos)
+                    // Após iniciar a regeneração, rolar até o início da última resposta da IA (apenas se houver créditos)
                     if (hadEnoughCredits) {
                       Future.delayed(Duration(milliseconds: 100), () {
-                        _scrollToBottom();
+                        _scrollToLastAiResponse(animate: true);
                       });
                     }
                   },
@@ -1022,6 +1063,8 @@ class AITutorScreenState extends State<AITutorScreen>
                           print('Data selecionada: $date');
                           mealsProvider.setSelectedDate(date);
                           await _controller.changeSelectedDate(date);
+                          // Scroll instantâneo para a última resposta da IA
+                          _scrollToLastAiResponse();
                         },
                         onSearchPressed: () {
                           Navigator.push(
@@ -1060,6 +1103,8 @@ class AITutorScreenState extends State<AITutorScreen>
                                     print('Data selecionada: $date');
                                     mealsProvider.setSelectedDate(date);
                                     await _controller.changeSelectedDate(date);
+                                    // Scroll instantâneo para a última resposta da IA
+                                    _scrollToLastAiResponse();
                                   },
                                   onSearchPressed: () {
                                     Navigator.push(
@@ -1751,10 +1796,10 @@ class AITutorScreenState extends State<AITutorScreen>
             final hadEnoughCredits =
                 await _controller.regenerateLastResponse(context);
 
-            // Rolar para o final da lista apenas se houver créditos
+            // Rolar até o início da última resposta da IA apenas se houver créditos
             if (hadEnoughCredits) {
               Future.delayed(Duration(milliseconds: 100), () {
-                _scrollToBottom();
+                _scrollToLastAiResponse(animate: true);
               });
             }
           }),

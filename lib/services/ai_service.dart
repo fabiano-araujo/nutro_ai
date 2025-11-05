@@ -289,7 +289,8 @@ class AIService {
       {String languageCode = 'pt_BR',
       String quality = 'baixo',
       String userId = '',
-      String agentType = 'nutrition'}) async* {
+      String agentType = 'nutrition',
+      String provider = ''}) async* {
     print('\n🚀 Iniciando processamento de imagem com streaming');
 
     try {
@@ -317,7 +318,7 @@ class AIService {
       });
 
       // Formato do corpo da requisição para o novo endpoint
-      request.body = jsonEncode({
+      final requestBody = {
         'prompt': '$systemContent\n\nUsuário: $prompt',
         'model':
             quality, // Usar o parâmetro de qualidade (otimo, bom, mediano, ruim)
@@ -325,7 +326,14 @@ class AIService {
         'imageBase64': 'data:image/jpeg;base64,' + imageBase64,
         'userId': userId, // Adicionando o userId na requisição
         'agentType': agentType, // Tipo de agent a ser usado
-      });
+      };
+
+      // Adicionar provider se especificado
+      if (provider.isNotEmpty) {
+        requestBody['provider'] = provider;
+      }
+
+      request.body = jsonEncode(requestBody);
 
       print('🔄 Aguardando resposta da nova API para a imagem...');
       final response = await http.Client().send(request);
