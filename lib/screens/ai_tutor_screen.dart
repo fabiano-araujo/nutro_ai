@@ -992,7 +992,8 @@ class AITutorScreenState extends State<AITutorScreen>
                     builder: (context, mealsProvider, child) {
                       return WeeklyCalendar(
                         selectedDate: mealsProvider.selectedDate,
-                        showCalendar: false, // Apenas o AppBar, sem o calendário
+                        showAppBar: true, // Mostrar apenas o AppBar
+                        showCalendar: false, // Sem o calendário semanal
                         onDaySelected: (date) async {
                           print('Data selecionada: $date');
                           mealsProvider.setSelectedDate(date);
@@ -1011,64 +1012,68 @@ class AITutorScreenState extends State<AITutorScreen>
                   ),
 
                   // Calendário semanal + Nutrition card com comportamento de toolbar Android
-                  ClipRect(
-                    child: Transform.translate(
-                      offset: Offset(0, _headerOffset),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Calendário semanal (apenas os dias da semana)
-                          Consumer<DailyMealsProvider>(
-                            builder: (context, mealsProvider, child) {
-                              return WeeklyCalendar(
-                                selectedDate: mealsProvider.selectedDate,
-                                showCalendar: true, // Mostrar todo o widget (AppBar + calendário)
-                                onDaySelected: (date) async {
-                                  print('Data selecionada: $date');
-                                  mealsProvider.setSelectedDate(date);
-                                  await _controller.changeSelectedDate(date);
-                                },
-                                onSearchPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const FoodSearchScreen(),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                  SizedBox(
+                    height: (_maxHeaderHeight + _headerOffset).clamp(0.0, _maxHeaderHeight),
+                    child: ClipRect(
+                      child: Transform.translate(
+                        offset: Offset(0, _headerOffset),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Calendário semanal (apenas os dias da semana, sem AppBar)
+                            Consumer<DailyMealsProvider>(
+                              builder: (context, mealsProvider, child) {
+                                return WeeklyCalendar(
+                                  selectedDate: mealsProvider.selectedDate,
+                                  showAppBar: false, // Não mostrar o AppBar (já está fixo acima)
+                                  showCalendar: true, // Mostrar apenas o calendário semanal
+                                  onDaySelected: (date) async {
+                                    print('Data selecionada: $date');
+                                    mealsProvider.setSelectedDate(date);
+                                    await _controller.changeSelectedDate(date);
+                                  },
+                                  onSearchPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const FoodSearchScreen(),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
 
-                          // Nutrition card
-                          Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
-                            builder: (context, nutritionProvider, mealsProvider, child) {
-                              // Ocultar o card se não houver refeições registradas no dia
-                              if (mealsProvider.todayMeals.isEmpty) {
-                                return SizedBox.shrink();
-                              }
+                            // Nutrition card
+                            Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
+                              builder: (context, nutritionProvider, mealsProvider, child) {
+                                // Ocultar o card se não houver refeições registradas no dia
+                                if (mealsProvider.todayMeals.isEmpty) {
+                                  return SizedBox.shrink();
+                                }
 
-                              return NutritionCard(
-                                caloriesConsumed: mealsProvider.totalCalories,
-                                caloriesGoal: nutritionProvider.caloriesGoal,
-                                proteinConsumed: mealsProvider.totalProtein.toInt(),
-                                proteinGoal: nutritionProvider.proteinGoal,
-                                carbsConsumed: mealsProvider.totalCarbs.toInt(),
-                                carbsGoal: nutritionProvider.carbsGoal,
-                                fatsConsumed: mealsProvider.totalFat.toInt(),
-                                fatsGoal: nutritionProvider.fatGoal,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const DailyMealsScreen(),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ],
+                                return NutritionCard(
+                                  caloriesConsumed: mealsProvider.totalCalories,
+                                  caloriesGoal: nutritionProvider.caloriesGoal,
+                                  proteinConsumed: mealsProvider.totalProtein.toInt(),
+                                  proteinGoal: nutritionProvider.proteinGoal,
+                                  carbsConsumed: mealsProvider.totalCarbs.toInt(),
+                                  carbsGoal: nutritionProvider.carbsGoal,
+                                  fatsConsumed: mealsProvider.totalFat.toInt(),
+                                  fatsGoal: nutritionProvider.fatGoal,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const DailyMealsScreen(),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

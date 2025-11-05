@@ -89,70 +89,62 @@ class _MealCardState extends State<MealCard> {
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     return Card(
-      margin: EdgeInsets.only(top: 0, bottom: 8),
-      elevation: 1,
+      margin: EdgeInsets.only(top: 0, bottom: 16),
+      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
       ),
       color: backgroundColor,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Food Items - Always visible at top
-          Padding(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Column(
+          // Header - Nome da refeição com ícones
+          Container(
+            padding: EdgeInsets.fromLTRB(20, 16, 16, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ...widget.meal.foods.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final food = entry.value;
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: _FoodItem(
-                      food: food,
-                      isExpanded: expandedFoods[index] ?? false,
-                      onToggle: () => toggleFood(index),
-                      onEdit: widget.onEditFood,
-                      isDarkMode: isDarkMode,
+                // Nome da refeição com botão para expandir opções
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => showMealOptions = !showMealOptions),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Text(
+                            getMealTypeName(widget.meal.type),
+                            style: AppTheme.headingSmall.copyWith(
+                              color: textColor,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            showMealOptions
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            color: secondaryTextColor,
+                            size: 22,
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                }).toList(),
-              ],
-            ),
-          ),
-
-          // Header - Click to show meal options
-          InkWell(
-            onTap: () => setState(() => showMealOptions = !showMealOptions),
-            child: Container(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        getMealTypeName(widget.meal.type),
-                        style: AppTheme.headingSmall.copyWith(
-                          color: textColor,
-                          fontSize: 18,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(
-                        showMealOptions
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        color: secondaryTextColor,
-                        size: 20,
-                      ),
-                    ],
                   ),
-                  Row(
-                    children: [
-                      if (widget.onEditFood != null)
-                        InkWell(
+                ),
+                // Ícones de ação
+                Row(
+                  children: [
+                    if (widget.onEditFood != null)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
                           onTap: widget.onEditFood,
-                          child: Padding(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
                             padding: EdgeInsets.all(8),
                             child: Icon(
                               Icons.edit_outlined,
@@ -161,68 +153,82 @@ class _MealCardState extends State<MealCard> {
                             ),
                           ),
                         ),
-                      SizedBox(width: 4),
-                      InkWell(
+                      ),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         onTap: () {
                           // More options action
                         },
-                        child: Padding(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
                           padding: EdgeInsets.all(8),
                           child: Icon(
-                            Icons.more_vert,
+                            Icons.more_vert_rounded,
                             size: 20,
                             color: secondaryTextColor,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
           // Meal Options - Show when clicked
           if (showMealOptions)
             Container(
-              padding: EdgeInsets.all(16),
+              margin: EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isDarkMode
                     ? AppTheme.darkComponentColor
-                    : Color(0xFFF7F9FC),
+                    : Color(0xFFF5F7FA),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 children: getMealOptions(context).map((option) {
+                  final isSelected = option.type == widget.meal.type;
                   return Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: InkWell(
-                      onTap: () {
-                        widget.onMealTypeChanged?.call(option.type);
-                        setState(() => showMealOptions = false);
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: backgroundColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              option.emoji,
-                              style: TextStyle(fontSize: 24),
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              option.name,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
+                    padding: EdgeInsets.only(bottom: 6),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          widget.onMealTypeChanged?.call(option.type);
+                          setState(() => showMealOptions = false);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? (isDarkMode ? AppTheme.primaryColor.withValues(alpha: 0.15) : AppTheme.primaryColor.withValues(alpha: 0.08))
+                                : backgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: isSelected
+                                ? Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3), width: 1.5)
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                option.emoji,
+                                style: TextStyle(fontSize: 22),
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 12),
+                              Text(
+                                option.name,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  color: isSelected ? AppTheme.primaryColor : textColor,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -231,64 +237,124 @@ class _MealCardState extends State<MealCard> {
               ),
             ),
 
-          // Macros Summary
+          if (showMealOptions) SizedBox(height: 12),
+
+          // Macros Summary - Destaque visual
           Container(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            margin: EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDarkMode
+                    ? [
+                        AppTheme.primaryColor.withValues(alpha: 0.08),
+                        AppTheme.primaryColor.withValues(alpha: 0.04),
+                      ]
+                    : [
+                        AppTheme.primaryColor.withValues(alpha: 0.05),
+                        AppTheme.primaryColor.withValues(alpha: 0.02),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDarkMode
+                    ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                    : AppTheme.primaryColor.withValues(alpha: 0.08),
+                width: 1,
               ),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: _MacroCard(
-                    label: 'Kcal',
-                    fullName: context.tr.translate('calories'),
+                  flex: 2,
+                  child: _MacroCardModern(
+                    label: context.tr.translate('calories'),
                     value: widget.meal.totalCalories.toStringAsFixed(0),
-                    unit: '',
+                    unit: 'kcal',
                     color: AppTheme.primaryColor,
                     isDarkMode: isDarkMode,
+                    isMain: true,
                   ),
                 ),
-                SizedBox(width: 6),
+                SizedBox(width: 12),
                 Expanded(
-                  child: _MacroCard(
-                    label: 'P',
-                    fullName: context.tr.translate('protein'),
+                  child: _MacroCardModern(
+                    label: context.tr.translate('protein'),
                     value: widget.meal.totalProtein.toStringAsFixed(1),
                     unit: 'g',
                     color: Color(0xFF9575CD),
                     isDarkMode: isDarkMode,
+                    isMain: false,
                   ),
                 ),
-                SizedBox(width: 6),
+                SizedBox(width: 8),
                 Expanded(
-                  child: _MacroCard(
-                    label: 'C',
-                    fullName: context.tr.translate('carbs'),
+                  child: _MacroCardModern(
+                    label: context.tr.translate('carbs'),
                     value: widget.meal.totalCarbs.toStringAsFixed(1),
                     unit: 'g',
                     color: Color(0xFFA1887F),
                     isDarkMode: isDarkMode,
+                    isMain: false,
                   ),
                 ),
-                SizedBox(width: 6),
+                SizedBox(width: 8),
                 Expanded(
-                  child: _MacroCard(
-                    label: 'F',
-                    fullName: context.tr.translate('fats'),
+                  child: _MacroCardModern(
+                    label: context.tr.translate('fats'),
                     value: widget.meal.totalFat.toStringAsFixed(1),
                     unit: 'g',
                     color: Color(0xFF90A4AE),
                     isDarkMode: isDarkMode,
+                    isMain: false,
                   ),
                 ),
               ],
             ),
           ),
+
+          SizedBox(height: 16),
+
+          // Food Items
+          if (widget.meal.foods.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Divider
+                  Container(
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          secondaryTextColor.withValues(alpha: 0.15),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  ...widget.meal.foods.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final food = entry.value;
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: _FoodItem(
+                        food: food,
+                        isExpanded: expandedFoods[index] ?? false,
+                        onToggle: () => toggleFood(index),
+                        onEdit: widget.onEditFood,
+                        isDarkMode: isDarkMode,
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -314,215 +380,237 @@ class _FoodItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor =
-        isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6);
+        isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FoodPage(food: food),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FoodPage(food: food),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDarkMode
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: Row(
-              children: [
-                // Left side: Icon + Name + Edit Icon
-                Expanded(
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? Colors.white10 : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: food.imageUrl != null
-                              ? Image.network(
-                                  food.imageUrl!,
-                                  width: 48,
-                                  height: 48,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Center(
-                                      child: Text(
-                                        food.emoji,
-                                        style: TextStyle(fontSize: 24),
-                                      ),
-                                    );
-                                  },
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: Text(
-                                        food.emoji,
-                                        style: TextStyle(fontSize: 24),
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Center(
-                                  child: Text(
-                                    food.emoji,
-                                    style: TextStyle(fontSize: 24),
-                                  ),
-                                ),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    food.name,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: textColor,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (onEdit != null) ...[
-                                  SizedBox(width: 4),
-                                  InkWell(
-                                    onTap: onEdit,
-                                    child: Icon(
-                                      Icons.edit,
-                                      size: 14,
-                                      color: secondaryTextColor,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              food.amount ?? '',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Right side: Calories + Expand Icon
-                Row(
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(14),
+                child: Row(
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              '${food.calories}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
-                            ),
-                            SizedBox(width: 2),
-                            Text(
-                              'kcal',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: secondaryTextColor,
-                              ),
-                            ),
-                          ],
+                    // Food Image/Emoji
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isDarkMode
+                              ? [
+                                  AppTheme.primaryColor.withValues(alpha: 0.15),
+                                  AppTheme.primaryColor.withValues(alpha: 0.08),
+                                ]
+                              : [
+                                  AppTheme.primaryColor.withValues(alpha: 0.08),
+                                  AppTheme.primaryColor.withValues(alpha: 0.04),
+                                ],
                         ),
-                      ],
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: food.imageUrl != null
+                            ? Image.network(
+                                food.imageUrl!,
+                                width: 52,
+                                height: 52,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: Text(
+                                      food.emoji,
+                                      style: TextStyle(fontSize: 26),
+                                    ),
+                                  );
+                                },
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: Text(
+                                      food.emoji,
+                                      style: TextStyle(fontSize: 26),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Center(
+                                child: Text(
+                                  food.emoji,
+                                  style: TextStyle(fontSize: 26),
+                                ),
+                              ),
+                      ),
+                    ),
+                    SizedBox(width: 14),
+                    // Food Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            food.name,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: textColor,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            food.amount ?? '',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: secondaryTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     SizedBox(width: 8),
-                    InkWell(
-                      onTap: onToggle,
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        child: Icon(
-                          isExpanded
-                              ? Icons.keyboard_arrow_up
-                              : Icons.keyboard_arrow_down,
-                          size: 20,
-                          color: secondaryTextColor,
+                    // Calories Badge
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${food.calories}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.primaryColor,
+                              height: 1,
+                            ),
+                          ),
+                          SizedBox(width: 2),
+                          Text(
+                            'kcal',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    // Expand Icon
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: onToggle,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: EdgeInsets.all(6),
+                          child: Icon(
+                            isExpanded
+                                ? Icons.expand_less_rounded
+                                : Icons.expand_more_rounded,
+                            size: 22,
+                            color: secondaryTextColor,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // Expanded Macros for individual food
-          if (isExpanded)
-            Padding(
-              padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _MacroCard(
-                      label: 'P',
-                      fullName: context.tr.translate('protein'),
-                      value: food.protein.toStringAsFixed(1),
-                      unit: 'g',
-                      color: Color(0xFF9575CD),
-                      isDarkMode: isDarkMode,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: _MacroCard(
-                      label: 'C',
-                      fullName: context.tr.translate('carbs'),
-                      value: food.carbs.toStringAsFixed(1),
-                      unit: 'g',
-                      color: Color(0xFFA1887F),
-                      isDarkMode: isDarkMode,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: _MacroCard(
-                      label: 'F',
-                      fullName: context.tr.translate('fats'),
-                      value: food.fat.toStringAsFixed(1),
-                      unit: 'g',
-                      color: Color(0xFF90A4AE),
-                      isDarkMode: isDarkMode,
-                    ),
-                  ),
-                ],
               ),
-            ),
-          ],
+
+              // Expanded Macros for individual food
+              if (isExpanded)
+                Container(
+                  margin: EdgeInsets.fromLTRB(14, 0, 14, 14),
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? AppTheme.darkComponentColor
+                        : Color(0xFFF8F9FB),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _MacroCard(
+                          label: 'P',
+                          fullName: context.tr.translate('protein'),
+                          value: food.protein.toStringAsFixed(1),
+                          unit: 'g',
+                          color: Color(0xFF9575CD),
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _MacroCard(
+                          label: 'C',
+                          fullName: context.tr.translate('carbs'),
+                          value: food.carbs.toStringAsFixed(1),
+                          unit: 'g',
+                          color: Color(0xFFA1887F),
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _MacroCard(
+                          label: 'F',
+                          fullName: context.tr.translate('fats'),
+                          value: food.fat.toStringAsFixed(1),
+                          unit: 'g',
+                          color: Color(0xFF90A4AE),
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -592,5 +680,113 @@ class _MacroCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _MacroCardModern extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final Color color;
+  final bool isDarkMode;
+  final bool isMain;
+
+  const _MacroCardModern({
+    Key? key,
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.color,
+    required this.isDarkMode,
+    required this.isMain,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    if (isMain) {
+      // Card principal para calorias
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color.withValues(alpha: 0.7),
+              letterSpacing: 0.8,
+            ),
+          ),
+          SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                  height: 1,
+                  letterSpacing: -1,
+                ),
+              ),
+              SizedBox(width: 4),
+              Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: color.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    } else {
+      // Cards secundários para macros
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDarkMode ? 0.2 : 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              label.substring(0, 1).toUpperCase(),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+              height: 1,
+            ),
+          ),
+          Text(
+            unit,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: color.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }

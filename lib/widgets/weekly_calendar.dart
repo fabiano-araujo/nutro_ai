@@ -7,14 +7,16 @@ class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
   final DateTime? selectedDate;
   final VoidCallback? onSearchPressed;
-  final bool showCalendar; // Controla se mostra o calendário semanal ou apenas o AppBar
+  final bool showCalendar; // Controla se mostra o calendário semanal
+  final bool showAppBar; // Controla se mostra o AppBar
 
   const WeeklyCalendar({
     Key? key,
     this.onDaySelected,
     this.selectedDate,
     this.onSearchPressed,
-    this.showCalendar = true, // Por padrão mostra tudo
+    this.showCalendar = true, // Por padrão mostra o calendário
+    this.showAppBar = true, // Por padrão mostra o AppBar
   }) : super(key: key);
 
   @override
@@ -273,7 +275,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        buildAppBar(context),
+        if (widget.showAppBar) buildAppBar(context),
         if (widget.showCalendar) buildCalendar(context),
       ],
     );
