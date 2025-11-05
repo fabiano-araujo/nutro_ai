@@ -122,7 +122,7 @@ class AITutorScreenState extends State<AITutorScreen>
   // Controle de scroll do header (calendário + nutrition card, SEM o AppBar)
   double _headerOffset = 0.0; // Offset vertical do header (0 = visível, negativo = escondido)
   double _lastScrollPosition = 0.0;
-  static const double _maxHeaderHeight = 131.0; // 75 (calendário) + ~56 (nutrition card)
+  static const double _maxHeaderHeight = 235.0; // 75 (calendário) + 160 (nutrition card + margem)
 
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
@@ -1015,11 +1015,15 @@ class AITutorScreenState extends State<AITutorScreen>
                   SizedBox(
                     height: (_maxHeaderHeight + _headerOffset).clamp(0.0, _maxHeaderHeight),
                     child: ClipRect(
-                      child: Transform.translate(
-                        offset: Offset(0, _headerOffset),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
+                      clipBehavior: Clip.hardEdge,
+                      child: OverflowBox(
+                        maxHeight: _maxHeaderHeight,
+                        alignment: Alignment.topCenter,
+                        child: Transform.translate(
+                          offset: Offset(0, _headerOffset),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                             // Calendário semanal (apenas os dias da semana, sem AppBar)
                             Consumer<DailyMealsProvider>(
                               builder: (context, mealsProvider, child) {
@@ -1077,6 +1081,7 @@ class AITutorScreenState extends State<AITutorScreen>
                       ),
                     ),
                   ),
+                ),
 
                   // Lista de mensagens
                   Expanded(

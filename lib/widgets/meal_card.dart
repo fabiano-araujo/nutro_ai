@@ -237,11 +237,54 @@ class _MealCardState extends State<MealCard> {
               ),
             ),
 
-          if (showMealOptions) SizedBox(height: 12),
+          if (showMealOptions) SizedBox(height: 16),
+
+          // Food Items
+          if (widget.meal.foods.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...widget.meal.foods.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final food = entry.value;
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: _FoodItem(
+                        food: food,
+                        isExpanded: expandedFoods[index] ?? false,
+                        onToggle: () => toggleFood(index),
+                        onEdit: widget.onEditFood,
+                        isDarkMode: isDarkMode,
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+
+          // Divider
+          if (widget.meal.foods.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      secondaryTextColor.withValues(alpha: 0.15),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           // Macros Summary - Destaque visual
           Container(
-            margin: EdgeInsets.symmetric(horizontal: 16),
+            margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -314,47 +357,6 @@ class _MealCardState extends State<MealCard> {
               ],
             ),
           ),
-
-          SizedBox(height: 16),
-
-          // Food Items
-          if (widget.meal.foods.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Divider
-                  Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          secondaryTextColor.withValues(alpha: 0.15),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  ...widget.meal.foods.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final food = entry.value;
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: _FoodItem(
-                        food: food,
-                        isExpanded: expandedFoods[index] ?? false,
-                        onToggle: () => toggleFood(index),
-                        onEdit: widget.onEditFood,
-                        isDarkMode: isDarkMode,
-                      ),
-                    );
-                  }).toList(),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -380,7 +382,7 @@ class _FoodItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor =
-        isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
+        isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6);
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final secondaryTextColor =
@@ -397,66 +399,39 @@ class _FoodItem extends StatelessWidget {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDarkMode
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.06),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isDarkMode
-                    ? Colors.black.withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.all(14),
+                padding: EdgeInsets.all(12),
                 child: Row(
                   children: [
                     // Food Image/Emoji
                     Container(
-                      width: 52,
-                      height: 52,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: isDarkMode
-                              ? [
-                                  AppTheme.primaryColor.withValues(alpha: 0.15),
-                                  AppTheme.primaryColor.withValues(alpha: 0.08),
-                                ]
-                              : [
-                                  AppTheme.primaryColor.withValues(alpha: 0.08),
-                                  AppTheme.primaryColor.withValues(alpha: 0.04),
-                                ],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
+                        color: isDarkMode ? Colors.white10 : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         child: food.imageUrl != null
                             ? Image.network(
                                 food.imageUrl!,
-                                width: 52,
-                                height: 52,
+                                width: 48,
+                                height: 48,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Center(
                                     child: Text(
                                       food.emoji,
-                                      style: TextStyle(fontSize: 26),
+                                      style: TextStyle(fontSize: 24),
                                     ),
                                   );
                                 },
@@ -465,7 +440,7 @@ class _FoodItem extends StatelessWidget {
                                   return Center(
                                     child: Text(
                                       food.emoji,
-                                      style: TextStyle(fontSize: 26),
+                                      style: TextStyle(fontSize: 24),
                                     ),
                                   );
                                 },
@@ -473,12 +448,12 @@ class _FoodItem extends StatelessWidget {
                             : Center(
                                 child: Text(
                                   food.emoji,
-                                  style: TextStyle(fontSize: 26),
+                                  style: TextStyle(fontSize: 24),
                                 ),
                               ),
                       ),
                     ),
-                    SizedBox(width: 14),
+                    SizedBox(width: 12),
                     // Food Info
                     Expanded(
                       child: Column(
@@ -488,72 +463,60 @@ class _FoodItem extends StatelessWidget {
                             food.name,
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: textColor,
-                              letterSpacing: -0.2,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          SizedBox(height: 3),
+                          SizedBox(height: 2),
                           Text(
                             food.amount ?? '',
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: FontWeight.w500,
                               color: secondaryTextColor,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(width: 8),
-                    // Calories Badge
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${food.calories}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.primaryColor,
-                              height: 1,
+                    // Calories + Expand
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              '${food.calories}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
                             ),
-                          ),
-                          SizedBox(width: 2),
-                          Text(
-                            'kcal',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                            SizedBox(width: 2),
+                            Text(
+                              'kcal',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: secondaryTextColor,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 4),
-                    // Expand Icon
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: onToggle,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: EdgeInsets.all(6),
-                          child: Icon(
-                            isExpanded
-                                ? Icons.expand_less_rounded
-                                : Icons.expand_more_rounded,
-                            size: 22,
-                            color: secondaryTextColor,
-                          ),
+                    SizedBox(width: 8),
+                    InkWell(
+                      onTap: onToggle,
+                      child: Container(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(
+                          isExpanded
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          size: 20,
+                          color: secondaryTextColor,
                         ),
                       ),
                     ),
@@ -563,15 +526,54 @@ class _FoodItem extends StatelessWidget {
 
               // Expanded Macros for individual food
               if (isExpanded)
-                Container(
-                  margin: EdgeInsets.fromLTRB(14, 0, 14, 14),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? AppTheme.darkComponentColor
-                        : Color(0xFFF8F9FB),
-                    borderRadius: BorderRadius.circular(12),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _MacroCard(
+                          label: 'P',
+                          fullName: context.tr.translate('protein'),
+                          value: food.protein.toStringAsFixed(1),
+                          unit: 'g',
+                          color: Color(0xFF9575CD),
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _MacroCard(
+                          label: 'C',
+                          fullName: context.tr.translate('carbs'),
+                          value: food.carbs.toStringAsFixed(1),
+                          unit: 'g',
+                          color: Color(0xFFA1887F),
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _MacroCard(
+                          label: 'F',
+                          fullName: context.tr.translate('fats'),
+                          value: food.fat.toStringAsFixed(1),
+                          unit: 'g',
+                          color: Color(0xFF90A4AE),
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroCard extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
@@ -768,22 +770,29 @@ class _MacroCardModern extends StatelessWidget {
             ),
           ),
           SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
-              height: 1,
-            ),
-          ),
-          Text(
-            unit,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              color: color.withValues(alpha: 0.6),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                  height: 1,
+                ),
+              ),
+              Text(
+                unit,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: color.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
           ),
         ],
       );
