@@ -149,20 +149,30 @@ class _MealCardState extends State<MealCard> {
                   ),
                   Row(
                     children: [
-                      Text(
-                        '${widget.meal.totalCalories}',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
+                      if (widget.onEditFood != null)
+                        InkWell(
+                          onTap: widget.onEditFood,
+                          child: Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: secondaryTextColor,
+                            ),
+                          ),
                         ),
-                      ),
                       SizedBox(width: 4),
-                      Text(
-                        'kcal',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: secondaryTextColor,
+                      InkWell(
+                        onTap: () {
+                          // More options action
+                        },
+                        child: Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.more_vert,
+                            size: 20,
+                            color: secondaryTextColor,
+                          ),
                         ),
                       ),
                     ],
@@ -223,12 +233,27 @@ class _MealCardState extends State<MealCard> {
 
           // Macros Summary
           Container(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
             decoration: BoxDecoration(
               color: backgroundColor,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
             ),
             child: Row(
               children: [
+                Expanded(
+                  child: _MacroCard(
+                    label: 'Kcal',
+                    fullName: context.tr.translate('calories'),
+                    value: widget.meal.totalCalories.toStringAsFixed(0),
+                    unit: '',
+                    color: AppTheme.primaryColor,
+                    isDarkMode: isDarkMode,
+                  ),
+                ),
+                SizedBox(width: 6),
                 Expanded(
                   child: _MacroCard(
                     label: 'P',
@@ -239,7 +264,7 @@ class _MealCardState extends State<MealCard> {
                     isDarkMode: isDarkMode,
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 6),
                 Expanded(
                   child: _MacroCard(
                     label: 'C',
@@ -250,7 +275,7 @@ class _MealCardState extends State<MealCard> {
                     isDarkMode: isDarkMode,
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 6),
                 Expanded(
                   child: _MacroCard(
                     label: 'F',
@@ -259,49 +284,6 @@ class _MealCardState extends State<MealCard> {
                     unit: 'g',
                     color: Color(0xFF90A4AE),
                     isDarkMode: isDarkMode,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Actions bar (Edit and More options)
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (widget.onEditFood != null)
-                  InkWell(
-                    onTap: widget.onEditFood,
-                    child: Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Icon(
-                        Icons.edit_outlined,
-                        size: 20,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                  ),
-                SizedBox(width: 8),
-                InkWell(
-                  onTap: () {
-                    // More options action
-                  },
-                  child: Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.more_vert,
-                      size: 20,
-                      color: secondaryTextColor,
-                    ),
                   ),
                 ),
               ],

@@ -119,9 +119,10 @@ class AITutorScreenState extends State<AITutorScreen>
   // Para animação do ícone pulsante
   late AnimationController _animationController;
 
-  // Controle de visibilidade do NutritionCard
-  bool _showNutritionCard = true;
-  double _lastScrollOffset = 0.0;
+  // Controle de scroll do header (calendário + nutrition card, SEM o AppBar)
+  double _headerOffset = 0.0; // Offset vertical do header (0 = visível, negativo = escondido)
+  double _lastScrollPosition = 0.0;
+  static const double _maxHeaderHeight = 131.0; // 75 (calendário) + ~56 (nutrition card)
 
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
@@ -529,27 +530,29 @@ class AITutorScreenState extends State<AITutorScreen>
     }
   }
 
-  // Método para controlar a visibilidade do NutritionCard baseado no scroll
+  // Método para controlar o offset do header baseado no scroll (comportamento tipo toolbar Android)
   void _handleScroll() {
     if (!_scrollController.hasClients) return;
 
-    final currentOffset = _scrollController.offset;
-    final scrollDelta = currentOffset - _lastScrollOffset;
+    final currentScrollPosition = _scrollController.offset;
+    final scrollDelta = currentScrollPosition - _lastScrollPosition;
 
-    // Detectar direção do scroll (threshold de 5 pixels para evitar mudanças muito sensíveis)
-    if (scrollDelta > 5 && _showNutritionCard) {
-      // Rolando para baixo - esconder card
-      setState(() {
-        _showNutritionCard = false;
-      });
-    } else if (scrollDelta < -5 && !_showNutritionCard) {
-      // Rolando para cima - mostrar card
-      setState(() {
-        _showNutritionCard = true;
-      });
-    }
+    setState(() {
+      // Atualizar o offset do header baseado no movimento do scroll
+      // scrollDelta positivo = scrollando para baixo (esconder header)
+      // scrollDelta negativo = scrollando para cima (mostrar header)
+      _headerOffset -= scrollDelta;
 
-    _lastScrollOffset = currentOffset;
+      // Limitar o offset entre -_maxHeaderHeight (totalmente escondido) e 0 (totalmente visível)
+      _headerOffset = _headerOffset.clamp(-_maxHeaderHeight, 0.0);
+
+      // Se estiver no topo (offset < 10), forçar header totalmente visível
+      if (currentScrollPosition < 10) {
+        _headerOffset = 0.0;
+      }
+
+      _lastScrollPosition = currentScrollPosition;
+    });
   }
 
   // --- Métodos removidos (agora no controller) ---
@@ -984,19 +987,45 @@ class AITutorScreenState extends State<AITutorScreen>
             body: SafeArea(
               child: Column(
                 children: [
-                  // Calendário semanal (com animação de visibilidade)
-                  AnimatedSize(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: _showNutritionCard
-                        ? Consumer<DailyMealsProvider>(
+                  // AppBar sempre fixo (não se move com o scroll)
+                  Consumer<DailyMealsProvider>(
+                    builder: (context, mealsProvider, child) {
+                      return WeeklyCalendar(
+                        selectedDate: mealsProvider.selectedDate,
+                        showCalendar: false, // Apenas o AppBar, sem o calendário
+                        onDaySelected: (date) async {
+                          print('Data selecionada: $date');
+                          mealsProvider.setSelectedDate(date);
+                          await _controller.changeSelectedDate(date);
+                        },
+                        onSearchPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const FoodSearchScreen(),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  // Calendário semanal + Nutrition card com comportamento de toolbar Android
+                  ClipRect(
+                    child: Transform.translate(
+                      offset: Offset(0, _headerOffset),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Calendário semanal (apenas os dias da semana)
+                          Consumer<DailyMealsProvider>(
                             builder: (context, mealsProvider, child) {
                               return WeeklyCalendar(
                                 selectedDate: mealsProvider.selectedDate,
+                                showCalendar: true, // Mostrar todo o widget (AppBar + calendário)
                                 onDaySelected: (date) async {
                                   print('Data selecionada: $date');
                                   mealsProvider.setSelectedDate(date);
-                                  // Carregar mensagens da data selecionada
                                   await _controller.changeSelectedDate(date);
                                 },
                                 onSearchPressed: () {
@@ -1009,16 +1038,10 @@ class AITutorScreenState extends State<AITutorScreen>
                                 },
                               );
                             },
-                          )
-                        : SizedBox.shrink(),
-                  ),
+                          ),
 
-                  // Nutrition card (com animação de visibilidade)
-                  AnimatedSize(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: _showNutritionCard
-                        ? Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
+                          // Nutrition card
+                          Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
                             builder: (context, nutritionProvider, mealsProvider, child) {
                               // Ocultar o card se não houver refeições registradas no dia
                               if (mealsProvider.todayMeals.isEmpty) {
@@ -1044,8 +1067,10 @@ class AITutorScreenState extends State<AITutorScreen>
                                 },
                               );
                             },
-                          )
-                        : SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
 
                   // Lista de mensagens

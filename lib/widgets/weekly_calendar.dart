@@ -7,12 +7,14 @@ class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
   final DateTime? selectedDate;
   final VoidCallback? onSearchPressed;
+  final bool showCalendar; // Controla se mostra o calendário semanal ou apenas o AppBar
 
   const WeeklyCalendar({
     Key? key,
     this.onDaySelected,
     this.selectedDate,
     this.onSearchPressed,
+    this.showCalendar = true, // Por padrão mostra tudo
   }) : super(key: key);
 
   @override
@@ -142,127 +144,137 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // Método para construir apenas o AppBar
+  Widget buildAppBar(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final isDarkMode = brightness == Brightness.dark;
     final isToday = _isSameDay(_selectedDate, DateTime.now());
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // AppBar
-        Container(
-          height: 56,
-          color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            children: [
-              // Botão "Hoje" (só aparece quando não está no dia atual)
-              SizedBox(
-                width: 90,
-                child: !isToday
-                    ? Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: InkWell(
-                          onTap: _goToToday,
+    return Container(
+      height: 56,
+      color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          // Botão "Hoje" (só aparece quando não está no dia atual)
+          SizedBox(
+            width: 90,
+            child: !isToday
+                ? Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: InkWell(
+                      onTap: _goToToday,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor.withAlpha(38),
                           borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor.withAlpha(38),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  context.tr.translate('today'),
-                                  style: TextStyle(
-                                    color: Theme.of(context).primaryColor,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(width: 4),
-                                Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 12,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                              ],
-                            ),
-                          ),
                         ),
-                      )
-                    : SizedBox.shrink(),
-              ),
-
-              // Título centralizado (data selecionada)
-              Expanded(
-                child: Center(
-                  child: InkWell(
-                    onTap: _showDatePicker,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Text(
-                        _formatDateTitle(context),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              context.tr.translate('today'),
+                              style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 12,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ],
                         ),
                       ),
+                    ),
+                  )
+                : SizedBox.shrink(),
+          ),
+
+          // Título centralizado (data selecionada)
+          Expanded(
+            child: Center(
+              child: InkWell(
+                onTap: _showDatePicker,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    _formatDateTitle(context),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                     ),
                   ),
                 ),
               ),
-
-              // Ícone à direita (pesquisa)
-              SizedBox(
-                width: 50,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (widget.onSearchPressed != null)
-                      IconButton(
-                        icon: Icon(
-                          Icons.search,
-                          color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                        ),
-                        tooltip: 'Pesquisar alimentos',
-                        onPressed: widget.onSearchPressed,
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
 
-        // Calendário semanal
-        Container(
-          height: 75,
-          color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentWeekIndex = index - 1000;
-              });
-            },
-            itemBuilder: (context, index) {
-              final weekIndex = index - 1000; // Offset para permitir navegação em ambas direções
-              final daysInWeek = _getDaysInWeek(weekIndex);
-
-              return _buildWeekView(daysInWeek, isDarkMode);
-            },
+          // Ícone à direita (pesquisa)
+          SizedBox(
+            width: 50,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (widget.onSearchPressed != null)
+                  IconButton(
+                    icon: Icon(
+                      Icons.search,
+                      color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                    ),
+                    tooltip: 'Pesquisar alimentos',
+                    onPressed: widget.onSearchPressed,
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                  ),
+              ],
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  // Método para construir apenas o calendário semanal
+  Widget buildCalendar(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final isDarkMode = brightness == Brightness.dark;
+
+    return Container(
+      height: 75,
+      color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      child: PageView.builder(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentWeekIndex = index - 1000;
+          });
+        },
+        itemBuilder: (context, index) {
+          final weekIndex = index - 1000; // Offset para permitir navegação em ambas direções
+          final daysInWeek = _getDaysInWeek(weekIndex);
+
+          return _buildWeekView(daysInWeek, isDarkMode);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        buildAppBar(context),
+        if (widget.showCalendar) buildCalendar(context),
       ],
     );
   }
