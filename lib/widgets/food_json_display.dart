@@ -49,6 +49,9 @@ class FoodJsonDisplay extends StatelessWidget {
         onMealTypeChanged: (newType) {
           // Não faz nada - apenas visualização
         },
+        onEditFood: () {
+          // Ícone de edição para indicação visual
+        },
       ),
     );
   }

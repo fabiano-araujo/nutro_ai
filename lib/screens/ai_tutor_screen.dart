@@ -750,7 +750,7 @@ class AITutorScreenState extends State<AITutorScreen>
   }
 
   // Método para mostrar o menu de opções ao fazer long press
-  void _showMessageOptions(String message) {
+  void _showMessageOptions(String message, bool isUser) {
     final appLocalizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
@@ -793,6 +793,27 @@ class AITutorScreenState extends State<AITutorScreen>
                   _showSelectableTextDialog(message);
                 },
               ),
+              // Opção de editar - apenas para mensagens do usuário
+              if (isUser)
+                ListTile(
+                  leading: Icon(Icons.edit,
+                      color: Theme.of(context).textTheme.bodyMedium?.color),
+                  title: Text('Editar',
+                      style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyLarge?.color)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Preencher o campo de texto com a mensagem
+                    _messageController.text = message;
+                    // Focar no campo de texto
+                    FocusScope.of(context).requestFocus(_inputFocusNode);
+                    // Mover o cursor para o final do texto
+                    _messageController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: _messageController.text.length),
+                    );
+                  },
+                ),
+              // Ler em voz alta - faz mais sentido para mensagens da IA, mas pode ser útil para ambas
               ListTile(
                 leading: Icon(
                     isSpeaking ? Icons.stop : Icons.volume_up_outlined,
@@ -851,26 +872,28 @@ class AITutorScreenState extends State<AITutorScreen>
                   }
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.refresh_outlined,
-                    color: Theme.of(context).textTheme.bodyMedium?.color),
-                title: Text('Gerar resposta novamente',
-                    style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge?.color)),
-                onTap: () async {
-                  Navigator.pop(context);
-                  // Chamar o método regenerateLastResponse do controller
-                  final hadEnoughCredits =
-                      await _controller.regenerateLastResponse(context);
+              // Gerar resposta novamente - apenas para mensagens da IA
+              if (!isUser)
+                ListTile(
+                  leading: Icon(Icons.refresh_outlined,
+                      color: Theme.of(context).textTheme.bodyMedium?.color),
+                  title: Text('Gerar resposta novamente',
+                      style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyLarge?.color)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    // Chamar o método regenerateLastResponse do controller
+                    final hadEnoughCredits =
+                        await _controller.regenerateLastResponse(context);
 
-                  // Após iniciar a regeneração, rolar para o final da lista (apenas se houver créditos)
-                  if (hadEnoughCredits) {
-                    Future.delayed(Duration(milliseconds: 100), () {
-                      _scrollToBottom();
-                    });
-                  }
-                },
-              ),
+                    // Após iniciar a regeneração, rolar para o final da lista (apenas se houver créditos)
+                    if (hadEnoughCredits) {
+                      Future.delayed(Duration(milliseconds: 100), () {
+                        _scrollToBottom();
+                      });
+                    }
+                  },
+                ),
             ],
           ),
         );
@@ -961,27 +984,33 @@ class AITutorScreenState extends State<AITutorScreen>
             body: SafeArea(
               child: Column(
                 children: [
-                  // Calendário semanal
-                  Consumer<DailyMealsProvider>(
-                    builder: (context, mealsProvider, child) {
-                      return WeeklyCalendar(
-                        selectedDate: mealsProvider.selectedDate,
-                        onDaySelected: (date) async {
-                          print('Data selecionada: $date');
-                          mealsProvider.setSelectedDate(date);
-                          // Carregar mensagens da data selecionada
-                          await _controller.changeSelectedDate(date);
-                        },
-                        onSearchPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const FoodSearchScreen(),
-                            ),
-                          );
-                        },
-                      );
-                    },
+                  // Calendário semanal (com animação de visibilidade)
+                  AnimatedSize(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: _showNutritionCard
+                        ? Consumer<DailyMealsProvider>(
+                            builder: (context, mealsProvider, child) {
+                              return WeeklyCalendar(
+                                selectedDate: mealsProvider.selectedDate,
+                                onDaySelected: (date) async {
+                                  print('Data selecionada: $date');
+                                  mealsProvider.setSelectedDate(date);
+                                  // Carregar mensagens da data selecionada
+                                  await _controller.changeSelectedDate(date);
+                                },
+                                onSearchPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const FoodSearchScreen(),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        : SizedBox.shrink(),
                   ),
 
                   // Nutrition card (com animação de visibilidade)
@@ -1561,7 +1590,7 @@ class AITutorScreenState extends State<AITutorScreen>
                   isUser: isUser,
                   isError: notifier.isError,
                   isStreaming: notifier.isStreaming,
-                  onLongPress: () => _showMessageOptions(notifier.message),
+                  onLongPress: () => _showMessageOptions(notifier.message, isUser),
                 ),
                 if (hasJsonInNotifier && !notifier.isStreaming)
                   Consumer<DailyMealsProvider>(
@@ -1589,7 +1618,7 @@ class AITutorScreenState extends State<AITutorScreen>
             isUser: isUser,
             isError: isError,
             isStreaming: isStreaming,
-            onLongPress: () => _showMessageOptions(message),
+            onLongPress: () => _showMessageOptions(message, isUser),
             imageBytes: imageBytes,
           ),
           if (hasFoodJson && !isStreaming)

@@ -223,13 +223,9 @@ class _MealCardState extends State<MealCard> {
 
           // Macros Summary
           Container(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
             ),
             child: Row(
               children: [
@@ -263,6 +259,49 @@ class _MealCardState extends State<MealCard> {
                     unit: 'g',
                     color: Color(0xFF90A4AE),
                     isDarkMode: isDarkMode,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Actions bar (Edit and More options)
+          Container(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (widget.onEditFood != null)
+                  InkWell(
+                    onTap: widget.onEditFood,
+                    child: Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 20,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ),
+                SizedBox(width: 8),
+                InkWell(
+                  onTap: () {
+                    // More options action
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.more_vert,
+                      size: 20,
+                      color: secondaryTextColor,
+                    ),
                   ),
                 ),
               ],
