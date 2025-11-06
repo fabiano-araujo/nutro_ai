@@ -84,99 +84,119 @@ class DietPlanProvider extends ChangeNotifier {
       print('👤 UserId: $userId');
       print('🤖 AgentType: diet, Provider: Hyperbolic');
 
-      // Call AI service to generate diet plan (EXACT same as AI Tutor)
+      // Call AI service to generate diet plan
       print('⏳ Iniciando stream da API...');
 
       final stream = _aiService.getAnswerStream(
         prompt,
         languageCode: languageCode,
-        quality: 'google/gemma-3-27b-it', // Usar modelo Gemma 3 27B diretamente
+        quality: 'google/gemma-3-27b-it',
         userId: userId,
         agentType: 'diet',
         provider: 'Hyperbolic',
       );
 
-      // Process stream EXACTLY like AIInteractionHelper does
-      final StringBuffer responseBuffer = StringBuffer();
-      int chunkCount = 0;
+      // Initialize progressive diet plan
+      final dateKey = _formatDate(date);
+      final List<PlannedMeal> progressiveMeals = [];
+      DailyNutrition? finalTotalNutrition;
+
+      final StringBuffer lineBuffer = StringBuffer();
       String? connectionId;
+      int chunkCount = 0;
 
       await for (var chunk in stream) {
         chunkCount++;
         print('📦 Diet - Chunk #$chunkCount recebido: ${chunk.length} chars');
 
-        // Remove connection ID marker if present (same as AIInteractionHelper)
+        // Remove connection ID marker if present
         if (chunk.contains('[CONEXAO_ID]')) {
           try {
             final marcadorIndex = chunk.indexOf('[CONEXAO_ID]');
             connectionId = chunk.substring(marcadorIndex + 12);
             print('🔑 Diet - Connection ID extracted: $connectionId');
-
-            // Remove the marker from chunk
             chunk = chunk.replaceAll('[CONEXAO_ID]$connectionId', '');
-            if (chunk.isEmpty) {
-              print('⏭️ Diet - Chunk only had connection ID, skipping...');
-              continue; // Skip empty chunks
-            }
+            if (chunk.isEmpty) continue;
           } catch (e) {
             print('❌ Diet - Error processing connection ID: $e');
           }
         }
 
-        // Add chunk to response
-        responseBuffer.write(chunk);
-        print('📝 Diet - Added ${chunk.length} chars to buffer');
+        // Add chunk to line buffer
+        lineBuffer.write(chunk);
+
+        // Process complete lines (NDJSON format)
+        final lines = lineBuffer.toString().split('\n');
+
+        // Keep the last incomplete line in buffer
+        lineBuffer.clear();
+        if (!lines.last.trim().endsWith('}')) {
+          lineBuffer.write(lines.last);
+          lines.removeLast();
+        }
+
+        // Process each complete line
+        for (final line in lines) {
+          final trimmedLine = line.trim();
+          if (trimmedLine.isEmpty) continue;
+
+          try {
+            print('🔍 Tentando parsear linha NDJSON: $trimmedLine');
+            final jsonData = jsonDecode(trimmedLine);
+
+            // Check if it's a meal or total nutrition
+            if (jsonData.containsKey('type') && jsonData.containsKey('foods')) {
+              // It's a meal
+              final meal = PlannedMeal.fromJson(jsonData);
+              progressiveMeals.add(meal);
+              print('✅ Refeição recebida: ${meal.name} (${meal.type})');
+
+              // Update UI with progressive meals
+              _dietPlans[dateKey] = DietPlan(
+                date: dateKey,
+                meals: List.from(progressiveMeals),
+                totalNutrition: finalTotalNutrition ?? _calculateTotalNutrition(progressiveMeals),
+              );
+
+              // Notify listeners to update UI immediately
+              notifyListeners();
+
+            } else if (jsonData.containsKey('totalNutrition')) {
+              // It's the final total nutrition
+              finalTotalNutrition = DailyNutrition.fromJson(jsonData['totalNutrition']);
+              print('✅ Total nutricional recebido: ${finalTotalNutrition.calories} cal');
+            }
+          } catch (e) {
+            print('⚠️ Erro ao parsear linha NDJSON: $e');
+            print('   Linha: $trimmedLine');
+            // Continue processing other lines
+          }
+        }
       }
 
-      print('✓ Diet - Stream finalizado! Chunks: $chunkCount, ConnectionId: $connectionId');
-      final response = responseBuffer.toString();
+      print('✓ Diet - Stream finalizado! Chunks: $chunkCount');
 
-      print('📥 Resposta completa da IA (${response.length} chars):');
-      print('═' * 80);
-      print(response);
-      print('═' * 80);
+      // Finalize the diet plan
+      if (progressiveMeals.isNotEmpty) {
+        _dietPlans[dateKey] = DietPlan(
+          date: dateKey,
+          meals: progressiveMeals,
+          totalNutrition: finalTotalNutrition ?? _calculateTotalNutrition(progressiveMeals),
+        );
 
-      // Try to extract JSON from response
-      print('🔍 Tentando extrair JSON da resposta...');
-      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(response);
-      if (jsonMatch == null) {
-        print('❌ ERRO: Não foi possível extrair JSON da resposta!');
-        throw Exception('Não foi possível extrair JSON da resposta da IA');
+        _isLoading = false;
+        _error = null;
+
+        // Save to preferences
+        await _saveToPreferences();
+        notifyListeners();
+
+        print('✅ Plano de dieta gerado com sucesso para $dateKey');
+        print('   Total de refeições: ${progressiveMeals.length}');
+      } else {
+        throw Exception('Nenhuma refeição foi gerada');
       }
 
-      final jsonString = jsonMatch.group(0)!;
-      print('📄 JSON extraído (${jsonString.length} chars):');
-      print('─' * 80);
-      print(jsonString);
-      print('─' * 80);
-
-      print('🔧 Fazendo parse do JSON...');
-      final jsonData = jsonDecode(jsonString);
-      print('✓ JSON parseado com sucesso!');
-      print('📊 Estrutura do JSON: ${jsonData.keys.toList()}');
-
-      // Create diet plan from JSON
-      print('🍱 Criando objeto DietPlan a partir do JSON...');
-      final dietPlan = DietPlan.fromJson(jsonData);
-      print('✓ DietPlan criado: ${dietPlan.meals.length} refeições');
-
-      // Update date to match requested date
-      final updatedPlan = dietPlan.copyWith(date: _formatDate(date));
-      print('✓ Data atualizada para: ${_formatDate(date)}');
-
-      // Store the diet plan
-      final dateKey = _formatDate(date);
-      _dietPlans[dateKey] = updatedPlan;
-
-      _isLoading = false;
-      _error = null;
-
-      // Save to preferences
-      await _saveToPreferences();
-
-      notifyListeners();
-
-      print('✅ Plano de dieta gerado com sucesso para $dateKey');
     } catch (e) {
       _isLoading = false;
       _error = 'Erro ao gerar plano de dieta: $e';
@@ -197,22 +217,22 @@ class DietPlanProvider extends ChangeNotifier {
     final hungriestMeal = _preferences.hungriestMealTime;
 
     return '''
-Create a complete daily diet plan. Daily totals: $calories calories, ${protein}g protein, ${carbs}g carbs, ${fat}g fat. There are $mealsPerDay meals per day. Hungriest meal is $hungriestMeal (give it 35% of daily calories). Return ONLY valid JSON (no markdown):
-{
-  "date": "YYYY-MM-DD",
-  "totalNutrition": {"calories": $calories, "protein": $protein, "carbs": $carbs, "fat": $fat},
-  "meals": [
-    {
-      "type": "breakfast|lunch|dinner|snack",
-      "time": "HH:MM",
-      "name": "Meal Name",
-      "foods": [{"name": "Food", "emoji": "🍳", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}],
-      "mealTotals": {"calories": number, "protein": number, "carbs": number, "fat": number}
-    }
-  ]
-}
+Create a complete daily diet plan. Daily totals: $calories calories, ${protein}g protein, ${carbs}g carbs, ${fat}g fat. There are $mealsPerDay meals per day. Hungriest meal is $hungriestMeal (give it 35% of daily calories).
 
-CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
+IMPORTANT: Return in NDJSON format (Newline Delimited JSON). Each line must be a valid JSON object:
+- First $mealsPerDay lines: One meal per line
+- Last line: Total nutrition summary
+
+Format for each meal line:
+{"type":"breakfast|lunch|dinner|snack","time":"HH:MM","name":"Meal Name","foods":[{"name":"Food","emoji":"🍳","amount":100,"unit":"g","calories":200,"protein":10,"carbs":20,"fat":5}],"mealTotals":{"calories":200,"protein":10,"carbs":20,"fat":5}}
+
+Format for final line:
+{"totalNutrition":{"calories":$calories,"protein":$protein,"carbs":$carbs,"fat":$fat},"date":"YYYY-MM-DD"}
+
+CRITICAL:
+- Each line must be a complete, valid JSON object (no nested arrays/objects across lines)
+- Sum of all mealTotals MUST equal totalNutrition EXACTLY
+- NO markdown, NO extra text, ONLY NDJSON lines
 ''';
   }
 
@@ -261,10 +281,11 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
         provider: 'Hyperbolic',
       );
 
-      // Process stream EXACTLY like AIInteractionHelper does
-      final StringBuffer responseBuffer = StringBuffer();
-      int chunkCount = 0;
+      // Process stream for NDJSON format
+      final StringBuffer lineBuffer = StringBuffer();
       String? connectionId;
+      int chunkCount = 0;
+      PlannedMeal? newMeal;
 
       await for (var chunk in stream) {
         chunkCount++;
@@ -277,49 +298,65 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
           if (chunk.isEmpty) continue;
         }
 
-        responseBuffer.write(chunk);
+        // Add chunk to line buffer
+        lineBuffer.write(chunk);
+
+        // Process complete lines (NDJSON format)
+        final lines = lineBuffer.toString().split('\n');
+
+        // Keep the last incomplete line in buffer
+        lineBuffer.clear();
+        if (!lines.last.trim().endsWith('}')) {
+          lineBuffer.write(lines.last);
+          lines.removeLast();
+        }
+
+        // Process each complete line
+        for (final line in lines) {
+          final trimmedLine = line.trim();
+          if (trimmedLine.isEmpty) continue;
+
+          try {
+            print('🔍 Tentando parsear linha NDJSON: $trimmedLine');
+            final jsonData = jsonDecode(trimmedLine);
+
+            // Check if it's a meal
+            if (jsonData.containsKey('type') && jsonData.containsKey('foods')) {
+              newMeal = PlannedMeal.fromJson(jsonData);
+              print('✅ Nova refeição recebida: ${newMeal.name}');
+            }
+          } catch (e) {
+            print('⚠️ Erro ao parsear linha NDJSON: $e');
+          }
+        }
       }
 
       print('✓ Replace - Stream finalizado! Chunks: $chunkCount');
-      final response = responseBuffer.toString();
 
-      print('📥 Resposta completa da IA (${response.length} chars):');
-      print('═' * 80);
-      print(response);
-      print('═' * 80);
+      if (newMeal != null) {
+        // Update the meal in the plan
+        final updatedMeals = List<PlannedMeal>.from(currentPlan.meals);
+        updatedMeals[mealIndex] = newMeal;
 
-      // Extract JSON from response
-      print('🔍 Tentando extrair JSON da resposta...');
-      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(response);
-      if (jsonMatch == null) {
-        throw Exception('Não foi possível extrair JSON da resposta da IA');
+        // Recalculate total nutrition
+        final newTotalNutrition = _calculateTotalNutrition(updatedMeals);
+
+        _dietPlans[dateKey] = currentPlan.copyWith(
+          meals: updatedMeals,
+          totalNutrition: newTotalNutrition,
+        );
+
+        _isLoading = false;
+        _error = null;
+
+        await _saveToPreferences();
+        notifyListeners();
+
+        print('✅ Refeição substituída com sucesso');
+      } else {
+        throw Exception('Nenhuma refeição foi gerada');
       }
 
-      final jsonString = jsonMatch.group(0)!;
-      final jsonData = jsonDecode(jsonString);
-
-      // Create new meal from JSON
-      final newMeal = PlannedMeal.fromJson(jsonData);
-
-      // Update the meal in the plan
-      final updatedMeals = List<PlannedMeal>.from(currentPlan.meals);
-      updatedMeals[mealIndex] = newMeal;
-
-      // Recalculate total nutrition
-      final newTotalNutrition = _calculateTotalNutrition(updatedMeals);
-
-      _dietPlans[dateKey] = currentPlan.copyWith(
-        meals: updatedMeals,
-        totalNutrition: newTotalNutrition,
-      );
-
-      _isLoading = false;
-      _error = null;
-
-      await _saveToPreferences();
-      notifyListeners();
-
-      print('✅ Refeição substituída com sucesso');
     } catch (e) {
       _isLoading = false;
       _error = 'Erro ao substituir refeição: $e';
@@ -345,16 +382,11 @@ IMPORTANTE:
 - Mantenha os totais nutricionais MUITO próximos: ${mealToReplace.mealTotals.calories} cal, ${mealToReplace.mealTotals.protein}g proteína, ${mealToReplace.mealTotals.carbs}g carbs, ${mealToReplace.mealTotals.fat}g gordura
 - Use alimentos DIFERENTES dos atuais
 - Alimentos da culinária brasileira/portuguesa
-- Retorne APENAS um objeto JSON válido (sem markdown) com a estrutura:
-{
-  "type": "${mealToReplace.type}",
-  "time": "${mealToReplace.time}",
-  "name": "Nome da Nova Refeição",
-  "foods": [
-    {"name": "Nome", "emoji": "🍽️", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}
-  ],
-  "mealTotals": {"calories": number, "protein": number, "carbs": number, "fat": number}
-}
+
+Return in NDJSON format (single line of valid JSON, no markdown):
+{"type":"${mealToReplace.type}","time":"${mealToReplace.time}","name":"Nome da Nova Refeição","foods":[{"name":"Nome","emoji":"🍽️","amount":100,"unit":"g","calories":200,"protein":10,"carbs":20,"fat":5}],"mealTotals":{"calories":200,"protein":10,"carbs":20,"fat":5}}
+
+NO markdown, NO extra text, ONLY one line of JSON.
 ''';
   }
 
