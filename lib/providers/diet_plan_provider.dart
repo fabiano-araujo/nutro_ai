@@ -133,51 +133,36 @@ class DietPlanProvider extends ChangeNotifier {
 
   // Build prompt for AI diet generation
   String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals) {
-    final nutritionGoalsMap = {
-      'calories': nutritionGoals.caloriesGoal,
-      'protein': nutritionGoals.proteinGoal,
-      'carbs': nutritionGoals.carbsGoal,
-      'fat': nutritionGoals.fatGoal,
-    };
-
-    final preferencesMap = _preferences.toJson();
-
     final inputData = {
-      'nutritionGoals': nutritionGoalsMap,
-      'preferences': preferencesMap,
+      'dailyTotals': {
+        'calories': nutritionGoals.caloriesGoal,
+        'protein': nutritionGoals.proteinGoal,
+        'carbs': nutritionGoals.carbsGoal,
+        'fat': nutritionGoals.fatGoal,
+      },
+      'mealsPerDay': _preferences.mealsPerDay,
+      'hungriestMeal': _preferences.hungriestMealTime,
     };
 
     return '''
-Crie um plano de dieta personalizado baseado nos seguintes dados:
-
 ${jsonEncode(inputData)}
 
-Você deve retornar APENAS um objeto JSON válido (sem markdown, sem explicações adicionais) com a estrutura:
+Create a complete diet plan. Return ONLY valid JSON (no markdown):
 {
   "date": "YYYY-MM-DD",
-  "totalNutrition": {"calories": number, "protein": number, "carbs": number, "fat": number},
+  "totalNutrition": {"calories": ${nutritionGoals.caloriesGoal}, "protein": ${nutritionGoals.proteinGoal}, "carbs": ${nutritionGoals.carbsGoal}, "fat": ${nutritionGoals.fatGoal}},
   "meals": [
     {
       "type": "breakfast|lunch|dinner|snack",
       "time": "HH:MM",
-      "name": "Nome da Refeição",
-      "foods": [
-        {"name": "Nome do Alimento", "emoji": "🍳", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}
-      ],
+      "name": "Meal Name",
+      "foods": [{"name": "Food", "emoji": "🍳", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}],
       "mealTotals": {"calories": number, "protein": number, "carbs": number, "fat": number}
     }
   ]
 }
 
-IMPORTANTE:
-- Distribua as calorias de acordo com o número de refeições (${_preferences.mealsPerDay}) e o horário de maior fome (${_preferences.hungriestMealTime})
-- Dê 30-40% das calorias diárias para a refeição de maior fome
-- A nutrição total deve corresponder às metas dentro de ±5%
-- Escolha alimentos da culinária brasileira/portuguesa
-- Inclua variedade - não repita muito os mesmos alimentos
-- Porções realistas e práticas
-- Emojis apropriados para cada alimento
-- Retorne APENAS JSON válido - sem blocos de código markdown, sem explicações
+CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY. Hungriest meal (${_preferences.hungriestMealTime}) gets 35% of daily calories.
 ''';
   }
 
