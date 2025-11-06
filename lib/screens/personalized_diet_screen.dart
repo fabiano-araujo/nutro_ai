@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
-import '../services/auth_service.dart';
 import '../widgets/weekly_calendar.dart';
 import '../models/diet_plan_model.dart';
 import '../theme/app_theme.dart';
-import '../i18n/app_localizations_extension.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   const PersonalizedDietScreen({Key? key}) : super(key: key);
@@ -122,15 +120,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   Future<void> _generateDietPlan() async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
-    final authService = Provider.of<AuthService>(context, listen: false);
-
-    // Check if user is authenticated
-    if (!authService.isAuthenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Você precisa estar logado para gerar um plano de dieta')),
-      );
-      return;
-    }
 
     // Check if nutrition goals are configured
     if (!nutritionGoals.hasConfiguredGoals) {
@@ -147,7 +136,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
       nutritionGoals,
-      authService.currentUser?.id.toString() ?? '',
     );
 
     if (dietProvider.error != null) {
@@ -161,13 +149,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   Future<void> _replaceMeal(String mealType) async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
-    final authService = Provider.of<AuthService>(context, listen: false);
 
     await dietProvider.replaceMeal(
       dietProvider.selectedDate,
       mealType,
       nutritionGoals,
-      authService.currentUser?.id.toString() ?? '',
     );
 
     if (dietProvider.error != null) {
@@ -200,12 +186,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     if (confirmed == true) {
       final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
       final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
-      final authService = Provider.of<AuthService>(context, listen: false);
 
       await dietProvider.replaceAllMeals(
         dietProvider.selectedDate,
         nutritionGoals,
-        authService.currentUser?.id.toString() ?? '',
       );
 
       if (dietProvider.error != null) {
@@ -229,22 +213,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         return '🍎';
       default:
         return '🍴';
-    }
-  }
-
-  // Get name for meal type
-  String _getMealName(String mealType) {
-    switch (mealType) {
-      case 'breakfast':
-        return 'Café da Manhã';
-      case 'lunch':
-        return 'Almoço';
-      case 'dinner':
-        return 'Jantar';
-      case 'snack':
-        return 'Lanche';
-      default:
-        return 'Refeição';
     }
   }
 

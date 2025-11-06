@@ -66,9 +66,9 @@ class DietPlanProvider extends ChangeNotifier {
   // Generate diet plan for a specific date
   Future<void> generateDietPlan(
     DateTime date,
-    NutritionGoalsProvider nutritionGoals,
-    String userId,
-  ) async {
+    NutritionGoalsProvider nutritionGoals, {
+    String userId = '',
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -130,16 +130,6 @@ class DietPlanProvider extends ChangeNotifier {
 
   // Build prompt for AI diet generation
   String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals) {
-    final userProfile = {
-      'age': nutritionGoals.age,
-      'sex': nutritionGoals.sex,
-      'weight': nutritionGoals.weight,
-      'height': nutritionGoals.height,
-      'activityLevel': nutritionGoals.activityLevel.toString().split('.').last,
-      'fitnessGoal': nutritionGoals.fitnessGoal.toString().split('.').last,
-      'dietType': nutritionGoals.dietType.toString().split('.').last,
-    };
-
     final nutritionGoalsMap = {
       'calories': nutritionGoals.caloriesGoal,
       'protein': nutritionGoals.proteinGoal,
@@ -150,7 +140,6 @@ class DietPlanProvider extends ChangeNotifier {
     final preferencesMap = _preferences.toJson();
 
     final inputData = {
-      'userProfile': userProfile,
       'nutritionGoals': nutritionGoalsMap,
       'preferences': preferencesMap,
     };
@@ -193,9 +182,9 @@ IMPORTANTE:
   Future<void> replaceMeal(
     DateTime date,
     String mealType,
-    NutritionGoalsProvider nutritionGoals,
-    String userId,
-  ) async {
+    NutritionGoalsProvider nutritionGoals, {
+    String userId = '',
+  }) async {
     final dateKey = _formatDate(date);
     final currentPlan = _dietPlans[dateKey];
 
@@ -303,11 +292,11 @@ IMPORTANTE:
   // Replace all meals for a day
   Future<void> replaceAllMeals(
     DateTime date,
-    NutritionGoalsProvider nutritionGoals,
-    String userId,
-  ) async {
+    NutritionGoalsProvider nutritionGoals, {
+    String userId = '',
+  }) async {
     // Simply generate a new diet plan for this date
-    await generateDietPlan(date, nutritionGoals, userId);
+    await generateDietPlan(date, nutritionGoals, userId: userId);
   }
 
   // Calculate total nutrition from meals
