@@ -105,21 +105,20 @@ class AIService {
       String provider = ''}) async* {
     print('\n🚀 Iniciando nova solicitação de resposta');
     try {
-      final systemContent =
-          'Você é um assistente de estudos. Forneça respostas educativas claras. Use linguagem simples e clara. ' +
-              (subject.isNotEmpty ? " O tópico é $subject." : "") +
-              " Você deve responder no idioma: $languageCode";
+      // When agentType is specified, backend handles system prompt via agent config
+      // So we don't add generic system content, just send the user's prompt
+      final String finalPrompt = question;
 
       print('\n📤 PROMPT COMPLETO:');
       print('----------------------------------------');
-      print('System: $systemContent');
-      print('User: $question');
+      print('User: $finalPrompt');
       print('UserId: $userId');
+      print('AgentType: $agentType');
+      print('Language: $languageCode');
       print('----------------------------------------\n');
 
       // Calcular e registrar os tokens de entrada
-      final inputTokensEstimate =
-          estimateTokenCount(question) + estimateTokenCount(systemContent);
+      final inputTokensEstimate = estimateTokenCount(finalPrompt);
       print('📊 Tokens de entrada estimados: $inputTokensEstimate');
 
       // Registrar horário de início para medir tempo de resposta
@@ -134,12 +133,13 @@ class AIService {
 
       // Novo formato de corpo da requisição
       final requestBody = {
-        'prompt': '$systemContent\n\nUsuário: $question',
+        'prompt': finalPrompt, // Just user's prompt, backend adds agent system prompt
         'temperature': 0.5,
         'model': quality, // Usar o parâmetro de qualidade passado
         'streaming': true,
         'userId': userId, // Adicionando o userId na requisição
         'agentType': agentType, // Tipo de agent a ser usado
+        'language': languageCode, // Backend uses this for dynamic language injection
       };
 
       // Adicionar provider se especificado
@@ -254,8 +254,9 @@ class AIService {
                 '- Velocidade: ${(outputTokens / (duration.inMilliseconds / 1000)).round()} tokens/segundo\n');
 
             // Registrar custos estimados
+            // Note: System content is handled by backend when using agentType, so we pass empty string
             _logTokensAndCost(
-                question, systemContent, outputTokens, 'getAnswerStream');
+                question, '', outputTokens, 'getAnswerStream');
 
             // Fechar o controlador
             streamController.close();

@@ -82,13 +82,13 @@ class DietPlanProvider extends ChangeNotifier {
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
 
-      // Call AI service to generate diet plan
+      // Call AI service to generate diet plan (using same config as AI Tutor)
       final response = await _aiService.getAnswerStream(
         prompt,
-        quality: 'bom',
+        quality: '', // Empty = server default model (same as AI Tutor)
         userId: userId,
-        agentType: 'diet',
-        provider: 'google',
+        agentType: 'diet', // Only difference from AI Tutor
+        provider: 'Hyperbolic', // Same provider as AI Tutor
         languageCode: languageCode,
       ).join();
 
@@ -203,10 +203,10 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY. Hungriest mea
 
       final response = await _aiService.getAnswerStream(
         prompt,
-        quality: 'bom',
+        quality: '', // Empty = server default model (same as AI Tutor)
         userId: userId,
-        agentType: 'diet',
-        provider: 'google',
+        agentType: 'diet', // Only difference from AI Tutor
+        provider: 'Hyperbolic', // Same provider as AI Tutor
         languageCode: languageCode,
       ).join();
 
