@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
-import '../providers/auth_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/weekly_calendar.dart';
 import '../models/diet_plan_model.dart';
 import '../theme/app_theme.dart';
@@ -257,28 +257,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with title
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Dieta Personalizada',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings),
-                    onPressed: _showPreferencesDialog,
-                    tooltip: 'Configurar preferências',
-                  ),
-                ],
-              ),
-            ),
-
             // Weekly Calendar
             Consumer<DietPlanProvider>(
               builder: (context, dietProvider, _) {

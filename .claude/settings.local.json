@@ -19,7 +19,13 @@
       "Bash(flutter run:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/www/dieta_api && git pull && yarn build && pm2 restart index\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"ls -la /root/\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"find /root -name ''dieta_api'' -type d 2>/dev/null | head -5\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 list\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 describe index | grep ''exec cwd''\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && git pull && yarn build && pm2 restart index\")"
     ],
     "deny": [],
     "ask": []

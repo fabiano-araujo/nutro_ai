@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'tools_screen.dart';
 import 'ai_tutor_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'personalized_diet_screen.dart';
-import '../theme/app_theme.dart';
-import '../i18n/app_localizations_extension.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
 
@@ -94,9 +91,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = [
     AITutorScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
-    ToolsScreen(), // Ferramentas (Tools) - Dark theme
-    PersonalizedDietScreen(), // Dieta Personalizada - TERCEIRA ABA
-    ProfileTabWrapper(), // Perfil/Login - QUARTA ABA
+    PersonalizedDietScreen(), // Dieta Personalizada - SEGUNDA ABA
+    ProfileTabWrapper(), // Perfil/Login - TERCEIRA ABA
   ];
 
   // Método para construir o ícone de perfil
@@ -190,11 +186,6 @@ class _MainNavigationState extends State<MainNavigation> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.chat_bubble_outline),
                   activeIcon: Icon(Icons.chat_bubble),
-                  label: '',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.lightbulb_outline),
-                  activeIcon: Icon(Icons.lightbulb),
                   label: '',
                 ),
                 BottomNavigationBarItem(
