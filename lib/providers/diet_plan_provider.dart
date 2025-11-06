@@ -68,6 +68,7 @@ class DietPlanProvider extends ChangeNotifier {
     DateTime date,
     NutritionGoalsProvider nutritionGoals, {
     String userId = '',
+    String languageCode = 'pt_BR',
   }) async {
     _isLoading = true;
     _error = null;
@@ -79,6 +80,7 @@ class DietPlanProvider extends ChangeNotifier {
 
       print('🍽️ Gerando plano de dieta para ${_formatDate(date)}');
       print('📋 Prompt: $prompt');
+      print('🌍 Locale: $languageCode');
 
       // Call AI service to generate diet plan
       final response = await _aiService.getAnswerStream(
@@ -87,6 +89,7 @@ class DietPlanProvider extends ChangeNotifier {
         userId: userId,
         agentType: 'diet',
         provider: 'google',
+        languageCode: languageCode,
       ).join();
 
       print('📥 Resposta da IA: ${response.substring(0, response.length > 500 ? 500 : response.length)}...');
@@ -184,6 +187,7 @@ IMPORTANTE:
     String mealType,
     NutritionGoalsProvider nutritionGoals, {
     String userId = '',
+    String languageCode = 'pt_BR',
   }) async {
     final dateKey = _formatDate(date);
     final currentPlan = _dietPlans[dateKey];
@@ -218,6 +222,7 @@ IMPORTANTE:
         userId: userId,
         agentType: 'diet',
         provider: 'google',
+        languageCode: languageCode,
       ).join();
 
       // Extract JSON from response
@@ -294,9 +299,10 @@ IMPORTANTE:
     DateTime date,
     NutritionGoalsProvider nutritionGoals, {
     String userId = '',
+    String languageCode = 'pt_BR',
   }) async {
     // Simply generate a new diet plan for this date
-    await generateDietPlan(date, nutritionGoals, userId: userId);
+    await generateDietPlan(date, nutritionGoals, userId: userId, languageCode: languageCode);
   }
 
   // Calculate total nutrition from meals

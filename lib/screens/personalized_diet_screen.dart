@@ -132,10 +132,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     // Show preferences dialog first
     await _showPreferencesDialog();
 
+    // Get device locale
+    final locale = Localizations.localeOf(context);
+    final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
+
     // Generate diet plan
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
       nutritionGoals,
+      languageCode: languageCode,
     );
 
     if (dietProvider.error != null) {
@@ -150,10 +155,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
 
+    // Get device locale
+    final locale = Localizations.localeOf(context);
+    final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
+
     await dietProvider.replaceMeal(
       dietProvider.selectedDate,
       mealType,
       nutritionGoals,
+      languageCode: languageCode,
     );
 
     if (dietProvider.error != null) {
@@ -187,9 +197,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
       final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
 
+      // Get device locale
+      final locale = Localizations.localeOf(context);
+      final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
+
       await dietProvider.replaceAllMeals(
         dietProvider.selectedDate,
         nutritionGoals,
+        languageCode: languageCode,
       );
 
       if (dietProvider.error != null) {
