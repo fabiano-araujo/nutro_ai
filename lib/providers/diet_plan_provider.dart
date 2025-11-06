@@ -81,33 +81,88 @@ class DietPlanProvider extends ChangeNotifier {
       print('🍽️ Gerando plano de dieta para ${_formatDate(date)}');
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
+      print('👤 UserId: $userId');
+      print('🤖 AgentType: diet, Provider: Hyperbolic');
 
-      // Call AI service to generate diet plan (using same config as AI Tutor)
-      final response = await _aiService.getAnswerStream(
+      // Call AI service to generate diet plan (EXACT same as AI Tutor)
+      print('⏳ Iniciando stream da API...');
+
+      final stream = _aiService.getAnswerStream(
         prompt,
-        quality: '', // Empty = server default model (same as AI Tutor)
-        userId: userId,
-        agentType: 'diet', // Only difference from AI Tutor
-        provider: 'Hyperbolic', // Same provider as AI Tutor
         languageCode: languageCode,
-      ).join();
+        quality: 'google/gemma-3-27b-it', // Usar modelo Gemma 3 27B diretamente
+        userId: userId,
+        agentType: 'diet',
+        provider: 'Hyperbolic',
+      );
 
-      print('📥 Resposta da IA: ${response.substring(0, response.length > 500 ? 500 : response.length)}...');
+      // Process stream EXACTLY like AIInteractionHelper does
+      final StringBuffer responseBuffer = StringBuffer();
+      int chunkCount = 0;
+      String? connectionId;
+
+      await for (var chunk in stream) {
+        chunkCount++;
+        print('📦 Diet - Chunk #$chunkCount recebido: ${chunk.length} chars');
+
+        // Remove connection ID marker if present (same as AIInteractionHelper)
+        if (chunk.contains('[CONEXAO_ID]')) {
+          try {
+            final marcadorIndex = chunk.indexOf('[CONEXAO_ID]');
+            connectionId = chunk.substring(marcadorIndex + 12);
+            print('🔑 Diet - Connection ID extracted: $connectionId');
+
+            // Remove the marker from chunk
+            chunk = chunk.replaceAll('[CONEXAO_ID]$connectionId', '');
+            if (chunk.isEmpty) {
+              print('⏭️ Diet - Chunk only had connection ID, skipping...');
+              continue; // Skip empty chunks
+            }
+          } catch (e) {
+            print('❌ Diet - Error processing connection ID: $e');
+          }
+        }
+
+        // Add chunk to response
+        responseBuffer.write(chunk);
+        print('📝 Diet - Added ${chunk.length} chars to buffer');
+      }
+
+      print('✓ Diet - Stream finalizado! Chunks: $chunkCount, ConnectionId: $connectionId');
+      final response = responseBuffer.toString();
+
+      print('📥 Resposta completa da IA (${response.length} chars):');
+      print('═' * 80);
+      print(response);
+      print('═' * 80);
 
       // Try to extract JSON from response
+      print('🔍 Tentando extrair JSON da resposta...');
       final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(response);
       if (jsonMatch == null) {
+        print('❌ ERRO: Não foi possível extrair JSON da resposta!');
         throw Exception('Não foi possível extrair JSON da resposta da IA');
       }
 
       final jsonString = jsonMatch.group(0)!;
+      print('📄 JSON extraído (${jsonString.length} chars):');
+      print('─' * 80);
+      print(jsonString);
+      print('─' * 80);
+
+      print('🔧 Fazendo parse do JSON...');
       final jsonData = jsonDecode(jsonString);
+      print('✓ JSON parseado com sucesso!');
+      print('📊 Estrutura do JSON: ${jsonData.keys.toList()}');
 
       // Create diet plan from JSON
+      print('🍱 Criando objeto DietPlan a partir do JSON...');
       final dietPlan = DietPlan.fromJson(jsonData);
+      print('✓ DietPlan criado: ${dietPlan.meals.length} refeições');
 
       // Update date to match requested date
       final updatedPlan = dietPlan.copyWith(date: _formatDate(date));
+      print('✓ Data atualizada para: ${_formatDate(date)}');
 
       // Store the diet plan
       final dateKey = _formatDate(date);
@@ -133,24 +188,19 @@ class DietPlanProvider extends ChangeNotifier {
 
   // Build prompt for AI diet generation
   String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals) {
-    final inputData = {
-      'dailyTotals': {
-        'calories': nutritionGoals.caloriesGoal,
-        'protein': nutritionGoals.proteinGoal,
-        'carbs': nutritionGoals.carbsGoal,
-        'fat': nutritionGoals.fatGoal,
-      },
-      'mealsPerDay': _preferences.mealsPerDay,
-      'hungriestMeal': _preferences.hungriestMealTime,
-    };
+    // Valores dinâmicos vindos do app
+    final calories = nutritionGoals.caloriesGoal;
+    final protein = nutritionGoals.proteinGoal;
+    final carbs = nutritionGoals.carbsGoal;
+    final fat = nutritionGoals.fatGoal;
+    final mealsPerDay = _preferences.mealsPerDay;
+    final hungriestMeal = _preferences.hungriestMealTime;
 
     return '''
-${jsonEncode(inputData)}
-
-Create a complete diet plan. Return ONLY valid JSON (no markdown):
+Create a complete daily diet plan. Daily totals: $calories calories, ${protein}g protein, ${carbs}g carbs, ${fat}g fat. There are $mealsPerDay meals per day. Hungriest meal is $hungriestMeal (give it 35% of daily calories). Return ONLY valid JSON (no markdown):
 {
   "date": "YYYY-MM-DD",
-  "totalNutrition": {"calories": ${nutritionGoals.caloriesGoal}, "protein": ${nutritionGoals.proteinGoal}, "carbs": ${nutritionGoals.carbsGoal}, "fat": ${nutritionGoals.fatGoal}},
+  "totalNutrition": {"calories": $calories, "protein": $protein, "carbs": $carbs, "fat": $fat},
   "meals": [
     {
       "type": "breakfast|lunch|dinner|snack",
@@ -162,7 +212,7 @@ Create a complete diet plan. Return ONLY valid JSON (no markdown):
   ]
 }
 
-CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY. Hungriest meal (${_preferences.hungriestMealTime}) gets 35% of daily calories.
+CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
 ''';
   }
 
@@ -200,17 +250,46 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY. Hungriest mea
       final prompt = _buildReplaceMealPrompt(mealToReplace, nutritionGoals);
 
       print('🔄 Substituindo refeição $mealType para $dateKey');
+      print('⏳ Iniciando stream da API...');
 
-      final response = await _aiService.getAnswerStream(
+      final stream = _aiService.getAnswerStream(
         prompt,
-        quality: '', // Empty = server default model (same as AI Tutor)
-        userId: userId,
-        agentType: 'diet', // Only difference from AI Tutor
-        provider: 'Hyperbolic', // Same provider as AI Tutor
         languageCode: languageCode,
-      ).join();
+        quality: 'google/gemma-3-27b-it',
+        userId: userId,
+        agentType: 'diet',
+        provider: 'Hyperbolic',
+      );
+
+      // Process stream EXACTLY like AIInteractionHelper does
+      final StringBuffer responseBuffer = StringBuffer();
+      int chunkCount = 0;
+      String? connectionId;
+
+      await for (var chunk in stream) {
+        chunkCount++;
+
+        // Remove connection ID marker if present
+        if (chunk.contains('[CONEXAO_ID]')) {
+          final marcadorIndex = chunk.indexOf('[CONEXAO_ID]');
+          connectionId = chunk.substring(marcadorIndex + 12);
+          chunk = chunk.replaceAll('[CONEXAO_ID]$connectionId', '');
+          if (chunk.isEmpty) continue;
+        }
+
+        responseBuffer.write(chunk);
+      }
+
+      print('✓ Replace - Stream finalizado! Chunks: $chunkCount');
+      final response = responseBuffer.toString();
+
+      print('📥 Resposta completa da IA (${response.length} chars):');
+      print('═' * 80);
+      print(response);
+      print('═' * 80);
 
       // Extract JSON from response
+      print('🔍 Tentando extrair JSON da resposta...');
       final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(response);
       if (jsonMatch == null) {
         throw Exception('Não foi possível extrair JSON da resposta da IA');

@@ -40,6 +40,11 @@ class AIService {
     },
   };
 
+  final http.Client _httpClient;
+
+  AIService({http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
+
   // Função para estimar o número de tokens em um texto
   // Esta é uma estimativa aproximada - para inglês: ~4 caracteres = 1 token
   // Para português e outros idiomas com acentos: ~3.5 caracteres = 1 token
@@ -103,6 +108,7 @@ class AIService {
       String userId = '',
       String agentType = 'nutrition',
       String provider = ''}) async* {
+    print('🔴🔴🔴 AIService.getAnswerStream CHAMADO - agentType=$agentType, provider=$provider');
     print('\n🚀 Iniciando nova solicitação de resposta');
     try {
       // When agentType is specified, backend handles system prompt via agent config
@@ -128,7 +134,7 @@ class AIService {
       final endpoint = '${AppConstants.API_BASE_URL}/ai/generate-text';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       });
 
       // Novo formato de corpo da requisição
@@ -147,11 +153,19 @@ class AIService {
         requestBody['provider'] = provider;
       }
 
-      request.body = jsonEncode(requestBody);
+      final bodyJson = jsonEncode(requestBody);
+      final bodyBytes = utf8.encode(bodyJson);
+      request.bodyBytes = bodyBytes;
+      request.headers['Content-Length'] = bodyBytes.length.toString();
 
       print('🔄 Aguardando resposta da nova API...');
-      final response = await http.Client().send(request);
+      print('📍 Endpoint: $endpoint');
+      print('📤 Request body: $bodyJson');
+      print('📏 Content-Length enviado: ${request.headers['Content-Length']}');
+      final response = await _httpClient.send(request);
 
+      print('📡 Response status: ${response.statusCode}');
+      print('📡 Response headers: ${response.headers}');
       if (response.statusCode == 200) {
         print('✅ Conexão estabelecida, iniciando streaming');
         int chunkCount = 0;
@@ -161,24 +175,27 @@ class AIService {
         final streamController = StreamController<String>();
         String buffer = '';
 
+        int rawChunkCount = 0;
         response.stream.transform(utf8.decoder).listen(
           (chunk) {
+            rawChunkCount++;
             // Adicionar o novo chunk ao buffer
             buffer += chunk;
 
-            print(
-                '📥 AIService - Stream recebeu chunk: ${chunk.length} caracteres');
-            if (chunk.length < 200) {
-              print('📥 AIService - Conteúdo do chunk: $chunk');
+            print('📥 AIService - Stream recebeu RAW chunk #$rawChunkCount: ${chunk.length} caracteres');
+            if (chunk.length < 300) {
+              print('📥 AIService - Conteúdo COMPLETO do chunk: <<<$chunk>>>');
             } else {
-              print(
-                  '📥 AIService - Primeiros 200 caracteres: ${chunk.substring(0, 200)}');
+              print('📥 AIService - Primeiros 300 caracteres: ${chunk.substring(0, 300)}');
             }
 
+            print('📦 AIService - Buffer atual tem ${buffer.length} caracteres');
+            print('📦 AIService - Buffer contém \\n\\n? ${buffer.contains('\n\n')}');
             // Processar linhas completas (eventos SSE)
             while (buffer.contains('\n\n')) {
               final parts = buffer.split('\n\n');
               final event = parts[0];
+              print('🔍 AIService - Evento SSE detectado: ${event.substring(0, event.length > 100 ? 100 : event.length)}...');
 
               // Atualizar o buffer com o restante
               buffer = parts.sublist(1).join('\n\n');
@@ -207,6 +224,7 @@ class AIService {
                       jsonData['done'] == true) {
                     // Evento de conclusão
                     print('✅ Servidor indicou conclusão do streaming');
+                    print('🏁 Total de conteúdo acumulado: ${allContent.length} caracteres');
                   } else if (jsonData.containsKey('error')) {
                     // Evento de erro
                     print(
@@ -315,7 +333,7 @@ class AIService {
       final endpoint = '${AppConstants.API_BASE_URL}/ai/analyze-image';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       });
 
       // Formato do corpo da requisição para o novo endpoint
@@ -334,10 +352,13 @@ class AIService {
         requestBody['provider'] = provider;
       }
 
-      request.body = jsonEncode(requestBody);
+      final bodyJson = jsonEncode(requestBody);
+      final bodyBytes = utf8.encode(bodyJson);
+      request.bodyBytes = bodyBytes;
+      request.headers['Content-Length'] = bodyBytes.length.toString();
 
       print('🔄 Aguardando resposta da nova API para a imagem...');
-      final response = await http.Client().send(request);
+      final response = await _httpClient.send(request);
 
       if (response.statusCode == 200) {
         print(
@@ -605,21 +626,26 @@ class AIService {
       final endpoint = '${AppConstants.API_BASE_URL}/ai/generate-text';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       });
 
       // Novo formato de corpo da requisição
-      request.body = jsonEncode({
+      final requestBody = {
         'prompt': '$systemContent\n\nUsuário: $prompt',
         'temperature': 0.5,
         'model': quality,
         'streaming': true,
         'userId': userId, // Adicionando o userId na requisição
         'agentType': agentType, // Tipo de agent a ser usado
-      });
+      };
+
+      final bodyJson = jsonEncode(requestBody);
+      final bodyBytes = utf8.encode(bodyJson);
+      request.bodyBytes = bodyBytes;
+      request.headers['Content-Length'] = bodyBytes.length.toString();
 
       print('🔄 Aguardando resposta da API para melhoria de texto...');
-      final response = await http.Client().send(request);
+      final response = await _httpClient.send(request);
 
       if (response.statusCode == 200) {
         print(
@@ -822,23 +848,28 @@ class AIService {
       final endpoint = '${AppConstants.API_BASE_URL}/ai/generate-text';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       });
 
       // Novo formato de corpo da requisição
-      request.body = jsonEncode({
+      final requestBody = {
         'prompt': '$systemContent\n\nUsuário: $prompt',
         'temperature': 0.3,
         'model': quality,
         'streaming': true,
         'userId': userId,
         'agentType': agentType,
-      });
+      };
+
+      final bodyJson = jsonEncode(requestBody);
+      final bodyBytes = utf8.encode(bodyJson);
+      request.bodyBytes = bodyBytes;
+      request.headers['Content-Length'] = bodyBytes.length.toString();
 
       print(
           '🚀 AIService.summarizeDocumentStream - Enviando requisição para a nova API');
 
-      final response = await http.Client().send(request);
+      final response = await _httpClient.send(request);
 
       if (response.statusCode == 200) {
         print(
@@ -1046,22 +1077,27 @@ class AIService {
       final endpoint = '${AppConstants.API_BASE_URL}/ai/generate-text';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       });
 
       // Novo formato de corpo da requisição
-      request.body = jsonEncode({
+      final requestBody = {
         'prompt': '$systemContent\n\nUsuário: $prompt',
         'temperature': 0.3,
         'model': quality,
         'streaming': true,
         'userId': userId,
         'agentType': agentType,
-      });
+      };
+
+      final bodyJson = jsonEncode(requestBody);
+      final bodyBytes = utf8.encode(bodyJson);
+      request.bodyBytes = bodyBytes;
+      request.headers['Content-Length'] = bodyBytes.length.toString();
 
       print('🔄 Aguardando resposta da API para ajuda com código...');
 
-      final response = await http.Client().send(request);
+      final response = await _httpClient.send(request);
 
       if (response.statusCode == 200) {
         print(
@@ -1264,22 +1300,27 @@ $transcript
       final endpoint = '${AppConstants.API_BASE_URL}/ai/generate-text';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       });
 
       // Novo formato de corpo da requisição
-      request.body = jsonEncode({
+      final requestBody = {
         'prompt': '$systemContent\n\nUsuário: $prompt',
         'temperature': 0.3,
         'model': quality,
         'streaming': true,
         'userId': userId,
         'agentType': agentType,
-      });
+      };
+
+      final bodyJson = jsonEncode(requestBody);
+      final bodyBytes = utf8.encode(bodyJson);
+      request.bodyBytes = bodyBytes;
+      request.headers['Content-Length'] = bodyBytes.length.toString();
 
       print('🔄 Aguardando resposta da API para resumo de vídeo...');
 
-      final response = await http.Client().send(request);
+      final response = await _httpClient.send(request);
 
       if (response.statusCode == 200) {
         print(

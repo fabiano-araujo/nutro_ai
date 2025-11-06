@@ -1,31 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 50 --nostream | grep -A 20 ''InvalidProvider''\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 100 --nostream | tail -50\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 200 --nostream | grep -B 3 -A 20 ''\"\"Test\"\"''\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 50 --nostream | grep -B 3 -A 10 ''provider''\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 80 --nostream | grep -B 2 -A 5 ''provider''\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 100 --nostream | grep -A 5 ''Hyperbolic''\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 150 --nostream | tail -60\")",
-      "Bash(start dieta_api/test-agents.html)",
-      "Bash(yarn build)",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 50 --nostream | grep -A 5 -B 5 ''teste\\|response_format\\|JSON mode'' | tail -30\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 20 --nostream | grep -A 5 -B 5 ''response_format\\|JSON mode'' | tail -15\")",
-      "Bash(flutter emulators:*)",
-      "Bash(dir \"c:\\Users\\Fabiano\\AndroidStudioProjects\\nutro_ia\\assets\\i18n\" /b)",
-      "Bash(flutter analyze:*)",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 logs index --lines 300 --nostream | grep -B 2 -A 10 ''Requisição POST''\")",
       "Bash(flutter devices:*)",
+      "Bash(flutter emulators:*)",
       "Bash(flutter run:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push)",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/www/dieta_api && git pull && yarn build && pm2 restart index\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"ls -la /root/\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"find /root -name ''dieta_api'' -type d 2>/dev/null | head -5\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 list\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 describe index | grep ''exec cwd''\")",
-      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && git pull && yarn build && pm2 restart index\")"
+      "Bash(flutter analyze:*)"
     ],
     "deny": [],
     "ask": []

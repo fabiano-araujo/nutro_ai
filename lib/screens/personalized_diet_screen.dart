@@ -5,6 +5,7 @@ import '../providers/nutrition_goals_provider.dart';
 import '../widgets/weekly_calendar.dart';
 import '../models/diet_plan_model.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   const PersonalizedDietScreen({Key? key}) : super(key: key);
@@ -120,6 +121,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   Future<void> _generateDietPlan() async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
 
     // Check if nutrition goals are configured
     if (!nutritionGoals.hasConfiguredGoals) {
@@ -136,10 +138,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final locale = Localizations.localeOf(context);
     final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
 
+    // Get userId from authenticated user
+    final userId = authService.currentUser?.id.toString() ?? '';
+
     // Generate diet plan
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
       nutritionGoals,
+      userId: userId,
       languageCode: languageCode,
     );
 
@@ -154,15 +160,20 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   Future<void> _replaceMeal(String mealType) async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
 
     // Get device locale
     final locale = Localizations.localeOf(context);
     final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
 
+    // Get userId from authenticated user
+    final userId = authService.currentUser?.id.toString() ?? '';
+
     await dietProvider.replaceMeal(
       dietProvider.selectedDate,
       mealType,
       nutritionGoals,
+      userId: userId,
       languageCode: languageCode,
     );
 
@@ -196,14 +207,19 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     if (confirmed == true) {
       final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
       final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
 
       // Get device locale
       final locale = Localizations.localeOf(context);
       final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
 
+      // Get userId from authenticated user
+      final userId = authService.currentUser?.id.toString() ?? '';
+
       await dietProvider.replaceAllMeals(
         dietProvider.selectedDate,
         nutritionGoals,
+        userId: userId,
         languageCode: languageCode,
       );
 
