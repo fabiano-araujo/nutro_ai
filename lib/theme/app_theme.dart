@@ -3,14 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Primary Colors
-  static const Color primaryColor = Color(0xFFA8B7F5);
-  static const Color primaryLightColor = Color(0xFFC2CEFA);
-  static const Color primaryDarkColor = Color(0xFF8A9BE8);
+  static const Color primaryColor = Color(0xFFC5B5E3);
+  static const Color primaryLightColor = Color(0xFFE0D7F0);
+  static const Color primaryDarkColor = Color(0xFFB39DDB);
 
   // Secondary Colors
-  static const Color secondaryColor = Color(0xFF9BA9F2);
-  static const Color secondaryLightColor = Color(0xFFB5C1F7);
-  static const Color secondaryDarkColor = Color(0xFF7B8AE8);
+  static const Color secondaryColor = Color(0xFFDDB9E8);
+  static const Color secondaryLightColor = Color(0xFFF0DCFA);
+  static const Color secondaryDarkColor = Color(0xFFCE93D8);
 
   // Neutral Colors
   static const Color backgroundColor = Color(0xFFF7F9FC);

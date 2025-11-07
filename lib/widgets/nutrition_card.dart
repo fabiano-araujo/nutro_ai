@@ -38,7 +38,10 @@ class NutritionCard extends StatelessWidget {
       onTap: onTap,
       child: Card(
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        elevation: 1,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -71,9 +74,9 @@ class NutritionCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: isDarkMode
+                                  color: (isDarkMode
                                       ? AppTheme.darkTextColor
-                                      : AppTheme.textPrimaryColor,
+                                      : AppTheme.textPrimaryColor).withValues(alpha: 0.85),
                                 ),
                               ),
                               Text(
@@ -130,7 +133,7 @@ class NutritionCard extends StatelessWidget {
                       consumed: carbsConsumed,
                       goal: carbsGoal,
                       unit: 'g',
-                      color: Color(0xFFA1887F),
+                      color: Color(0xFFFFB74D),
                       isDarkMode: isDarkMode,
                     ),
                     SizedBox(height: 6),
@@ -141,7 +144,7 @@ class NutritionCard extends StatelessWidget {
                       consumed: fatsConsumed,
                       goal: fatsGoal,
                       unit: 'g',
-                      color: Color(0xFF90A4AE),
+                      color: Color(0xFF4DB6AC),
                       isDarkMode: isDarkMode,
                     ),
                   ],
@@ -187,18 +190,18 @@ class _MacroRow extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-                color: isDarkMode
+                color: (isDarkMode
                     ? AppTheme.darkTextColor
-                    : AppTheme.textPrimaryColor,
+                    : AppTheme.textPrimaryColor).withValues(alpha: 0.85),
               ),
             ),
             Text(
               '$consumed / $goal$unit',
               style: TextStyle(
                 fontSize: 12,
-                color: isDarkMode
+                color: (isDarkMode
                     ? Color(0xFFAEB7CE)
-                    : AppTheme.textSecondaryColor,
+                    : AppTheme.textSecondaryColor).withValues(alpha: 0.85),
               ),
             ),
           ],
@@ -210,7 +213,7 @@ class _MacroRow extends StatelessWidget {
             value: progress,
             backgroundColor:
                 isDarkMode ? Color(0xFF2F2F2F) : Color(0xFFF5F7FA),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+            valueColor: AlwaysStoppedAnimation<Color>(color.withValues(alpha: 0.45)),
             minHeight: 5,
           ),
         ),
@@ -247,7 +250,7 @@ class CalorieCirclePainter extends CustomPainter {
 
     // Progress arc (cor principal)
     final progressPaint = Paint()
-      ..color = AppTheme.primaryColor
+      ..color = Color(0xFFFF6B9D).withValues(alpha: 0.45)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;

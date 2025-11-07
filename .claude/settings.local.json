@@ -24,7 +24,13 @@
       "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cat /var/dieta_api/build/src/config/agents.config.js | grep -A 10 ''AVAILABLE_AGENTS''\")",
       "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && pm2 delete index && pm2 start build/src/index.js --name index\")",
       "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"pm2 save\")",
-      "Bash(flutter pub get:*)"
+      "Bash(flutter pub get:*)",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && echo ''📊 Verificando status do banco de dados...'' && npx prisma migrate status\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && echo ''🔨 Aplicando migrações do banco de dados...'' && npx prisma migrate deploy\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && echo ''🔧 Marcando migração como resolvida...'' && npx prisma migrate resolve --applied 20251026165321_init\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && echo ''🔨 Sincronizando schema com banco de dados...'' && npx prisma db push --accept-data-loss\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && echo ''🔄 Reiniciando PM2...'' && pm2 restart index\")",
+      "Bash(\"C:\\Program Files\\PuTTY\\plink.exe\" -i \"C:\\Users\\Fabiano\\Documents\\server_oracle\\private.ppk\" root@157.230.238.117 \"cd /var/dieta_api && echo ''🔨 Gerando Prisma Client...'' && npx prisma generate && echo ''📦 Compilando projeto...'' && yarn build && echo ''🔄 Reiniciando PM2...'' && pm2 restart index && echo ''✅ Deploy concluído!''\")"
     ],
     "deny": [],
     "ask": []
