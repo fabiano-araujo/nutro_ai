@@ -719,6 +719,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             fontWeight: FontWeight.w600,
             fontSize: 16,
             letterSpacing: -0.2,
+            color: (isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor).withValues(alpha: 0.85),
           ),
         ),
         subtitle: Padding(
@@ -884,7 +885,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: textColor,
+                        color: textColor.withValues(alpha: 0.85),
                         height: 1.2,
                       ),
                       maxLines: 1,

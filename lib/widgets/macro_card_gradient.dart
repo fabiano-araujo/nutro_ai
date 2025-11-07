@@ -70,7 +70,8 @@ class MacroCardGradient extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black87,
+                        color: (isDarkMode ? Colors.white : Colors.black87)
+                            .withValues(alpha: 0.65),
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -152,7 +153,8 @@ class MacroCardGradient extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white.withValues(alpha: 0.85) : Colors.black.withValues(alpha: 0.65),
+                      color: (isDarkMode ? Colors.white : Colors.black)
+                          .withValues(alpha: 0.85),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
