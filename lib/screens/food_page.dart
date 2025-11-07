@@ -12,7 +12,6 @@ import '../providers/daily_meals_provider.dart';
 import '../providers/food_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../helpers/webview_helper.dart';
-import '../widgets/macro_card.dart';
 import '../widgets/macro_nutrient_row.dart';
 import '../widgets/sub_nutrient_row.dart';
 import '../widgets/micro_nutrient_row.dart';
@@ -751,6 +750,81 @@ class _FoodPageState extends State<FoodPage> {
     );
   }
 
+  Widget _buildMacroCardGradient({
+    required String icon,
+    required String label,
+    required String value,
+    required String unit,
+    required Color startColor,
+    required Color endColor,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            startColor.withValues(alpha: isDarkMode ? 0.3 : 0.15),
+            endColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: startColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            icon,
+            style: const TextStyle(fontSize: 22),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+              if (unit.isNotEmpty)
+                Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1141,66 +1215,56 @@ class _FoodPageState extends State<FoodPage> {
                     // Nutrition Facts - Macro Summary Card
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        padding: EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildMacroCardGradient(
+                              icon: '🔥',
+                              label: 'Calorias',
+                              value: calories.toStringAsFixed(0),
+                              unit: 'kcal',
+                              startColor: const Color(0xFFFF6B9D),
+                              endColor: const Color(0xFFFFA06B),
+                              isDarkMode: isDarkMode,
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: MacroCard(
-                                label: 'Cal',
-                                fullName: 'Calories',
-                                value: calories.toStringAsFixed(0),
-                                unit: '',
-                                color: AppTheme.primaryColor,
-                                isDarkMode: isDarkMode,
-                              ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildMacroCardGradient(
+                              icon: '💪',
+                              label: 'Proteínas',
+                              value: protein.toStringAsFixed(1),
+                              unit: 'g',
+                              startColor: const Color(0xFF9575CD),
+                              endColor: const Color(0xFFBA68C8),
+                              isDarkMode: isDarkMode,
                             ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: MacroCard(
-                                label: 'P',
-                                fullName: 'Proteins',
-                                value: protein.toStringAsFixed(1),
-                                unit: 'g',
-                                color: Color(0xFF9575CD),
-                                isDarkMode: isDarkMode,
-                              ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildMacroCardGradient(
+                              icon: '🌾',
+                              label: 'Carboidratos',
+                              value: carbs.toStringAsFixed(1),
+                              unit: 'g',
+                              startColor: const Color(0xFFFFB74D),
+                              endColor: const Color(0xFFFF9800),
+                              isDarkMode: isDarkMode,
                             ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: MacroCard(
-                                label: 'C',
-                                fullName: 'Carbs',
-                                value: carbs.toStringAsFixed(1),
-                                unit: 'g',
-                                color: Color(0xFFA1887F),
-                                isDarkMode: isDarkMode,
-                              ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildMacroCardGradient(
+                              icon: '🥑',
+                              label: 'Gorduras',
+                              value: fat.toStringAsFixed(1),
+                              unit: 'g',
+                              startColor: const Color(0xFF4DB6AC),
+                              endColor: const Color(0xFF26A69A),
+                              isDarkMode: isDarkMode,
                             ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: MacroCard(
-                                label: 'F',
-                                fullName: 'Fats',
-                                value: fat.toStringAsFixed(1),
-                                unit: 'g',
-                                color: Color(0xFF90A4AE),
-                                isDarkMode: isDarkMode,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
 
