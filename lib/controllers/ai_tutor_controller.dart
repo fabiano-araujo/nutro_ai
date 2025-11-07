@@ -210,9 +210,11 @@ class AITutorController with ChangeNotifier {
       _addWelcomeMessage(); // _addWelcomeMessage já chama notifyListeners
     } else {
       print(
-          '🤷 AITutorController: Nenhuma mensagem inicial, nenhum ID de conversa, e showWelcomeMessage é false. Iniciando com lista de mensagens vazia.');
-      // Se showWelcomeMessage é false, e não há outras fontes de mensagens, _messages permanece vazio.
-      // notifyListeners(); // Não é necessário se _messages já está vazio e não mudou.
+          '🤷 AITutorController: Nenhuma mensagem inicial, nenhum ID de conversa, e showWelcomeMessage é false.');
+      // Carregar mensagens da data inicial (se houver)
+      print('📅 AITutorController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
+      _loadMessagesForDate(_selectedDate);
+      // notifyListeners será chamado por _loadMessagesForDate após o carregamento
     }
   }
 
@@ -1639,6 +1641,7 @@ class AITutorController with ChangeNotifier {
       if (data == null || data.isEmpty) {
         print('📭 AITutorController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
+        notifyListeners();
         return;
       }
 
@@ -1663,9 +1666,11 @@ class AITutorController with ChangeNotifier {
       }).toList();
 
       print('✅ AITutorController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
+      notifyListeners();
     } catch (e) {
       print('❌ AITutorController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
       _messages = [];
+      notifyListeners();
     }
   }
 }

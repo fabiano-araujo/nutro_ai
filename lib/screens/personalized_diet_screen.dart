@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../widgets/weekly_calendar.dart';
+import '../widgets/meal_skeleton.dart';
 import '../models/diet_plan_model.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
@@ -276,6 +277,80 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             Expanded(
               child: Consumer<DietPlanProvider>(
                 builder: (context, dietProvider, _) {
+                  // Show incremental loading with partial plan
+                  if (dietProvider.isLoading && dietProvider.partialDietPlan != null) {
+                    final partialPlan = dietProvider.partialDietPlan!;
+                    final loadedMealsCount = partialPlan.meals.length;
+                    final expectedMealsCount = dietProvider.expectedMealsCount;
+
+                    return Column(
+                      children: [
+                        // Nutrition Summary
+                        _buildNutritionSummary(partialPlan.totalNutrition),
+
+                        const SizedBox(height: 4),
+
+                        // Progress indicator
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Gerando refeições... ($loadedMealsCount/$expectedMealsCount)',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Meals List with skeletons for pending meals
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: expectedMealsCount + 1, // +1 for the button at the end
+                            itemBuilder: (context, index) {
+                              // Last item is the button
+                              if (index == expectedMealsCount) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: ElevatedButton.icon(
+                                    onPressed: null, // Disabled during loading
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text('Substituir Todas as Refeições'),
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(double.infinity, 44),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              if (index < loadedMealsCount) {
+                                // Show loaded meal
+                                final meal = partialPlan.meals[index];
+                                return _buildMealCard(meal, isDarkMode);
+                              } else {
+                                // Show skeleton for pending meal
+                                return const MealSkeleton();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  // Show simple loading (no partial plan yet)
                   if (dietProvider.isLoading) {
                     return const Center(
                       child: Column(
@@ -319,54 +394,31 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                   return Column(
                     children: [
                       // Nutrition Summary
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? Colors.grey[850] : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildNutritionItem('🔥', '${dietPlan.totalNutrition.calories} cal'),
-                            _buildNutritionItem('💪', '${dietPlan.totalNutrition.protein.toStringAsFixed(1)}g P'),
-                            _buildNutritionItem('🌾', '${dietPlan.totalNutrition.carbs.toStringAsFixed(1)}g C'),
-                            _buildNutritionItem('🥑', '${dietPlan.totalNutrition.fat.toStringAsFixed(1)}g G'),
-                          ],
-                        ),
-                      ),
+                      _buildNutritionSummary(dietPlan.totalNutrition),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 4),
 
-                      // Replace All Button
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ElevatedButton.icon(
-                          onPressed: _replaceAllMeals,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Substituir Todas as Refeições'),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 44),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Meals List
+                      // Meals List with button at the end
                       Expanded(
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          itemCount: dietPlan.meals.length,
+                          itemCount: dietPlan.meals.length + 1, // +1 for the button at the end
                           itemBuilder: (context, index) {
+                            // Last item is the button
+                            if (index == dietPlan.meals.length) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: ElevatedButton.icon(
+                                  onPressed: _replaceAllMeals,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Substituir Todas as Refeições'),
+                                  style: ElevatedButton.styleFrom(
+                                    minimumSize: const Size(double.infinity, 44),
+                                  ),
+                                ),
+                              );
+                            }
+
                             final meal = dietPlan.meals[index];
                             return _buildMealCard(meal, isDarkMode);
                           },
@@ -383,19 +435,142 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildNutritionItem(String emoji, String value) {
-    return Column(
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 24)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+  Widget _buildNutritionSummary(DailyNutrition nutrition) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildMacroCardGradient(
+              icon: '🔥',
+              label: 'Calorias',
+              value: nutrition.calories.toStringAsFixed(0),
+              unit: 'kcal',
+              startColor: const Color(0xFFFF6B9D),
+              endColor: const Color(0xFFFFA06B),
+              isDarkMode: isDarkMode,
+              isCompact: true,
+            ),
           ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildMacroCardGradient(
+              icon: '💪',
+              label: 'Proteínas',
+              value: nutrition.protein.toStringAsFixed(1),
+              unit: 'g',
+              startColor: const Color(0xFF9575CD),
+              endColor: const Color(0xFFBA68C8),
+              isDarkMode: isDarkMode,
+              isCompact: true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildMacroCardGradient(
+              icon: '🌾',
+              label: 'Carboidratos',
+              value: nutrition.carbs.toStringAsFixed(1),
+              unit: 'g',
+              startColor: const Color(0xFFFFB74D),
+              endColor: const Color(0xFFFF9800),
+              isDarkMode: isDarkMode,
+              isCompact: true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildMacroCardGradient(
+              icon: '🥑',
+              label: 'Gorduras',
+              value: nutrition.fat.toStringAsFixed(1),
+              unit: 'g',
+              startColor: const Color(0xFF4DB6AC),
+              endColor: const Color(0xFF26A69A),
+              isDarkMode: isDarkMode,
+              isCompact: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroCardGradient({
+    required String icon,
+    required String label,
+    required String value,
+    required String unit,
+    required Color startColor,
+    required Color endColor,
+    required bool isDarkMode,
+    bool isCompact = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            startColor.withValues(alpha: isDarkMode ? 0.3 : 0.15),
+            endColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: startColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            icon,
+            style: const TextStyle(fontSize: 22),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+              if (unit.isNotEmpty)
+                Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -12,6 +12,7 @@ class MealCard extends StatefulWidget {
   final VoidCallback? onEditFood;
   final Function(MealType)? onMealTypeChanged;
   final VoidCallback? onAddFood;
+  final double topContentPadding;
 
   const MealCard({
     Key? key,
@@ -19,6 +20,7 @@ class MealCard extends StatefulWidget {
     this.onEditFood,
     this.onMealTypeChanged,
     this.onAddFood,
+    this.topContentPadding = 16,
   }) : super(key: key);
 
   @override
@@ -87,6 +89,8 @@ class _MealCardState extends State<MealCard> {
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final double topPadding =
+        widget.topContentPadding < 0 ? 0 : widget.topContentPadding;
 
     return Card(
       margin: EdgeInsets.only(top: 0, bottom: 16),
@@ -101,7 +105,7 @@ class _MealCardState extends State<MealCard> {
           // Food Items
           if (widget.meal.foods.isNotEmpty)
             Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: EdgeInsets.fromLTRB(16, topPadding, 16, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -137,19 +141,23 @@ class _MealCardState extends State<MealCard> {
                       alignment: Alignment.center,
                       child: Container(
                         height: 54,
-                        padding: EdgeInsets.symmetric(vertical: 7, horizontal: 12),
+                        padding:
+                            EdgeInsets.symmetric(vertical: 7, horizontal: 12),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              AppTheme.primaryColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-                              AppTheme.primaryColor.withValues(alpha: isDarkMode ? 0.12 : 0.08),
+                              AppTheme.primaryColor
+                                  .withValues(alpha: isDarkMode ? 0.18 : 0.12),
+                              AppTheme.primaryColor
+                                  .withValues(alpha: isDarkMode ? 0.12 : 0.08),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppTheme.primaryColor.withValues(alpha: isDarkMode ? 0.3 : 0.2),
+                            color: AppTheme.primaryColor
+                                .withValues(alpha: isDarkMode ? 0.3 : 0.2),
                             width: 1,
                           ),
                         ),
@@ -219,7 +227,8 @@ class _MealCardState extends State<MealCard> {
                 // Nome da refeição com botão para expandir opções
                 Expanded(
                   child: InkWell(
-                    onTap: () => setState(() => showMealOptions = !showMealOptions),
+                    onTap: () =>
+                        setState(() => showMealOptions = !showMealOptions),
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 4),
@@ -314,14 +323,22 @@ class _MealCardState extends State<MealCard> {
                         },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? (isDarkMode ? AppTheme.primaryColor.withValues(alpha: 0.15) : AppTheme.primaryColor.withValues(alpha: 0.08))
+                                ? (isDarkMode
+                                    ? AppTheme.primaryColor
+                                        .withValues(alpha: 0.15)
+                                    : AppTheme.primaryColor
+                                        .withValues(alpha: 0.08))
                                 : backgroundColor,
                             borderRadius: BorderRadius.circular(12),
                             border: isSelected
-                                ? Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3), width: 1.5)
+                                ? Border.all(
+                                    color: AppTheme.primaryColor
+                                        .withValues(alpha: 0.3),
+                                    width: 1.5)
                                 : null,
                           ),
                           child: Row(
@@ -335,8 +352,12 @@ class _MealCardState extends State<MealCard> {
                                 option.name,
                                 style: TextStyle(
                                   fontSize: 15,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                  color: isSelected ? AppTheme.primaryColor : secondaryTextColor,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  color: isSelected
+                                      ? AppTheme.primaryColor
+                                      : secondaryTextColor,
                                 ),
                               ),
                             ],
@@ -374,8 +395,7 @@ class _FoodItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor =
-        isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6);
+    final backgroundColor = isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6);
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final secondaryTextColor =
@@ -428,7 +448,8 @@ class _FoodItem extends StatelessWidget {
                                     ),
                                   );
                                 },
-                                loadingBuilder: (context, child, loadingProgress) {
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
                                   return Center(
                                     child: Text(
@@ -494,7 +515,8 @@ class _FoodItem extends StatelessWidget {
                               'kcal',
                               style: TextStyle(
                                 fontSize: 10,
-                                color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                                color: AppTheme.primaryColor
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -731,7 +753,9 @@ class _MacroCardModern extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                    color: isDarkMode
+                        ? AppTheme.darkTextColor
+                        : AppTheme.textPrimaryColor,
                     height: 1,
                   ),
                 ),

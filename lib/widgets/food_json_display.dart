@@ -42,17 +42,15 @@ class FoodJsonDisplay extends StatelessWidget {
     );
 
     // Apenas mostrar o MealCard (sem adicionar automaticamente)
-    return Container(
-      margin: EdgeInsets.only(top: 8, bottom: 8),
-      child: MealCard(
-        meal: meal,
-        onMealTypeChanged: (newType) {
-          // Não faz nada - apenas visualização
-        },
-        onEditFood: () {
-          // Ícone de edição para indicação visual
-        },
-      ),
+    return MealCard(
+      meal: meal,
+      topContentPadding: 12,
+      onMealTypeChanged: (newType) {
+        // Não faz nada - apenas visualização
+      },
+      onEditFood: () {
+        // Ícone de edição para indicação visual
+      },
     );
   }
 }

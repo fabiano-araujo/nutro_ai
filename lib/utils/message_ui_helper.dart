@@ -165,7 +165,7 @@ class MessageUIHelper {
       child: Align(
         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          margin: EdgeInsets.symmetric(vertical: 4),
+          margin: EdgeInsets.only(bottom: 8),
           padding:
               EdgeInsets.symmetric(horizontal: isUser ? 12 : 10, vertical: 8),
           width: isUser ? null : double.infinity,

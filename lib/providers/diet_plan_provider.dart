@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../models/diet_plan_model.dart';
-import '../services/ai_service.dart';
 import '../providers/nutrition_goals_provider.dart';
 
 class DietPlanProvider extends ChangeNotifier {
@@ -19,8 +19,9 @@ class DietPlanProvider extends ChangeNotifier {
   // Data selecionada
   DateTime _selectedDate = DateTime.now();
 
-  // AIService para gerar dietas
-  final AIService _aiService = AIService();
+  // Partial diet plan being constructed during streaming
+  DietPlan? _partialDietPlan;
+  int _expectedMealsCount = 0;
 
   // Getters
   Map<String, DietPlan> get dietPlans => _dietPlans;
@@ -28,6 +29,8 @@ class DietPlanProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime get selectedDate => _selectedDate;
+  DietPlan? get partialDietPlan => _partialDietPlan;
+  int get expectedMealsCount => _expectedMealsCount;
 
   // Get diet plan for selected date
   DietPlan? get currentDietPlan {
@@ -72,6 +75,18 @@ class DietPlanProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _error = null;
+    _expectedMealsCount = _preferences.mealsPerDay;
+    _parsedMealIndices.clear(); // Reset parsed meals tracker
+    _partialDietPlan = DietPlan(
+      date: _formatDate(date),
+      totalNutrition: DailyNutrition(
+        calories: nutritionGoals.caloriesGoal,
+        protein: nutritionGoals.proteinGoal.toDouble(),
+        carbs: nutritionGoals.carbsGoal.toDouble(),
+        fat: nutritionGoals.fatGoal.toDouble(),
+      ),
+      meals: [],
+    );
     notifyListeners();
 
     try {
@@ -84,51 +99,96 @@ class DietPlanProvider extends ChangeNotifier {
       print('👤 UserId: $userId');
       print('🤖 AgentType: diet, Provider: Hyperbolic');
 
-      // Call AI service to generate diet plan (EXACT same as AI Tutor)
-      print('⏳ Iniciando stream da API...');
+      // Call backend API using NDJSON streaming for diet agent
+      print('⏳ Iniciando stream NDJSON da API...');
 
-      final stream = _aiService.getAnswerStream(
-        prompt,
-        languageCode: languageCode,
-        quality: 'google/gemma-3-27b-it', // Usar modelo Gemma 3 27B diretamente
-        userId: userId,
-        agentType: 'diet',
-        provider: 'Hyperbolic',
-      );
+      // Create HTTP request
+      final endpoint = '${const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://study.snapdark.com:3001')}/ai/generate-text';
+      final request = http.Request('POST', Uri.parse(endpoint));
+      request.headers.addAll({
+        'Content-Type': 'application/json; charset=utf-8',
+      });
 
-      // Process stream EXACTLY like AIInteractionHelper does
+      final requestBody = {
+        'prompt': prompt,
+        'temperature': 0.5,
+        'model': 'google/gemma-3-27b-it',
+        'streaming': true,
+        'userId': userId,
+        'agentType': 'diet',
+        'provider': 'Hyperbolic',
+        'language': languageCode,
+      };
+
+      request.bodyBytes = utf8.encode(jsonEncode(requestBody));
+
+      print('📤 Enviando requisição NDJSON para: $endpoint');
+      final httpResponse = await http.Client().send(request);
+
+      if (httpResponse.statusCode != 200) {
+        throw Exception('Erro na API: ${httpResponse.statusCode}');
+      }
+
+      print('✅ Conexão NDJSON estabelecida');
+
+      // Process NDJSON stream (each line is a complete JSON object)
       final StringBuffer responseBuffer = StringBuffer();
       int chunkCount = 0;
       String? connectionId;
+      String lineBuffer = '';
 
-      await for (var chunk in stream) {
-        chunkCount++;
-        print('📦 Diet - Chunk #$chunkCount recebido: ${chunk.length} chars');
+      await for (var chunk in httpResponse.stream.transform(utf8.decoder)) {
+        // Add chunk to line buffer
+        lineBuffer += chunk;
 
-        // Remove connection ID marker if present (same as AIInteractionHelper)
-        if (chunk.contains('[CONEXAO_ID]')) {
+        // Process complete lines (split by \n)
+        while (lineBuffer.contains('\n')) {
+          final newlineIndex = lineBuffer.indexOf('\n');
+          final line = lineBuffer.substring(0, newlineIndex).trim();
+          lineBuffer = lineBuffer.substring(newlineIndex + 1);
+
+          if (line.isEmpty) continue;
+
           try {
-            final marcadorIndex = chunk.indexOf('[CONEXAO_ID]');
-            connectionId = chunk.substring(marcadorIndex + 12);
-            print('🔑 Diet - Connection ID extracted: $connectionId');
+            // Strip SSE "data: " prefix if present
+            String jsonLine = line;
+            if (line.startsWith('data: ')) {
+              jsonLine = line.substring(6); // Remove "data: " prefix
+            }
 
-            // Remove the marker from chunk
-            chunk = chunk.replaceAll('[CONEXAO_ID]$connectionId', '');
-            if (chunk.isEmpty) {
-              print('⏭️ Diet - Chunk only had connection ID, skipping...');
-              continue; // Skip empty chunks
+            // Parse JSON line
+            final jsonData = jsonDecode(jsonLine);
+            chunkCount++;
+            print('📦 Diet NDJSON - Linha #$chunkCount: $jsonData');
+
+            // Handle different event types
+            if (jsonData.containsKey('status') && jsonData.containsKey('connectionId')) {
+              // Connection established event
+              connectionId = jsonData['connectionId'];
+              print('🔑 Diet - Connection ID: $connectionId');
+            } else if (jsonData.containsKey('text') && jsonData['text'] != null) {
+              // Text chunk event
+              final text = jsonData['text'];
+              responseBuffer.write(text);
+              print('📝 Diet - Adicionado texto: ${text.length} chars');
+
+              // Try to detect and parse complete meals incrementally
+              _tryParseIncrementalMeals(responseBuffer.toString());
+            } else if (jsonData.containsKey('done') && jsonData['done'] == true) {
+              // Stream completed
+              print('✅ Diet - Stream concluído');
+            } else if (jsonData.containsKey('error')) {
+              // Error event
+              throw Exception(jsonData['error']);
             }
           } catch (e) {
-            print('❌ Diet - Error processing connection ID: $e');
+            print('❌ Diet - Erro ao processar linha NDJSON: $e');
+            print('   Linha: $line');
           }
         }
-
-        // Add chunk to response
-        responseBuffer.write(chunk);
-        print('📝 Diet - Added ${chunk.length} chars to buffer');
       }
 
-      print('✓ Diet - Stream finalizado! Chunks: $chunkCount, ConnectionId: $connectionId');
+      print('✓ Diet - Stream NDJSON finalizado! Chunks: $chunkCount, ConnectionId: $connectionId');
       final response = responseBuffer.toString();
 
       print('📥 Resposta completa da IA (${response.length} chars):');
@@ -170,6 +230,7 @@ class DietPlanProvider extends ChangeNotifier {
 
       _isLoading = false;
       _error = null;
+      _partialDietPlan = null; // Clear partial state
 
       // Save to preferences
       await _saveToPreferences();
@@ -180,9 +241,65 @@ class DietPlanProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _error = 'Erro ao gerar plano de dieta: $e';
+      _partialDietPlan = null; // Clear partial state on error
       notifyListeners();
 
       print('❌ Erro ao gerar plano de dieta: $e');
+    }
+  }
+
+  // Try to parse and add complete meals incrementally from partial JSON
+  Set<int> _parsedMealIndices = {};
+
+  void _tryParseIncrementalMeals(String partialJson) {
+    if (_partialDietPlan == null) return;
+
+    try {
+      // Try to extract the meals array from partial JSON
+      final mealsMatch = RegExp(r'"meals"\s*:\s*\[(.*)', dotAll: true).firstMatch(partialJson);
+      if (mealsMatch == null) return;
+
+      final mealsContent = mealsMatch.group(1)!;
+
+      // Find complete meal objects (those with closing })
+      final mealPattern = RegExp(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', dotAll: true);
+      final mealMatches = mealPattern.allMatches(mealsContent).toList();
+
+      print('🍽️ Detectadas ${mealMatches.length} refeições completas no JSON parcial');
+
+      for (var i = 0; i < mealMatches.length; i++) {
+        // Skip if already parsed
+        if (_parsedMealIndices.contains(i)) continue;
+
+        try {
+          final mealJson = mealMatches[i].group(0)!;
+          final mealData = jsonDecode(mealJson) as Map<String, dynamic>;
+
+          // Validate that it's a complete meal with required fields
+          if (mealData.containsKey('type') &&
+              mealData.containsKey('foods') &&
+              mealData.containsKey('mealTotals')) {
+
+            final meal = PlannedMeal.fromJson(mealData);
+
+            // Add to partial diet plan if not already there
+            if (_partialDietPlan!.meals.length <= i) {
+              final updatedMeals = List<PlannedMeal>.from(_partialDietPlan!.meals)..add(meal);
+              _partialDietPlan = _partialDietPlan!.copyWith(meals: updatedMeals);
+              _parsedMealIndices.add(i);
+
+              print('✅ Refeição #${i + 1} adicionada: ${meal.name} (${meal.type})');
+              notifyListeners(); // Update UI immediately
+            }
+          }
+        } catch (e) {
+          // Silently skip invalid meals during streaming
+          print('⚠️ Erro ao parsear refeição #${i + 1}: $e');
+        }
+      }
+    } catch (e) {
+      // Silently fail during incremental parsing
+      print('⚠️ Erro durante parsing incremental: $e');
     }
   }
 
@@ -250,37 +367,81 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
       final prompt = _buildReplaceMealPrompt(mealToReplace, nutritionGoals);
 
       print('🔄 Substituindo refeição $mealType para $dateKey');
-      print('⏳ Iniciando stream da API...');
+      print('⏳ Iniciando stream NDJSON da API...');
 
-      final stream = _aiService.getAnswerStream(
-        prompt,
-        languageCode: languageCode,
-        quality: 'google/gemma-3-27b-it',
-        userId: userId,
-        agentType: 'diet',
-        provider: 'Hyperbolic',
-      );
+      // Create HTTP request using NDJSON
+      final endpoint = '${const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://study.snapdark.com:3001')}/ai/generate-text';
+      final request = http.Request('POST', Uri.parse(endpoint));
+      request.headers.addAll({
+        'Content-Type': 'application/json; charset=utf-8',
+      });
 
-      // Process stream EXACTLY like AIInteractionHelper does
+      final requestBody = {
+        'prompt': prompt,
+        'temperature': 0.5,
+        'model': 'google/gemma-3-27b-it',
+        'streaming': true,
+        'userId': userId,
+        'agentType': 'diet',
+        'provider': 'Hyperbolic',
+        'language': languageCode,
+      };
+
+      request.bodyBytes = utf8.encode(jsonEncode(requestBody));
+
+      print('📤 Enviando requisição NDJSON para: $endpoint');
+      final httpResponse = await http.Client().send(request);
+
+      if (httpResponse.statusCode != 200) {
+        throw Exception('Erro na API: ${httpResponse.statusCode}');
+      }
+
+      print('✅ Conexão NDJSON estabelecida');
+
+      // Process NDJSON stream
       final StringBuffer responseBuffer = StringBuffer();
       int chunkCount = 0;
       String? connectionId;
+      String lineBuffer = '';
 
-      await for (var chunk in stream) {
-        chunkCount++;
+      await for (var chunk in httpResponse.stream.transform(utf8.decoder)) {
+        lineBuffer += chunk;
 
-        // Remove connection ID marker if present
-        if (chunk.contains('[CONEXAO_ID]')) {
-          final marcadorIndex = chunk.indexOf('[CONEXAO_ID]');
-          connectionId = chunk.substring(marcadorIndex + 12);
-          chunk = chunk.replaceAll('[CONEXAO_ID]$connectionId', '');
-          if (chunk.isEmpty) continue;
+        while (lineBuffer.contains('\n')) {
+          final newlineIndex = lineBuffer.indexOf('\n');
+          final line = lineBuffer.substring(0, newlineIndex).trim();
+          lineBuffer = lineBuffer.substring(newlineIndex + 1);
+
+          if (line.isEmpty) continue;
+
+          try {
+            // Strip SSE "data: " prefix if present
+            String jsonLine = line;
+            if (line.startsWith('data: ')) {
+              jsonLine = line.substring(6); // Remove "data: " prefix
+            }
+
+            final jsonData = jsonDecode(jsonLine);
+            chunkCount++;
+
+            if (jsonData.containsKey('status') && jsonData.containsKey('connectionId')) {
+              connectionId = jsonData['connectionId'];
+              print('🔑 Replace - Connection ID: $connectionId');
+            } else if (jsonData.containsKey('text') && jsonData['text'] != null) {
+              final text = jsonData['text'];
+              responseBuffer.write(text);
+            } else if (jsonData.containsKey('done') && jsonData['done'] == true) {
+              print('✅ Replace - Stream concluído');
+            } else if (jsonData.containsKey('error')) {
+              throw Exception(jsonData['error']);
+            }
+          } catch (e) {
+            print('❌ Replace - Erro ao processar linha NDJSON: $e');
+          }
         }
-
-        responseBuffer.write(chunk);
       }
 
-      print('✓ Replace - Stream finalizado! Chunks: $chunkCount');
+      print('✓ Replace - Stream NDJSON finalizado! Chunks: $chunkCount');
       final response = responseBuffer.toString();
 
       print('📥 Resposta completa da IA (${response.length} chars):');

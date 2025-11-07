@@ -147,6 +147,9 @@ class AITutorScreenState extends State<AITutorScreen>
   // Controlar estado anterior do teclado para detectar quando fecha
   double _lastKeyboardHeight = 0;
 
+  // Flag para controlar se já fizemos o scroll inicial após carregar mensagens
+  bool _hasScrolledToInitialMessages = false;
+
   // Método para mostrar sugestões baseado na ação
   void _showSuggestionsForAction(String actionType) {
     setState(() {
@@ -1095,6 +1098,15 @@ class AITutorScreenState extends State<AITutorScreen>
           final currentlySpeakingMessageIndex =
               _controller.currentlySpeakingMessageIndex;
 
+          // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
+          if (!_hasScrolledToInitialMessages && messages.isNotEmpty && !isLoading) {
+            _hasScrolledToInitialMessages = true;
+            print('📱 AITutorScreen: Mensagens carregadas, fazendo scroll inicial');
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToLastAiResponse();
+            });
+          }
+
           return Scaffold(
             backgroundColor: currentScaffoldBackgroundColor,
             body: SafeArea(
@@ -1815,7 +1827,9 @@ class AITutorScreenState extends State<AITutorScreen>
                 : notifier.message;
 
             return Column(
+              mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 MessageUIHelper.buildSimpleMessageBubble(
                   context: context,
@@ -1844,6 +1858,7 @@ class AITutorScreenState extends State<AITutorScreen>
       // Se não for notificador, usamos a forma tradicional
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           MessageUIHelper.buildSimpleMessageBubble(
             context: context,
@@ -1854,7 +1869,7 @@ class AITutorScreenState extends State<AITutorScreen>
             onLongPress: () => _showMessageOptions(message, isUser),
             imageBytes: imageBytes,
           ),
-          if (hasFoodJson && !isStreaming)
+          if (hasFoodJson && !isStreaming) ...[
             Consumer<DailyMealsProvider>(
               builder: (context, mealsProvider, _) {
                 return FoodJsonDisplay(
@@ -1864,6 +1879,7 @@ class AITutorScreenState extends State<AITutorScreen>
                 );
               },
             ),
+          ],
         ],
       );
     }
