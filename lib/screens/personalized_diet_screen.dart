@@ -5,9 +5,13 @@ import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/meal_skeleton.dart';
+import '../widgets/macro_card_gradient.dart';
 import '../models/diet_plan_model.dart';
+import '../models/food_model.dart';
+import '../models/Nutrient.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../screens/food_page.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   const PersonalizedDietScreen({Key? key}) : super(key: key);
@@ -333,6 +337,26 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     }
   }
 
+  // Convert PlannedFood to Food for navigation to FoodPage
+  Food _convertPlannedFoodToFood(PlannedFood plannedFood) {
+    final nutrient = Nutrient(
+      idFood: 0,
+      servingSize: plannedFood.amount,
+      servingUnit: plannedFood.unit,
+      calories: plannedFood.calories.toDouble(),
+      protein: plannedFood.protein,
+      carbohydrate: plannedFood.carbs,
+      fat: plannedFood.fat,
+    );
+
+    return Food(
+      name: plannedFood.name,
+      emoji: plannedFood.emoji,
+      amount: '${plannedFood.amount.toStringAsFixed(0)} ${plannedFood.unit}',
+      nutrients: [nutrient],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -571,7 +595,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       child: Row(
         children: [
           Expanded(
-            child: _buildMacroCardGradient(
+            child: MacroCardGradient(
               icon: '🔥',
               label: 'Calorias',
               value: nutrition.calories.toStringAsFixed(0),
@@ -584,7 +608,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildMacroCardGradient(
+            child: MacroCardGradient(
               icon: '💪',
               label: 'Proteínas',
               value: nutrition.protein.toStringAsFixed(1),
@@ -597,7 +621,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildMacroCardGradient(
+            child: MacroCardGradient(
               icon: '🌾',
               label: 'Carboidratos',
               value: nutrition.carbs.toStringAsFixed(1),
@@ -610,7 +634,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildMacroCardGradient(
+            child: MacroCardGradient(
               icon: '🥑',
               label: 'Gorduras',
               value: nutrition.fat.toStringAsFixed(1),
@@ -626,151 +650,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildMacroCardGradient({
-    required String icon,
-    required String label,
-    required String value,
-    required String unit,
-    required Color startColor,
-    required Color endColor,
-    required bool isDarkMode,
-    bool isCompact = false,
-  }) {
-    // Se for compact (nutrition summary no topo), usa tamanhos maiores
-    if (isCompact) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              startColor.withValues(alpha: isDarkMode ? 0.3 : 0.15),
-              endColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: startColor.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              icon,
-              style: const TextStyle(fontSize: 22),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                ),
-                if (unit.isNotEmpty)
-                  Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w500,
-                      color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Para meal totals, usa o mesmo estilo do meal_card.dart
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            startColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
-            endColor.withValues(alpha: isDarkMode ? 0.12 : 0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: startColor.withValues(alpha: isDarkMode ? 0.2 : 0.15),
-          width: 0.5,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w600,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-              letterSpacing: 0.2,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 3),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Flexible(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white.withValues(alpha: 0.85) : Colors.black.withValues(alpha: 0.65),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (unit.isNotEmpty)
-                Text(
-                  unit,
-                  style: TextStyle(
-                    fontSize: 7,
-                    fontWeight: FontWeight.w500,
-                    color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMealCard(PlannedMeal meal, bool isDarkMode) {
     final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
@@ -872,7 +751,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMacroCardGradient(
+                      child: MacroCardGradient(
                         icon: '🔥',
                         label: 'Cal',
                         value: meal.mealTotals.calories.toStringAsFixed(0),
@@ -884,7 +763,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: _buildMacroCardGradient(
+                      child: MacroCardGradient(
                         icon: '💪',
                         label: 'Prot',
                         value: meal.mealTotals.protein.toStringAsFixed(1),
@@ -896,7 +775,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: _buildMacroCardGradient(
+                      child: MacroCardGradient(
                         icon: '🌾',
                         label: 'Carb',
                         value: meal.mealTotals.carbs.toStringAsFixed(1),
@@ -908,7 +787,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: _buildMacroCardGradient(
+                      child: MacroCardGradient(
                         icon: '🥑',
                         label: 'Gord',
                         value: meal.mealTotals.fat.toStringAsFixed(1),
@@ -938,7 +817,12 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // Tap action (could navigate to food details if needed)
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FoodPage(food: _convertPlannedFoodToFood(food)),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(8),
         child: Container(

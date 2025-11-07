@@ -15,6 +15,7 @@ import '../helpers/webview_helper.dart';
 import '../widgets/macro_nutrient_row.dart';
 import '../widgets/sub_nutrient_row.dart';
 import '../widgets/micro_nutrient_row.dart';
+import '../widgets/macro_card_gradient.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
@@ -750,81 +751,6 @@ class _FoodPageState extends State<FoodPage> {
     );
   }
 
-  Widget _buildMacroCardGradient({
-    required String icon,
-    required String label,
-    required String value,
-    required String unit,
-    required Color startColor,
-    required Color endColor,
-    required bool isDarkMode,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            startColor.withValues(alpha: isDarkMode ? 0.3 : 0.15),
-            endColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: startColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            icon,
-            style: const TextStyle(fontSize: 22),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                ),
-              ),
-              if (unit.isNotEmpty)
-                Text(
-                  unit,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w500,
-                    color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w500,
-              color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1218,7 +1144,7 @@ class _FoodPageState extends State<FoodPage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: _buildMacroCardGradient(
+                            child: MacroCardGradient(
                               icon: '🔥',
                               label: 'Calorias',
                               value: calories.toStringAsFixed(0),
@@ -1226,11 +1152,12 @@ class _FoodPageState extends State<FoodPage> {
                               startColor: const Color(0xFFFF6B9D),
                               endColor: const Color(0xFFFFA06B),
                               isDarkMode: isDarkMode,
+                              isCompact: true,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: _buildMacroCardGradient(
+                            child: MacroCardGradient(
                               icon: '💪',
                               label: 'Proteínas',
                               value: protein.toStringAsFixed(1),
@@ -1238,11 +1165,12 @@ class _FoodPageState extends State<FoodPage> {
                               startColor: const Color(0xFF9575CD),
                               endColor: const Color(0xFFBA68C8),
                               isDarkMode: isDarkMode,
+                              isCompact: true,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: _buildMacroCardGradient(
+                            child: MacroCardGradient(
                               icon: '🌾',
                               label: 'Carboidratos',
                               value: carbs.toStringAsFixed(1),
@@ -1250,11 +1178,12 @@ class _FoodPageState extends State<FoodPage> {
                               startColor: const Color(0xFFFFB74D),
                               endColor: const Color(0xFFFF9800),
                               isDarkMode: isDarkMode,
+                              isCompact: true,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: _buildMacroCardGradient(
+                            child: MacroCardGradient(
                               icon: '🥑',
                               label: 'Gorduras',
                               value: fat.toStringAsFixed(1),
@@ -1262,6 +1191,7 @@ class _FoodPageState extends State<FoodPage> {
                               startColor: const Color(0xFF4DB6AC),
                               endColor: const Color(0xFF26A69A),
                               isDarkMode: isDarkMode,
+                              isCompact: true,
                             ),
                           ),
                         ],
