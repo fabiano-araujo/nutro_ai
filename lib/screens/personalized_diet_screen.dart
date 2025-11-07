@@ -636,21 +636,90 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     required bool isDarkMode,
     bool isCompact = false,
   }) {
+    // Se for compact (nutrition summary no topo), usa tamanhos maiores
+    if (isCompact) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              startColor.withValues(alpha: isDarkMode ? 0.3 : 0.15),
+              endColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: startColor.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              icon,
+              style: const TextStyle(fontSize: 22),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                if (unit.isNotEmpty)
+                  Text(
+                    unit,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                      color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Para meal totals, usa o mesmo estilo do meal_card.dart
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            startColor.withValues(alpha: isDarkMode ? 0.3 : 0.15),
-            endColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            startColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            endColor.withValues(alpha: isDarkMode ? 0.12 : 0.06),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: startColor.withValues(alpha: 0.3),
-          width: 1,
+          color: startColor.withValues(alpha: isDarkMode ? 0.2 : 0.15),
+          width: 0.5,
         ),
       ),
       child: Column(
@@ -659,43 +728,44 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            icon,
-            style: const TextStyle(fontSize: 22),
+            label,
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 3),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black87,
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white.withValues(alpha: 0.85) : Colors.black.withValues(alpha: 0.65),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (unit.isNotEmpty)
                 Text(
                   unit,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 7,
                     fontWeight: FontWeight.w500,
                     color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
                   ),
                 ),
             ],
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w500,
-              color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
-              letterSpacing: 0.2,
-            ),
           ),
         ],
       ),
@@ -703,47 +773,155 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   }
 
   Widget _buildMealCard(PlannedMeal meal, bool isDarkMode) {
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final secondaryTextColor = isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1.5,
+      shadowColor: isDarkMode
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      color: backgroundColor,
       child: ExpansionTile(
-        leading: Text(
-          _getMealEmoji(meal.type),
-          style: const TextStyle(fontSize: 32),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        childrenPadding: EdgeInsets.zero,
+        leading: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          child: Text(
+            _getMealEmoji(meal.type),
+            style: const TextStyle(fontSize: 28),
+          ),
         ),
         title: Text(
           meal.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            letterSpacing: -0.2,
+          ),
         ),
-        subtitle: Text(
-          '${meal.time} • ${meal.mealTotals.calories} cal',
-          style: TextStyle(color: Colors.grey[600]),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            '${meal.time} • ${meal.mealTotals.calories} kcal',
+            style: TextStyle(
+              color: secondaryTextColor.withValues(alpha: 0.7),
+              fontSize: 13,
+            ),
+          ),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.autorenew),
-          onPressed: () => _replaceMeal(meal.type),
-          tooltip: 'Substituir esta refeição',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _replaceMeal(meal.type),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.autorenew,
+                    size: 18,
+                    color: secondaryTextColor.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Foods list
-                ...meal.foods.map((food) => _buildFoodItem(food)),
+                ...meal.foods.map((food) => _buildFoodItem(food, isDarkMode)),
 
-                const Divider(height: 24),
+                // Divisor sutil
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Container(
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 4),
 
                 // Meal totals
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildMealTotal('Calorias', '${meal.mealTotals.calories}'),
-                    _buildMealTotal('Proteína', '${meal.mealTotals.protein.toStringAsFixed(1)}g'),
-                    _buildMealTotal('Carboidratos', '${meal.mealTotals.carbs.toStringAsFixed(1)}g'),
-                    _buildMealTotal('Gordura', '${meal.mealTotals.fat.toStringAsFixed(1)}g'),
+                    Expanded(
+                      child: _buildMacroCardGradient(
+                        icon: '🔥',
+                        label: 'Cal',
+                        value: meal.mealTotals.calories.toStringAsFixed(0),
+                        unit: 'kcal',
+                        startColor: const Color(0xFFFF6B9D),
+                        endColor: const Color(0xFFFFA06B),
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildMacroCardGradient(
+                        icon: '💪',
+                        label: 'Prot',
+                        value: meal.mealTotals.protein.toStringAsFixed(1),
+                        unit: 'g',
+                        startColor: const Color(0xFF9575CD),
+                        endColor: const Color(0xFFBA68C8),
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildMacroCardGradient(
+                        icon: '🌾',
+                        label: 'Carb',
+                        value: meal.mealTotals.carbs.toStringAsFixed(1),
+                        unit: 'g',
+                        startColor: const Color(0xFFFFB74D),
+                        endColor: const Color(0xFFFF9800),
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildMacroCardGradient(
+                        icon: '🥑',
+                        label: 'Gord',
+                        value: meal.mealTotals.fat.toStringAsFixed(1),
+                        unit: 'g',
+                        startColor: const Color(0xFF4DB6AC),
+                        endColor: const Color(0xFF26A69A),
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
                   ],
                 ),
+
+                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -752,56 +930,88 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildFoodItem(PlannedFood food) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Text(food.emoji, style: const TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  food.name,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+  Widget _buildFoodItem(PlannedFood food, bool isDarkMode) {
+    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryTextColor = isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          // Tap action (could navigate to food details if needed)
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Row(
+            children: [
+              // Food Image/Emoji
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                child: Text(
+                  food.emoji,
+                  style: TextStyle(fontSize: 28),
                 ),
-                Text(
-                  '${food.amount.toStringAsFixed(0)} ${food.unit}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              SizedBox(width: 10),
+              // Food Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      food.name,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 1),
+                    Text(
+                      '${food.amount.toStringAsFixed(0)} ${food.unit}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: secondaryTextColor.withValues(alpha: 0.75),
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              // Calories
+              Row(
+                children: [
+                  Text(
+                    '${food.calories}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: textColor.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  SizedBox(width: 1),
+                  Text(
+                    'kcal',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w500,
+                      color: textColor.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          Text(
-            '${food.calories} cal',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildMealTotal(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
 }

@@ -97,7 +97,10 @@ class MessageUIHelper {
     required bool isStreaming,
     required VoidCallback onLongPress,
     Uint8List? imageBytes,
+    double bottomSpacing = 8,
   }) {
+    final double safeBottomSpacing =
+        bottomSpacing < 0 ? 0 : bottomSpacing;
     // Definir cores das bolhas
     final bubbleColor = isUser
         ? Color(0xFF3E4042) // Cinza escuro para usuário
@@ -165,7 +168,7 @@ class MessageUIHelper {
       child: Align(
         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          margin: EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: safeBottomSpacing),
           padding:
               EdgeInsets.symmetric(horizontal: isUser ? 12 : 10, vertical: 8),
           width: isUser ? null : double.infinity,

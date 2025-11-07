@@ -1838,6 +1838,7 @@ class AITutorScreenState extends State<AITutorScreen>
                   isError: notifier.isError,
                   isStreaming: notifier.isStreaming,
                   onLongPress: () => _showMessageOptions(notifier.message, isUser),
+                  bottomSpacing: hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
                 ),
                 if (hasJsonInNotifier && !notifier.isStreaming)
                   Consumer<DailyMealsProvider>(
@@ -1868,6 +1869,7 @@ class AITutorScreenState extends State<AITutorScreen>
             isStreaming: isStreaming,
             onLongPress: () => _showMessageOptions(message, isUser),
             imageBytes: imageBytes,
+            bottomSpacing: hasFoodJson && !isStreaming ? 4 : 8,
           ),
           if (hasFoodJson && !isStreaming) ...[
             Consumer<DailyMealsProvider>(

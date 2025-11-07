@@ -44,7 +44,7 @@ class FoodJsonDisplay extends StatelessWidget {
     // Apenas mostrar o MealCard (sem adicionar automaticamente)
     return MealCard(
       meal: meal,
-      topContentPadding: 12,
+      topContentPadding: 8,
       onMealTypeChanged: (newType) {
         // Não faz nada - apenas visualização
       },
