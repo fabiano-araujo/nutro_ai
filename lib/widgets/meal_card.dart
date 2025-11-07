@@ -136,7 +136,7 @@ class _MealCardState extends State<MealCard> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
+                    color: isDarkMode ? Colors.white.withValues(alpha: 0.85) : Colors.black.withValues(alpha: 0.65),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -167,13 +167,13 @@ class _MealCardState extends State<MealCard> {
         widget.topContentPadding < 0 ? 0 : widget.topContentPadding;
 
     return Card(
-      margin: EdgeInsets.only(top: 0, bottom: 10),
-      elevation: 1,
+      margin: EdgeInsets.only(top: 0, bottom: 12),
+      elevation: 1.5,
       shadowColor: isDarkMode
         ? Colors.black.withValues(alpha: 0.3)
         : Colors.black.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
       ),
       color: backgroundColor,
       child: Column(
@@ -190,7 +190,7 @@ class _MealCardState extends State<MealCard> {
                     final index = entry.key;
                     final food = entry.value;
                     return Padding(
-                      padding: EdgeInsets.only(bottom: 4),
+                      padding: EdgeInsets.only(bottom: 6),
                       child: _FoodItem(
                         food: food,
                         isExpanded: expandedFoods[index] ?? false,
@@ -282,7 +282,7 @@ class _MealCardState extends State<MealCard> {
 
           // Header - Nome da refeição com ícones (no final)
           Container(
-            padding: EdgeInsets.fromLTRB(16, 4, 12, 14),
+            padding: EdgeInsets.fromLTRB(16, 2, 12, 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -299,8 +299,8 @@ class _MealCardState extends State<MealCard> {
                           Text(
                             getMealTypeName(widget.meal.type),
                             style: TextStyle(
-                              color: secondaryTextColor.withValues(alpha: 0.65),
-                              fontSize: 15,
+                              color: secondaryTextColor.withValues(alpha: 0.7),
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                               letterSpacing: -0.2,
                             ),
@@ -310,8 +310,8 @@ class _MealCardState extends State<MealCard> {
                             showMealOptions
                                 ? Icons.keyboard_arrow_up_rounded
                                 : Icons.keyboard_arrow_down_rounded,
-                            color: secondaryTextColor.withValues(alpha: 0.4),
-                            size: 16,
+                            color: secondaryTextColor.withValues(alpha: 0.5),
+                            size: 18,
                           ),
                         ],
                       ),
@@ -332,7 +332,7 @@ class _MealCardState extends State<MealCard> {
                             child: Icon(
                               Icons.edit_outlined,
                               size: 18,
-                              color: secondaryTextColor.withValues(alpha: 0.6),
+                              color: secondaryTextColor.withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -349,7 +349,7 @@ class _MealCardState extends State<MealCard> {
                           child: Icon(
                             Icons.more_vert_rounded,
                             size: 18,
-                            color: secondaryTextColor.withValues(alpha: 0.6),
+                            color: secondaryTextColor.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -475,7 +475,7 @@ class _FoodItem extends StatelessWidget {
         },
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           child: Column(
             children: [
               Row(
@@ -487,7 +487,7 @@ class _FoodItem extends StatelessWidget {
                     alignment: Alignment.center,
                     child: Text(
                       food.emoji,
-                      style: TextStyle(fontSize: 24),
+                      style: TextStyle(fontSize: 28),
                     ),
                   ),
                   SizedBox(width: 10),
@@ -500,7 +500,7 @@ class _FoodItem extends StatelessWidget {
                         Text(
                           food.name,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: textColor,
                             height: 1.2,
@@ -513,7 +513,7 @@ class _FoodItem extends StatelessWidget {
                           food.amount ?? '',
                           style: TextStyle(
                             fontSize: 11,
-                            color: secondaryTextColor.withValues(alpha: 0.6),
+                            color: secondaryTextColor.withValues(alpha: 0.75),
                             height: 1.2,
                           ),
                         ),
@@ -527,8 +527,8 @@ class _FoodItem extends StatelessWidget {
                         '${food.calories}',
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: secondaryTextColor.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w600,
+                          color: textColor.withValues(alpha: 0.7),
                         ),
                       ),
                       SizedBox(width: 1),
@@ -537,7 +537,7 @@ class _FoodItem extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.w500,
-                          color: secondaryTextColor.withValues(alpha: 0.4),
+                          color: textColor.withValues(alpha: 0.7),
                         ),
                       ),
                       SizedBox(width: 6),
