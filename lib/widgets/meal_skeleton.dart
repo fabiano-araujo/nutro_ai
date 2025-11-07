@@ -11,29 +11,33 @@ class MealSkeleton extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final baseColor = isDarkMode ? Colors.grey[800]! : Colors.grey[300]!;
     final highlightColor = isDarkMode ? Colors.grey[700]! : Colors.grey[100]!;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1.5,
+      shadowColor: isDarkMode
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
-      color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+      color: backgroundColor,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header skeleton
+            // Header skeleton (similar to ExpansionTile header)
             Row(
               children: [
-                // Emoji placeholder
+                // Leading emoji placeholder (36x36 to match real card)
                 Shimmer.fromColors(
                   baseColor: baseColor,
                   highlightColor: highlightColor,
                   child: Container(
-                    width: 32,
-                    height: 32,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
@@ -41,7 +45,7 @@ class MealSkeleton extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Title and time placeholders
+                // Title and subtitle placeholders
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,21 +54,23 @@ class MealSkeleton extends StatelessWidget {
                         baseColor: baseColor,
                         highlightColor: highlightColor,
                         child: Container(
-                          height: 18,
-                          width: 150,
+                          height: 16,
+                          width: double.infinity,
+                          constraints: const BoxConstraints(maxWidth: 180),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Shimmer.fromColors(
                         baseColor: baseColor,
                         highlightColor: highlightColor,
                         child: Container(
-                          height: 14,
-                          width: 100,
+                          height: 13,
+                          width: double.infinity,
+                          constraints: const BoxConstraints(maxWidth: 120),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(4),
@@ -74,129 +80,28 @@ class MealSkeleton extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Foods skeleton (3 food items)
-            ..._buildFoodItemSkeleton(baseColor, highlightColor),
-            _buildFoodItemSkeleton(baseColor, highlightColor)[0],
-            _buildFoodItemSkeleton(baseColor, highlightColor)[0],
-
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-
-            // Macros skeleton
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMacroSkeleton(baseColor, highlightColor),
-                _buildMacroSkeleton(baseColor, highlightColor),
-                _buildMacroSkeleton(baseColor, highlightColor),
-                _buildMacroSkeleton(baseColor, highlightColor),
+                // Trailing icons placeholder
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Shimmer.fromColors(
+                      baseColor: baseColor,
+                      highlightColor: highlightColor,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  List<Widget> _buildFoodItemSkeleton(Color baseColor, Color highlightColor) {
-    return [
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(
-          children: [
-            Shimmer.fromColors(
-              baseColor: baseColor,
-              highlightColor: highlightColor,
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Shimmer.fromColors(
-                    baseColor: baseColor,
-                    highlightColor: highlightColor,
-                    child: Container(
-                      height: 14,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Shimmer.fromColors(
-                    baseColor: baseColor,
-                    highlightColor: highlightColor,
-                    child: Container(
-                      height: 12,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Shimmer.fromColors(
-              baseColor: baseColor,
-              highlightColor: highlightColor,
-              child: Container(
-                height: 14,
-                width: 60,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ];
-  }
-
-  Widget _buildMacroSkeleton(Color baseColor, Color highlightColor) {
-    return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
-      child: Column(
-        children: [
-          Container(
-            height: 16,
-            width: 50,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            height: 12,
-            width: 60,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-        ],
       ),
     );
   }

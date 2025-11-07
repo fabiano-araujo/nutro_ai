@@ -12,6 +12,7 @@ import '../models/Nutrient.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../screens/food_page.dart';
+import '../screens/nutrition_goals_screen.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   const PersonalizedDietScreen({Key? key}) : super(key: key);
@@ -604,6 +605,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
               endColor: const Color(0xFFFFA06B),
               isDarkMode: isDarkMode,
               isCompact: true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NutritionGoalsScreen(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -617,6 +626,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
               endColor: const Color(0xFFBA68C8),
               isDarkMode: isDarkMode,
               isCompact: true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NutritionGoalsScreen(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -630,6 +647,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
               endColor: const Color(0xFFFF9800),
               isDarkMode: isDarkMode,
               isCompact: true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NutritionGoalsScreen(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -643,6 +668,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
               endColor: const Color(0xFF26A69A),
               isDarkMode: isDarkMode,
               isCompact: true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NutritionGoalsScreen(),
+                  ),
+                );
+              },
             ),
           ),
         ],
