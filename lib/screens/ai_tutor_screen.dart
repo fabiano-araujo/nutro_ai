@@ -1411,9 +1411,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                                     style: TextStyle(
                                                       fontSize: 24,
                                                       fontWeight: FontWeight.w300,
-                                                      color: isDarkMode
-                                                          ? Colors.white
-                                                          : AppTheme.textPrimaryColor,
+                                                      color: AppTheme.getSoftTextColor(isDarkMode),
                                                       height: 1.2,
                                                     ),
                                                   ),
@@ -1422,9 +1420,7 @@ class AITutorScreenState extends State<AITutorScreen>
                                                   style: TextStyle(
                                                     fontSize: 32,
                                                     fontWeight: FontWeight.bold,
-                                                    color: isDarkMode
-                                                        ? Colors.white
-                                                        : AppTheme.textPrimaryColor,
+                                                    color: AppTheme.getSoftTextColor(isDarkMode),
                                                     height: 1.2,
                                                   ),
                                                 ),

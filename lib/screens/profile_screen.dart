@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../services/auth_service.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
@@ -114,10 +115,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // Macronutrients Chart Card
         _buildMacronutrientsChartCard(theme, colorScheme),
-        const SizedBox(height: 24),
-
-        // Daily Macro Targets
-        _buildMacroTargetsSection(theme, colorScheme),
         const SizedBox(height: 32),
 
         // Logout Button
@@ -147,6 +144,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(user, ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
     return Consumer<NutritionGoalsProvider>(
       builder: (context, nutritionProvider, child) {
         // Calculate daily calories and BMI based on user data
@@ -155,21 +155,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final bmiColor = _getBMIColor(bmi);
         final bmiCategory = _getBMICategory(bmi, context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return Card(
+      margin: const EdgeInsets.all(0),
+      elevation: 1.5,
+      shadowColor: isDarkMode
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
+      color: backgroundColor,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -413,6 +412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ],
+        ),
       ),
     );
       },
@@ -477,96 +477,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _buildMacroTargetsSection(ThemeData theme, ColorScheme colorScheme) {
-    return Consumer<NutritionGoalsProvider>(
-      builder: (context, nutritionProvider, child) {
-        return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                context.tr.translate('profile_daily_macro_goals'),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Switch(
-                value: nutritionProvider.useCalculatedGoals,
-                onChanged: (value) {
-                  nutritionProvider.setUseCalculatedGoals(value);
-                },
-                activeThumbColor: colorScheme.primary,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr.translate('profile_auto_calculated_description'),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildMacroColumn('${nutritionProvider.carbsPercentage}%', context.tr.translate('carbohydrates'), theme),
-              _buildMacroColumn('${nutritionProvider.proteinPercentage}%', context.tr.translate('protein'), theme),
-              _buildMacroColumn('${nutritionProvider.fatPercentage}%', context.tr.translate('fats'), theme),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: nutritionProvider.carbsPercentage / 100,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              color: colorScheme.primary,
-              minHeight: 10,
-            ),
-          ),
-        ],
-      ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMacroColumn(String percentage, String label, ThemeData theme) {
-    return Column(
-      children: [
-        Text(
-          percentage,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildUnauthenticatedContent() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -618,6 +528,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildCaloriesChartCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
     final calorieGoal = nutritionProvider.caloriesGoal.toDouble();
 
@@ -655,20 +567,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final totalRange = chartMaxY - chartMinY;
     final interval = (totalRange / 5).ceilToDouble();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
+    return Card(
+      margin: const EdgeInsets.all(0),
+      elevation: 1.5,
+      shadowColor: isDarkMode
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
+      color: backgroundColor,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -763,7 +674,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       FlSpot((daysCount - 1).toDouble(), calorieGoal),
                     ],
                     isCurved: false,
-                    color: Colors.orange,
+                    color: Colors.orange.withValues(alpha: 0.55),
                     barWidth: 2,
                     isStrokeCapRound: false,
                     dotData: const FlDotData(show: false),
@@ -772,7 +683,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   LineChartBarData(
                     spots: currentData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
                     isCurved: true,
-                    color: colorScheme.primary,
+                    color: colorScheme.primary.withValues(alpha: 0.55),
                     barWidth: 3,
                     isStrokeCapRound: true,
                     dotData: FlDotData(
@@ -780,7 +691,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       getDotPainter: (spot, percent, barData, index) {
                         return FlDotCirclePainter(
                           radius: 3,
-                          color: colorScheme.primary,
+                          color: colorScheme.primary.withValues(alpha: 0.55),
                           strokeWidth: 2,
                           strokeColor: theme.cardColor,
                         );
@@ -820,6 +731,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -852,12 +764,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Container(
           width: 20,
-          height: 3,
+          height: 4,
           decoration: BoxDecoration(
-            color: color,
+            color: color.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(2),
           ),
-          child: isDashed ? CustomPaint(painter: DashedLinePainter(color: color)) : null,
+          child: isDashed ? CustomPaint(painter: DashedLinePainter(color: color.withValues(alpha: 0.55))) : null,
         ),
         const SizedBox(width: 8),
         Text(
@@ -871,6 +783,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMacronutrientsChartCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
     List<double> proteinData, carbsData, fatData, fiberData;
 
     switch (_selectedMacroPeriod) {
@@ -899,20 +814,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final avgFat = fatData.reduce((a, b) => a + b) / fatData.length;
     final avgFiber = fiberData.reduce((a, b) => a + b) / fiberData.length;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
+    return Card(
+      margin: const EdgeInsets.all(0),
+      elevation: 1.5,
+      shadowColor: isDarkMode
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
+      color: backgroundColor,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -983,19 +897,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         switch (value.toInt()) {
                           case 0:
                             text = context.tr.translate('protein_full');
-                            color = const Color(0xFF9575CD); // Purple
+                            color = const Color(0xFF9575CD).withValues(alpha: 0.55);
                             break;
                           case 1:
                             text = context.tr.translate('carbohydrate');
-                            color = const Color(0xFFA1887F); // Brown
+                            color = const Color(0xFFFFB74D).withValues(alpha: 0.55);
                             break;
                           case 2:
                             text = context.tr.translate('fat');
-                            color = const Color(0xFF90A4AE); // Blue-grey
+                            color = const Color(0xFF4DB6AC).withValues(alpha: 0.55);
                             break;
                           case 3:
                             text = context.tr.translate('fiber');
-                            color = const Color(0xFF81C784); // Verde suave
+                            color = const Color(0xFF81C784).withValues(alpha: 0.55);
                             break;
                         }
                         return Padding(
@@ -1052,13 +966,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     barRods: [
                       BarChartRodData(
                         toY: avgProtein,
-                        color: const Color(0xFF9575CD), // Purple - matches nutrition_card.dart
+                        color: const Color(0xFF9575CD).withValues(alpha: 0.55),
                         width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                         backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: 250,
-                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          show: false,
                         ),
                       ),
                     ],
@@ -1068,13 +980,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     barRods: [
                       BarChartRodData(
                         toY: avgCarbs,
-                        color: const Color(0xFFA1887F), // Brown - matches nutrition_card.dart
+                        color: const Color(0xFFFFB74D).withValues(alpha: 0.55),
                         width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                         backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: 250,
-                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          show: false,
                         ),
                       ),
                     ],
@@ -1084,13 +994,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     barRods: [
                       BarChartRodData(
                         toY: avgFat,
-                        color: const Color(0xFF90A4AE), // Blue-grey - matches nutrition_card.dart
+                        color: const Color(0xFF4DB6AC).withValues(alpha: 0.55),
                         width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                         backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: 250,
-                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          show: false,
                         ),
                       ),
                     ],
@@ -1100,13 +1008,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     barRods: [
                       BarChartRodData(
                         toY: avgFiber,
-                        color: const Color(0xFF81C784), // Verde suave
+                        color: const Color(0xFF81C784).withValues(alpha: 0.55),
                         width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                         backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: 250,
-                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          show: false,
                         ),
                       ),
                     ],
@@ -1122,12 +1028,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             alignment: WrapAlignment.center,
             children: [
               _buildMacroLegendItem('${context.tr.translate('protein_full')}: ${avgProtein.toStringAsFixed(1)}g', const Color(0xFF9575CD), theme),
-              _buildMacroLegendItem('${context.tr.translate('carbohydrate')}: ${avgCarbs.toStringAsFixed(1)}g', const Color(0xFFA1887F), theme),
-              _buildMacroLegendItem('${context.tr.translate('fat')}: ${avgFat.toStringAsFixed(1)}g', const Color(0xFF90A4AE), theme),
+              _buildMacroLegendItem('${context.tr.translate('carbohydrate')}: ${avgCarbs.toStringAsFixed(1)}g', const Color(0xFFFFB74D), theme),
+              _buildMacroLegendItem('${context.tr.translate('fat')}: ${avgFat.toStringAsFixed(1)}g', const Color(0xFF4DB6AC), theme),
               _buildMacroLegendItem('${context.tr.translate('fiber')}: ${avgFiber.toStringAsFixed(1)}g', const Color(0xFF81C784), theme),
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -1161,9 +1068,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Container(
           width: 16,
-          height: 3,
+          height: 4,
           decoration: BoxDecoration(
-            color: color,
+            color: color.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -1183,8 +1090,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         automaticallyImplyLeading: false,
