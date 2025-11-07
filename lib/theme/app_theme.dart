@@ -44,6 +44,11 @@ class AppTheme {
   // Dark Theme Soft Text Colors (with alpha 0.85 for gentle appearance)
   static final Color darkTextColorSoft = Color(0xFFE4E6EB).withValues(alpha: 0.85);
 
+  // Helper method to get soft text color based on theme
+  static Color getSoftTextColor(bool isDarkMode) {
+    return isDarkMode ? darkTextColorSoft : textPrimaryColorSoft;
+  }
+
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [primaryColor, primaryLightColor],
