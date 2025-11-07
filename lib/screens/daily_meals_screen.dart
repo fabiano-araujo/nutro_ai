@@ -747,7 +747,7 @@ class _MealCard extends StatelessWidget {
                         icon: '🔥',
                         label: 'Cal',
                         value: meal!.totalCalories.toStringAsFixed(0),
-                        unit: 'kcal',
+                        unit: '',
                         startColor: const Color(0xFFFF6B9D),
                         endColor: const Color(0xFFFFA06B),
                         isDarkMode: isDarkMode,

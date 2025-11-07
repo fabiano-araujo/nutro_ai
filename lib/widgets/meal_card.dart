@@ -234,7 +234,7 @@ class _MealCardState extends State<MealCard> {
                     icon: '🔥',
                     label: 'Cal',
                     value: widget.meal.totalCalories.toStringAsFixed(0),
-                    unit: 'kcal',
+                    unit: '',
                     startColor: const Color(0xFFFF6B9D),
                     endColor: const Color(0xFFFFA06B),
                     isDarkMode: isDarkMode,
@@ -528,15 +528,6 @@ class _FoodItem extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: textColor.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      SizedBox(width: 1),
-                      Text(
-                        'kcal',
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w500,
                           color: textColor.withValues(alpha: 0.7),
                         ),
                       ),
