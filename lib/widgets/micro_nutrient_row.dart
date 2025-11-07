@@ -27,7 +27,7 @@ class MicroNutrientRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.normal,
-            color: textColor,
+            color: textColor.withValues(alpha: 0.85),
           ),
         ),
         Text(
@@ -35,7 +35,7 @@ class MicroNutrientRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.normal,
-            color: textColor,
+            color: textColor.withValues(alpha: 0.85),
           ),
         ),
       ],

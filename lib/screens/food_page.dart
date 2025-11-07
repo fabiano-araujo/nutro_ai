@@ -551,7 +551,7 @@ class _FoodPageState extends State<FoodPage> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: textColor,
+                        color: textColor.withValues(alpha: 0.85),
                       ),
                     ),
                     IconButton(
@@ -595,7 +595,7 @@ class _FoodPageState extends State<FoodPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
-                            color: textColor,
+                            color: textColor.withValues(alpha: 0.85),
                           ),
                         ),
                       ],
@@ -652,7 +652,7 @@ class _FoodPageState extends State<FoodPage> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: textColor,
+                      color: textColor.withValues(alpha: 0.85),
                     ),
                   ),
                   IconButton(
@@ -723,7 +723,7 @@ class _FoodPageState extends State<FoodPage> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                              color: textColor,
+                              color: textColor.withValues(alpha: 0.85),
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -977,7 +977,7 @@ class _FoodPageState extends State<FoodPage> {
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color: textColor,
+                                    color: textColor.withValues(alpha: 0.85),
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -1030,7 +1030,7 @@ class _FoodPageState extends State<FoodPage> {
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
-                                    color: textColor,
+                                    color: textColor.withValues(alpha: 0.85),
                                   ),
                                   decoration: InputDecoration(
                                     filled: true,
@@ -1115,7 +1115,7 @@ class _FoodPageState extends State<FoodPage> {
                                             style: TextStyle(
                                               fontSize: 18,
                                               fontWeight: FontWeight.w600,
-                                              color: textColor,
+                                              color: textColor.withValues(alpha: 0.85),
                                             ),
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -1231,7 +1231,7 @@ class _FoodPageState extends State<FoodPage> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: textColor,
+                                color: textColor.withValues(alpha: 0.85),
                               ),
                             ),
 
@@ -1339,7 +1339,7 @@ class _FoodPageState extends State<FoodPage> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: textColor,
+                                color: textColor.withValues(alpha: 0.85),
                               ),
                             ),
 
