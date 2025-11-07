@@ -75,7 +75,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
+          icon: Icon(Icons.arrow_back, color: textColor.withValues(alpha: 0.85)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Consumer<DailyMealsProvider>(
@@ -110,7 +110,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 Text(
                   appLocalizations.translate('meals_diary'),
                   style: AppTheme.headingLarge.copyWith(
-                    color: textColor,
+                    color: textColor.withValues(alpha: 0.85),
                     fontSize: 20,
                   ),
                 ),
@@ -128,7 +128,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.calendar_today, color: textColor),
+            icon: Icon(Icons.calendar_today, color: textColor.withValues(alpha: 0.85)),
             tooltip: AppLocalizations.of(context).translate('select_date'),
             onPressed: () => _showDatePicker(context),
           ),
@@ -150,7 +150,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                       Text(
                         AppLocalizations.of(context).translate('nutrition_summary'),
                         style: AppTheme.headingMedium.copyWith(
-                          color: textColor,
+                          color: textColor.withValues(alpha: 0.85),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -166,7 +166,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Icon(Icons.edit, color: textColor, size: 24),
+                          child: Icon(Icons.edit, color: textColor.withValues(alpha: 0.85), size: 24),
                         ),
                       ),
                     ],
@@ -203,13 +203,13 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                       Text(
                         AppLocalizations.of(context).translate('meals'),
                         style: AppTheme.headingMedium.copyWith(
-                          color: textColor,
+                          color: textColor.withValues(alpha: 0.85),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.edit, color: textColor),
+                        icon: Icon(Icons.edit, color: textColor.withValues(alpha: 0.85)),
                         tooltip: AppLocalizations.of(context).translate('edit_meals'),
                         onPressed: () {
                           Navigator.push(
@@ -426,7 +426,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: textColor,
+                color: textColor.withValues(alpha: 0.85),
               ),
             ),
 
@@ -519,7 +519,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: textColor,
+                color: textColor.withValues(alpha: 0.85),
               ),
             ),
 
@@ -598,7 +598,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
               value: '${totalVitaminB12.toStringAsFixed(1)} mcg',
               isDarkMode: isDarkMode,
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -644,7 +645,7 @@ class _MealCard extends StatelessWidget {
     final secondaryTextColor = isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     return Card(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 8),
       elevation: 1.5,
       shadowColor: isDarkMode
           ? Colors.black.withValues(alpha: 0.3)
@@ -918,7 +919,7 @@ class _MacroNutrientRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: textColor.withValues(alpha: 0.85),
           ),
         ),
         Text(
@@ -926,7 +927,7 @@ class _MacroNutrientRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: textColor.withValues(alpha: 0.85),
           ),
         ),
       ],
@@ -961,7 +962,7 @@ class _MicroNutrientRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.normal,
-            color: textColor,
+            color: textColor.withValues(alpha: 0.85),
           ),
         ),
         Text(
@@ -969,7 +970,7 @@ class _MicroNutrientRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.normal,
-            color: textColor,
+            color: textColor.withValues(alpha: 0.85),
           ),
         ),
       ],

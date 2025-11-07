@@ -24,6 +24,10 @@ class AppTheme {
   static const Color textSecondaryColor = Color(0xFF757575);
   static const Color textLightColor = Color(0xFF8D96AD);
 
+  // Soft Text Colors (with alpha 0.85 for gentle appearance)
+  static final Color textPrimaryColorSoft = Color(0xFF424242).withValues(alpha: 0.85);
+  static final Color textSecondaryColorSoft = Color(0xFF757575).withValues(alpha: 0.85);
+
   // Status Colors
   static const Color successColor = Color(0xFF8FE3B0);
   static const Color errorColor = Color(0xFFE57373);
@@ -36,6 +40,9 @@ class AppTheme {
   static const Color darkComponentColor = Color(0xFF252525);
   static const Color darkTextColor = Color(0xFFE4E6EB);
   static const Color darkBorderColor = Color(0xFF333333);
+
+  // Dark Theme Soft Text Colors (with alpha 0.85 for gentle appearance)
+  static final Color darkTextColorSoft = Color(0xFFE4E6EB).withValues(alpha: 0.85);
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
