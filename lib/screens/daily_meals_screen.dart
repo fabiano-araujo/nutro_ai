@@ -405,28 +405,21 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cardColor,
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDarkMode
-                ? AppTheme.darkBorderColor
-                : AppTheme.dividerColor,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
         ),
-        padding: EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        color: cardColor,
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Macronutrients Section Header
             Text(
               AppLocalizations.of(context).translate('macronutrients'),
