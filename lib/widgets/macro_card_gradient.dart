@@ -77,15 +77,6 @@ class MacroCardGradient extends StatelessWidget {
                       maxLines: 1,
                     ),
                   ),
-                  if (unit.isNotEmpty)
-                    Text(
-                      unit,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
-                        color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                      ),
-                    ),
                 ],
               ),
               const SizedBox(height: 3),
@@ -159,15 +150,6 @@ class MacroCardGradient extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (unit.isNotEmpty)
-                  Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 7,
-                      fontWeight: FontWeight.w500,
-                      color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                    ),
-                  ),
               ],
             ),
           ],
