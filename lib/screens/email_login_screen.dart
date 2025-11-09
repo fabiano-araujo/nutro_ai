@@ -109,12 +109,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
           // Aguardar um pouco para garantir que o AuthService foi atualizado
           await Future.delayed(Duration(milliseconds: 300));
 
-          // O Builder no IndexedStack vai detectar automaticamente
-          // a mudança no authService e mostrar o ProfileScreen
-          // Apenas atualizamos o estado para refletir a mudança
-          setState(() {
-            _isLoading = false;
-          });
+          // Fechar a tela de login e voltar para o ProfileTabWrapper
+          // que automaticamente mostrará o ProfileScreen
+          Navigator.of(context).pop();
         }
       } else {
         // Tratar erro de login
