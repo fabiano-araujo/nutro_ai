@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'ai_tutor_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
-import 'diet_type_selection_screen.dart';
+import 'personalized_diet_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -116,7 +116,7 @@ class _MainNavigationState extends State<MainNavigation> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const DietTypeSelectionScreen(),
+        builder: (context) => const PersonalizedDietScreen(),
       ),
     );
   }
