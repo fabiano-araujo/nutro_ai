@@ -97,7 +97,7 @@ class DietPlanProvider extends ChangeNotifier {
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
       print('👤 UserId: $userId');
-      print('🤖 AgentType: diet, Provider: Hyperbolic');
+      print('🤖 AgentType: my_diet, Model: google/gemini-3-flash-preview');
 
       // Call backend API using NDJSON streaming for diet agent
       print('⏳ Iniciando stream NDJSON da API...');
@@ -112,11 +112,10 @@ class DietPlanProvider extends ChangeNotifier {
       final requestBody = {
         'prompt': prompt,
         'temperature': 0.5,
-        'model': 'google/gemma-3-27b-it',
+        'model': 'google/gemini-3-flash-preview',
         'streaming': true,
         'userId': userId,
-        'agentType': 'diet',
-        'provider': 'Hyperbolic',
+        'agentType': 'my_diet',
         'language': languageCode,
       };
 
@@ -379,11 +378,10 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
       final requestBody = {
         'prompt': prompt,
         'temperature': 0.5,
-        'model': 'google/gemma-3-27b-it',
+        'model': 'google/gemini-3-flash-preview',
         'streaming': true,
         'userId': userId,
-        'agentType': 'diet',
-        'provider': 'Hyperbolic',
+        'agentType': 'my_diet',
         'language': languageCode,
       };
 
