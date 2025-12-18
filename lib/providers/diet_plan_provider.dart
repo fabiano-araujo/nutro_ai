@@ -97,7 +97,7 @@ class DietPlanProvider extends ChangeNotifier {
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
       print('👤 UserId: $userId');
-      print('🤖 AgentType: my_diet, Model: google/gemini-3-flash-preview');
+      print('🤖 AgentType: diet, Model: google/gemini-3-flash-preview');
 
       // Call backend API using NDJSON streaming for diet agent
       print('⏳ Iniciando stream NDJSON da API...');
@@ -115,7 +115,7 @@ class DietPlanProvider extends ChangeNotifier {
         'model': 'google/gemini-3-flash-preview',
         'streaming': true,
         'userId': userId,
-        'agentType': 'my_diet',
+        'agentType': 'diet',
         'language': languageCode,
       };
 
@@ -381,7 +381,7 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
         'model': 'google/gemini-3-flash-preview',
         'streaming': true,
         'userId': userId,
-        'agentType': 'my_diet',
+        'agentType': 'diet',
         'language': languageCode,
       };
 
