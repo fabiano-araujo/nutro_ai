@@ -413,6 +413,8 @@ final Map<String, String> frFRTranslations = {
   'free_meal': 'Repas Libre',
 
   // Tiroir et conversations libres
+  'diary': 'Journal',
+  'my_diet': 'Mon Régime',
   'new_free_chat': 'Nouvelle conversation libre',
   'conversations': 'Conversations',
   'no_conversations': 'Aucune conversation pour le moment',
@@ -420,4 +422,18 @@ final Map<String, String> frFRTranslations = {
   'delete_conversation': 'Supprimer la conversation',
   'delete_conversation_confirm': 'Êtes-vous sûr de vouloir supprimer la conversation "{title}"?',
   'free_chat': 'Chat Libre',
+
+  // Édition des aliments
+  'edit_food': 'Modifier l\'Aliment',
+  'food_name': 'Nom de l\'Aliment',
+  'amount': 'Quantité',
+  'edit_amount_helper': 'Modifier la quantité recalcule les macros automatiquement',
+  'edit_food_info': 'Modifier le nom recherche de nouvelles valeurs nutritionnelles via IA',
+  'edit_all_foods': 'Modifier tous les aliments',
+  'edit_all_foods_desc': 'Modifier le nom et la quantité de tous les éléments',
+  'add_food': 'Ajouter un aliment',
+  'save_all': 'Tout enregistrer',
+  'add_meal': 'Ajouter un repas',
+  'meal_added': 'Repas ajouté',
+  'meal_added_success': 'Repas ajouté avec succès!',
 };

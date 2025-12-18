@@ -90,6 +90,7 @@ class AITutorScreen extends StatefulWidget {
   final String? freeChatId; // ID da conversa livre
   final VoidCallback? onOpenDrawer; // Callback para abrir o drawer
   final VoidCallback? onNavigateToProfile; // Callback para navegar ao perfil
+  final String? toolType; // Tipo de ferramenta/modo (ex: 'my_diet' para usar Gemini)
 
   const AITutorScreen({
     Key? key,
@@ -100,6 +101,7 @@ class AITutorScreen extends StatefulWidget {
     this.freeChatId,
     this.onOpenDrawer,
     this.onNavigateToProfile,
+    this.toolType,
   }) : super(key: key);
 
   @override
@@ -461,7 +463,9 @@ class AITutorScreenState extends State<AITutorScreen>
 
   /// Inicializa o modo de conversa livre
   void _initFreeChatMode() {
-    print('💬 AITutorScreen: Iniciando modo conversa livre');
+    // Determinar o toolType baseado no parâmetro widget.toolType
+    final effectiveToolType = widget.toolType ?? 'free_chat';
+    print('💬 AITutorScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
 
     final freeChatProvider = Provider.of<FreeChatProvider>(context, listen: false);
     List<Map<String, dynamic>>? initialMessages;
@@ -481,7 +485,7 @@ class AITutorScreenState extends State<AITutorScreen>
     _controller = AITutorController(
       speechMixin: _speechMixinRef,
       ttsRef: _ttsMixinRef,
-      toolType: 'free_chat',
+      toolType: effectiveToolType,
       showWelcomeMessage: initialMessages == null || initialMessages.isEmpty,
       initialMessages: initialMessages,
     );

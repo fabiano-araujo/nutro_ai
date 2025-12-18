@@ -413,6 +413,8 @@ final Map<String, String> deDETranslations = {
   'free_meal': 'Freie Mahlzeit',
 
   // Schublade und freie Gespräche
+  'diary': 'Tagebuch',
+  'my_diet': 'Meine Diät',
   'new_free_chat': 'Neues freies Gespräch',
   'conversations': 'Gespräche',
   'no_conversations': 'Noch keine Gespräche',
@@ -420,4 +422,18 @@ final Map<String, String> deDETranslations = {
   'delete_conversation': 'Gespräch löschen',
   'delete_conversation_confirm': 'Sind Sie sicher, dass Sie das Gespräch "{title}" löschen möchten?',
   'free_chat': 'Freier Chat',
+
+  // Lebensmittel bearbeiten
+  'edit_food': 'Lebensmittel bearbeiten',
+  'food_name': 'Lebensmittelname',
+  'amount': 'Menge',
+  'edit_amount_helper': 'Das Ändern der Menge berechnet die Makros automatisch neu',
+  'edit_food_info': 'Das Ändern des Namens sucht neue Nährwerte über KI',
+  'edit_all_foods': 'Alle Lebensmittel bearbeiten',
+  'edit_all_foods_desc': 'Name und Menge aller Elemente bearbeiten',
+  'add_food': 'Lebensmittel hinzufügen',
+  'save_all': 'Alles speichern',
+  'add_meal': 'Mahlzeit hinzufügen',
+  'meal_added': 'Mahlzeit hinzugefügt',
+  'meal_added_success': 'Mahlzeit erfolgreich hinzugefügt!',
 };

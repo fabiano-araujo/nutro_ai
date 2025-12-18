@@ -60,8 +60,8 @@ class _MainNavigationState extends State<MainNavigation> {
   // Chave para reiniciar o AITutorScreen
   Key _aiTutorKey = UniqueKey();
 
-  // Modo atual: 'diet' para dieta (com JSON), 'free_chat' para conversa livre
-  String _currentMode = 'diet';
+  // Modo atual: 'diary' para diário (com JSON/calendário), 'my_diet' para Minha Dieta (usa Gemini), 'free_chat' para conversa livre
+  String _currentMode = 'diary';
 
   // ID da conversa livre atual (null = nova conversa)
   String? _currentFreeChatId;
@@ -101,10 +101,19 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  void _switchToDiet() {
+  void _switchToDiary() {
     Navigator.pop(context); // Fechar drawer
     setState(() {
-      _currentMode = 'diet';
+      _currentMode = 'diary';
+      _currentFreeChatId = null;
+      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
+    });
+  }
+
+  void _switchToMyDiet() {
+    Navigator.pop(context); // Fechar drawer
+    setState(() {
+      _currentMode = 'my_diet';
       _currentFreeChatId = null;
       _aiTutorKey = UniqueKey(); // Forçar recriação do widget
     });
@@ -128,10 +137,11 @@ class _MainNavigationState extends State<MainNavigation> {
       drawer: _buildDrawer(isDarkMode),
       body: AITutorScreen(
         key: _aiTutorKey,
-        isFreeChat: _currentMode == 'free_chat',
+        isFreeChat: _currentMode == 'free_chat' || _currentMode == 'my_diet',
         freeChatId: _currentFreeChatId,
         onOpenDrawer: _openDrawer,
         onNavigateToProfile: _navigateToProfile,
+        toolType: _currentMode == 'my_diet' ? 'my_diet' : null,
       ),
     );
   }
@@ -168,14 +178,14 @@ class _MainNavigationState extends State<MainNavigation> {
 
             Divider(height: 1),
 
-            // Nova conversa livre
+            // Nova conversa (primeira opção)
             ListTile(
               leading: Icon(
                 Icons.add_comment_outlined,
                 color: isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
               ),
               title: Text(
-                context.tr.translate('new_free_chat'),
+                context.tr.translate('new_conversation'),
                 style: TextStyle(
                   color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                   fontWeight: FontWeight.w500,
@@ -184,26 +194,48 @@ class _MainNavigationState extends State<MainNavigation> {
               onTap: _startNewFreeChat,
             ),
 
-            // Dieta
+            // Diário (tela de chat com calendário)
             ListTile(
               leading: Icon(
-                Icons.restaurant_menu,
-                color: _currentMode == 'diet'
+                Icons.calendar_today,
+                color: _currentMode == 'diary'
                     ? Theme.of(context).primaryColor
                     : isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
               ),
               title: Text(
-                context.tr.translate('diet'),
+                context.tr.translate('diary'),
                 style: TextStyle(
-                  color: _currentMode == 'diet'
+                  color: _currentMode == 'diary'
                       ? Theme.of(context).primaryColor
                       : isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  fontWeight: _currentMode == 'diet' ? FontWeight.bold : FontWeight.w500,
+                  fontWeight: _currentMode == 'diary' ? FontWeight.bold : FontWeight.w500,
                 ),
               ),
-              selected: _currentMode == 'diet',
+              selected: _currentMode == 'diary',
               selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
-              onTap: _switchToDiet,
+              onTap: _switchToDiary,
+            ),
+
+            // Minha Dieta (usa modelo Gemini)
+            ListTile(
+              leading: Icon(
+                Icons.restaurant_menu,
+                color: _currentMode == 'my_diet'
+                    ? Theme.of(context).primaryColor
+                    : isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
+              ),
+              title: Text(
+                context.tr.translate('my_diet'),
+                style: TextStyle(
+                  color: _currentMode == 'my_diet'
+                      ? Theme.of(context).primaryColor
+                      : isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  fontWeight: _currentMode == 'my_diet' ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+              selected: _currentMode == 'my_diet',
+              selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              onTap: _switchToMyDiet,
             ),
 
             SizedBox(height: 16),

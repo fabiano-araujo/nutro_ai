@@ -1030,6 +1030,8 @@ final Map<String, String> ptBRTranslations = {
   'foods_added_successfully': 'Alimentos adicionados com sucesso!',
 
   // Drawer e conversas livres
+  'diary': 'Diário',
+  'my_diet': 'Minha Dieta',
   'new_free_chat': 'Nova conversa livre',
   'conversations': 'Conversas',
   'no_conversations': 'Nenhuma conversa ainda',
@@ -1043,4 +1045,12 @@ final Map<String, String> ptBRTranslations = {
   'edit_food': 'Editar Alimento',
   'food_name': 'Nome do Alimento',
   'amount': 'Quantidade',
+  'edit_amount_helper': 'Alterar a quantidade recalcula os macros automaticamente',
+  'edit_food_info': 'Alterar o nome busca novos valores nutricionais via IA',
+  'edit_all_foods': 'Editar todos os alimentos',
+  'edit_all_foods_desc': 'Edite nome e quantidade de todos os itens',
+  'add_food': 'Adicionar alimento',
+  'save_all': 'Salvar tudo',
+  'meal_added': 'Refeição adicionada',
+  'meal_added_success': 'Refeição adicionada com sucesso!',
 };

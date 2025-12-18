@@ -839,6 +839,8 @@ final Map<String, String> enUSTranslations = {
   'goal_desc_gain_weight': 'Increase calorie requirements by 20%',
 
   // Drawer and free conversations
+  'diary': 'Diary',
+  'my_diet': 'My Diet',
   'new_free_chat': 'New free conversation',
   'conversations': 'Conversations',
   'no_conversations': 'No conversations yet',
@@ -852,4 +854,12 @@ final Map<String, String> enUSTranslations = {
   'edit_food': 'Edit Food',
   'food_name': 'Food Name',
   'amount': 'Amount',
+  'edit_amount_helper': 'Changing the amount recalculates macros automatically',
+  'edit_food_info': 'Changing the name fetches new nutritional values via AI',
+  'edit_all_foods': 'Edit all foods',
+  'edit_all_foods_desc': 'Edit name and amount of all items',
+  'add_food': 'Add food',
+  'save_all': 'Save all',
+  'meal_added': 'Meal added',
+  'meal_added_success': 'Meal added successfully!',
 };

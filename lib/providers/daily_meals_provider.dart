@@ -116,6 +116,30 @@ class DailyMealsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Adiciona uma refeição completa ao dia selecionado
+  void addMeal(Meal meal) {
+    final dateKey = _formatDate(_selectedDate);
+    _mealsByDate[dateKey] ??= [];
+
+    final meals = _mealsByDate[dateKey]!;
+
+    // Verificar se já existe uma refeição do mesmo tipo
+    final existingIndex = meals.indexWhere((m) => m.type == meal.type);
+
+    if (existingIndex != -1) {
+      // Se já existe, mesclar os alimentos
+      final existingMeal = meals[existingIndex];
+      final mergedFoods = List<Food>.from(existingMeal.foods)..addAll(meal.foods);
+      meals[existingIndex] = existingMeal.copyWith(foods: mergedFoods);
+    } else {
+      // Senão, adicionar a nova refeição
+      meals.add(meal.copyWith(dateTime: _selectedDate));
+    }
+
+    _saveToPreferences();
+    notifyListeners();
+  }
+
   void addFoodToMeal(MealType type, Food food) {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] ??= [];

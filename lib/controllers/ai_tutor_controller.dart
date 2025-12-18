@@ -588,19 +588,24 @@ class AITutorController with ChangeNotifier {
       final languageCode =
           _aiService.getCurrentLanguageCode(languageController);
 
-      // Usar qualidade padrão (vazio = modelo padrão do servidor)
+      // Determinar o modelo baseado no toolType
       String quality = '';
-      print(
-          '📱 Usando qualidade padrão (modelo padrão do servidor) para o tutor de nutrição');
-
-      // Usar provider Hyperbolic para o agent nutricional
       String provider = 'Hyperbolic';
-      print('🔌 Usando provider Hyperbolic para o agent nutricional');
+
+      // Para 'my_diet', usar o modelo Gemini Flash
+      if (toolType == 'my_diet') {
+        quality = 'google/gemini-3-flash-preview';
+        provider = ''; // Deixar o OpenRouter escolher o provider
+        print('📱 Usando modelo Gemini Flash para Minha Dieta');
+      } else {
+        print('📱 Usando qualidade padrão (modelo padrão do servidor) para o tutor de nutrição');
+        print('🔌 Usando provider Hyperbolic para o agent nutricional');
+      }
 
       // Determinar o agentType baseado no toolType
-      // free_chat usa o agent 'free-nutrition' que não retorna JSON formatado
+      // free_chat e my_diet usam o agent 'free-nutrition' que não retorna JSON formatado
       String agentType =
-          toolType == 'free_chat' ? 'free-nutrition' : 'nutrition';
+          (toolType == 'free_chat' || toolType == 'my_diet') ? 'free-nutrition' : 'nutrition';
       print('🤖 Usando agentType: $agentType para toolType: $toolType');
 
       // Obter o usuário logado para pegar o ID

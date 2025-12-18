@@ -589,6 +589,8 @@ final Map<String, String> esESTranslations = {
   'vitamin_b12': 'Vitamina B12',
 
   // Drawer y conversaciones libres
+  'diary': 'Diario',
+  'my_diet': 'Mi Dieta',
   'new_free_chat': 'Nueva conversación libre',
   'conversations': 'Conversaciones',
   'no_conversations': 'No hay conversaciones aún',
@@ -596,4 +598,18 @@ final Map<String, String> esESTranslations = {
   'delete_conversation': 'Eliminar conversación',
   'delete_conversation_confirm': '¿Estás seguro de que quieres eliminar la conversación "{title}"?',
   'free_chat': 'Chat Libre',
+
+  // Edición de alimentos
+  'edit_food': 'Editar Alimento',
+  'food_name': 'Nombre del Alimento',
+  'amount': 'Cantidad',
+  'edit_amount_helper': 'Cambiar la cantidad recalcula los macros automáticamente',
+  'edit_food_info': 'Cambiar el nombre busca nuevos valores nutricionales via IA',
+  'edit_all_foods': 'Editar todos los alimentos',
+  'edit_all_foods_desc': 'Editar nombre y cantidad de todos los ítems',
+  'add_food': 'Agregar alimento',
+  'save_all': 'Guardar todo',
+  'add_meal': 'Agregar comida',
+  'meal_added': 'Comida agregada',
+  'meal_added_success': '¡Comida agregada con éxito!',
 };

@@ -411,6 +411,8 @@ final Map<String, String> itITTranslations = {
   'free_meal': 'Pasto Libero',
 
   // Drawer e conversazioni libere
+  'diary': 'Diario',
+  'my_diet': 'La Mia Dieta',
   'new_free_chat': 'Nuova conversazione libera',
   'conversations': 'Conversazioni',
   'no_conversations': 'Nessuna conversazione ancora',
@@ -418,4 +420,18 @@ final Map<String, String> itITTranslations = {
   'delete_conversation': 'Elimina conversazione',
   'delete_conversation_confirm': 'Sei sicuro di voler eliminare la conversazione "{title}"?',
   'free_chat': 'Chat Libera',
+
+  // Modifica alimenti
+  'edit_food': 'Modifica Alimento',
+  'food_name': 'Nome Alimento',
+  'amount': 'Quantità',
+  'edit_amount_helper': 'Modificare la quantità ricalcola i macro automaticamente',
+  'edit_food_info': 'Modificare il nome cerca nuovi valori nutrizionali via IA',
+  'edit_all_foods': 'Modifica tutti gli alimenti',
+  'edit_all_foods_desc': 'Modifica nome e quantità di tutti gli elementi',
+  'add_food': 'Aggiungi alimento',
+  'save_all': 'Salva tutto',
+  'add_meal': 'Aggiungi pasto',
+  'meal_added': 'Pasto aggiunto',
+  'meal_added_success': 'Pasto aggiunto con successo!',
 };
