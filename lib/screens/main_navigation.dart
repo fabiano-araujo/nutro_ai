@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'ai_tutor_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
+import 'diet_type_selection_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -60,7 +61,7 @@ class _MainNavigationState extends State<MainNavigation> {
   // Chave para reiniciar o AITutorScreen
   Key _aiTutorKey = UniqueKey();
 
-  // Modo atual: 'diary' para diário (com JSON/calendário), 'my_diet' para Minha Dieta (usa Gemini), 'free_chat' para conversa livre
+  // Modo atual: 'diary' para diário (com JSON/calendário), 'free_chat' para conversa livre
   String _currentMode = 'diary';
 
   // ID da conversa livre atual (null = nova conversa)
@@ -112,11 +113,12 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _switchToMyDiet() {
     Navigator.pop(context); // Fechar drawer
-    setState(() {
-      _currentMode = 'my_diet';
-      _currentFreeChatId = null;
-      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
-    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DietTypeSelectionScreen(),
+      ),
+    );
   }
 
   void _openFreeChat(String chatId, String title) {
@@ -137,11 +139,10 @@ class _MainNavigationState extends State<MainNavigation> {
       drawer: _buildDrawer(isDarkMode),
       body: AITutorScreen(
         key: _aiTutorKey,
-        isFreeChat: _currentMode == 'free_chat' || _currentMode == 'my_diet',
+        isFreeChat: _currentMode == 'free_chat',
         freeChatId: _currentFreeChatId,
         onOpenDrawer: _openDrawer,
         onNavigateToProfile: _navigateToProfile,
-        toolType: _currentMode == 'my_diet' ? 'my_diet' : null,
       ),
     );
   }
@@ -216,25 +217,19 @@ class _MainNavigationState extends State<MainNavigation> {
               onTap: _switchToDiary,
             ),
 
-            // Minha Dieta (usa modelo Gemini)
+            // Minha Dieta (abre tela de seleção de tipo de dieta)
             ListTile(
               leading: Icon(
                 Icons.restaurant_menu,
-                color: _currentMode == 'my_diet'
-                    ? Theme.of(context).primaryColor
-                    : isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
+                color: isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
               ),
               title: Text(
                 context.tr.translate('my_diet'),
                 style: TextStyle(
-                  color: _currentMode == 'my_diet'
-                      ? Theme.of(context).primaryColor
-                      : isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  fontWeight: _currentMode == 'my_diet' ? FontWeight.bold : FontWeight.w500,
+                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              selected: _currentMode == 'my_diet',
-              selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
               onTap: _switchToMyDiet,
             ),
 
