@@ -31,6 +31,107 @@ class _MealCardState extends State<MealCard> {
   bool showMealOptions = false;
   final Map<int, bool> expandedFoods = {};
 
+  // State for editing
+  late Meal _currentMeal;
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentMeal = widget.meal;
+  }
+
+  @override
+  void didUpdateWidget(MealCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only update if the meal ID changed or strict inequality,
+    // to preserve local edits if parent rebuilds for other reasons.
+    // However, since FoodJsonDisplay creates a NEW meal every build,
+    // strictly checking equality might always be false.
+    // For now, allow overwriting if not editing, to keep sync.
+    if (widget.meal.id != oldWidget.meal.id && !_isEditing) {
+      _currentMeal = widget.meal;
+    }
+  }
+
+  void _toggleEditing() {
+    setState(() {
+      _isEditing = !_isEditing;
+      // Close expanded options if editing starts
+      if (_isEditing) showMealOptions = false;
+    });
+  }
+
+  void _updateFood(int index, String name, String amount) {
+    setState(() {
+      final updatedFood = _currentMeal.foods[index].copyWith(
+        name: name,
+        amount: amount,
+      );
+      final List<Food> updatedFoods = List.from(_currentMeal.foods);
+      updatedFoods[index] = updatedFood;
+      _currentMeal = _currentMeal.copyWith(foods: updatedFoods);
+    });
+  }
+
+  Future<void> _showEditDialog(int index) async {
+    final food = _currentMeal.foods[index];
+    final nameController = TextEditingController(text: food.name);
+    final amountController = TextEditingController(text: food.amount ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+          title: Text(
+            context.tr.translate('edit_food'),
+            style: TextStyle(
+              color: isDarkMode
+                  ? AppTheme.darkTextColor
+                  : AppTheme.textPrimaryColor,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: context.tr.translate(
+                      'food_name'), // Ensure translation key exists or use fallback
+                  hintText: 'Ex: Arroz branco',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                decoration: InputDecoration(
+                  labelText: context.tr.translate('amount'),
+                  hintText: 'Ex: 100g',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.tr.translate('cancel')),
+            ),
+            TextButton(
+              onPressed: () {
+                _updateFood(index, nameController.text, amountController.text);
+                Navigator.pop(context);
+              },
+              child: Text(context.tr.translate('save')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void toggleFood(int index) {
     setState(() {
       expandedFoods[index] = !(expandedFoods[index] ?? false);
@@ -136,7 +237,9 @@ class _MealCardState extends State<MealCard> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white.withValues(alpha: 0.85) : Colors.black.withValues(alpha: 0.65),
+                    color: isDarkMode
+                        ? Colors.white.withValues(alpha: 0.85)
+                        : Colors.black.withValues(alpha: 0.65),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -170,8 +273,8 @@ class _MealCardState extends State<MealCard> {
       margin: EdgeInsets.only(top: 0, bottom: 12),
       elevation: 1.5,
       shadowColor: isDarkMode
-        ? Colors.black.withValues(alpha: 0.3)
-        : Colors.black.withValues(alpha: 0.08),
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -180,13 +283,13 @@ class _MealCardState extends State<MealCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Food Items
-          if (widget.meal.foods.isNotEmpty)
+          if (_currentMeal.foods.isNotEmpty)
             Padding(
               padding: EdgeInsets.fromLTRB(16, topPadding, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ...widget.meal.foods.asMap().entries.map((entry) {
+                  ..._currentMeal.foods.asMap().entries.map((entry) {
                     final index = entry.key;
                     final food = entry.value;
                     return Padding(
@@ -195,7 +298,9 @@ class _MealCardState extends State<MealCard> {
                         food: food,
                         isExpanded: expandedFoods[index] ?? false,
                         onToggle: () => toggleFood(index),
-                        onEdit: widget.onEditFood,
+                        // Pass specific method for item editing
+                        onEditClick: () => _showEditDialog(index),
+                        isEditing: _isEditing,
                         isDarkMode: isDarkMode,
                       ),
                     );
@@ -214,7 +319,8 @@ class _MealCardState extends State<MealCard> {
                   gradient: LinearGradient(
                     colors: [
                       Colors.transparent,
-                      (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
+                      (isDarkMode ? Colors.white : Colors.black)
+                          .withValues(alpha: 0.05),
                       Colors.transparent,
                     ],
                   ),
@@ -233,7 +339,7 @@ class _MealCardState extends State<MealCard> {
                   child: _buildMacroCardGradient(
                     icon: '🔥',
                     label: 'Cal',
-                    value: widget.meal.totalCalories.toStringAsFixed(0),
+                    value: _currentMeal.totalCalories.toStringAsFixed(0),
                     unit: 'kcal',
                     startColor: const Color(0xFFFF6B9D),
                     endColor: const Color(0xFFFFA06B),
@@ -245,7 +351,7 @@ class _MealCardState extends State<MealCard> {
                   child: _buildMacroCardGradient(
                     icon: '💪',
                     label: 'Prot',
-                    value: widget.meal.totalProtein.toStringAsFixed(1),
+                    value: _currentMeal.totalProtein.toStringAsFixed(1),
                     unit: 'g',
                     startColor: const Color(0xFF9575CD),
                     endColor: const Color(0xFFBA68C8),
@@ -257,7 +363,7 @@ class _MealCardState extends State<MealCard> {
                   child: _buildMacroCardGradient(
                     icon: '🌾',
                     label: 'Carb',
-                    value: widget.meal.totalCarbs.toStringAsFixed(1),
+                    value: _currentMeal.totalCarbs.toStringAsFixed(1),
                     unit: 'g',
                     startColor: const Color(0xFFFFB74D),
                     endColor: const Color(0xFFFF9800),
@@ -269,7 +375,7 @@ class _MealCardState extends State<MealCard> {
                   child: _buildMacroCardGradient(
                     icon: '🥑',
                     label: 'Gord',
-                    value: widget.meal.totalFat.toStringAsFixed(1),
+                    value: _currentMeal.totalFat.toStringAsFixed(1),
                     unit: 'g',
                     startColor: const Color(0xFF4DB6AC),
                     endColor: const Color(0xFF26A69A),
@@ -297,7 +403,7 @@ class _MealCardState extends State<MealCard> {
                       child: Row(
                         children: [
                           Text(
-                            getMealTypeName(widget.meal.type),
+                            getMealTypeName(_currentMeal.type),
                             style: TextStyle(
                               color: secondaryTextColor.withValues(alpha: 0.7),
                               fontSize: 16,
@@ -321,18 +427,26 @@ class _MealCardState extends State<MealCard> {
                 // Ícones de ação
                 Row(
                   children: [
-                    if (widget.onEditFood != null)
+                    if (widget.onEditFood != null || _isEditing)
                       Material(
-                        color: Colors.transparent,
+                        color: _isEditing
+                            ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
                         child: InkWell(
-                          onTap: widget.onEditFood,
+                          onTap:
+                              _toggleEditing, // Toggle editing mode internally
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
                             padding: EdgeInsets.all(6),
                             child: Icon(
-                              Icons.edit_outlined,
+                              _isEditing
+                                  ? Icons.check_circle_outline
+                                  : Icons.edit_outlined,
                               size: 18,
-                              color: secondaryTextColor.withValues(alpha: 0.5),
+                              color: _isEditing
+                                  ? AppTheme.primaryColor
+                                  : secondaryTextColor.withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -373,7 +487,7 @@ class _MealCardState extends State<MealCard> {
               ),
               child: Column(
                 children: getMealOptions(context).map((option) {
-                  final isSelected = option.type == widget.meal.type;
+                  final isSelected = option.type == _currentMeal.type;
                   return Padding(
                     padding: EdgeInsets.only(bottom: 6),
                     child: Material(
@@ -443,7 +557,8 @@ class _FoodItem extends StatelessWidget {
   final Food food;
   final bool isExpanded;
   final VoidCallback onToggle;
-  final VoidCallback? onEdit;
+  final VoidCallback? onEditClick; // New dedicated callback
+  final bool isEditing; // Flag for edit mode
   final bool isDarkMode;
 
   const _FoodItem({
@@ -451,7 +566,8 @@ class _FoodItem extends StatelessWidget {
     required this.food,
     required this.isExpanded,
     required this.onToggle,
-    this.onEdit,
+    this.onEditClick,
+    this.isEditing = false,
     required this.isDarkMode,
   }) : super(key: key);
 
@@ -542,16 +658,26 @@ class _FoodItem extends StatelessWidget {
                       ),
                       SizedBox(width: 6),
                       InkWell(
-                        onTap: onToggle,
+                        // If editing, clicking the arrow (or area) could maybe edit too,
+                        // but separation of concerns is better.
+                        // Let's keep toggle for expansion, and add edit button for editing.
+                        onTap: isEditing ? onEditClick : onToggle,
                         child: Container(
                           padding: EdgeInsets.all(2),
-                          child: Icon(
-                            isExpanded
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            size: 16,
-                            color: secondaryTextColor.withValues(alpha: 0.4),
-                          ),
+                          child: isEditing
+                              ? Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: AppTheme.primaryColor,
+                                )
+                              : Icon(
+                                  isExpanded
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  size: 16,
+                                  color:
+                                      secondaryTextColor.withValues(alpha: 0.4),
+                                ),
                         ),
                       ),
                     ],

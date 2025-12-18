@@ -409,4 +409,13 @@ final Map<String, String> itITTranslations = {
   'dinner': 'Cena',
   'snack': 'Spuntino',
   'free_meal': 'Pasto Libero',
+
+  // Drawer e conversazioni libere
+  'new_free_chat': 'Nuova conversazione libera',
+  'conversations': 'Conversazioni',
+  'no_conversations': 'Nessuna conversazione ancora',
+  'days_ago': 'giorni fa',
+  'delete_conversation': 'Elimina conversazione',
+  'delete_conversation_confirm': 'Sei sicuro di voler eliminare la conversazione "{title}"?',
+  'free_chat': 'Chat Libera',
 };

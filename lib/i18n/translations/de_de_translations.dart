@@ -411,4 +411,13 @@ final Map<String, String> deDETranslations = {
   'dinner': 'Abendessen',
   'snack': 'Snack',
   'free_meal': 'Freie Mahlzeit',
+
+  // Schublade und freie Gespräche
+  'new_free_chat': 'Neues freies Gespräch',
+  'conversations': 'Gespräche',
+  'no_conversations': 'Noch keine Gespräche',
+  'days_ago': 'Tagen',
+  'delete_conversation': 'Gespräch löschen',
+  'delete_conversation_confirm': 'Sind Sie sicher, dass Sie das Gespräch "{title}" löschen möchten?',
+  'free_chat': 'Freier Chat',
 };

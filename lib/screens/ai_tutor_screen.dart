@@ -38,6 +38,7 @@ import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
 import '../widgets/food_json_display.dart';
+import '../providers/free_chat_provider.dart';
 import 'daily_meals_screen.dart';
 import 'food_search_screen.dart';
 import 'camera_scan_screen.dart';
@@ -85,12 +86,20 @@ class AITutorScreen extends StatefulWidget {
       initialPrompt; // Prompt inicial a ser processado (pode ser JSON de ferramenta)
   final String?
       initialToolResponse; // NOVO: Resposta da IA para o initialPrompt da ferramenta
+  final bool isFreeChat; // Indica se é modo conversa livre (sem JSON)
+  final String? freeChatId; // ID da conversa livre
+  final VoidCallback? onOpenDrawer; // Callback para abrir o drawer
+  final VoidCallback? onNavigateToProfile; // Callback para navegar ao perfil
 
   const AITutorScreen({
     Key? key,
     this.conversationId,
     this.initialPrompt,
     this.initialToolResponse, // NOVO
+    this.isFreeChat = false,
+    this.freeChatId,
+    this.onOpenDrawer,
+    this.onNavigateToProfile,
   }) : super(key: key);
 
   @override
@@ -222,11 +231,16 @@ class AITutorScreenState extends State<AITutorScreen>
   late final _speechMixinRef = _SpeechMixinRefImpl(this);
   late final _ttsMixinRef = _TTSMixinRefImpl(this);
 
+  // ID da conversa livre atual
+  String? _currentFreeChatId;
+
   @override
   void initState() {
     super.initState();
     print('🚀 AITutorScreen - initState chamado');
     print('   - conversationId: ${widget.conversationId}');
+    print('   - isFreeChat: ${widget.isFreeChat}');
+    print('   - freeChatId: ${widget.freeChatId}');
     print(
         '   - initialPrompt (JSON da ferramenta): ${widget.initialPrompt?.substring(0, math.min(100, widget.initialPrompt?.length ?? 0))}...');
     print(
@@ -248,6 +262,12 @@ class AITutorScreenState extends State<AITutorScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _calculateHeaderHeight();
     });
+
+    // MODO CONVERSA LIVRE
+    if (widget.isFreeChat) {
+      _initFreeChatMode();
+      return;
+    }
 
     bool isFromTool = false;
     String toolType = 'chat';
@@ -428,6 +448,43 @@ class AITutorScreenState extends State<AITutorScreen>
         _scrollToLastAiResponse();
       });
     }
+
+    if (!kIsWeb && Platform.isAndroid) {
+      Future.delayed(Duration(milliseconds: 1000), () {
+        initSpeechRecognition();
+      });
+    } else {
+      initSpeechRecognition();
+    }
+    _carregarAnuncioIntersticial();
+  }
+
+  /// Inicializa o modo de conversa livre
+  void _initFreeChatMode() {
+    print('💬 AITutorScreen: Iniciando modo conversa livre');
+
+    final freeChatProvider = Provider.of<FreeChatProvider>(context, listen: false);
+    List<Map<String, dynamic>>? initialMessages;
+
+    // Verificar se tem um freeChatId para carregar
+    if (widget.freeChatId != null) {
+      _currentFreeChatId = widget.freeChatId;
+      initialMessages = freeChatProvider.getMessages(widget.freeChatId!);
+      print('📂 AITutorScreen: Carregando conversa livre existente: ${widget.freeChatId}');
+    } else {
+      // Criar nova conversa
+      _currentFreeChatId = freeChatProvider.createConversation();
+      print('📝 AITutorScreen: Nova conversa livre criada: $_currentFreeChatId');
+    }
+
+    // Inicializar controller para conversa livre
+    _controller = AITutorController(
+      speechMixin: _speechMixinRef,
+      ttsRef: _ttsMixinRef,
+      toolType: 'free_chat',
+      showWelcomeMessage: initialMessages == null || initialMessages.isEmpty,
+      initialMessages: initialMessages,
+    );
 
     if (!kIsWeb && Platform.isAndroid) {
       Future.delayed(Duration(milliseconds: 1000), () {
@@ -1119,7 +1176,10 @@ class AITutorScreenState extends State<AITutorScreen>
                         selectedDate: mealsProvider.selectedDate,
                         showAppBar: true, // Mostrar apenas o AppBar
                         showCalendar: false, // Sem o calendário semanal
-                        onDaySelected: (date) async {
+                        isFreeChat: widget.isFreeChat, // Modo conversa livre
+                        onOpenDrawer: widget.onOpenDrawer, // Callback para abrir drawer
+                        onNavigateToProfile: widget.onNavigateToProfile, // Callback para perfil
+                        onDaySelected: widget.isFreeChat ? null : (date) async {
                           print('Data selecionada: $date');
 
                           // Mostrar o header instantaneamente ao clicar em um dia
@@ -1143,7 +1203,7 @@ class AITutorScreenState extends State<AITutorScreen>
                           // Scroll instantâneo para a última resposta da IA
                           _scrollToLastAiResponse();
                         },
-                        onSearchPressed: () {
+                        onSearchPressed: widget.isFreeChat ? null : () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -1156,121 +1216,123 @@ class AITutorScreenState extends State<AITutorScreen>
                   ),
 
                   // Calendário semanal + Nutrition card com comportamento de toolbar Android
-                  Consumer<DailyMealsProvider>(
-                    builder: (context, mealsProvider, child) {
-                      // Calcular altura esperada de forma síncrona baseado nos dados atuais
-                      const double calendarHeight = 75.0;
-                      const double nutritionCardHeight = 160.0;
-                      final bool hasNutritionCard = mealsProvider.todayMeals.isNotEmpty;
-                      final double expectedHeight = calendarHeight + (hasNutritionCard ? nutritionCardHeight : 0.0);
+                  // Não mostrar no modo conversa livre
+                  if (!widget.isFreeChat)
+                    Consumer<DailyMealsProvider>(
+                      builder: (context, mealsProvider, child) {
+                        // Calcular altura esperada de forma síncrona baseado nos dados atuais
+                        const double calendarHeight = 75.0;
+                        const double nutritionCardHeight = 160.0;
+                        final bool hasNutritionCard = mealsProvider.todayMeals.isNotEmpty;
+                        final double expectedHeight = calendarHeight + (hasNutritionCard ? nutritionCardHeight : 0.0);
 
-                      // Usar a menor entre a altura esperada e a medida
-                      final double effectiveMaxHeight = expectedHeight;
+                        // Usar a menor entre a altura esperada e a medida
+                        final double effectiveMaxHeight = expectedHeight;
 
-                      return SizedBox(
-                        height: (effectiveMaxHeight + _headerOffset).clamp(0.0, effectiveMaxHeight),
-                        child: ClipRect(
-                          clipBehavior: Clip.hardEdge,
-                          child: OverflowBox(
-                            maxHeight: expectedHeight + 50, // +50px margem de segurança para transições
-                            alignment: Alignment.topCenter,
-                            child: Transform.translate(
-                              offset: Offset(0, _headerOffset),
-                              child: Column(
-                                key: _headerKey, // Key para medir a altura real do header
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Calendário semanal (apenas os dias da semana, sem AppBar)
-                                  Consumer<DailyMealsProvider>(
-                                    builder: (context, mealsProvider, child) {
-                                      return WeeklyCalendar(
-                                        selectedDate: mealsProvider.selectedDate,
-                                        showAppBar: false, // Não mostrar o AppBar (já está fixo acima)
-                                        showCalendar: true, // Mostrar apenas o calendário semanal
-                                        onDaySelected: (date) async {
-                                          print('Data selecionada: $date');
+                        return SizedBox(
+                          height: (effectiveMaxHeight + _headerOffset).clamp(0.0, effectiveMaxHeight),
+                          child: ClipRect(
+                            clipBehavior: Clip.hardEdge,
+                            child: OverflowBox(
+                              maxHeight: expectedHeight + 50, // +50px margem de segurança para transições
+                              alignment: Alignment.topCenter,
+                              child: Transform.translate(
+                                offset: Offset(0, _headerOffset),
+                                child: Column(
+                                  key: _headerKey, // Key para medir a altura real do header
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Calendário semanal (apenas os dias da semana, sem AppBar)
+                                    Consumer<DailyMealsProvider>(
+                                      builder: (context, mealsProvider, child) {
+                                        return WeeklyCalendar(
+                                          selectedDate: mealsProvider.selectedDate,
+                                          showAppBar: false, // Não mostrar o AppBar (já está fixo acima)
+                                          showCalendar: true, // Mostrar apenas o calendário semanal
+                                          onDaySelected: (date) async {
+                                            print('Data selecionada: $date');
 
-                                          // Mostrar o header instantaneamente ao clicar em um dia
-                                          setState(() {
-                                            _headerOffset = 0.0;
-                                            _lastScrollPosition = 0.0;
-                                          });
-
-                                          mealsProvider.setSelectedDate(date);
-                                          await _controller.changeSelectedDate(date);
-
-                                          // Recalcular altura após mudança de data (múltiplas tentativas para garantir)
-                                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                                            _calculateHeaderHeight();
-                                            // Recalcular novamente após 150ms para garantir que o conteúdo foi renderizado
-                                            Future.delayed(Duration(milliseconds: 150), () {
-                                              _calculateHeaderHeight();
+                                            // Mostrar o header instantaneamente ao clicar em um dia
+                                            setState(() {
+                                              _headerOffset = 0.0;
+                                              _lastScrollPosition = 0.0;
                                             });
+
+                                            mealsProvider.setSelectedDate(date);
+                                            await _controller.changeSelectedDate(date);
+
+                                            // Recalcular altura após mudança de data (múltiplas tentativas para garantir)
+                                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                                              _calculateHeaderHeight();
+                                              // Recalcular novamente após 150ms para garantir que o conteúdo foi renderizado
+                                              Future.delayed(Duration(milliseconds: 150), () {
+                                                _calculateHeaderHeight();
+                                              });
+                                            });
+
+                                            // Scroll instantâneo para a última resposta da IA
+                                            _scrollToLastAiResponse();
+                                          },
+                                          onSearchPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => const FoodSearchScreen(),
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      },
+                                    ),
+
+                                    // Nutrition card
+                                    Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
+                                      builder: (context, nutritionProvider, mealsProvider, child) {
+                                        // Recalcular altura quando o conteúdo mudar (múltiplas tentativas)
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          _calculateHeaderHeight();
+                                          // Recalcular após 100ms e 250ms para garantir
+                                          Future.delayed(Duration(milliseconds: 100), () {
+                                            _calculateHeaderHeight();
                                           });
-
-                                          // Scroll instantâneo para a última resposta da IA
-                                          _scrollToLastAiResponse();
-                                        },
-                                        onSearchPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => const FoodSearchScreen(),
-                                            ),
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
-
-                                  // Nutrition card
-                                  Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
-                                    builder: (context, nutritionProvider, mealsProvider, child) {
-                                      // Recalcular altura quando o conteúdo mudar (múltiplas tentativas)
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        _calculateHeaderHeight();
-                                        // Recalcular após 100ms e 250ms para garantir
-                                        Future.delayed(Duration(milliseconds: 100), () {
-                                          _calculateHeaderHeight();
+                                          Future.delayed(Duration(milliseconds: 250), () {
+                                            _calculateHeaderHeight();
+                                          });
                                         });
-                                        Future.delayed(Duration(milliseconds: 250), () {
-                                          _calculateHeaderHeight();
-                                        });
-                                      });
 
-                                      // Ocultar o card se não houver refeições registradas no dia
-                                      if (mealsProvider.todayMeals.isEmpty) {
-                                        return SizedBox.shrink();
-                                      }
+                                        // Ocultar o card se não houver refeições registradas no dia
+                                        if (mealsProvider.todayMeals.isEmpty) {
+                                          return SizedBox.shrink();
+                                        }
 
-                                      return NutritionCard(
-                                        caloriesConsumed: mealsProvider.totalCalories,
-                                        caloriesGoal: nutritionProvider.caloriesGoal,
-                                        proteinConsumed: mealsProvider.totalProtein.toInt(),
-                                        proteinGoal: nutritionProvider.proteinGoal,
-                                        carbsConsumed: mealsProvider.totalCarbs.toInt(),
-                                        carbsGoal: nutritionProvider.carbsGoal,
-                                        fatsConsumed: mealsProvider.totalFat.toInt(),
-                                        fatsGoal: nutritionProvider.fatGoal,
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => const DailyMealsScreen(),
-                                            ),
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
-                                ],
+                                        return NutritionCard(
+                                          caloriesConsumed: mealsProvider.totalCalories,
+                                          caloriesGoal: nutritionProvider.caloriesGoal,
+                                          proteinConsumed: mealsProvider.totalProtein.toInt(),
+                                          proteinGoal: nutritionProvider.proteinGoal,
+                                          carbsConsumed: mealsProvider.totalCarbs.toInt(),
+                                          carbsGoal: nutritionProvider.carbsGoal,
+                                          fatsConsumed: mealsProvider.totalFat.toInt(),
+                                          fatsGoal: nutritionProvider.fatGoal,
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => const DailyMealsScreen(),
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
 
                   // Lista de mensagens
                   Expanded(

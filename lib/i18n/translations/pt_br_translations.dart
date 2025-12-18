@@ -263,7 +263,8 @@ final Map<String, String> ptBRTranslations = {
   'restart': 'Reiniciar',
   'reset_conversation_tooltip': 'Reiniciar conversa',
   'start_question': 'O que você comeu hoje?',
-  'start_question_subtitle': 'Eu calculo as calorias e os nutrientes para você.',
+  'start_question_subtitle':
+      'Eu calculo as calorias e os nutrientes para você.',
   'you': 'Você',
   'thinking': 'Pensando...',
   'copy_response': 'Copiar resposta',
@@ -695,7 +696,8 @@ final Map<String, String> ptBRTranslations = {
   'chemistry_hint': 'Tire uma foto de um problema de química',
   'history_hint': 'Tire uma foto de uma questão de história',
   'ai_macros': 'Macros com IA',
-  'ai_macros_hint': 'Os alimentos devem estar bem iluminados e dentro do enquadramento',
+  'ai_macros_hint':
+      'Os alimentos devem estar bem iluminados e dentro do enquadramento',
   'barcode': 'Código de Barras',
   'barcode_hint': 'Escaneie o código de barras do produto',
 
@@ -875,7 +877,8 @@ final Map<String, String> ptBRTranslations = {
   'body_fat_percentage': 'Percentual de Gordura',
   'not_informed': 'Não informado',
   'body_fat_percentage_full': 'Percentual de Gordura Corporal',
-  'katch_mcardle_description': 'A fórmula Katch-McArdle requer o percentual de gordura corporal para um cálculo mais preciso.',
+  'katch_mcardle_description':
+      'A fórmula Katch-McArdle requer o percentual de gordura corporal para um cálculo mais preciso.',
   'body_fat_percentage_label': 'Percentual de Gordura (%)',
   'body_fat_example': 'Ex: 20',
   'body_fat_range': 'Entre 5% e 50%',
@@ -971,7 +974,8 @@ final Map<String, String> ptBRTranslations = {
   'profile_goal': 'Objetivo',
   'profile_daily_target': 'Meta Diária',
   'profile_daily_macro_goals': 'Metas Diárias de Macros',
-  'profile_auto_calculated_description': 'Calculado automaticamente com base em seus objetivos, ou definir manualmente.',
+  'profile_auto_calculated_description':
+      'Calculado automaticamente com base em seus objetivos, ou definir manualmente.',
   'profile_daily_calories_consumed': 'Calorias consumidas diariamente',
   'profile_7_days': '7 dias',
   'profile_30_days': '30 dias',
@@ -998,7 +1002,8 @@ final Map<String, String> ptBRTranslations = {
   'delete_meal': 'Excluir Refeição',
   'delete_meal_confirmation': 'Tem certeza que deseja excluir "{mealName}"?',
   'changes_saved_successfully': 'Mudanças salvas com sucesso!',
-  'restore_default_confirmation': 'Deseja restaurar as refeições padrão? Isso irá remover todas as suas personalizações.',
+  'restore_default_confirmation':
+      'Deseja restaurar as refeições padrão? Isso irá remover todas as suas personalizações.',
   'restore': 'Restaurar',
   'select_emoji': 'Selecione um Emoji',
 
@@ -1023,4 +1028,19 @@ final Map<String, String> ptBRTranslations = {
   'foods_added': 'Alimentos Adicionados',
   'add_to_day': 'Adicionar ao Dia',
   'foods_added_successfully': 'Alimentos adicionados com sucesso!',
+
+  // Drawer e conversas livres
+  'new_free_chat': 'Nova conversa livre',
+  'conversations': 'Conversas',
+  'no_conversations': 'Nenhuma conversa ainda',
+  'days_ago': 'dias atrás',
+  'delete_conversation': 'Excluir conversa',
+  'delete_conversation_confirm':
+      'Tem certeza que deseja excluir a conversa "{title}"?',
+  'free_chat': 'Conversa Livre',
+
+  // Edição de alimentos
+  'edit_food': 'Editar Alimento',
+  'food_name': 'Nome do Alimento',
+  'amount': 'Quantidade',
 };

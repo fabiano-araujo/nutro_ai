@@ -587,4 +587,13 @@ final Map<String, String> esESTranslations = {
   'vitamin_c': 'Vitamina C',
   'vitamin_b6': 'Vitamina B6',
   'vitamin_b12': 'Vitamina B12',
+
+  // Drawer y conversaciones libres
+  'new_free_chat': 'Nueva conversación libre',
+  'conversations': 'Conversaciones',
+  'no_conversations': 'No hay conversaciones aún',
+  'days_ago': 'días atrás',
+  'delete_conversation': 'Eliminar conversación',
+  'delete_conversation_confirm': '¿Estás seguro de que quieres eliminar la conversación "{title}"?',
+  'free_chat': 'Chat Libre',
 };

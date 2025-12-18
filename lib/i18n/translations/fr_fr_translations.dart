@@ -411,4 +411,13 @@ final Map<String, String> frFRTranslations = {
   'dinner': 'Dîner',
   'snack': 'Collation',
   'free_meal': 'Repas Libre',
+
+  // Tiroir et conversations libres
+  'new_free_chat': 'Nouvelle conversation libre',
+  'conversations': 'Conversations',
+  'no_conversations': 'Aucune conversation pour le moment',
+  'days_ago': 'jours passés',
+  'delete_conversation': 'Supprimer la conversation',
+  'delete_conversation_confirm': 'Êtes-vous sûr de vouloir supprimer la conversation "{title}"?',
+  'free_chat': 'Chat Libre',
 };

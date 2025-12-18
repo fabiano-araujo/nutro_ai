@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../services/auth_service.dart';
 
 class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
   final DateTime? selectedDate;
   final VoidCallback? onSearchPressed;
+  final VoidCallback? onOpenDrawer; // Callback para abrir o drawer
+  final VoidCallback? onNavigateToProfile; // Callback para navegar ao perfil
   final bool showCalendar; // Controla se mostra o calendário semanal
   final bool showAppBar; // Controla se mostra o AppBar
+  final bool isFreeChat; // Indica se está no modo conversa livre
 
   const WeeklyCalendar({
     Key? key,
     this.onDaySelected,
     this.selectedDate,
     this.onSearchPressed,
+    this.onOpenDrawer,
+    this.onNavigateToProfile,
     this.showCalendar = true, // Por padrão mostra o calendário
     this.showAppBar = true, // Por padrão mostra o AppBar
+    this.isFreeChat = false, // Por padrão não é conversa livre
   }) : super(key: key);
 
   @override
@@ -155,20 +163,44 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     return Container(
       height: 56,
       color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      padding: EdgeInsets.symmetric(horizontal: 8),
+      padding: EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: [
-          // Botão "Hoje" (só aparece quando não está no dia atual)
-          SizedBox(
-            width: 90,
-            child: !isToday
-                ? Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: InkWell(
+          // Botão do menu (drawer) à esquerda
+          if (widget.onOpenDrawer != null)
+            IconButton(
+              icon: Icon(
+                Icons.menu,
+                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+              ),
+              onPressed: widget.onOpenDrawer,
+              tooltip: 'Menu',
+            ),
+
+          // Se estiver no modo conversa livre, mostrar título diferente
+          if (widget.isFreeChat) ...[
+            Expanded(
+              child: Center(
+                child: Text(
+                  context.tr.translate('free_chat'),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+            ),
+          ] else ...[
+            // Botão "Hoje" (só aparece quando não está no dia atual)
+            SizedBox(
+              width: 70,
+              child: !isToday
+                  ? InkWell(
                       onTap: _goToToday,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: Theme.of(context).primaryColor.withAlpha(38),
                           borderRadius: BorderRadius.circular(12),
@@ -181,64 +213,103 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                               context.tr.translate('today'),
                               style: TextStyle(
                                 color: Theme.of(context).primaryColor,
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            SizedBox(width: 4),
+                            SizedBox(width: 2),
                             Icon(
                               Icons.arrow_forward_ios,
-                              size: 12,
+                              size: 10,
                               color: Theme.of(context).primaryColor,
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  )
-                : SizedBox.shrink(),
-          ),
+                    )
+                  : SizedBox.shrink(),
+            ),
 
-          // Título centralizado (data selecionada)
-          Expanded(
-            child: Center(
-              child: InkWell(
-                onTap: _showDatePicker,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Text(
-                    _formatDateTitle(context),
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+            // Título centralizado (data selecionada)
+            Expanded(
+              child: Center(
+                child: InkWell(
+                  onTap: _showDatePicker,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Text(
+                      _formatDateTitle(context),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
 
-          // Ícone à direita (pesquisa)
-          SizedBox(
-            width: 50,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (widget.onSearchPressed != null)
-                  IconButton(
-                    icon: Icon(
-                      Icons.search,
-                      color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                    ),
-                    tooltip: 'Pesquisar alimentos',
-                    onPressed: widget.onSearchPressed,
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
+          // Ícones à direita (pesquisa e foto do perfil)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onSearchPressed != null && !widget.isFreeChat)
+                IconButton(
+                  icon: Icon(
+                    Icons.search,
+                    color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                   ),
-              ],
-            ),
+                  tooltip: 'Pesquisar alimentos',
+                  onPressed: widget.onSearchPressed,
+                ),
+
+              // Foto do perfil
+              if (widget.onNavigateToProfile != null)
+                Consumer<AuthService>(
+                  builder: (context, authService, child) {
+                    final hasPhoto = authService.currentUser?.photo != null &&
+                                    authService.currentUser!.photo!.isNotEmpty;
+
+                    return GestureDetector(
+                      onTap: widget.onNavigateToProfile,
+                      child: Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDarkMode ? Colors.white38 : Colors.grey.shade300,
+                              width: 2,
+                            ),
+                          ),
+                          child: hasPhoto
+                              ? CircleAvatar(
+                                  radius: 16,
+                                  backgroundImage: NetworkImage(authService.currentUser!.photo!),
+                                  backgroundColor: Colors.transparent,
+                                )
+                              : CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: isDarkMode
+                                      ? Colors.grey.shade800
+                                      : Colors.grey.shade200,
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 20,
+                                    color: isDarkMode ? Colors.white54 : Colors.grey,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
         ],
       ),

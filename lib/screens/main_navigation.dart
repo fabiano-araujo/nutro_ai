@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import 'ai_tutor_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
-import 'personalized_diet_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
+import '../i18n/app_localizations_extension.dart';
+import '../providers/free_chat_provider.dart';
 
-// Controlador global para gerenciar a navegau00e7u00e3o entre abas
+// Controlador global para gerenciar a navegação entre abas
 class NavigationController {
   static final NavigationController _instance =
       NavigationController._internal();
@@ -53,34 +55,22 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _currentIndex = 0;
-  int _previousIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Chave para reiniciar o AITutorScreen
+  Key _aiTutorKey = UniqueKey();
+
+  // Modo atual: 'diet' para dieta (com JSON), 'free_chat' para conversa livre
+  String _currentMode = 'diet';
+
+  // ID da conversa livre atual (null = nova conversa)
+  String? _currentFreeChatId;
 
   @override
   void initState() {
     super.initState();
-    // Registrar callback para mudanu00e7a de aba
-    navigationController.tabChangeCallback = (index) {
-      // Verificar se o usuário está saindo da tela de AITutor (índice 0)
-      // Esta verificação é crucial para saber quando mostrar o anúncio intersticial
-      bool leavingAITutor = _currentIndex == 0 && index != 0;
 
-      // Atualizar índices
-      setState(() {
-        _previousIndex = _currentIndex;
-        _currentIndex = index;
-      });
-
-      // Se saiu da tela do AITutor, acionar o método para mostrar anúncio
-      // Este é o ponto chave para simular o comportamento de deactivate()
-      // que não é chamado automaticamente pelo IndexedStack
-      if (leavingAITutor) {
-        // Chamar o método estático para notificar AITutorScreen
-        AITutorScreen.handleTabExit();
-      }
-    };
-
-    // Verificar se deve mostrar o diu00e1logo de avaliau00e7u00e3o
+    // Verificar se deve mostrar o diálogo de avaliação
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Aguardar um pouco para que o app seja carregado completamente
       Future.delayed(Duration(seconds: 2), () {
@@ -89,119 +79,277 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  final List<Widget> _screens = [
-    AITutorScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
-    PersonalizedDietScreen(), // Dieta Personalizada - SEGUNDA ABA
-    ProfileTabWrapper(), // Perfil/Login - TERCEIRA ABA
-  ];
+  void _openDrawer() {
+    _scaffoldKey.currentState?.openDrawer();
+  }
 
-  // Método para construir o ícone de perfil
-  Widget _buildProfileIcon(AuthService authService, bool isSelected, bool isDarkMode) {
-    final hasPhoto = authService.currentUser?.photo != null &&
-                      authService.currentUser!.photo!.isNotEmpty;
+  void _navigateToProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProfileTabWrapper(),
+      ),
+    );
+  }
 
-    if (hasPhoto) {
-      return Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected
-                ? (isDarkMode ? Colors.white : Colors.black)
-                : (isDarkMode ? Colors.grey[600]! : Colors.grey[700]!),
-            width: isSelected ? 2.5 : 2,
-          ),
-        ),
-        child: CircleAvatar(
-          radius: 13,
-          backgroundImage: NetworkImage(authService.currentUser!.photo!),
-          backgroundColor: Colors.transparent,
-        ),
-      );
-    } else {
-      return Icon(
-        isSelected ? Icons.person : Icons.person_outline,
-        size: 26,
-      );
-    }
+  void _startNewFreeChat() {
+    Navigator.pop(context); // Fechar drawer
+    setState(() {
+      _currentMode = 'free_chat';
+      _currentFreeChatId = null;
+      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
+    });
+  }
+
+  void _switchToDiet() {
+    Navigator.pop(context); // Fechar drawer
+    setState(() {
+      _currentMode = 'diet';
+      _currentFreeChatId = null;
+      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
+    });
+  }
+
+  void _openFreeChat(String chatId, String title) {
+    Navigator.pop(context); // Fechar drawer
+    setState(() {
+      _currentMode = 'free_chat';
+      _currentFreeChatId = chatId;
+      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Definir cores para ícones selecionados e não selecionados
-    final selectedIconColor = isDarkMode ? Colors.white : Colors.black;
-    final unselectedIconColor =
-        isDarkMode ? Colors.grey[600] : Colors.grey[700];
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildDrawer(isDarkMode),
+      body: AITutorScreen(
+        key: _aiTutorKey,
+        isFreeChat: _currentMode == 'free_chat',
+        freeChatId: _currentFreeChatId,
+        onOpenDrawer: _openDrawer,
+        onNavigateToProfile: _navigateToProfile,
+      ),
+    );
+  }
 
-    return WillPopScope(
-      onWillPop: () async {
-        // Se não estiver na primeira aba (AI Tutor)
-        if (_currentIndex != 0) {
-          // Se estiver saindo da aba do AITutor para outra, acionar o método
-          // Mesmo padrão de verificação usado no callback de mudança de aba
-          bool leavingAITutor = _currentIndex == 0;
+  Widget _buildDrawer(bool isDarkMode) {
+    return Drawer(
+      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header do Drawer
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.restaurant_menu,
+                    color: Theme.of(context).primaryColor,
+                    size: 32,
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Nutro IA',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-          // Voltar para a primeira aba
-          setState(() {
-            _previousIndex = _currentIndex;
-            _currentIndex = 0;
-          });
+            Divider(height: 1),
 
-          // Se saiu da tela do AITutor, acionar o método para mostrar anúncio
-          // Esta lógica garante que o anúncio também apareça quando o usuário
-          // usa o botão de voltar para sair da aba AITutor
-          if (leavingAITutor) {
-            AITutorScreen.handleTabExit();
-          }
+            // Nova conversa livre
+            ListTile(
+              leading: Icon(
+                Icons.add_comment_outlined,
+                color: isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
+              ),
+              title: Text(
+                context.tr.translate('new_free_chat'),
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: _startNewFreeChat,
+            ),
 
-          // Previne o comportamento padrão do botão voltar
-          return false;
-        }
-        // Se já estiver na primeira aba, permite o comportamento padrão do botão voltar
-        return true;
-      },
-      child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
+            // Dieta
+            ListTile(
+              leading: Icon(
+                Icons.restaurant_menu,
+                color: _currentMode == 'diet'
+                    ? Theme.of(context).primaryColor
+                    : isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
+              ),
+              title: Text(
+                context.tr.translate('diet'),
+                style: TextStyle(
+                  color: _currentMode == 'diet'
+                      ? Theme.of(context).primaryColor
+                      : isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  fontWeight: _currentMode == 'diet' ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+              selected: _currentMode == 'diet',
+              selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              onTap: _switchToDiet,
+            ),
+
+            SizedBox(height: 16),
+
+            // Subtítulo Conversas
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                context.tr.translate('conversations'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+
+            // Lista de conversas livres
+            Expanded(
+              child: Consumer<FreeChatProvider>(
+                builder: (context, freeChatProvider, child) {
+                  final conversations = freeChatProvider.conversations;
+
+                  if (conversations.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text(
+                          context.tr.translate('no_conversations'),
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white38 : Colors.grey,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: conversations.length,
+                    itemBuilder: (context, index) {
+                      final chat = conversations[index];
+                      final isSelected = _currentMode == 'free_chat' &&
+                                        _currentFreeChatId == chat.id;
+
+                      return ListTile(
+                        leading: Icon(
+                          Icons.chat_bubble_outline,
+                          size: 20,
+                          color: isSelected
+                              ? Theme.of(context).primaryColor
+                              : isDarkMode ? Colors.white54 : Colors.grey,
+                        ),
+                        title: Text(
+                          chat.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isSelected
+                                ? Theme.of(context).primaryColor
+                                : isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _formatDate(chat.lastUpdated),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode ? Colors.white38 : Colors.grey,
+                          ),
+                        ),
+                        selected: isSelected,
+                        selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                        onTap: () => _openFreeChat(chat.id, chat.title),
+                        trailing: IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: isDarkMode ? Colors.white38 : Colors.grey,
+                          ),
+                          onPressed: () {
+                            _showDeleteConfirmation(chat.id, chat.title, freeChatProvider);
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-        bottomNavigationBar: Consumer<AuthService>(
-          builder: (context, authService, child) {
-            return BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                navigationController.changeTab(index);
-              },
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              elevation: 0,
-              type: BottomNavigationBarType.fixed,
-              showSelectedLabels: false,
-              showUnselectedLabels: false,
-              selectedItemColor: selectedIconColor,
-              unselectedItemColor: unselectedIconColor,
-              items: [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_bubble_outline),
-                  activeIcon: Icon(Icons.chat_bubble),
-                  label: '',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.restaurant_menu_outlined),
-                  activeIcon: Icon(Icons.restaurant_menu),
-                  label: '',
-                ),
-                BottomNavigationBarItem(
-                  icon: _buildProfileIcon(authService, false, isDarkMode),
-                  activeIcon: _buildProfileIcon(authService, true, isDarkMode),
-                  label: '',
-                ),
-              ],
-            );
-          },
-        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return context.tr.translate('today');
+    } else if (difference.inDays == 1) {
+      return context.tr.translate('yesterday');
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ${context.tr.translate('days_ago')}';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  void _showDeleteConfirmation(String chatId, String title, FreeChatProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.tr.translate('delete_conversation')),
+        content: Text(context.tr.translate('delete_conversation_confirm').replaceAll('{title}', title)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.tr.translate('cancel')),
+          ),
+          TextButton(
+            onPressed: () {
+              provider.deleteConversation(chatId);
+              Navigator.pop(context);
+
+              // Se estava vendo essa conversa, voltar para dieta
+              if (_currentFreeChatId == chatId) {
+                setState(() {
+                  _currentMode = 'diet';
+                  _currentFreeChatId = null;
+                  _aiTutorKey = UniqueKey();
+                });
+              }
+            },
+            child: Text(
+              context.tr.translate('delete'),
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
       ),
     );
   }

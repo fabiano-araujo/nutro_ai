@@ -692,7 +692,8 @@ final Map<String, String> enUSTranslations = {
   'body_fat_percentage': 'Body Fat Percentage',
   'not_informed': 'Not informed',
   'body_fat_percentage_full': 'Body Fat Percentage',
-  'katch_mcardle_description': 'The Katch-McArdle formula requires body fat percentage for a more accurate calculation.',
+  'katch_mcardle_description':
+      'The Katch-McArdle formula requires body fat percentage for a more accurate calculation.',
   'body_fat_percentage_label': 'Body Fat Percentage (%)',
   'body_fat_example': 'E.g.: 20',
   'body_fat_range': 'Between 5% and 50%',
@@ -788,7 +789,8 @@ final Map<String, String> enUSTranslations = {
   'profile_goal': 'Goal',
   'profile_daily_target': 'Daily Target',
   'profile_daily_macro_goals': 'Daily Macro Goals',
-  'profile_auto_calculated_description': 'Automatically calculated based on your goals, or set manually.',
+  'profile_auto_calculated_description':
+      'Automatically calculated based on your goals, or set manually.',
   'profile_daily_calories_consumed': 'Daily calories consumed',
   'profile_7_days': '7 days',
   'profile_30_days': '30 days',
@@ -815,7 +817,8 @@ final Map<String, String> enUSTranslations = {
   'delete_meal': 'Delete Meal',
   'delete_meal_confirmation': 'Are you sure you want to delete "{mealName}"?',
   'changes_saved_successfully': 'Changes saved successfully!',
-  'restore_default_confirmation': 'Do you want to restore default meals? This will remove all your customizations.',
+  'restore_default_confirmation':
+      'Do you want to restore default meals? This will remove all your customizations.',
   'restore': 'Restore',
   'select_emoji': 'Select an Emoji',
 
@@ -834,4 +837,19 @@ final Map<String, String> enUSTranslations = {
   'goal_desc_maintain_weight': 'Do not change calorie requirements',
   'goal_desc_gain_weight_slowly': 'Increase calorie requirements by 10%',
   'goal_desc_gain_weight': 'Increase calorie requirements by 20%',
+
+  // Drawer and free conversations
+  'new_free_chat': 'New free conversation',
+  'conversations': 'Conversations',
+  'no_conversations': 'No conversations yet',
+  'days_ago': 'days ago',
+  'delete_conversation': 'Delete conversation',
+  'delete_conversation_confirm':
+      'Are you sure you want to delete the conversation "{title}"?',
+  'free_chat': 'Free Chat',
+
+  // Food editing
+  'edit_food': 'Edit Food',
+  'food_name': 'Food Name',
+  'amount': 'Amount',
 };

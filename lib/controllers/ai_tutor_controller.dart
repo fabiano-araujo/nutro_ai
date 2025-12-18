@@ -99,7 +99,8 @@ class AITutorController with ChangeNotifier {
   }) {
     // Inicializar a data selecionada
     if (initialDate != null) {
-      _selectedDate = DateTime(initialDate.year, initialDate.month, initialDate.day);
+      _selectedDate =
+          DateTime(initialDate.year, initialDate.month, initialDate.day);
     }
 
     print(
@@ -212,7 +213,8 @@ class AITutorController with ChangeNotifier {
       print(
           '🤷 AITutorController: Nenhuma mensagem inicial, nenhum ID de conversa, e showWelcomeMessage é false.');
       // Carregar mensagens da data inicial (se houver)
-      print('📅 AITutorController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
+      print(
+          '📅 AITutorController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
       _loadMessagesForDate(_selectedDate);
       // notifyListeners será chamado por _loadMessagesForDate após o carregamento
     }
@@ -577,9 +579,8 @@ class AITutorController with ChangeNotifier {
 
       // Montar o prompt com contexto da conversa e mensagem do usuário
       // O system prompt de nutrição agora vem da API através do agentType='nutrition'
-      final prompt = contextPrompt.isNotEmpty
-          ? "$contextPrompt\n\n$message"
-          : message;
+      final prompt =
+          contextPrompt.isNotEmpty ? "$contextPrompt\n\n$message" : message;
 
       // Obter o controlador de idioma
       final languageController =
@@ -595,6 +596,12 @@ class AITutorController with ChangeNotifier {
       // Usar provider Hyperbolic para o agent nutricional
       String provider = 'Hyperbolic';
       print('🔌 Usando provider Hyperbolic para o agent nutricional');
+
+      // Determinar o agentType baseado no toolType
+      // free_chat usa o agent 'free-nutrition' que não retorna JSON formatado
+      String agentType =
+          toolType == 'free_chat' ? 'free-nutrition' : 'nutrition';
+      print('🤖 Usando agentType: $agentType para toolType: $toolType');
 
       // Obter o usuário logado para pegar o ID
       final authService = Provider.of<AuthService>(context, listen: false);
@@ -616,7 +623,7 @@ class AITutorController with ChangeNotifier {
           languageCode: languageCode,
           quality: quality, // Usar a qualidade determinada pelo toolType
           userId: userId, // Passando o ID do usuário logado
-          agentType: 'nutrition', // Usando o agent de nutrição
+          agentType: agentType, // Usando o agent determinado pelo toolType
           provider: provider // Usando o provider Hyperbolic
           );
 
@@ -705,11 +712,14 @@ class AITutorController with ChangeNotifier {
       }
 
       // Para imagens, usar modelo específico e agent free-image
-      String quality = 'google/gemma-3-27b-it'; // Modelo específico para análise de imagem
-      String agentType = 'free-image'; // Agent especializado em análise de imagem
+      String quality =
+          'google/gemma-3-27b-it'; // Modelo específico para análise de imagem
+      String agentType =
+          'free-image'; // Agent especializado em análise de imagem
       String provider = 'Hyperbolic'; // Provider para análise de imagem
 
-      print('📸 Usando modelo $quality com agent $agentType via provider $provider para análise de imagem');
+      print(
+          '📸 Usando modelo $quality com agent $agentType via provider $provider para análise de imagem');
 
       // Obter o stream da IA para imagem
       final stream = _aiService.processImageStream(imageBytes, prompt,
@@ -1567,7 +1577,8 @@ class AITutorController with ChangeNotifier {
 
   /// Muda a data selecionada e carrega as mensagens dessa data
   Future<void> changeSelectedDate(DateTime newDate) async {
-    print('📅 AITutorController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
+    print(
+        '📅 AITutorController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
 
     // Salvar mensagens da data atual antes de mudar
     await _saveMessagesForCurrentDate();
@@ -1584,7 +1595,8 @@ class AITutorController with ChangeNotifier {
   /// Salva as mensagens da data atual
   Future<void> _saveMessagesForCurrentDate() async {
     if (_messages.isEmpty) {
-      print('💾 AITutorController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
+      print(
+          '💾 AITutorController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
       return;
     }
 
@@ -1596,7 +1608,8 @@ class AITutorController with ChangeNotifier {
       final messagesData = _messages.map((msg) {
         final data = <String, dynamic>{
           'isUser': msg['isUser'],
-          'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toString(),
+          'timestamp':
+              msg['timestamp']?.toString() ?? DateTime.now().toString(),
         };
 
         if (msg.containsKey('message')) {
@@ -1624,9 +1637,11 @@ class AITutorController with ChangeNotifier {
       }).toList();
 
       await _storageService.saveData(storageKey, {'messages': messagesData});
-      print('✅ AITutorController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
+      print(
+          '✅ AITutorController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
     } catch (e) {
-      print('❌ AITutorController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
+      print(
+          '❌ AITutorController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
     }
   }
 
@@ -1639,7 +1654,8 @@ class AITutorController with ChangeNotifier {
       final data = await _storageService.getData(storageKey);
 
       if (data == null || data.isEmpty) {
-        print('📭 AITutorController - Nenhuma mensagem encontrada para data $dateKey');
+        print(
+            '📭 AITutorController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
         notifyListeners();
         return;
@@ -1665,10 +1681,12 @@ class AITutorController with ChangeNotifier {
         return msg;
       }).toList();
 
-      print('✅ AITutorController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
+      print(
+          '✅ AITutorController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
       notifyListeners();
     } catch (e) {
-      print('❌ AITutorController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
+      print(
+          '❌ AITutorController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
       _messages = [];
       notifyListeners();
     }

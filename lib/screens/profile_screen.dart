@@ -384,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icon(
                               Icons.local_fire_department,
                               size: 20,
-                              color: Colors.orange,
+                              color: Colors.orange.withValues(alpha: 0.55),
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -401,7 +401,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           '${dailyCalories.toStringAsFixed(0)} kcal',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange,
+                            color: Colors.orange.withValues(alpha: 0.55),
                           ),
                         ),
                       ],

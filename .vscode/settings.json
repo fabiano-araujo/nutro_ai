@@ -1,5 +1,8 @@
 {
     "java.project.sourcePaths": [
         "lib"
-    ]
+    ],
+    "claudeCode.allowDangerouslySkipPermissions": true,
+    "claudeCode.selectedModel": "claude-opus-4-5-20251101",
+    "claudeCode.respectGitIgnore": false
 }
