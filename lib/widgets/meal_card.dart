@@ -61,70 +61,6 @@ class _MealCardState extends State<MealCard> {
     widget.onMealUpdated?.call(_currentMeal);
   }
 
-  /// Atualiza os macros de um alimento proporcionalmente à nova quantidade
-  void _updateFoodAmount(int index, String newAmount) {
-    final food = _currentMeal.foods[index];
-    final oldAmount = food.amount ?? '100g';
-
-    // Extrair valor numérico da quantidade antiga e nova
-    final oldValue = _extractNumericValue(oldAmount);
-    final newValue = _extractNumericValue(newAmount);
-
-    if (oldValue <= 0 || newValue <= 0) {
-      // Se não conseguir extrair, apenas atualiza o texto
-      _updateFoodSimple(index, food.name, newAmount);
-      return;
-    }
-
-    // Calcular fator de proporção
-    final ratio = newValue / oldValue;
-
-    // Atualizar nutrientes proporcionalmente
-    final oldNutrient = food.nutrients?.first;
-    if (oldNutrient != null) {
-      final newNutrient = oldNutrient.copyWith(
-        servingSize: newValue,
-        calories: (oldNutrient.calories ?? 0) * ratio,
-        protein: (oldNutrient.protein ?? 0) * ratio,
-        carbohydrate: (oldNutrient.carbohydrate ?? 0) * ratio,
-        fat: (oldNutrient.fat ?? 0) * ratio,
-        saturatedFat: oldNutrient.saturatedFat != null ? oldNutrient.saturatedFat! * ratio : null,
-        transFat: oldNutrient.transFat != null ? oldNutrient.transFat! * ratio : null,
-        cholesterol: oldNutrient.cholesterol != null ? oldNutrient.cholesterol! * ratio : null,
-        sodium: oldNutrient.sodium != null ? oldNutrient.sodium! * ratio : null,
-        potassium: oldNutrient.potassium != null ? oldNutrient.potassium! * ratio : null,
-        dietaryFiber: oldNutrient.dietaryFiber != null ? oldNutrient.dietaryFiber! * ratio : null,
-        sugars: oldNutrient.sugars != null ? oldNutrient.sugars! * ratio : null,
-        calcium: oldNutrient.calcium != null ? oldNutrient.calcium! * ratio : null,
-        iron: oldNutrient.iron != null ? oldNutrient.iron! * ratio : null,
-      );
-
-      final updatedFood = food.copyWith(
-        amount: newAmount,
-        nutrients: [newNutrient],
-      );
-
-      setState(() {
-        final List<Food> updatedFoods = List.from(_currentMeal.foods);
-        updatedFoods[index] = updatedFood;
-        _currentMeal = _currentMeal.copyWith(foods: updatedFoods);
-      });
-
-      _notifyMealUpdated();
-    } else {
-      _updateFoodSimple(index, food.name, newAmount);
-    }
-  }
-
-  /// Extrai valor numérico de uma string de quantidade (ex: "150g" -> 150)
-  double _extractNumericValue(String amount) {
-    final match = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(amount);
-    if (match != null) {
-      return double.tryParse(match.group(1)!.replaceAll(',', '.')) ?? 0;
-    }
-    return 0;
-  }
-
   /// Atualiza apenas nome e quantidade sem recalcular macros
   void _updateFoodSimple(int index, String name, String amount) {
     setState(() {
@@ -139,8 +75,8 @@ class _MealCardState extends State<MealCard> {
     _notifyMealUpdated();
   }
 
-  /// Busca informações nutricionais da IA para um alimento
-  Future<void> _fetchNutritionFromAI(int index, String foodName, String amount) async {
+  /// Busca informações nutricionais da IA para um alimento a partir de sua descrição
+  Future<void> _fetchNutritionFromAI(int index, String foodDescription) async {
     setState(() {
       _loadingFoods[index] = true;
     });
@@ -148,16 +84,20 @@ class _MealCardState extends State<MealCard> {
     try {
       final aiService = AIService();
       final authService = Provider.of<AuthService>(context, listen: false);
-      final languageController = Provider.of<LanguageController>(context, listen: false);
+      final languageController =
+          Provider.of<LanguageController>(context, listen: false);
 
       final userId = authService.currentUser?.id.toString() ?? '';
-      final languageCode = languageController.localeToString(languageController.currentLocale);
+      final languageCode =
+          languageController.localeToString(languageController.currentLocale);
 
-      // Prompt específico para obter macros de um alimento
+      // Prompt para interpretar a descrição livre do alimento
       final prompt = '''
-Retorne APENAS um JSON com as informações nutricionais de "$foodName" na quantidade "$amount".
+Analise o seguinte alimento: "$foodDescription".
+Retorne APENAS um JSON com as informações nutricionais.
+Identifique o nome do alimento e a quantidade/porção a partir do texto.
 Formato exato:
-{"foods":[{"name":"$foodName","portion":"$amount","macros":{"calories":0,"protein":0,"carbohydrate":0,"fat":0,"serving_size":0,"serving_unit":"g"}}]}
+{"foods":[{"name":"Nome identificado","portion":"Quantidade identificada","macros":{"calories":0,"protein":0,"carbohydrate":0,"fat":0,"serving_size":0,"serving_unit":"g"}}]}
 Não inclua texto adicional, apenas o JSON.
 ''';
 
@@ -174,7 +114,8 @@ Não inclua texto adicional, apenas o JSON.
       }
 
       // Tentar parsear o JSON da resposta
-      final jsonMatch = RegExp(r'\{[\s\S]*"foods"[\s\S]*\}').firstMatch(fullResponse);
+      final jsonMatch =
+          RegExp(r'\{[\s\S]*"foods"[\s\S]*\}').firstMatch(fullResponse);
       if (jsonMatch != null) {
         final jsonStr = jsonMatch.group(0)!;
         final decoded = jsonDecode(jsonStr);
@@ -184,15 +125,19 @@ Não inclua texto adicional, apenas o JSON.
           if (foodsList.isNotEmpty) {
             final foodData = foodsList.first as Map<String, dynamic>;
             final macros = foodData['macros'] as Map<String, dynamic>?;
+            final detectedName = foodData['name'] as String? ?? foodDescription;
+            final detectedPortion = foodData['portion'] as String? ?? '';
 
             if (macros != null) {
               final newNutrient = Nutrient(
                 idFood: 0,
-                servingSize: _parseDouble(macros['serving_size']) ?? _extractNumericValue(amount),
+                servingSize: _parseDouble(macros['serving_size']) ??
+                    100, // Default fallback
                 servingUnit: macros['serving_unit'] as String? ?? 'g',
                 calories: _parseDouble(macros['calories']),
                 protein: _parseDouble(macros['protein']),
-                carbohydrate: _parseDouble(macros['carbohydrate'] ?? macros['carbs']),
+                carbohydrate:
+                    _parseDouble(macros['carbohydrate'] ?? macros['carbs']),
                 fat: _parseDouble(macros['fat']),
                 saturatedFat: _parseDouble(macros['saturated_fat']),
                 transFat: _parseDouble(macros['trans_fat']),
@@ -206,9 +151,9 @@ Não inclua texto adicional, apenas o JSON.
               );
 
               final updatedFood = _currentMeal.foods[index].copyWith(
-                name: foodName,
-                amount: amount,
-                emoji: _getFoodEmoji(foodName),
+                name: detectedName,
+                amount: detectedPortion,
+                emoji: _getFoodEmoji(detectedName),
                 nutrients: [newNutrient],
               );
 
@@ -226,15 +171,22 @@ Não inclua texto adicional, apenas o JSON.
         }
       }
 
-      // Se não conseguiu parsear, apenas atualiza o nome
-      _updateFoodSimple(index, foodName, amount);
+      // Se falhar, reverte para o texto original sem macros
+      _updateFoodSimple(
+          index,
+          foodDescription.split(' ').length > 1
+              ? foodDescription.split(' ').sublist(1).join(' ')
+              : foodDescription,
+          foodDescription.split(' ')[0]);
     } catch (e) {
       print('Erro ao buscar nutrição da IA: $e');
-      _updateFoodSimple(index, foodName, amount);
+      // Em erro, apenas mantemos o loading false
     } finally {
-      setState(() {
-        _loadingFoods[index] = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loadingFoods[index] = false;
+        });
+      }
     }
   }
 
@@ -264,10 +216,9 @@ Não inclua texto adicional, apenas o JSON.
   /// Mostra o diálogo de edição para um alimento específico
   Future<void> _showEditFoodDialog(int index) async {
     final food = _currentMeal.foods[index];
-    final nameController = TextEditingController(text: food.name);
-    final amountController = TextEditingController(text: food.amount ?? '');
-    final originalName = food.name;
-    final originalAmount = food.amount ?? '';
+    // Combinar quantidade e nome para edição única (ex: "150g Arroz branco")
+    final initialText = '${food.amount ?? ''} ${food.name}'.trim();
+    final descriptionController = TextEditingController(text: initialText);
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -290,7 +241,9 @@ Não inclua texto adicional, apenas o JSON.
                 child: Text(
                   context.tr.translate('edit_food'),
                   style: TextStyle(
-                    color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                    color: isDarkMode
+                        ? AppTheme.darkTextColor
+                        : AppTheme.textPrimaryColor,
                     fontSize: 18,
                   ),
                 ),
@@ -300,66 +253,30 @@ Não inclua texto adicional, apenas o JSON.
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Campo de nome
+              // Campo único de descrição
               TextField(
-                controller: nameController,
+                controller: descriptionController,
                 decoration: InputDecoration(
-                  labelText: context.tr.translate('food_name'),
-                  hintText: 'Ex: Arroz branco',
-                  prefixIcon: Icon(Icons.restaurant, size: 20),
+                  labelText: context.tr.translate('food_description'),
+                  hintText: 'Ex: 150g de Arroz branco',
+                  prefixIcon: Icon(Icons.edit, size: 20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
-                  fillColor: isDarkMode ? AppTheme.darkComponentColor : Colors.grey[50],
-                ),
-                style: TextStyle(
-                  color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
-                ),
-              ),
-              SizedBox(height: 16),
-              // Campo de quantidade
-              TextField(
-                controller: amountController,
-                decoration: InputDecoration(
-                  labelText: context.tr.translate('amount'),
-                  hintText: 'Ex: 150g',
-                  prefixIcon: Icon(Icons.scale, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: isDarkMode ? AppTheme.darkComponentColor : Colors.grey[50],
-                  helperText: context.tr.translate('edit_amount_helper'),
+                  fillColor: isDarkMode
+                      ? AppTheme.darkComponentColor
+                      : Colors.grey[50],
+                  helperText: 'A IA identificará o nome e a quantidade.',
                   helperMaxLines: 2,
                 ),
                 style: TextStyle(
-                  color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                  color: isDarkMode
+                      ? AppTheme.darkTextColor
+                      : AppTheme.textPrimaryColor,
                 ),
-              ),
-              SizedBox(height: 8),
-              // Informação sobre comportamento
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 16, color: AppTheme.primaryColor),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        context.tr.translate('edit_food_info'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                autofocus: true,
+                maxLines: null,
               ),
             ],
           ),
@@ -375,21 +292,13 @@ Não inclua texto adicional, apenas o JSON.
               onPressed: () {
                 Navigator.pop(dialogContext);
 
-                final newName = nameController.text.trim();
-                final newAmount = amountController.text.trim();
+                final newDescription = descriptionController.text.trim();
 
-                if (newName.isEmpty) return;
+                if (newDescription.isEmpty) return;
 
-                // Verificar o que mudou
-                final nameChanged = newName != originalName;
-                final amountChanged = newAmount != originalAmount;
-
-                if (nameChanged) {
-                  // Nome mudou → buscar da IA
-                  _fetchNutritionFromAI(index, newName, newAmount.isNotEmpty ? newAmount : originalAmount);
-                } else if (amountChanged) {
-                  // Apenas quantidade mudou → recalcular proporcionalmente
-                  _updateFoodAmount(index, newAmount);
+                // Se mudou algo, manda pra IA
+                if (newDescription != initialText) {
+                  _fetchNutritionFromAI(index, newDescription);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -440,7 +349,9 @@ Não inclua texto adicional, apenas o JSON.
                 title: Text(
                   context.tr.translate('edit_all_foods'),
                   style: TextStyle(
-                    color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                    color: isDarkMode
+                        ? AppTheme.darkTextColor
+                        : AppTheme.textPrimaryColor,
                   ),
                 ),
                 subtitle: Text(
@@ -463,7 +374,9 @@ Não inclua texto adicional, apenas o JSON.
                   title: Text(
                     context.tr.translate('add_food'),
                     style: TextStyle(
-                      color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                      color: isDarkMode
+                          ? AppTheme.darkTextColor
+                          : AppTheme.textPrimaryColor,
                     ),
                   ),
                   onTap: () {
@@ -479,18 +392,16 @@ Não inclua texto adicional, apenas o JSON.
     );
   }
 
-  /// Mostra diálogo para editar todos os alimentos de uma vez
   Future<void> _showEditAllFoodsDialog() async {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final controllers = <int, Map<String, TextEditingController>>{};
+    final controllers = <int, TextEditingController>{};
 
     // Criar controllers para cada alimento
     for (int i = 0; i < _currentMeal.foods.length; i++) {
       final food = _currentMeal.foods[i];
-      controllers[i] = {
-        'name': TextEditingController(text: food.name),
-        'amount': TextEditingController(text: food.amount ?? ''),
-      };
+      // Valor inicial: "Quantidade Nome"
+      final initialText = '${food.amount ?? ''} ${food.name}'.trim();
+      controllers[i] = TextEditingController(text: initialText);
     }
 
     await showDialog(
@@ -504,7 +415,9 @@ Não inclua texto adicional, apenas o JSON.
           title: Text(
             context.tr.translate('edit_all_foods'),
             style: TextStyle(
-              color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+              color: isDarkMode
+                  ? AppTheme.darkTextColor
+                  : AppTheme.textPrimaryColor,
             ),
           ),
           content: Container(
@@ -513,23 +426,25 @@ Não inclua texto adicional, apenas o JSON.
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: _currentMeal.foods.length,
-              separatorBuilder: (_, __) => Divider(height: 24),
+              separatorBuilder: (_, __) => Divider(height: 16),
               itemBuilder: (context, index) {
                 final food = _currentMeal.foods[index];
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Emoji e nome do alimento original
+                    // Emoji e nome do alimento original (apenas para referência)
                     Row(
                       children: [
-                        Text(food.emoji, style: TextStyle(fontSize: 20)),
+                        Text(food.emoji, style: TextStyle(fontSize: 16)),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             food.name,
                             style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                               fontSize: 12,
                             ),
                             maxLines: 1,
@@ -538,45 +453,29 @@ Não inclua texto adicional, apenas o JSON.
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
-                    // Campos de edição
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            controller: controllers[index]!['name'],
-                            decoration: InputDecoration(
-                              labelText: context.tr.translate('food_name'),
-                              isDense: true,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
-                            ),
-                          ),
+                    SizedBox(height: 4),
+                    // Campo de edição única
+                    TextField(
+                      controller: controllers[index],
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            controller: controllers[index]!['amount'],
-                            decoration: InputDecoration(
-                              labelText: context.tr.translate('amount'),
-                              isDense: true,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
-                            ),
-                          ),
-                        ),
-                      ],
+                        hintText: 'Ex: 100g de Arroz',
+                        fillColor: isDarkMode
+                            ? AppTheme.darkComponentColor
+                            : Colors.grey[50], // Add fill color
+                        filled: true, // Enable filling
+                      ),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDarkMode
+                            ? AppTheme.darkTextColor
+                            : AppTheme.textPrimaryColor,
+                      ),
                     ),
                   ],
                 );
@@ -612,31 +511,28 @@ Não inclua texto adicional, apenas o JSON.
       },
     );
 
-    // Dispose controllers
-    for (var entry in controllers.values) {
-      entry['name']?.dispose();
-      entry['amount']?.dispose();
-    }
+    // Dispose controllers is tricky here if we pass them to _applyAllEdits and rely on them there,
+    // but since we extract values immediately, we can dispose afterwards or let GC handle if attached to widget tree.
+    // Better practice: create a StatefulWidget for the dialog content to handle controllers lifecycle properly,
+    // or just let them be garbage collected since they are simple text controllers attached to the dialog.
+    // For now, we won't manually dispose to avoid use-after-dispose issues if async operations access them,
+    // though in this flow we read text immediately.
   }
 
   /// Aplica todas as edições de uma vez
-  void _applyAllEdits(Map<int, Map<String, TextEditingController>> controllers) {
+  void _applyAllEdits(Map<int, TextEditingController> controllers) {
     for (int i = 0; i < _currentMeal.foods.length; i++) {
       final food = _currentMeal.foods[i];
-      final newName = controllers[i]!['name']!.text.trim();
-      final newAmount = controllers[i]!['amount']!.text.trim();
+      if (!controllers.containsKey(i)) continue;
 
-      if (newName.isEmpty) continue;
+      final newDescription = controllers[i]!.text.trim();
+      final initialText = '${food.amount ?? ''} ${food.name}'.trim();
 
-      final nameChanged = newName != food.name;
-      final amountChanged = newAmount != (food.amount ?? '');
+      if (newDescription.isEmpty) continue;
 
-      if (nameChanged) {
-        // Nome mudou → buscar da IA
-        _fetchNutritionFromAI(i, newName, newAmount.isNotEmpty ? newAmount : (food.amount ?? ''));
-      } else if (amountChanged) {
-        // Apenas quantidade mudou → recalcular proporcionalmente
-        _updateFoodAmount(i, newAmount);
+      // Se a descrição mudou, manda para a IA
+      if (newDescription != initialText) {
+        _fetchNutritionFromAI(i, newDescription);
       }
     }
   }
@@ -990,7 +886,8 @@ Não inclua texto adicional, apenas o JSON.
                         onTap: () {
                           widget.onMealTypeChanged?.call(option.type);
                           setState(() {
-                            _currentMeal = _currentMeal.copyWith(type: option.type);
+                            _currentMeal =
+                                _currentMeal.copyWith(type: option.type);
                             showMealOptions = false;
                           });
                           _notifyMealUpdated();

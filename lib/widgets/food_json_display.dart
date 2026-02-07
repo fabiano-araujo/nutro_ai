@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import '../models/meal_model.dart';
 import '../utils/food_json_parser.dart';
 import '../providers/daily_meals_provider.dart';
-import '../theme/app_theme.dart';
-import '../i18n/app_localizations_extension.dart';
 import 'meal_card.dart';
 
 /// Widget que exibe alimentos parseados do JSON da IA
@@ -25,14 +23,24 @@ class FoodJsonDisplay extends StatefulWidget {
   State<FoodJsonDisplay> createState() => _FoodJsonDisplayState();
 }
 
-class _FoodJsonDisplayState extends State<FoodJsonDisplay> {
+class _FoodJsonDisplayState extends State<FoodJsonDisplay>
+    with AutomaticKeepAliveClientMixin {
   late Meal _meal;
   bool _isAdded = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _parseMeal();
+    // Adicionar automaticamente após o frame atual para garantir acesso ao contexto
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isAdded) {
+        _addMealToDay();
+      }
+    });
   }
 
   @override
@@ -40,6 +48,9 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.message != widget.message) {
       _parseMeal();
+      // Não adicionamos automaticamente na atualização para evitar duplicatas em streaming
+      // ou atualizações parciais, assumindo que a criação inicial captura a intenção.
+      // Se necessário, lógica adicional pode ser implementada aqui.
     }
   }
 
@@ -75,12 +86,14 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay> {
     setState(() {
       _meal = updatedMeal;
     });
+    // TODO: Considerar atualizar a refeição no provider se ela já foi adicionada
   }
 
   void _addMealToDay() {
-    if (_meal.foods.isEmpty) return;
+    if (_meal.foods.isEmpty || _isAdded) return;
 
-    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
 
     // Criar cópia da refeição com a data selecionada
     final mealToAdd = _meal.copyWith(
@@ -90,21 +103,16 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay> {
 
     mealsProvider.addMeal(mealToAdd);
 
-    setState(() {
-      _isAdded = true;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr.translate('meal_added_success')),
-        backgroundColor: AppTheme.primaryColor,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    if (mounted) {
+      setState(() {
+        _isAdded = true;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (_meal.foods.isEmpty) {
       return SizedBox.shrink();
     }
@@ -118,57 +126,6 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay> {
           onMealUpdated: _handleMealUpdated,
           topContentPadding: 16,
         ),
-
-        // Botão de adicionar refeição
-        if (!_isAdded)
-          Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _addMealToDay,
-                icon: Icon(Icons.add_circle_outline, size: 20),
-                label: Text(context.tr.translate('add_meal')),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          )
-        else
-          Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.green.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    context.tr.translate('meal_added'),
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     );
   }

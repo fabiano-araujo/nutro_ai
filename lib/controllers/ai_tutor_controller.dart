@@ -597,15 +597,22 @@ class AITutorController with ChangeNotifier {
         quality = 'google/gemini-3-flash-preview';
         provider = ''; // Deixar o OpenRouter escolher o provider
         print('📱 Usando modelo Gemini Flash para Minha Dieta');
+      } else if (toolType == 'free_chat') {
+        quality = 'openai/gpt-oss-120b';
+        provider =
+            ''; // Deixar vazio para escolher automaticamente (geralmente o mais barato/disponível)
+        print('📱 Usando modelo GPT OSS 120B para Free Chat');
       } else {
-        print('📱 Usando qualidade padrão (modelo padrão do servidor) para o tutor de nutrição');
+        print(
+            '📱 Usando qualidade padrão (modelo padrão do servidor) para o tutor de nutrição');
         print('🔌 Usando provider Hyperbolic para o agent nutricional');
       }
 
       // Determinar o agentType baseado no toolType
       // free_chat e my_diet usam o agent 'free-nutrition' que não retorna JSON formatado
-      String agentType =
-          (toolType == 'free_chat' || toolType == 'my_diet') ? 'free-nutrition' : 'nutrition';
+      String agentType = (toolType == 'free_chat' || toolType == 'my_diet')
+          ? 'free-nutrition'
+          : 'nutrition';
       print('🤖 Usando agentType: $agentType para toolType: $toolType');
 
       // Obter o usuário logado para pegar o ID
