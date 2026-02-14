@@ -53,10 +53,11 @@ final Map<String, String> ptBRTranslations = {
       'Erro ao conectar ao servidor. Tente novamente mais tarde.',
 
   // Home Screen
-  'your_ultimate': 'Seu Melhor',
+  'your_ultimate': 'Seu Assistente',
   'study_companion': 'Companheiro de Estudos',
+  'nutrition_companion': 'Assistente de Nutrição',
   'transform_your_learning':
-      'Transforme seu aprendizado com ferramentas de IA para respostas instantâneas, melhoria de textos e muito mais.',
+      'Controle sua alimentação com IA para cálculo de calorias, acompanhamento de macros e dicas nutricionais.',
   'scan_a_question': 'Digitalizar Questão',
   'instant_scan_solve': 'Digitalização e Solução',
   'instant_scan_description':
@@ -105,7 +106,7 @@ final Map<String, String> ptBRTranslations = {
   'ok': 'OK',
   'share_app': 'Compartilhar o app',
   'share_app_message':
-      'Confira este app incrível de estudos com IA! Baixe agora: {url}',
+      'Confira o Nutro AI - seu assistente de nutrição com IA! Baixe agora: {url}',
 
   // Home
   'welcome_message': 'Bem-vindo ao Nutro AI',
@@ -153,7 +154,7 @@ final Map<String, String> ptBRTranslations = {
   // Ferramentas
   'document_summary': 'Resumo de documento',
   'text_enhancement': 'Aprimoramento de texto',
-  'ai_tutor': 'Assistente de Estudos',
+  'ai_tutor': 'Assistente de Nutrição',
   'document_scan': 'Digitalizar documento',
   'camera_scan': 'Digitalizar',
   'upload_file': 'Enviar arquivo',
@@ -251,7 +252,7 @@ final Map<String, String> ptBRTranslations = {
   'translate_hint_short': 'Traduzir para',
 
   // Tela de chat (IA Tutor)
-  'ai_tutor': 'Assistente de Estudos',
+  'ai_tutor': 'Assistente de Nutrição',
   'ai_tutor_welcome':
       'O que você comeu hoje? Eu calculo as calorias e os nutrientes para você.',
   'ai_tutor_short_welcome':
@@ -729,7 +730,7 @@ final Map<String, String> ptBRTranslations = {
   'plan': 'Plano',
 
   // Tela AI Tutor
-  'ai_tutor_title': 'Assistente de Estudos',
+  'ai_tutor_title': 'Assistente de Nutrição',
   'ask_anything': 'O que você comeu?',
 
   // Tela de Assinatura
@@ -939,9 +940,13 @@ final Map<String, String> ptBRTranslations = {
   'ai_tutor_set_nutrition_goal': 'Defina seu objetivo nutricional',
   'ai_tutor_meal_suggestions': 'Sugestões de refeições',
   'ai_tutor_ask_nutrition': 'Perguntar sobre nutrição',
+  'ai_tutor_try_asking': 'Tente perguntar:',
 
   // Daily Meals Screen - Additional Keys
   'meals': 'Refeições',
+  'daily_goals': 'Metas Diárias',
+  'daily_summary': 'Resumo Diário',
+  'food_description': 'Descrição do alimento',
 
   // Nutrition Goals Screen
   'nutrition_goals': 'Metas Nutricionais',

@@ -67,9 +67,15 @@ class _MainNavigationState extends State<MainNavigation> {
   // ID da conversa livre atual (null = nova conversa)
   String? _currentFreeChatId;
 
+  // Índice da aba selecionada no BottomNavigationBar
+  int _selectedIndex = 0;
+
   @override
   void initState() {
     super.initState();
+
+    // Configurar callback do controlador de navegação
+    navigationController.tabChangeCallback = _onItemTapped;
 
     // Verificar se deve mostrar o diálogo de avaliação
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,17 +86,14 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  void _openDrawer() {
-    _scaffoldKey.currentState?.openDrawer();
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
-  void _navigateToProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ProfileTabWrapper(),
-      ),
-    );
+  void _openDrawer() {
+    _scaffoldKey.currentState?.openDrawer();
   }
 
   void _startNewFreeChat() {
@@ -111,16 +114,6 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  void _switchToMyDiet() {
-    Navigator.pop(context); // Fechar drawer
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const PersonalizedDietScreen(),
-      ),
-    );
-  }
-
   void _openFreeChat(String chatId, String title) {
     Navigator.pop(context); // Fechar drawer
     setState(() {
@@ -137,12 +130,51 @@ class _MainNavigationState extends State<MainNavigation> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: _buildDrawer(isDarkMode),
-      body: AITutorScreen(
-        key: _aiTutorKey,
-        isFreeChat: _currentMode == 'free_chat',
-        freeChatId: _currentFreeChatId,
-        onOpenDrawer: _openDrawer,
-        onNavigateToProfile: _navigateToProfile,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          // Aba 0: Início / Chat
+          AITutorScreen(
+            key: _aiTutorKey,
+            isFreeChat: _currentMode == 'free_chat',
+            freeChatId: _currentFreeChatId,
+            onOpenDrawer: _openDrawer,
+          ),
+
+          // Aba 1: Minha Dieta
+          const PersonalizedDietScreen(),
+
+          // Aba 2: Perfil
+          const ProfileTabWrapper(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        selectedItemColor: isDarkMode ? Colors.white : Colors.black,
+        unselectedItemColor: isDarkMode ? Colors.grey[600] : Colors.grey[700],
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble),
+            label: context.tr.translate('home') ?? 'Início',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.restaurant_menu_outlined),
+            activeIcon: Icon(Icons.restaurant_menu),
+            label: context.tr.translate('my_diet') ?? 'Minha Dieta',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: context.tr.translate('profile') ?? 'Perfil',
+          ),
+        ],
       ),
     );
   }
@@ -170,7 +202,8 @@ class _MainNavigationState extends State<MainNavigation> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                     ),
                   ),
                 ],
@@ -183,7 +216,8 @@ class _MainNavigationState extends State<MainNavigation> {
             ListTile(
               leading: Icon(
                 Icons.add_comment_outlined,
-                color: isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
+                color:
+                    isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
               ),
               title: Text(
                 context.tr.translate('new_conversation'),
@@ -201,36 +235,27 @@ class _MainNavigationState extends State<MainNavigation> {
                 Icons.calendar_today,
                 color: _currentMode == 'diary'
                     ? Theme.of(context).primaryColor
-                    : isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
+                    : isDarkMode
+                        ? Colors.white70
+                        : AppTheme.textSecondaryColor,
               ),
               title: Text(
                 context.tr.translate('diary'),
                 style: TextStyle(
                   color: _currentMode == 'diary'
                       ? Theme.of(context).primaryColor
-                      : isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  fontWeight: _currentMode == 'diary' ? FontWeight.bold : FontWeight.w500,
+                      : isDarkMode
+                          ? Colors.white
+                          : AppTheme.textPrimaryColor,
+                  fontWeight: _currentMode == 'diary'
+                      ? FontWeight.bold
+                      : FontWeight.w500,
                 ),
               ),
               selected: _currentMode == 'diary',
-              selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              selectedTileColor:
+                  Theme.of(context).primaryColor.withOpacity(0.1),
               onTap: _switchToDiary,
-            ),
-
-            // Minha Dieta (abre tela de seleção de tipo de dieta)
-            ListTile(
-              leading: Icon(
-                Icons.restaurant_menu,
-                color: isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
-              ),
-              title: Text(
-                context.tr.translate('my_diet'),
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onTap: _switchToMyDiet,
             ),
 
             SizedBox(height: 16),
@@ -243,7 +268,8 @@ class _MainNavigationState extends State<MainNavigation> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor,
+                  color:
+                      isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -277,7 +303,7 @@ class _MainNavigationState extends State<MainNavigation> {
                     itemBuilder: (context, index) {
                       final chat = conversations[index];
                       final isSelected = _currentMode == 'free_chat' &&
-                                        _currentFreeChatId == chat.id;
+                          _currentFreeChatId == chat.id;
 
                       return ListTile(
                         leading: Icon(
@@ -285,7 +311,9 @@ class _MainNavigationState extends State<MainNavigation> {
                           size: 20,
                           color: isSelected
                               ? Theme.of(context).primaryColor
-                              : isDarkMode ? Colors.white54 : Colors.grey,
+                              : isDarkMode
+                                  ? Colors.white54
+                                  : Colors.grey,
                         ),
                         title: Text(
                           chat.title,
@@ -295,8 +323,12 @@ class _MainNavigationState extends State<MainNavigation> {
                             fontSize: 14,
                             color: isSelected
                                 ? Theme.of(context).primaryColor
-                                : isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                : isDarkMode
+                                    ? Colors.white
+                                    : AppTheme.textPrimaryColor,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                         ),
                         subtitle: Text(
@@ -307,7 +339,8 @@ class _MainNavigationState extends State<MainNavigation> {
                           ),
                         ),
                         selected: isSelected,
-                        selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                        selectedTileColor:
+                            Theme.of(context).primaryColor.withOpacity(0.1),
                         onTap: () => _openFreeChat(chat.id, chat.title),
                         trailing: IconButton(
                           icon: Icon(
@@ -316,7 +349,8 @@ class _MainNavigationState extends State<MainNavigation> {
                             color: isDarkMode ? Colors.white38 : Colors.grey,
                           ),
                           onPressed: () {
-                            _showDeleteConfirmation(chat.id, chat.title, freeChatProvider);
+                            _showDeleteConfirmation(
+                                chat.id, chat.title, freeChatProvider);
                           },
                         ),
                       );
@@ -346,12 +380,15 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
-  void _showDeleteConfirmation(String chatId, String title, FreeChatProvider provider) {
+  void _showDeleteConfirmation(
+      String chatId, String title, FreeChatProvider provider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.tr.translate('delete_conversation')),
-        content: Text(context.tr.translate('delete_conversation_confirm').replaceAll('{title}', title)),
+        content: Text(context.tr
+            .translate('delete_conversation_confirm')
+            .replaceAll('{title}', title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/meal_model.dart';
 import '../utils/food_json_parser.dart';
 import '../providers/daily_meals_provider.dart';
+import '../utils/ai_interaction_helper.dart';
 import 'meal_card.dart';
 
 /// Widget que exibe alimentos parseados do JSON da IA
@@ -56,12 +57,19 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
   void _parseMeal() {
     final jsonStr = FoodJsonParser.extractFoodJson(widget.message);
+
+    // Extrair tipo de refeição do JSON da IA (ou usar fallback por horário)
+    final mealTypeStr = jsonStr != null ? FoodJsonParser.extractMealType(jsonStr) : null;
+    final mealType = mealTypeStr != null
+        ? FoodJsonParser.mealTypeFromString(mealTypeStr)
+        : AIInteractionHelper.getMealTypeByTime();
+
     if (jsonStr != null) {
       final foods = FoodJsonParser.parseFoodJson(jsonStr);
       if (foods != null && foods.isNotEmpty) {
         _meal = FoodJsonParser.createMealFromFoods(
           foods,
-          type: MealType.freeMeal,
+          type: mealType,
           dateTime: widget.selectedDate,
         );
         return;
@@ -70,7 +78,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     // Fallback para meal vazia
     _meal = Meal(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      type: MealType.freeMeal,
+      type: mealType,
       foods: [],
       dateTime: widget.selectedDate,
     );

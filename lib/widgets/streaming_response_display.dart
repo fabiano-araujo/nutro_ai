@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import 'dart:async';
 import '../i18n/app_localizations_extension.dart';
+import '../utils/message_formatter.dart';
 
 class StreamingResponseDisplay extends StatefulWidget {
   final String response;
@@ -119,13 +120,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
                     ),
                   ),
                 )
-              : SelectableText(
-                  widget.response,
-                  style: TextStyle(
-                    height: 1.5,
-                    fontSize: 16,
-                  ),
-                ),
+              : _buildFormattedResponse(widget.response, isDarkMode),
         ),
         SizedBox(height: 16),
         _buildActionButtons(context),
@@ -280,12 +275,13 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
       return _buildCodeBlock(text, isDarkMode);
     }
 
-    return SelectableText(
+    return MessageFormatter.buildFormattedText(
       text,
       style: AppTheme.bodyMedium.copyWith(
         color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
         height: 1.5,
       ),
+      isDarkMode: isDarkMode,
     );
   }
 

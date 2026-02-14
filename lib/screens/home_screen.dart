@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 SizedBox(width: 8),
                 Text(
-                  context.tr.translate('app_title') ?? 'Study Companion',
+                  context.tr.translate('app_title') ?? 'Nutro AI',
                   style: AppTheme.headingSmall,
                 ),
               ],
@@ -170,8 +170,8 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           ),
                           Text(
-                            context.tr.translate('study_companion') ??
-                                'Study Companion',
+                            context.tr.translate('nutrition_companion') ??
+                                'Assistente de Nutrição',
                             style: AppTheme.headingLarge.copyWith(
                               color: Colors.white,
                               fontSize: 32,

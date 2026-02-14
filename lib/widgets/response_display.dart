@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import 'message_notifier.dart';
+import '../utils/message_formatter.dart';
 
 class ResponseDisplay extends StatefulWidget {
   final String? response;
@@ -433,201 +434,13 @@ class _ResponseDisplayState extends State<ResponseDisplay>
       );
     }
 
-    // Simple parsing for code blocks and bullet points
-    final List<Widget> formattedParts = [];
-
-    // Split by code blocks using triple backticks
-    final parts = text.split(RegExp(r'```([\w]*)(\n|\r|\r\n)?'));
-
-    bool isCodeBlock = false;
-    String? language;
-
-    for (int i = 0; i < parts.length; i++) {
-      if (i % 2 == 0) {
-        // Regular text
-        // Process bullet points and numbered lists
-        final paragraphs = parts[i].split('\n');
-        for (final paragraph in paragraphs) {
-          if (paragraph.trim().isEmpty) continue;
-
-          // Check if it's a bullet point
-          if (paragraph.trim().startsWith('- ') ||
-              paragraph.trim().startsWith('* ')) {
-            formattedParts.add(
-              Padding(
-                padding: EdgeInsets.only(left: 16, bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '•',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: isDarkMode
-                            ? AppTheme.primaryLightColor
-                            : AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        paragraph.trim().substring(2),
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: isDarkMode
-                              ? AppTheme.darkTextColor
-                              : AppTheme.textPrimaryColor,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          // Check if it's a numbered list
-          else if (RegExp(r'^\d+\.\s').hasMatch(paragraph.trim())) {
-            final match =
-                RegExp(r'^(\d+)\.\s(.*)').firstMatch(paragraph.trim());
-            if (match != null) {
-              formattedParts.add(
-                Padding(
-                  padding: EdgeInsets.only(left: 16, bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${match.group(1)}.',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: isDarkMode
-                              ? AppTheme.primaryLightColor
-                              : AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          match.group(2) ?? '',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: isDarkMode
-                                ? AppTheme.darkTextColor
-                                : AppTheme.textPrimaryColor,
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-          }
-          // Regular paragraph
-          else {
-            // Check if it's a header (starts with # or ##)
-            if (paragraph.trim().startsWith('# ')) {
-              formattedParts.add(
-                Padding(
-                  padding: EdgeInsets.only(bottom: 16, top: 8),
-                  child: Text(
-                    paragraph.trim().substring(2),
-                    style: AppTheme.headingMedium.copyWith(
-                      color: isDarkMode
-                          ? AppTheme.darkTextColor
-                          : AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                ),
-              );
-            } else if (paragraph.trim().startsWith('## ')) {
-              formattedParts.add(
-                Padding(
-                  padding: EdgeInsets.only(bottom: 12, top: 8),
-                  child: Text(
-                    paragraph.trim().substring(3),
-                    style: AppTheme.headingSmall.copyWith(
-                      color: isDarkMode
-                          ? AppTheme.darkTextColor
-                          : AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                ),
-              );
-            } else {
-              formattedParts.add(
-                Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    paragraph,
-                    style: AppTheme.bodyMedium.copyWith(
-                      color: isDarkMode
-                          ? AppTheme.darkTextColor
-                          : AppTheme.textPrimaryColor,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              );
-            }
-          }
-        }
-      } else {
-        // Code block
-        // Get language if available
-        language = i < parts.length ? parts[i].trim() : '';
-        i++; // Skip the language part
-
-        if (i < parts.length) {
-          formattedParts.add(
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: isDarkMode ? Color(0xFF1E2433) : Color(0xFFF0F4F9),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color:
-                      isDarkMode ? AppTheme.darkBorderColor : Color(0xFFE1E6F0),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (language != null && language!.isNotEmpty)
-                    Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(
-                        language!,
-                        style: AppTheme.captionText.copyWith(
-                          color: isDarkMode
-                              ? AppTheme.darkTextColor.withOpacity(0.7)
-                              : AppTheme.textSecondaryColor,
-                        ),
-                      ),
-                    ),
-                  Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SelectableText(
-                      parts[i],
-                      style: AppTheme.bodySmall.copyWith(
-                        fontFamily: 'Courier New',
-                        color:
-                            isDarkMode ? Color(0xFFC3E88D) : Color(0xFF0D5302),
-                        height: 1.6,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-      }
-    }
-
-    return Column(
-        crossAxisAlignment: CrossAxisAlignment.start, children: formattedParts);
+    return MessageFormatter.buildFormattedText(
+      text,
+      style: AppTheme.bodyMedium.copyWith(
+        color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+        height: 1.5,
+      ),
+      isDarkMode: isDarkMode,
+    );
   }
 }

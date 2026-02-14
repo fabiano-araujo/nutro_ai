@@ -162,13 +162,12 @@ class _LoginScreenState extends State<LoginScreen>
         color: currentScaffoldBackgroundColor,
         child: SafeArea(
           child: SingleChildScrollView(
-            child: SizedBox(
-              height: size.height -
-                  MediaQuery.of(context).padding.top -
-                  MediaQuery.of(context).padding.bottom -
-                  kToolbarHeight -
-                  20, // Extra espaço para evitar conteúdo cortado
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   SizedBox(height: size.height * 0.03),

@@ -203,7 +203,7 @@ class _MyAppState extends State<MyApp> {
       child: Consumer2<ThemeProvider, LanguageController>(
         builder: (context, themeProvider, languageController, _) {
           return MaterialApp(
-            title: 'Study Companion',
+            title: 'Nutro AI',
             navigatorKey: navigatorKey,
             theme: AppTheme.lightTheme.copyWith(
               navigationBarTheme: NavigationBarThemeData(

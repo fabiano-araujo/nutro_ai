@@ -169,7 +169,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 value: _selectedMealType,
                 underline: SizedBox.shrink(),
                 isDense: true,
-                dropdownColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                dropdownColor:
+                    isDarkMode ? AppTheme.darkCardColor : Colors.white,
                 icon: Icon(Icons.arrow_drop_down, color: textColor, size: 24),
                 style: TextStyle(
                   color: textColor,
@@ -207,22 +208,14 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 ),
               ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons
-                  .barcode_reader, // Ícone de código de barras com linhas horizontais
-              color: textColor,
-            ),
-            onPressed: () {
-              // TODO: Implementar scan de código de barras
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Barcode scanner coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
+          // Barcode scanner removed for now to improve intuitiveness
+          // IconButton(
+          //   icon: Icon(
+          //     Icons.barcode_reader,
+          //     color: textColor,
+          //   ),
+          //   onPressed: () { ... },
+          // ),
         ],
       ),
       body: Column(
@@ -298,7 +291,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                     indicatorColor: AppTheme.primaryColor,
                     indicatorWeight: 2.5,
                     indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: isDarkMode ? Color(0xFF48484A) : Color(0xFFD1D1D6),
+                    dividerColor:
+                        isDarkMode ? Color(0xFF48484A) : Color(0xFFD1D1D6),
                     dividerHeight: 1,
                     tabs: [
                       Tab(text: 'Frequentes'),

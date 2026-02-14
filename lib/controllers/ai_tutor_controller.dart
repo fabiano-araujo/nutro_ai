@@ -23,6 +23,7 @@ import '../services/rate_app_service.dart';
 import '../widgets/reward_ad_dialog.dart';
 import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
+import '../providers/meal_types_provider.dart';
 
 /// Controller para gerenciar o estado e a lógica do AI Tutor
 class AITutorController with ChangeNotifier {
@@ -225,7 +226,7 @@ class AITutorController with ChangeNotifier {
     _messages.add({
       'isUser': false,
       'message':
-          'Olá! Sou seu tutor de IA. Como posso ajudar com seus estudos hoje?',
+          'Olá! Sou seu assistente de nutrição. O que você comeu hoje?',
       'timestamp': DateTime.now(),
     });
     notifyListeners();
@@ -248,16 +249,16 @@ class AITutorController with ChangeNotifier {
         switch (locale) {
           case 'pt_BR':
             welcomeMessage =
-                'Olá! Sou seu tutor de IA. Como posso ajudar com seus estudos hoje?';
+                'Olá! Sou seu assistente de nutrição. O que você comeu hoje?';
             break;
           case 'en_US':
             welcomeMessage =
-                'Hi! I\'m your AI tutor. How can I help with your studies today?';
+                'Hi! I\'m your nutrition assistant. What did you eat today?';
             break;
           // ... outros casos
           default:
             welcomeMessage =
-                'Olá! Sou seu tutor de IA. Como posso ajudar com seus estudos hoje?';
+                'Olá! Sou seu assistente de nutrição. O que você comeu hoje?';
         }
       }
 
@@ -629,6 +630,18 @@ class AITutorController with ChangeNotifier {
             '⚠️ AITutorController - Nenhum usuário autenticado, usando ID vazio');
       }
 
+      // Obter tipos de refeição do usuário para classificação pela IA
+      List<Map<String, String>>? mealTypesForAI;
+      try {
+        final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+        mealTypesForAI = mealTypesProvider.mealTypes
+            .map((mt) => {'id': mt.id, 'name': mt.name})
+            .toList();
+        print('🍽️ AITutorController - Tipos de refeição: $mealTypesForAI');
+      } catch (e) {
+        print('⚠️ AITutorController - Não foi possível obter tipos de refeição: $e');
+      }
+
       // Obter o stream da IA
       final stream = _aiService.getAnswerStream(prompt,
           subject: 'education',
@@ -636,7 +649,8 @@ class AITutorController with ChangeNotifier {
           quality: quality, // Usar a qualidade determinada pelo toolType
           userId: userId, // Passando o ID do usuário logado
           agentType: agentType, // Usando o agent determinado pelo toolType
-          provider: provider // Usando o provider Hyperbolic
+          provider: provider, // Usando o provider Hyperbolic
+          mealTypes: mealTypesForAI // Tipos de refeição do usuário
           );
 
       // Usar o Helper para lidar com o stream
@@ -675,7 +689,9 @@ class AITutorController with ChangeNotifier {
           print('[CONEXAO_DEBUG] ID recebido: $id');
           setActiveConnectionId(id);
         },
-        toolDataJson: toolDataForHistory, // PASSANDO O NOVO PARÂMETRO
+        toolDataJson: toolDataForHistory,
+        // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
+        autoRegisterFoods: toolType != 'free_chat',
       );
     } catch (e) {
       print(
@@ -781,7 +797,9 @@ class AITutorController with ChangeNotifier {
           print('[CONEXAO_DEBUG] ID recebido: $id');
           setActiveConnectionId(id);
         },
-        toolDataJson: toolDataForHistory, // PASSANDO O NOVO PARÂMETRO
+        toolDataJson: toolDataForHistory,
+        // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
+        autoRegisterFoods: toolType != 'free_chat',
       );
     } catch (e) {
       print(
@@ -1261,10 +1279,21 @@ class AITutorController with ChangeNotifier {
             '📱 Usando qualidade padrão (BOM) para ferramenta do tipo: $toolType');
       }
 
+      // Obter tipos de refeição do usuário
+      List<Map<String, String>>? mealTypesForAI;
+      try {
+        final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+        mealTypesForAI = mealTypesProvider.mealTypes
+            .map((mt) => {'id': mt.id, 'name': mt.name})
+            .toList();
+      } catch (e) {
+        print('⚠️ AITutorController (processSilently) - Não foi possível obter tipos de refeição: $e');
+      }
+
       // Obter stream da IA para texto
       try {
         final stream = _aiService.getAnswerStream(prompt,
-            languageCode: languageCode, quality: quality);
+            languageCode: languageCode, quality: quality, mealTypes: mealTypesForAI);
 
         // Usar o helper para lidar com o stream
         String? toolDataForHistory;
@@ -1302,8 +1331,9 @@ class AITutorController with ChangeNotifier {
           setConnectionId: (id) {
             setActiveConnectionId(id);
           },
-          toolDataJson:
-              toolDataForHistory, // PASSANDO O NOVO PARÂMETRO AQUI TAMBÉM
+          toolDataJson: toolDataForHistory,
+          // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
+          autoRegisterFoods: toolType != 'free_chat',
         );
 
         // Incrementar as interações bem-sucedidas

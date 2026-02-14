@@ -14,7 +14,12 @@ import 'food_search_screen.dart';
 import '../i18n/app_localizations.dart';
 
 class DailyMealsScreen extends StatefulWidget {
-  const DailyMealsScreen({Key? key}) : super(key: key);
+  final bool showBackButton;
+
+  const DailyMealsScreen({
+    Key? key,
+    this.showBackButton = true,
+  }) : super(key: key);
 
   @override
   State<DailyMealsScreen> createState() => _DailyMealsScreenState();
@@ -24,7 +29,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
   final Map<MealType, bool> _expandedMeals = {};
 
   Future<void> _showDatePicker(BuildContext context) async {
-    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final DateTime? picked = await showDatePicker(
@@ -62,22 +68,24 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode
-        ? AppTheme.darkBackgroundColor
-        : AppTheme.backgroundColor;
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
+    final backgroundColor =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor.withValues(alpha: 0.85)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false, // Don't show default back button
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: Icon(Icons.arrow_back,
+                    color: textColor.withValues(alpha: 0.85)),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: Consumer<DailyMealsProvider>(
           builder: (context, mealsProvider, child) {
             final appLocalizations = AppLocalizations.of(context);
@@ -85,11 +93,14 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             final today = DateTime.now();
 
             // Normalizar as datas para comparação (zerar horas)
-            final normalizedToday = DateTime(today.year, today.month, today.day);
-            final normalizedSelected = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+            final normalizedToday =
+                DateTime(today.year, today.month, today.day);
+            final normalizedSelected = DateTime(
+                selectedDate.year, selectedDate.month, selectedDate.day);
 
             // Calcular a diferença em dias
-            final difference = normalizedSelected.difference(normalizedToday).inDays;
+            final difference =
+                normalizedSelected.difference(normalizedToday).inDays;
 
             // Determinar o texto baseado na diferença
             String dateText;
@@ -100,7 +111,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             } else if (difference == 1) {
               dateText = appLocalizations.translate('tomorrow');
             } else {
-              dateText = '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}';
+              dateText =
+                  '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}';
             }
 
             return Column(
@@ -128,7 +140,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.calendar_today, color: textColor.withValues(alpha: 0.85)),
+            icon: Icon(Icons.calendar_today,
+                color: textColor.withValues(alpha: 0.85)),
             tooltip: AppLocalizations.of(context).translate('select_date'),
             onPressed: () => _showDatePicker(context),
           ),
@@ -148,7 +161,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        AppLocalizations.of(context).translate('nutrition_summary'),
+                        AppLocalizations.of(context).translate('daily_goals') ??
+                            'Metas Diárias',
                         style: AppTheme.headingMedium.copyWith(
                           color: textColor.withValues(alpha: 0.85),
                           fontSize: 18,
@@ -160,13 +174,16 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const NutritionGoalsScreen(),
+                              builder: (context) =>
+                                  const NutritionGoalsScreen(),
                             ),
                           );
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Icon(Icons.edit, color: textColor.withValues(alpha: 0.85), size: 24),
+                          child: Icon(Icons.edit,
+                              color: textColor.withValues(alpha: 0.85),
+                              size: 24),
                         ),
                       ),
                     ],
@@ -209,13 +226,16 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.edit, color: textColor.withValues(alpha: 0.85)),
-                        tooltip: AppLocalizations.of(context).translate('edit_meals'),
+                        icon: Icon(Icons.edit,
+                            color: textColor.withValues(alpha: 0.85)),
+                        tooltip: AppLocalizations.of(context)
+                            .translate('edit_meals'),
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ManageMealTypesScreen(),
+                              builder: (context) =>
+                                  const ManageMealTypesScreen(),
                             ),
                           );
                         },
@@ -233,7 +253,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
                 // Daily Nutrition Details Card
                 if (mealsProvider.todayMeals.isNotEmpty)
-                  _buildDailyNutritionCard(mealsProvider, isDarkMode, textColor),
+                  _buildDailyNutritionCard(
+                      mealsProvider, isDarkMode, textColor),
 
                 SizedBox(height: 16),
               ],
@@ -259,26 +280,66 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             child: Center(
               child: Column(
                 children: [
-                  Icon(
-                    Icons.restaurant_menu,
-                    size: 64,
-                    color: textColor.withValues(alpha: 0.3),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    AppLocalizations.of(context).translate('no_meals_configured'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: textColor.withValues(alpha: 0.5),
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDarkMode
+                          ? Colors.white.withAlpha(20)
+                          : AppTheme.primaryColor.withAlpha(20),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.restaurant_menu,
+                      size: 48,
+                      color:
+                          isDarkMode ? Colors.white70 : AppTheme.primaryColor,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: 24),
                   Text(
-                    AppLocalizations.of(context).translate('configure_meals_in_settings'),
+                    AppLocalizations.of(context)
+                        .translate('no_meals_configured'),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textColor.withValues(alpha: 0.85),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    AppLocalizations.of(context)
+                            .translate('configure_meals_description') ??
+                        'Crie suas refeições (café, almoço...) para começar a registrar sua dieta.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: textColor.withValues(alpha: 0.4),
+                      color: textColor.withValues(alpha: 0.6),
+                      height: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ManageMealTypesScreen(),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.add),
+                    label: Text(AppLocalizations.of(context)
+                            .translate('configure_meals') ??
+                        'Configurar Refeições'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
                     ),
                   ),
                 ],
@@ -357,9 +418,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
 
     // Aggregate all nutrients from all foods in all meals
-    final allFoods = provider.todayMeals
-        .expand((meal) => meal.foods)
-        .toList();
+    final allFoods = provider.todayMeals.expand((meal) => meal.foods).toList();
 
     if (allFoods.isEmpty) return SizedBox.shrink();
 
@@ -420,184 +479,188 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            // Macronutrients Section Header
-            Text(
-              AppLocalizations.of(context).translate('macronutrients'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor.withValues(alpha: 0.85),
-              ),
-            ),
-
-            Divider(
-              color: isDarkMode ? Colors.white24 : Colors.black12,
-              height: 24,
-              thickness: 1,
-            ),
-
-            // Calories
-            _MacroNutrientRow(
-              label: AppLocalizations.of(context).translate('calories'),
-              value: '$totalCalories kcal',
-              isDarkMode: isDarkMode,
-            ),
-
-            SizedBox(height: 12),
-
-            // Protein
-            _MacroNutrientRow(
-              label: AppLocalizations.of(context).translate('protein_full'),
-              value: '${totalProtein.toStringAsFixed(0)} g',
-              isDarkMode: isDarkMode,
-            ),
-
-            SizedBox(height: 12),
-
-            // Total Carbohydrates
-            _MacroNutrientRow(
-              label: AppLocalizations.of(context).translate('total_carbohydrates'),
-              value: '${totalCarbs.toStringAsFixed(0)} g',
-              isDarkMode: isDarkMode,
-            ),
-            Container(
-              margin: EdgeInsets.only(left: 0, top: 8),
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: Color(0xFFA1887F).withValues(alpha: 0.3),
-                    width: 2,
-                  ),
+              // Macronutrients Section Header
+              Text(
+                AppLocalizations.of(context).translate('daily_summary') ??
+                    'Resumo Diário',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor.withValues(alpha: 0.85),
                 ),
               ),
-              child: Column(
-                children: [
-                  _SubNutrientRow(
-                    label: AppLocalizations.of(context).translate('dietary_fiber'),
-                    value: '${totalFiber.toStringAsFixed(0)} g',
-                    isDarkMode: isDarkMode,
-                  ),
-                  _SubNutrientRow(
-                    label: AppLocalizations.of(context).translate('sugars'),
-                    value: '${totalSugars.toStringAsFixed(0)} g',
-                    isDarkMode: isDarkMode,
-                  ),
-                ],
-              ),
-            ),
 
-            SizedBox(height: 12),
-
-            // Total Fat
-            _MacroNutrientRow(
-              label: AppLocalizations.of(context).translate('total_fat'),
-              value: '${totalFat.toStringAsFixed(0)} g',
-              isDarkMode: isDarkMode,
-            ),
-            Container(
-              margin: EdgeInsets.only(left: 0, top: 8),
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: Color(0xFF9575CD).withValues(alpha: 0.3),
-                    width: 2,
-                  ),
-                ),
+              Divider(
+                color: isDarkMode ? Colors.white24 : Colors.black12,
+                height: 24,
+                thickness: 1,
               ),
-              child: _SubNutrientRow(
-                label: AppLocalizations.of(context).translate('saturated_fat'),
-                value: '${totalSaturatedFat.toStringAsFixed(1)} g',
+
+              // Calories
+              _MacroNutrientRow(
+                label: AppLocalizations.of(context).translate('calories'),
+                value: '$totalCalories kcal',
                 isDarkMode: isDarkMode,
               ),
-            ),
 
-            SizedBox(height: 24),
+              SizedBox(height: 12),
 
-            // Micronutrients Section Header
-            Text(
-              AppLocalizations.of(context).translate('micronutrients'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor.withValues(alpha: 0.85),
+              // Protein
+              _MacroNutrientRow(
+                label: AppLocalizations.of(context).translate('protein_full'),
+                value: '${totalProtein.toStringAsFixed(0)} g',
+                isDarkMode: isDarkMode,
               ),
-            ),
 
-            Divider(
-              color: isDarkMode ? Colors.white24 : Colors.black12,
-              height: 24,
-              thickness: 1,
-            ),
+              SizedBox(height: 12),
 
-            // Micronutrients List
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('cholesterol'),
-              value: '${totalCholesterol.toStringAsFixed(0)} mg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              // Total Carbohydrates
+              _MacroNutrientRow(
+                label: AppLocalizations.of(context)
+                    .translate('total_carbohydrates'),
+                value: '${totalCarbs.toStringAsFixed(0)} g',
+                isDarkMode: isDarkMode,
+              ),
+              Container(
+                margin: EdgeInsets.only(left: 0, top: 8),
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(
+                      color: Color(0xFFA1887F).withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _SubNutrientRow(
+                      label: AppLocalizations.of(context)
+                          .translate('dietary_fiber'),
+                      value: '${totalFiber.toStringAsFixed(0)} g',
+                      isDarkMode: isDarkMode,
+                    ),
+                    _SubNutrientRow(
+                      label: AppLocalizations.of(context).translate('sugars'),
+                      value: '${totalSugars.toStringAsFixed(0)} g',
+                      isDarkMode: isDarkMode,
+                    ),
+                  ],
+                ),
+              ),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('sodium'),
-              value: '${totalSodium.toStringAsFixed(0)} mg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              SizedBox(height: 12),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('potassium'),
-              value: '${totalPotassium.toStringAsFixed(0)} mg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              // Total Fat
+              _MacroNutrientRow(
+                label: AppLocalizations.of(context).translate('total_fat'),
+                value: '${totalFat.toStringAsFixed(0)} g',
+                isDarkMode: isDarkMode,
+              ),
+              Container(
+                margin: EdgeInsets.only(left: 0, top: 8),
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(
+                      color: Color(0xFF9575CD).withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                ),
+                child: _SubNutrientRow(
+                  label:
+                      AppLocalizations.of(context).translate('saturated_fat'),
+                  value: '${totalSaturatedFat.toStringAsFixed(1)} g',
+                  isDarkMode: isDarkMode,
+                ),
+              ),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('calcium'),
-              value: '${totalCalcium.toStringAsFixed(0)} mg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              SizedBox(height: 24),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('iron'),
-              value: '${totalIron.toStringAsFixed(1)} mg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              // Micronutrients Section Header
+              Text(
+                AppLocalizations.of(context).translate('micronutrients'),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor.withValues(alpha: 0.85),
+                ),
+              ),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('vitamin_d'),
-              value: '${totalVitaminD.toStringAsFixed(1)} mcg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              Divider(
+                color: isDarkMode ? Colors.white24 : Colors.black12,
+                height: 24,
+                thickness: 1,
+              ),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('vitamin_a'),
-              value: '${totalVitaminA.toStringAsFixed(1)} mcg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              // Micronutrients List
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('cholesterol'),
+                value: '${totalCholesterol.toStringAsFixed(0)} mg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('vitamin_c'),
-              value: '${totalVitaminC.toStringAsFixed(1)} mg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('sodium'),
+                value: '${totalSodium.toStringAsFixed(0)} mg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('vitamin_b6'),
-              value: '${totalVitaminB6.toStringAsFixed(1)} mg',
-              isDarkMode: isDarkMode,
-            ),
-            SizedBox(height: 12),
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('potassium'),
+                value: '${totalPotassium.toStringAsFixed(0)} mg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
 
-            _MicroNutrientRow(
-              label: AppLocalizations.of(context).translate('vitamin_b12'),
-              value: '${totalVitaminB12.toStringAsFixed(1)} mcg',
-              isDarkMode: isDarkMode,
-            ),
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('calcium'),
+                value: '${totalCalcium.toStringAsFixed(0)} mg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
+
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('iron'),
+                value: '${totalIron.toStringAsFixed(1)} mg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
+
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('vitamin_d'),
+                value: '${totalVitaminD.toStringAsFixed(1)} mcg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
+
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('vitamin_a'),
+                value: '${totalVitaminA.toStringAsFixed(1)} mcg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
+
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('vitamin_c'),
+                value: '${totalVitaminC.toStringAsFixed(1)} mg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
+
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('vitamin_b6'),
+                value: '${totalVitaminB6.toStringAsFixed(1)} mg',
+                isDarkMode: isDarkMode,
+              ),
+              SizedBox(height: 12),
+
+              _MicroNutrientRow(
+                label: AppLocalizations.of(context).translate('vitamin_b12'),
+                value: '${totalVitaminB12.toStringAsFixed(1)} mcg',
+                isDarkMode: isDarkMode,
+              ),
             ],
           ),
         ),
@@ -614,7 +677,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
       ),
     );
   }
-
 }
 
 class _MealCard extends StatelessWidget {
@@ -642,7 +704,8 @@ class _MealCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final secondaryTextColor = isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final secondaryTextColor =
+        isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     return Card(
       margin: EdgeInsets.only(bottom: 8),
@@ -675,15 +738,16 @@ class _MealCard extends StatelessWidget {
             fontWeight: FontWeight.w600,
             fontSize: 16,
             letterSpacing: -0.2,
-            color: (isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor).withValues(alpha: 0.85),
+            color: (isDarkMode
+                    ? AppTheme.darkTextColor
+                    : AppTheme.textPrimaryColor)
+                .withValues(alpha: 0.85),
           ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(
-            hasFoods
-                ? '${meal!.totalCalories} kcal'
-                : '0 kcal',
+            hasFoods ? '${meal!.totalCalories} kcal' : '0 kcal',
             style: TextStyle(
               color: secondaryTextColor.withValues(alpha: 0.7),
               fontSize: 13,
@@ -711,98 +775,103 @@ class _MealCard extends StatelessWidget {
             const SizedBox(width: 4),
           ],
         ),
-        children: hasFoods ? [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Foods list
-                ...meal!.foods.map((food) => _buildFoodItem(food, context)),
-
-                // Divisor sutil
+        children: hasFoods
+            ? [
                 Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
-                          Colors.transparent,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Foods list
+                      ...meal!.foods
+                          .map((food) => _buildFoodItem(food, context)),
+
+                      // Divisor sutil
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                (isDarkMode ? Colors.white : Colors.black)
+                                    .withValues(alpha: 0.05),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      // Meal totals
+                      Row(
+                        children: [
+                          Expanded(
+                            child: MacroCardGradient(
+                              icon: '🔥',
+                              label: 'Cal',
+                              value: meal!.totalCalories.toStringAsFixed(0),
+                              unit: 'kcal',
+                              startColor: const Color(0xFFFF6B9D),
+                              endColor: const Color(0xFFFFA06B),
+                              isDarkMode: isDarkMode,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: MacroCardGradient(
+                              icon: '💪',
+                              label: 'Prot',
+                              value: meal!.totalProtein.toStringAsFixed(1),
+                              unit: 'g',
+                              startColor: const Color(0xFF9575CD),
+                              endColor: const Color(0xFFBA68C8),
+                              isDarkMode: isDarkMode,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: MacroCardGradient(
+                              icon: '🌾',
+                              label: 'Carb',
+                              value: meal!.totalCarbs.toStringAsFixed(1),
+                              unit: 'g',
+                              startColor: const Color(0xFFFFB74D),
+                              endColor: const Color(0xFFFF9800),
+                              isDarkMode: isDarkMode,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: MacroCardGradient(
+                              icon: '🥑',
+                              label: 'Gord',
+                              value: meal!.totalFat.toStringAsFixed(1),
+                              unit: 'g',
+                              startColor: const Color(0xFF4DB6AC),
+                              endColor: const Color(0xFF26A69A),
+                              isDarkMode: isDarkMode,
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+
+                      const SizedBox(height: 4),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 4),
-
-                // Meal totals
-                Row(
-                  children: [
-                    Expanded(
-                      child: MacroCardGradient(
-                        icon: '🔥',
-                        label: 'Cal',
-                        value: meal!.totalCalories.toStringAsFixed(0),
-                        unit: 'kcal',
-                        startColor: const Color(0xFFFF6B9D),
-                        endColor: const Color(0xFFFFA06B),
-                        isDarkMode: isDarkMode,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: MacroCardGradient(
-                        icon: '💪',
-                        label: 'Prot',
-                        value: meal!.totalProtein.toStringAsFixed(1),
-                        unit: 'g',
-                        startColor: const Color(0xFF9575CD),
-                        endColor: const Color(0xFFBA68C8),
-                        isDarkMode: isDarkMode,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: MacroCardGradient(
-                        icon: '🌾',
-                        label: 'Carb',
-                        value: meal!.totalCarbs.toStringAsFixed(1),
-                        unit: 'g',
-                        startColor: const Color(0xFFFFB74D),
-                        endColor: const Color(0xFFFF9800),
-                        isDarkMode: isDarkMode,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: MacroCardGradient(
-                        icon: '🥑',
-                        label: 'Gord',
-                        value: meal!.totalFat.toStringAsFixed(1),
-                        unit: 'g',
-                        startColor: const Color(0xFF4DB6AC),
-                        endColor: const Color(0xFF26A69A),
-                        isDarkMode: isDarkMode,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 4),
-              ],
-            ),
-          ),
-        ] : [],
+              ]
+            : [],
       ),
     );
   }
 
   Widget _buildFoodItem(Food food, BuildContext context) {
-    final secondaryTextColor = isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final secondaryTextColor =
+        isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     return Material(
       color: Colors.transparent,
@@ -889,7 +958,6 @@ class _MealCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 // Macronutrient row widget (for main nutrients)
@@ -907,9 +975,8 @@ class _MacroNutrientRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -950,9 +1017,8 @@ class _MicroNutrientRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -993,9 +1059,8 @@ class _SubNutrientRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final secondaryTextColor = isDarkMode
-        ? Color(0xFF9CA3AF)
-        : Color(0xFF6B7280);
+    final secondaryTextColor =
+        isDarkMode ? Color(0xFF9CA3AF) : Color(0xFF6B7280);
 
     return Padding(
       padding: EdgeInsets.only(left: 16, top: 8),

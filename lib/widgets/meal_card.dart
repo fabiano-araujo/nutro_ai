@@ -198,6 +198,28 @@ Não inclua texto adicional, apenas o JSON.
     return null;
   }
 
+  /// Constrói a descrição do alimento evitando duplicação
+  /// Ex: Se amount="2 ovos mexidos" e name="Ovos mexidos", retorna apenas "2 ovos mexidos"
+  String _buildFoodDescription(String? amount, String name) {
+    final amountStr = (amount ?? '').trim();
+    final nameStr = name.trim();
+
+    if (amountStr.isEmpty) return nameStr;
+    if (nameStr.isEmpty) return amountStr;
+
+    // Verifica se amount já contém o nome (case-insensitive)
+    if (amountStr.toLowerCase().contains(nameStr.toLowerCase())) {
+      return amountStr;
+    }
+
+    // Verifica se o nome já contém o amount (caso inverso)
+    if (nameStr.toLowerCase().contains(amountStr.toLowerCase())) {
+      return nameStr;
+    }
+
+    return '$amountStr $nameStr';
+  }
+
   String _getFoodEmoji(String foodName) {
     final name = foodName.toLowerCase();
     if (name.contains('chicken') || name.contains('frango')) return '🍗';
@@ -217,7 +239,8 @@ Não inclua texto adicional, apenas o JSON.
   Future<void> _showEditFoodDialog(int index) async {
     final food = _currentMeal.foods[index];
     // Combinar quantidade e nome para edição única (ex: "150g Arroz branco")
-    final initialText = '${food.amount ?? ''} ${food.name}'.trim();
+    // Evita duplicação se amount já contiver o nome do alimento
+    final initialText = _buildFoodDescription(food.amount, food.name);
     final descriptionController = TextEditingController(text: initialText);
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -399,8 +422,8 @@ Não inclua texto adicional, apenas o JSON.
     // Criar controllers para cada alimento
     for (int i = 0; i < _currentMeal.foods.length; i++) {
       final food = _currentMeal.foods[i];
-      // Valor inicial: "Quantidade Nome"
-      final initialText = '${food.amount ?? ''} ${food.name}'.trim();
+      // Valor inicial: evita duplicação se amount já contiver o nome
+      final initialText = _buildFoodDescription(food.amount, food.name);
       controllers[i] = TextEditingController(text: initialText);
     }
 
@@ -526,7 +549,7 @@ Não inclua texto adicional, apenas o JSON.
       if (!controllers.containsKey(i)) continue;
 
       final newDescription = controllers[i]!.text.trim();
-      final initialText = '${food.amount ?? ''} ${food.name}'.trim();
+      final initialText = _buildFoodDescription(food.amount, food.name);
 
       if (newDescription.isEmpty) continue;
 

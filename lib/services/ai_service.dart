@@ -107,7 +107,8 @@ class AIService {
       String quality = 'bom',
       String userId = '',
       String agentType = 'nutrition',
-      String provider = ''}) async* {
+      String provider = '',
+      List<Map<String, String>>? mealTypes}) async* {
     print('🔴🔴🔴 AIService.getAnswerStream CHAMADO - agentType=$agentType, provider=$provider');
     print('\n🚀 Iniciando nova solicitação de resposta');
     try {
@@ -151,6 +152,11 @@ class AIService {
       // Adicionar provider se especificado
       if (provider.isNotEmpty) {
         requestBody['provider'] = provider;
+      }
+
+      // Adicionar tipos de refeição do usuário (para o agente nutricional classificar)
+      if (mealTypes != null && mealTypes.isNotEmpty) {
+        requestBody['mealTypes'] = mealTypes;
       }
 
       final bodyJson = jsonEncode(requestBody);
@@ -315,7 +321,7 @@ class AIService {
     try {
       final imageBase64 = base64Encode(imageBytes);
       final systemContent =
-          'Você é um assistente de estudos. Analise a imagem e forneça uma solução detalhada. Você deve responder no idioma: $languageCode';
+          'Você é um assistente de nutrição. Analise a imagem do alimento e forneça informações nutricionais detalhadas (calorias, proteínas, carboidratos, gorduras). Você deve responder no idioma: $languageCode';
 
       print('\n📤 ENVIANDO IMAGEM COM PROMPT:');
       print('----------------------------------------');

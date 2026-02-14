@@ -53,10 +53,11 @@ final Map<String, String> enUSTranslations = {
       'Error connecting to server. Please try again later.',
 
   // Home Screen
-  'your_ultimate': 'Your Ultimate',
+  'your_ultimate': 'Your Personal',
   'study_companion': 'Study Companion',
+  'nutrition_companion': 'Nutrition Assistant',
   'transform_your_learning':
-      'Transform your learning with AI-powered tools for instant answers, essay enhancement, and more.',
+      'Track your nutrition with AI for calorie counting, macro tracking, and nutritional tips.',
   'scan_a_question': 'Scan a Question',
   'instant_scan_solve': 'Instant Scan & Solve',
   'instant_scan_description':
@@ -102,7 +103,7 @@ final Map<String, String> enUSTranslations = {
   'ok': 'OK',
   'share_app': 'Share the app',
   'share_app_message':
-      'Check out this amazing AI study app! Download now: {url}',
+      'Check out Nutro AI - your AI nutrition assistant! Download now: {url}',
 
   // Home
   'welcome_message': 'Welcome to Nutro AI',
@@ -149,7 +150,7 @@ final Map<String, String> enUSTranslations = {
   // Tools
   'document_summary': 'Document summary',
   'text_enhancement': 'Text enhancement',
-  'ai_tutor': 'AI Tutor',
+  'ai_tutor': 'Nutrition Assistant',
   'document_scan': 'Scan document',
   'camera_scan': 'Scan',
   'upload_file': 'Upload file',
@@ -244,7 +245,7 @@ final Map<String, String> enUSTranslations = {
   'translate_hint_short': 'Translate to',
 
   // Chat screen (AI Tutor)
-  'ai_tutor': 'AI Tutor',
+  'ai_tutor': 'Nutrition Assistant',
   'ai_tutor_welcome':
       'What did you eat today? I calculate the calories and nutrients for you.',
   'ai_tutor_short_welcome':
@@ -754,9 +755,13 @@ final Map<String, String> enUSTranslations = {
   'ai_tutor_set_nutrition_goal': 'Set your nutrition goal',
   'ai_tutor_meal_suggestions': 'Meal suggestions',
   'ai_tutor_ask_nutrition': 'Ask about nutrition',
+  'ai_tutor_try_asking': 'Try asking:',
 
   // Daily Meals Screen - Additional Keys
   'meals': 'Meals',
+  'daily_goals': 'Daily Goals',
+  'daily_summary': 'Daily Summary',
+  'food_description': 'Food description',
 
   // Nutrition Goals Screen
   'nutrition_goals': 'Nutrition Goals',

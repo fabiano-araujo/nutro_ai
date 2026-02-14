@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
-import '../services/auth_service.dart';
 
 class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
   final DateTime? selectedDate;
   final VoidCallback? onSearchPressed;
-  final VoidCallback? onOpenDrawer; // Callback para abrir o drawer
-  final VoidCallback? onNavigateToProfile; // Callback para navegar ao perfil
-  final bool showCalendar; // Controla se mostra o calendário semanal
-  final bool showAppBar; // Controla se mostra o AppBar
-  final bool isFreeChat; // Indica se está no modo conversa livre
+  final VoidCallback? onOpenDrawer;
+  final bool showCalendar;
+  final bool showAppBar;
+  final bool isFreeChat;
 
   const WeeklyCalendar({
     Key? key,
@@ -21,10 +18,9 @@ class WeeklyCalendar extends StatefulWidget {
     this.selectedDate,
     this.onSearchPressed,
     this.onOpenDrawer,
-    this.onNavigateToProfile,
-    this.showCalendar = true, // Por padrão mostra o calendário
-    this.showAppBar = true, // Por padrão mostra o AppBar
-    this.isFreeChat = false, // Por padrão não é conversa livre
+    this.showCalendar = true,
+    this.showAppBar = true,
+    this.isFreeChat = false,
   }) : super(key: key);
 
   @override
@@ -252,65 +248,16 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
             ),
           ],
 
-          // Ícones à direita (pesquisa e foto do perfil)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.onSearchPressed != null && !widget.isFreeChat)
-                IconButton(
-                  icon: Icon(
-                    Icons.search,
-                    color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  ),
-                  tooltip: 'Pesquisar alimentos',
-                  onPressed: widget.onSearchPressed,
-                ),
-
-              // Foto do perfil
-              if (widget.onNavigateToProfile != null)
-                Consumer<AuthService>(
-                  builder: (context, authService, child) {
-                    final hasPhoto = authService.currentUser?.photo != null &&
-                                    authService.currentUser!.photo!.isNotEmpty;
-
-                    return GestureDetector(
-                      onTap: widget.onNavigateToProfile,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isDarkMode ? Colors.white38 : Colors.grey.shade300,
-                              width: 2,
-                            ),
-                          ),
-                          child: hasPhoto
-                              ? CircleAvatar(
-                                  radius: 16,
-                                  backgroundImage: NetworkImage(authService.currentUser!.photo!),
-                                  backgroundColor: Colors.transparent,
-                                )
-                              : CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: isDarkMode
-                                      ? Colors.grey.shade800
-                                      : Colors.grey.shade200,
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 20,
-                                    color: isDarkMode ? Colors.white54 : Colors.grey,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-            ],
-          ),
+          // Ícone de pesquisa à direita
+          if (widget.onSearchPressed != null && !widget.isFreeChat)
+            IconButton(
+              icon: Icon(
+                Icons.search,
+                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+              ),
+              tooltip: 'Pesquisar alimentos',
+              onPressed: widget.onSearchPressed,
+            ),
         ],
       ),
     );

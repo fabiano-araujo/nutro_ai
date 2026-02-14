@@ -88,19 +88,17 @@ class AITutorScreen extends StatefulWidget {
       initialToolResponse; // NOVO: Resposta da IA para o initialPrompt da ferramenta
   final bool isFreeChat; // Indica se é modo conversa livre (sem JSON)
   final String? freeChatId; // ID da conversa livre
-  final VoidCallback? onOpenDrawer; // Callback para abrir o drawer
-  final VoidCallback? onNavigateToProfile; // Callback para navegar ao perfil
-  final String? toolType; // Tipo de ferramenta/modo (ex: 'my_diet' para usar Gemini)
+  final VoidCallback? onOpenDrawer;
+  final String? toolType;
 
   const AITutorScreen({
     Key? key,
     this.conversationId,
     this.initialPrompt,
-    this.initialToolResponse, // NOVO
+    this.initialToolResponse,
     this.isFreeChat = false,
     this.freeChatId,
     this.onOpenDrawer,
-    this.onNavigateToProfile,
     this.toolType,
   }) : super(key: key);
 
@@ -114,7 +112,11 @@ class AITutorScreen extends StatefulWidget {
 }
 
 class AITutorScreenState extends State<AITutorScreen>
-    with TickerProviderStateMixin, AITutorSpeechMixin, TextToSpeechMixin, WidgetsBindingObserver {
+    with
+        TickerProviderStateMixin,
+        AITutorSpeechMixin,
+        TextToSpeechMixin,
+        WidgetsBindingObserver {
   // Controller que gerenciará o estado e lógica (será inicializado no initState)
   late AITutorController _controller;
 
@@ -131,14 +133,19 @@ class AITutorScreenState extends State<AITutorScreen>
   late AnimationController _animationController;
 
   // Controle de scroll do header (calendário + nutrition card, SEM o AppBar)
-  double _headerOffset = 0.0; // Offset vertical do header (0 = visível, negativo = escondido)
+  double _headerOffset =
+      0.0; // Offset vertical do header (0 = visível, negativo = escondido)
   double _lastScrollPosition = 0.0;
-  double _maxHeaderHeight = 235.0; // Altura inicial estimada, será calculada dinamicamente
-  final GlobalKey _headerKey = GlobalKey(); // Key para medir a altura real do header
-  final GlobalKey _lastAiMessageKey = GlobalKey(); // Key para rastrear a última mensagem da IA
+  double _maxHeaderHeight =
+      235.0; // Altura inicial estimada, será calculada dinamicamente
+  final GlobalKey _headerKey =
+      GlobalKey(); // Key para medir a altura real do header
+  final GlobalKey _lastAiMessageKey =
+      GlobalKey(); // Key para rastrear a última mensagem da IA
   Timer? _heightCalculationTimer; // Timer para debounce do cálculo de altura
   bool _isCalculatingHeight = false; // Flag para evitar cálculos simultâneos
-  bool _isScrollingProgrammatically = false; // Flag para ignorar scroll automático no _handleScroll
+  bool _isScrollingProgrammatically =
+      false; // Flag para ignorar scroll automático no _handleScroll
 
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
@@ -387,7 +394,8 @@ class AITutorScreenState extends State<AITutorScreen>
         widget.conversationId != null || conversationIdFromToolData != null;
 
     // Obter a data selecionada do provider
-    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
     final selectedDate = mealsProvider.selectedDate;
 
     // Inicializar o controller com as opções corretas
@@ -465,20 +473,24 @@ class AITutorScreenState extends State<AITutorScreen>
   void _initFreeChatMode() {
     // Determinar o toolType baseado no parâmetro widget.toolType
     final effectiveToolType = widget.toolType ?? 'free_chat';
-    print('💬 AITutorScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
+    print(
+        '💬 AITutorScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
 
-    final freeChatProvider = Provider.of<FreeChatProvider>(context, listen: false);
+    final freeChatProvider =
+        Provider.of<FreeChatProvider>(context, listen: false);
     List<Map<String, dynamic>>? initialMessages;
 
     // Verificar se tem um freeChatId para carregar
     if (widget.freeChatId != null) {
       _currentFreeChatId = widget.freeChatId;
       initialMessages = freeChatProvider.getMessages(widget.freeChatId!);
-      print('📂 AITutorScreen: Carregando conversa livre existente: ${widget.freeChatId}');
+      print(
+          '📂 AITutorScreen: Carregando conversa livre existente: ${widget.freeChatId}');
     } else {
       // Criar nova conversa
       _currentFreeChatId = freeChatProvider.createConversation();
-      print('📝 AITutorScreen: Nova conversa livre criada: $_currentFreeChatId');
+      print(
+          '📝 AITutorScreen: Nova conversa livre criada: $_currentFreeChatId');
     }
 
     // Inicializar controller para conversa livre
@@ -515,7 +527,9 @@ class AITutorScreenState extends State<AITutorScreen>
 
     // Detectar apenas quando o teclado FECHA (estava aberto e agora fechou)
     // Se tinha altura anterior > 0 e agora é 0, o teclado fechou
-    if (_lastKeyboardHeight > 0 && bottomInset == 0 && _suggestions.isNotEmpty) {
+    if (_lastKeyboardHeight > 0 &&
+        bottomInset == 0 &&
+        _suggestions.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
@@ -646,7 +660,8 @@ class AITutorScreenState extends State<AITutorScreen>
       }
 
       // Fallback: usar estimativa se não conseguir pegar a posição real
-      final adjustedIndex = _toolData != null ? lastAiMessageIndex + 1 : lastAiMessageIndex;
+      final adjustedIndex =
+          _toolData != null ? lastAiMessageIndex + 1 : lastAiMessageIndex;
       final estimatedItemHeight = 80.0;
       final targetPosition = (adjustedIndex * estimatedItemHeight) * 0.7;
       final maxScroll = _scrollController.position.maxScrollExtent;
@@ -655,11 +670,13 @@ class AITutorScreenState extends State<AITutorScreen>
       _isScrollingProgrammatically = true;
 
       if (animate) {
-        _scrollController.animateTo(
+        _scrollController
+            .animateTo(
           scrollPosition,
           duration: Duration(milliseconds: 300),
           curve: Curves.easeOut,
-        ).then((_) {
+        )
+            .then((_) {
           _isScrollingProgrammatically = false;
         });
       } else {
@@ -682,14 +699,16 @@ class AITutorScreenState extends State<AITutorScreen>
 
       _isCalculatingHeight = true;
       try {
-        final RenderBox? renderBox = _headerKey.currentContext?.findRenderObject() as RenderBox?;
+        final RenderBox? renderBox =
+            _headerKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null && renderBox.hasSize) {
           final newHeight = renderBox.size.height;
           // Só atualizar se a diferença for maior que 5px (evitar recálculos por pequenas variações)
           if (newHeight > 0 && (newHeight - _maxHeaderHeight).abs() > 5) {
             setState(() {
               _maxHeaderHeight = newHeight;
-              print('Header height calculado dinamicamente: $_maxHeaderHeight px');
+              print(
+                  'Header height calculado dinamicamente: $_maxHeaderHeight px');
             });
           }
         }
@@ -1160,9 +1179,12 @@ class AITutorScreenState extends State<AITutorScreen>
               _controller.currentlySpeakingMessageIndex;
 
           // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
-          if (!_hasScrolledToInitialMessages && messages.isNotEmpty && !isLoading) {
+          if (!_hasScrolledToInitialMessages &&
+              messages.isNotEmpty &&
+              !isLoading) {
             _hasScrolledToInitialMessages = true;
-            print('📱 AITutorScreen: Mensagens carregadas, fazendo scroll inicial');
+            print(
+                '📱 AITutorScreen: Mensagens carregadas, fazendo scroll inicial');
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollToLastAiResponse();
             });
@@ -1181,78 +1203,95 @@ class AITutorScreenState extends State<AITutorScreen>
                         showAppBar: true, // Mostrar apenas o AppBar
                         showCalendar: false, // Sem o calendário semanal
                         isFreeChat: widget.isFreeChat, // Modo conversa livre
-                        onOpenDrawer: widget.onOpenDrawer, // Callback para abrir drawer
-                        onNavigateToProfile: widget.onNavigateToProfile, // Callback para perfil
-                        onDaySelected: widget.isFreeChat ? null : (date) async {
-                          print('Data selecionada: $date');
+                        onOpenDrawer: widget.onOpenDrawer,
+                        onDaySelected: widget.isFreeChat
+                            ? null
+                            : (date) async {
+                                print('Data selecionada: $date');
 
-                          // Mostrar o header instantaneamente ao clicar em um dia
-                          setState(() {
-                            _headerOffset = 0.0;
-                            _lastScrollPosition = 0.0;
-                          });
+                                // Mostrar o header instantaneamente ao clicar em um dia
+                                setState(() {
+                                  _headerOffset = 0.0;
+                                  _lastScrollPosition = 0.0;
+                                });
 
-                          mealsProvider.setSelectedDate(date);
-                          await _controller.changeSelectedDate(date);
+                                mealsProvider.setSelectedDate(date);
+                                await _controller.changeSelectedDate(date);
 
-                          // Recalcular altura após mudança de data (múltiplas tentativas para garantir)
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            _calculateHeaderHeight();
-                            // Recalcular novamente após 150ms para garantir que o conteúdo foi renderizado
-                            Future.delayed(Duration(milliseconds: 150), () {
-                              _calculateHeaderHeight();
-                            });
-                          });
+                                // Recalcular altura após mudança de data (múltiplas tentativas para garantir)
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  _calculateHeaderHeight();
+                                  // Recalcular novamente após 150ms para garantir que o conteúdo foi renderizado
+                                  Future.delayed(Duration(milliseconds: 150),
+                                      () {
+                                    _calculateHeaderHeight();
+                                  });
+                                });
 
-                          // Scroll instantâneo para a última resposta da IA
-                          _scrollToLastAiResponse();
-                        },
-                        onSearchPressed: widget.isFreeChat ? null : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const FoodSearchScreen(),
-                            ),
-                          );
-                        },
+                                // Scroll instantâneo para a última resposta da IA
+                                _scrollToLastAiResponse();
+                              },
+                        onSearchPressed: widget.isFreeChat
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const FoodSearchScreen(),
+                                  ),
+                                );
+                              },
                       );
                     },
                   ),
 
                   // Calendário semanal + Nutrition card com comportamento de toolbar Android
-                  // Não mostrar no modo conversa livre
+                  // Não mostrar no modo conversa livre ou quando não há dados
                   if (!widget.isFreeChat)
                     Consumer<DailyMealsProvider>(
                       builder: (context, mealsProvider, child) {
+                        // Só mostrar quando há refeições registradas
+                        final bool hasMeals = mealsProvider.todayMeals.isNotEmpty;
+                        if (!hasMeals) {
+                          return const SizedBox.shrink();
+                        }
+
                         // Calcular altura esperada de forma síncrona baseado nos dados atuais
                         const double calendarHeight = 75.0;
                         const double nutritionCardHeight = 160.0;
-                        final bool hasNutritionCard = mealsProvider.todayMeals.isNotEmpty;
-                        final double expectedHeight = calendarHeight + (hasNutritionCard ? nutritionCardHeight : 0.0);
+                        final double expectedHeight = calendarHeight + nutritionCardHeight;
 
                         // Usar a menor entre a altura esperada e a medida
                         final double effectiveMaxHeight = expectedHeight;
 
                         return SizedBox(
-                          height: (effectiveMaxHeight + _headerOffset).clamp(0.0, effectiveMaxHeight),
+                          height: (effectiveMaxHeight + _headerOffset)
+                              .clamp(0.0, effectiveMaxHeight),
                           child: ClipRect(
                             clipBehavior: Clip.hardEdge,
                             child: OverflowBox(
-                              maxHeight: expectedHeight + 50, // +50px margem de segurança para transições
+                              maxHeight: expectedHeight +
+                                  50, // +50px margem de segurança para transições
                               alignment: Alignment.topCenter,
                               child: Transform.translate(
                                 offset: Offset(0, _headerOffset),
                                 child: Column(
-                                  key: _headerKey, // Key para medir a altura real do header
+                                  key:
+                                      _headerKey, // Key para medir a altura real do header
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     // Calendário semanal (apenas os dias da semana, sem AppBar)
                                     Consumer<DailyMealsProvider>(
                                       builder: (context, mealsProvider, child) {
                                         return WeeklyCalendar(
-                                          selectedDate: mealsProvider.selectedDate,
-                                          showAppBar: false, // Não mostrar o AppBar (já está fixo acima)
-                                          showCalendar: true, // Mostrar apenas o calendário semanal
+                                          selectedDate:
+                                              mealsProvider.selectedDate,
+                                          showAppBar:
+                                              false, // Não mostrar o AppBar (já está fixo acima)
+                                          showCalendar:
+                                              true, // Mostrar apenas o calendário semanal
                                           onDaySelected: (date) async {
                                             print('Data selecionada: $date');
 
@@ -1263,13 +1302,17 @@ class AITutorScreenState extends State<AITutorScreen>
                                             });
 
                                             mealsProvider.setSelectedDate(date);
-                                            await _controller.changeSelectedDate(date);
+                                            await _controller
+                                                .changeSelectedDate(date);
 
                                             // Recalcular altura após mudança de data (múltiplas tentativas para garantir)
-                                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
                                               _calculateHeaderHeight();
                                               // Recalcular novamente após 150ms para garantir que o conteúdo foi renderizado
-                                              Future.delayed(Duration(milliseconds: 150), () {
+                                              Future.delayed(
+                                                  Duration(milliseconds: 150),
+                                                  () {
                                                 _calculateHeaderHeight();
                                               });
                                             });
@@ -1281,7 +1324,8 @@ class AITutorScreenState extends State<AITutorScreen>
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => const FoodSearchScreen(),
+                                                builder: (context) =>
+                                                    const FoodSearchScreen(),
                                               ),
                                             );
                                           },
@@ -1290,16 +1334,21 @@ class AITutorScreenState extends State<AITutorScreen>
                                     ),
 
                                     // Nutrition card
-                                    Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
-                                      builder: (context, nutritionProvider, mealsProvider, child) {
+                                    Consumer2<NutritionGoalsProvider,
+                                        DailyMealsProvider>(
+                                      builder: (context, nutritionProvider,
+                                          mealsProvider, child) {
                                         // Recalcular altura quando o conteúdo mudar (múltiplas tentativas)
-                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
                                           _calculateHeaderHeight();
                                           // Recalcular após 100ms e 250ms para garantir
-                                          Future.delayed(Duration(milliseconds: 100), () {
+                                          Future.delayed(
+                                              Duration(milliseconds: 100), () {
                                             _calculateHeaderHeight();
                                           });
-                                          Future.delayed(Duration(milliseconds: 250), () {
+                                          Future.delayed(
+                                              Duration(milliseconds: 250), () {
                                             _calculateHeaderHeight();
                                           });
                                         });
@@ -1310,19 +1359,28 @@ class AITutorScreenState extends State<AITutorScreen>
                                         }
 
                                         return NutritionCard(
-                                          caloriesConsumed: mealsProvider.totalCalories,
-                                          caloriesGoal: nutritionProvider.caloriesGoal,
-                                          proteinConsumed: mealsProvider.totalProtein.toInt(),
-                                          proteinGoal: nutritionProvider.proteinGoal,
-                                          carbsConsumed: mealsProvider.totalCarbs.toInt(),
-                                          carbsGoal: nutritionProvider.carbsGoal,
-                                          fatsConsumed: mealsProvider.totalFat.toInt(),
+                                          caloriesConsumed:
+                                              mealsProvider.totalCalories,
+                                          caloriesGoal:
+                                              nutritionProvider.caloriesGoal,
+                                          proteinConsumed: mealsProvider
+                                              .totalProtein
+                                              .toInt(),
+                                          proteinGoal:
+                                              nutritionProvider.proteinGoal,
+                                          carbsConsumed:
+                                              mealsProvider.totalCarbs.toInt(),
+                                          carbsGoal:
+                                              nutritionProvider.carbsGoal,
+                                          fatsConsumed:
+                                              mealsProvider.totalFat.toInt(),
                                           fatsGoal: nutritionProvider.fatGoal,
                                           onTap: () {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => const DailyMealsScreen(),
+                                                builder: (context) =>
+                                                    const DailyMealsScreen(),
                                               ),
                                             );
                                           },
@@ -1365,7 +1423,8 @@ class AITutorScreenState extends State<AITutorScreen>
 
                               if (adjustedIndex < messages.length) {
                                 // Verificar se é a última mensagem da IA
-                                final isAiMessage = messages[adjustedIndex]['isUser'] == false;
+                                final isAiMessage =
+                                    messages[adjustedIndex]['isUser'] == false;
                                 int lastAiMessageIndex = -1;
                                 for (int i = messages.length - 1; i >= 0; i--) {
                                   if (messages[i]['isUser'] == false) {
@@ -1373,7 +1432,8 @@ class AITutorScreenState extends State<AITutorScreen>
                                     break;
                                   }
                                 }
-                                final isLastAiMessage = isAiMessage && adjustedIndex == lastAiMessageIndex;
+                                final isLastAiMessage = isAiMessage &&
+                                    adjustedIndex == lastAiMessageIndex;
 
                                 final messageBubble = _buildMessageBubble(
                                   messageData: messages[adjustedIndex]
@@ -1417,7 +1477,8 @@ class AITutorScreenState extends State<AITutorScreen>
                               child: SingleChildScrollView(
                                 padding: EdgeInsets.all(16),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: _suggestions.map((suggestion) {
                                     return GestureDetector(
                                       onTap: () {
@@ -1427,19 +1488,22 @@ class AITutorScreenState extends State<AITutorScreen>
                                       },
                                       child: Container(
                                         margin: EdgeInsets.only(bottom: 12),
-                                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 14),
                                         decoration: BoxDecoration(
                                           color: isDarkMode
                                               ? Color(0xFF2C2C2C)
                                               : Color(0xFFF5F5F5),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         child: Text(
                                           suggestion,
                                           style: TextStyle(
                                             fontSize: 14,
                                             color: isDarkMode
-                                                ? Colors.white.withValues(alpha: 0.9)
+                                                ? Colors.white
+                                                    .withValues(alpha: 0.9)
                                                 : Color(0xFF333333),
                                           ),
                                         ),
@@ -1457,36 +1521,58 @@ class AITutorScreenState extends State<AITutorScreen>
                             child: Container(
                               color: currentScaffoldBackgroundColor,
                               child: Align(
-                                alignment: Alignment(-1.0, -0.3), // À esquerda e mais próximo do topo
+                                alignment: Alignment(-1.0,
+                                    -0.3), // À esquerda e mais próximo do topo
                                 child: SingleChildScrollView(
-                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 16),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Saudação personalizada (alinhada à esquerda)
                                       Consumer<AuthService>(
                                         builder: (context, authService, child) {
-                                          final userName = authService.currentUser?.name?.split(' ').first;
+                                          final userName = authService
+                                              .currentUser?.name
+                                              ?.split(' ')
+                                              .first;
                                           return RichText(
                                             text: TextSpan(
                                               children: [
                                                 if (authService.isAuthenticated)
                                                   TextSpan(
-                                                    text: AppLocalizations.of(context).translate('ai_tutor_greeting').replaceAll('{userName}', userName ?? '') + '\n',
+                                                    text: AppLocalizations.of(
+                                                                context)
+                                                            .translate(
+                                                                'ai_tutor_greeting')
+                                                            .replaceAll(
+                                                                '{userName}',
+                                                                userName ??
+                                                                    '') +
+                                                        '\n',
                                                     style: TextStyle(
                                                       fontSize: 24,
-                                                      fontWeight: FontWeight.w300,
-                                                      color: AppTheme.getSoftTextColor(isDarkMode),
+                                                      fontWeight:
+                                                          FontWeight.w300,
+                                                      color: AppTheme
+                                                          .getSoftTextColor(
+                                                              isDarkMode),
                                                       height: 1.2,
                                                     ),
                                                   ),
                                                 TextSpan(
-                                                  text: AppLocalizations.of(context).translate('ai_tutor_where_start'),
+                                                  text: AppLocalizations.of(
+                                                          context)
+                                                      .translate(
+                                                          'ai_tutor_where_start'),
                                                   style: TextStyle(
                                                     fontSize: 32,
                                                     fontWeight: FontWeight.bold,
-                                                    color: AppTheme.getSoftTextColor(isDarkMode),
+                                                    color: AppTheme
+                                                        .getSoftTextColor(
+                                                            isDarkMode),
                                                     height: 1.2,
                                                   ),
                                                 ),
@@ -1499,23 +1585,28 @@ class AITutorScreenState extends State<AITutorScreen>
                                       // Botões de ação sugeridos
                                       _buildSuggestionButton(
                                         icon: '🍎',
-                                        text: AppLocalizations.of(context).translate('ai_tutor_log_meal'),
+                                        text: AppLocalizations.of(context)
+                                            .translate('ai_tutor_log_meal'),
                                         isDarkMode: isDarkMode,
                                         onTap: () {
-                                          _showSuggestionsForAction('registrar_refeicao');
+                                          _showSuggestionsForAction(
+                                              'registrar_refeicao');
                                         },
                                       ),
                                       SizedBox(height: 12),
                                       _buildSuggestionButton(
                                         icon: '📸',
-                                        text: AppLocalizations.of(context).translate('ai_tutor_analyze_photo'),
+                                        text: AppLocalizations.of(context)
+                                            .translate(
+                                                'ai_tutor_analyze_photo'),
                                         isDarkMode: isDarkMode,
                                         onTap: () {
                                           // Abrir tela da câmera
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (context) => CameraScanScreen(),
+                                              builder: (context) =>
+                                                  CameraScanScreen(),
                                             ),
                                           );
                                         },
@@ -1523,33 +1614,44 @@ class AITutorScreenState extends State<AITutorScreen>
                                       SizedBox(height: 12),
                                       // Botões condicionais baseados em se o usuário configurou metas
                                       Consumer<NutritionGoalsProvider>(
-                                        builder: (context, nutritionProvider, child) {
-                                          if (!nutritionProvider.hasConfiguredGoals) {
+                                        builder: (context, nutritionProvider,
+                                            child) {
+                                          if (!nutritionProvider
+                                              .hasConfiguredGoals) {
                                             // Usuário não configurou metas - mostrar botões para configurar
                                             return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 _buildSuggestionButton(
-                                                  text: AppLocalizations.of(context).translate('ai_tutor_fill_personal_info'),
+                                                  text: AppLocalizations.of(
+                                                          context)
+                                                      .translate(
+                                                          'ai_tutor_fill_personal_info'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
                                                     Navigator.push(
                                                       context,
                                                       MaterialPageRoute(
-                                                        builder: (context) => const NutritionGoalsWizardScreen(),
+                                                        builder: (context) =>
+                                                            const NutritionGoalsWizardScreen(),
                                                       ),
                                                     );
                                                   },
                                                 ),
                                                 SizedBox(height: 12),
                                                 _buildSuggestionButton(
-                                                  text: AppLocalizations.of(context).translate('ai_tutor_set_nutrition_goal'),
+                                                  text: AppLocalizations.of(
+                                                          context)
+                                                      .translate(
+                                                          'ai_tutor_set_nutrition_goal'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
                                                     Navigator.push(
                                                       context,
                                                       MaterialPageRoute(
-                                                        builder: (context) => const NutritionGoalsWizardScreen(),
+                                                        builder: (context) =>
+                                                            const NutritionGoalsWizardScreen(),
                                                       ),
                                                     );
                                                   },
@@ -1559,27 +1661,72 @@ class AITutorScreenState extends State<AITutorScreen>
                                           } else {
                                             // Usuário já configurou - mostrar botões normais
                                             return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 _buildSuggestionButton(
-                                                  text: AppLocalizations.of(context).translate('ai_tutor_meal_suggestions'),
+                                                  text: AppLocalizations.of(
+                                                          context)
+                                                      .translate(
+                                                          'ai_tutor_meal_suggestions'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
-                                                    _showSuggestionsForAction('sugestoes_refeicoes');
+                                                    _showSuggestionsForAction(
+                                                        'sugestoes_refeicoes');
                                                   },
                                                 ),
                                                 SizedBox(height: 12),
                                                 _buildSuggestionButton(
-                                                  text: AppLocalizations.of(context).translate('ai_tutor_ask_nutrition'),
+                                                  text: AppLocalizations.of(
+                                                          context)
+                                                      .translate(
+                                                          'ai_tutor_ask_nutrition'),
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
-                                                    _showSuggestionsForAction('perguntar_nutricao');
+                                                    _showSuggestionsForAction(
+                                                        'perguntar_nutricao');
                                                   },
                                                 ),
                                               ],
                                             );
                                           }
                                         },
+                                      ),
+                                      SizedBox(height: 32),
+                                      // Sugestões rápidas de texto
+                                      Text(
+                                        AppLocalizations.of(context).translate(
+                                                'ai_tutor_try_asking') ??
+                                            'Tente perguntar:',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.getSoftTextColor(
+                                                  isDarkMode)
+                                              .withOpacity(0.7),
+                                        ),
+                                      ),
+                                      SizedBox(height: 12),
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          children: [
+                                            _buildQuickPromptChip(
+                                                context,
+                                                "☕ Café: Pão com ovo",
+                                                isDarkMode),
+                                            SizedBox(width: 8),
+                                            _buildQuickPromptChip(
+                                                context,
+                                                "🥗 Almoço: Arroz e feijão",
+                                                isDarkMode),
+                                            SizedBox(width: 8),
+                                            _buildQuickPromptChip(
+                                                context,
+                                                "🍌 Caloria da banana?",
+                                                isDarkMode),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1734,7 +1881,8 @@ class AITutorScreenState extends State<AITutorScreen>
                                   controller: _messageController,
                                   focusNode: _inputFocusNode,
                                   decoration: InputDecoration(
-                                    hintText: context.tr.translate('ask_anything'),
+                                    hintText:
+                                        context.tr.translate('ask_anything'),
                                     hintStyle: TextStyle(
                                       fontSize: 15,
                                       color: isListening
@@ -1872,10 +2020,10 @@ class AITutorScreenState extends State<AITutorScreen>
     }
 
     // Verificar se a mensagem contém JSON de alimentos (apenas para mensagens da IA)
-    final bool hasFoodJson = !isUser && FoodJsonParser.containsFoodJson(message);
-    final String displayMessage = hasFoodJson
-        ? FoodJsonParser.removeJsonFromMessage(message)
-        : message;
+    final bool hasFoodJson =
+        !isUser && FoodJsonParser.containsFoodJson(message);
+    final String displayMessage =
+        hasFoodJson ? FoodJsonParser.removeJsonFromMessage(message) : message;
 
     // Se for notificador, vamos usar um ChangeNotifierProvider para atualizar apenas este widget
     if (usingNotifier) {
@@ -1883,7 +2031,8 @@ class AITutorScreenState extends State<AITutorScreen>
         value: messageData as MessageNotifier,
         child: Consumer<MessageNotifier>(
           builder: (context, notifier, _) {
-            final hasJsonInNotifier = FoodJsonParser.containsFoodJson(notifier.message);
+            final hasJsonInNotifier =
+                FoodJsonParser.containsFoodJson(notifier.message);
             final cleanMessage = hasJsonInNotifier
                 ? FoodJsonParser.removeJsonFromMessage(notifier.message)
                 : notifier.message;
@@ -1899,8 +2048,10 @@ class AITutorScreenState extends State<AITutorScreen>
                   isUser: isUser,
                   isError: notifier.isError,
                   isStreaming: notifier.isStreaming,
-                  onLongPress: () => _showMessageOptions(notifier.message, isUser),
-                  bottomSpacing: hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
+                  onLongPress: () =>
+                      _showMessageOptions(notifier.message, isUser),
+                  bottomSpacing:
+                      hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
                 ),
                 if (hasJsonInNotifier && !notifier.isStreaming)
                   Consumer<DailyMealsProvider>(
@@ -2330,9 +2481,7 @@ class AITutorScreenState extends State<AITutorScreen>
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: isDarkMode
-              ? Color(0xFF1E1E1E)
-              : Colors.white,
+          color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(50),
         ),
         child: Row(
@@ -2350,12 +2499,35 @@ class AITutorScreenState extends State<AITutorScreen>
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
-                color: isDarkMode ? Colors.white.withValues(alpha: 0.9) : Color(0xFF333333),
+                color: isDarkMode
+                    ? Colors.white.withValues(alpha: 0.9)
+                    : Color(0xFF333333),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildQuickPromptChip(
+      BuildContext context, String text, bool isDarkMode) {
+    return ActionChip(
+      label: Text(text),
+      labelStyle: TextStyle(
+        color: isDarkMode ? Colors.white : Colors.black87,
+        fontSize: 13,
+      ),
+      backgroundColor: isDarkMode ? Color(0xFF333333) : Colors.grey[200],
+      onPressed: () {
+        _messageController.text = text;
+        _handleSendMessage();
+      },
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.transparent),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 }

@@ -92,6 +92,60 @@ class FoodJsonParser {
     }
   }
 
+  /// Extrai o mealType do JSON retornado pela IA
+  static String? extractMealType(String jsonStr) {
+    try {
+      final normalizedJson = jsonStr
+          .replaceAll('\n', '')
+          .replaceAll('\r', '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+
+      final decoded = jsonDecode(normalizedJson);
+      if (decoded is Map && decoded.containsKey('mealType')) {
+        return decoded['mealType'] as String?;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Converte o mealType da IA para MealType enum
+  /// Suporta tanto tipos padrão quanto tipos personalizados do usuário
+  static MealType mealTypeFromString(String? mealTypeStr) {
+    if (mealTypeStr == null) return MealType.snack;
+
+    final type = mealTypeStr.toLowerCase();
+
+    // Tipos padrão do MealType enum
+    if (type == 'breakfast') return MealType.breakfast;
+    if (type == 'lunch') return MealType.lunch;
+    if (type == 'dinner') return MealType.dinner;
+    if (type == 'snack') return MealType.snack;
+    if (type == 'freemeal' || type == 'free_meal') return MealType.freeMeal;
+
+    // Tipos personalizados comuns mapeados para enum
+    if (type.contains('breakfast') || type.contains('cafe') || type.contains('manhã')) {
+      return MealType.breakfast;
+    }
+    if (type.contains('lunch') || type.contains('almoço') || type.contains('almoco')) {
+      return MealType.lunch;
+    }
+    if (type.contains('dinner') || type.contains('jantar')) {
+      return MealType.dinner;
+    }
+    if (type.contains('snack') || type.contains('lanche') || type.contains('afternoon') || type.contains('tarde')) {
+      return MealType.snack;
+    }
+    if (type.contains('supper') || type.contains('ceia')) {
+      return MealType.snack; // Ceia mapeia para snack
+    }
+
+    // Fallback para snack
+    return MealType.snack;
+  }
+
   /// Parseia o JSON de alimentos e retorna uma lista de Food
   static List<Food>? parseFoodJson(String jsonStr) {
     try {

@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../screens/food_page.dart';
 import '../screens/nutrition_goals_screen.dart';
+import '../screens/nutrition_goals_wizard_screen.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   const PersonalizedDietScreen({Key? key}) : super(key: key);
@@ -216,8 +217,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
     // Check if nutrition goals are configured
     if (!nutritionGoals.hasConfiguredGoals) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configure seus objetivos nutricionais primeiro')),
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const NutritionGoalsWizardScreen(),
+        ),
       );
       return;
     }
@@ -367,21 +371,30 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Weekly Calendar
+            // AppBar + Weekly Calendar
             Consumer<DietPlanProvider>(
               builder: (context, dietProvider, _) {
-                return WeeklyCalendar(
-                  selectedDate: dietProvider.selectedDate,
-                  onDaySelected: (date) {
-                    dietProvider.setSelectedDate(date);
-                  },
-                  showAppBar: true,
-                  showCalendar: true,
+                final hasDiet = dietProvider.currentDietPlan != null ||
+                                dietProvider.isLoading ||
+                                dietProvider.partialDietPlan != null;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // AppBar sempre visível
+                    WeeklyCalendar(
+                      selectedDate: dietProvider.selectedDate,
+                      onDaySelected: (date) {
+                        dietProvider.setSelectedDate(date);
+                      },
+                      showAppBar: true,
+                      showCalendar: hasDiet, // Calendário só mostra quando há dieta
+                    ),
+                    if (hasDiet) const SizedBox(height: 8),
+                  ],
                 );
               },
             ),
-
-            const SizedBox(height: 8),
 
             // Diet Plan Content
             Expanded(

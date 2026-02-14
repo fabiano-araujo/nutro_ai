@@ -1441,8 +1441,18 @@ class MessageFormatter {
     List<List<String>> rows = [];
 
     for (String line in tableLines) {
-      // Pular linhas divisórias (que contêm apenas - e +)
-      if (line.trim().replaceAll('-', '').replaceAll('+', '').trim().isEmpty) {
+      final trimmedLine = line.trim();
+      final bool isAsciiDivider = trimmedLine
+          .replaceAll('-', '')
+          .replaceAll('+', '')
+          .trim()
+          .isEmpty;
+      final bool isMarkdownDivider = RegExp(
+        r'^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$',
+      ).hasMatch(trimmedLine);
+
+      // Pular linhas divisórias de tabela (+---+) e separadores markdown (|---|:---:|)
+      if (isAsciiDivider || isMarkdownDivider) {
         continue;
       }
 
