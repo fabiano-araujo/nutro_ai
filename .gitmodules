@@ -1,0 +1,3 @@
+[submodule "dieta_api"]
+	path = dieta_api
+	url = https://gitlab.com/fabiano-araujo/dieta_api.git
