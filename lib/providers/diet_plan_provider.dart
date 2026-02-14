@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../models/diet_plan_model.dart';
-import '../providers/nutrition_goals_provider.dart';
+import '../providers/nutrition_goals_provider.dart' show NutritionGoalsProvider;
 
 class DietPlanProvider extends ChangeNotifier {
   // Map de planos de dieta por data (YYYY-MM-DD)
@@ -91,9 +91,11 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       // Build the prompt for AI
-      final prompt = _buildDietPlanPrompt(nutritionGoals);
+      final prompt = _buildDietPlanPrompt(nutritionGoals, languageCode);
 
       print('🍽️ Gerando plano de dieta para ${_formatDate(date)}');
+      print('📊 Refeições: $_expectedMealsCount');
+      print('🎯 Refeição principal: ${_preferences.hungriestMealTime}');
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
       print('👤 UserId: $userId');
@@ -302,18 +304,48 @@ class DietPlanProvider extends ChangeNotifier {
     }
   }
 
+  // Get country name from language code
+  String _getCountryFromLanguage(String languageCode) {
+    final Map<String, String> countryMap = {
+      'pt_BR': 'Brazil',
+      'pt_PT': 'Portugal',
+      'en_US': 'United States',
+      'en_GB': 'United Kingdom',
+      'es_ES': 'Spain',
+      'es_MX': 'Mexico',
+      'es_AR': 'Argentina',
+      'fr_FR': 'France',
+      'de_DE': 'Germany',
+      'it_IT': 'Italy',
+      'ja_JP': 'Japan',
+      'zh_CN': 'China',
+      'ko_KR': 'South Korea',
+    };
+    return countryMap[languageCode] ?? 'Brazil';
+  }
+
   // Build prompt for AI diet generation
-  String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals) {
-    // Valores dinâmicos vindos do app
+  String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals, String languageCode) {
+    // Nutrition goals from provider (already calculated)
     final calories = nutritionGoals.caloriesGoal;
     final protein = nutritionGoals.proteinGoal;
     final carbs = nutritionGoals.carbsGoal;
     final fat = nutritionGoals.fatGoal;
+
+    // Diet preferences
     final mealsPerDay = _preferences.mealsPerDay;
-    final hungriestMeal = _preferences.hungriestMealTime;
+    final largestMeal = _preferences.hungriestMealTime;
+
+    // Country for cuisine
+    final country = _getCountryFromLanguage(languageCode);
 
     return '''
-Create a complete daily diet plan. Daily totals: $calories calories, ${protein}g protein, ${carbs}g carbs, ${fat}g fat. There are $mealsPerDay meals per day. Hungriest meal is $hungriestMeal (give it 35% of daily calories). Return ONLY valid JSON (no markdown):
+Create a daily diet plan using foods from $country cuisine.
+
+TARGETS: $calories kcal, ${protein}g protein, ${carbs}g carbs, ${fat}g fat
+MEALS: $mealsPerDay meals/day. Largest meal: $largestMeal (35% of calories).
+
+Return ONLY valid JSON:
 {
   "date": "YYYY-MM-DD",
   "totalNutrition": {"calories": $calories, "protein": $protein, "carbs": $carbs, "fat": $fat},

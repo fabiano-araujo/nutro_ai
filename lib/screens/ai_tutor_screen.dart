@@ -1248,17 +1248,12 @@ class AITutorScreenState extends State<AITutorScreen>
                   ),
 
                   // Calendário semanal + Nutrition card com comportamento de toolbar Android
-                  // Não mostrar no modo conversa livre ou quando não há dados
+                  // Não mostrar no modo conversa livre
                   if (!widget.isFreeChat)
                     Consumer<DailyMealsProvider>(
                       builder: (context, mealsProvider, child) {
-                        // Só mostrar quando há refeições registradas
-                        final bool hasMeals = mealsProvider.todayMeals.isNotEmpty;
-                        if (!hasMeals) {
-                          return const SizedBox.shrink();
-                        }
-
                         // Calcular altura esperada de forma síncrona baseado nos dados atuais
+                        // O NutritionCard tem sua própria verificação de hasMeals
                         const double calendarHeight = 75.0;
                         const double nutritionCardHeight = 160.0;
                         final double expectedHeight = calendarHeight + nutritionCardHeight;

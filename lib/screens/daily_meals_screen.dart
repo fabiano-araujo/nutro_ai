@@ -8,6 +8,7 @@ import '../models/food_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/nutrition_card.dart';
 import '../widgets/macro_card_gradient.dart';
+import '../widgets/weekly_calendar.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
 import 'food_search_screen.dart';
@@ -152,6 +153,15 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           return SingleChildScrollView(
             child: Column(
               children: [
+                // Weekly Calendar - dias da semana
+                WeeklyCalendar(
+                  selectedDate: mealsProvider.selectedDate,
+                  onDaySelected: (date) {
+                    mealsProvider.setSelectedDate(date);
+                  },
+                  showAppBar: false,
+                  showCalendar: true,
+                ),
                 SizedBox(height: 8),
 
                 // Nutrition summary header with edit button

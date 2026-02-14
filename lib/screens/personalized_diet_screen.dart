@@ -112,103 +112,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     });
   }
 
-  // Show dialog to configure diet preferences
-  Future<void> _showPreferencesDialog() async {
-    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
-    final currentPrefs = dietProvider.preferences;
-
-    int selectedMeals = currentPrefs.mealsPerDay;
-    String selectedHungriestTime = currentPrefs.hungriestMealTime;
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Preferências da Dieta'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Quantas refeições por dia?',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButton<int>(
-                      value: selectedMeals,
-                      isExpanded: true,
-                      items: [3, 4, 5, 6].map((meals) {
-                        return DropdownMenuItem(
-                          value: meals,
-                          child: Text('$meals refeições'),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedMeals = value;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Qual horário você sente mais fome?',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButton<String>(
-                      value: selectedHungriestTime,
-                      isExpanded: true,
-                      items: const [
-                        DropdownMenuItem(value: 'breakfast', child: Text('☀️ Café da Manhã')),
-                        DropdownMenuItem(value: 'lunch', child: Text('🌞 Almoço')),
-                        DropdownMenuItem(value: 'dinner', child: Text('🌙 Jantar')),
-                        DropdownMenuItem(value: 'snack', child: Text('🍎 Lanche')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedHungriestTime = value;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Estas informações serão usadas para criar um plano de dieta personalizado com a distribuição ideal de calorias.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final newPrefs = currentPrefs.copyWith(
-                      mealsPerDay: selectedMeals,
-                      hungriestMealTime: selectedHungriestTime,
-                    );
-                    dietProvider.updatePreferences(newPrefs);
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Salvar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   // Generate diet plan for selected date
   Future<void> _generateDietPlan() async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
@@ -226,9 +129,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       return;
     }
 
-    // Show preferences dialog first
-    await _showPreferencesDialog();
-
     // Get device locale
     final locale = Localizations.localeOf(context);
     final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
@@ -236,7 +136,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     // Get userId from authenticated user
     final userId = authService.currentUser?.id.toString() ?? '';
 
-    // Generate diet plan
+    // Generate diet plan with user data (no dialog needed)
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
       nutritionGoals,

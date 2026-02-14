@@ -41,6 +41,13 @@ class MessageFormatter {
       return _processTextWithFormulas(text, style, isDarkMode);
     }
 
+    // IMPORTANTE: Verificar tabelas PRIMEIRO (antes de markdown básico)
+    // Isso evita que tabelas com * ou _ em outras partes do texto sejam mal formatadas
+    if ((text.contains('|') && text.contains('\n')) ||
+        (text.contains('-') && text.contains('+'))) {
+      return formatTablesAndLists(text, style, isDarkMode);
+    }
+
     // Verificar se temos cabeçalhos markdown (###, ##, #)
     if (text.contains('###') ||
         text.contains('##') ||
@@ -64,11 +71,6 @@ class MessageFormatter {
         // Se contém quebras de linha, processar como marcações em múltiplas linhas
         return formatMarkdownText(text, style, isDarkMode);
       }
-    }
-
-    // Verificar se temos listas ou tabelas para formatar
-    if (text.contains('|') || text.contains('-') && text.contains('+')) {
-      return formatTablesAndLists(text, style, isDarkMode);
     }
 
     // Retornar texto simples se não houver nenhuma formatação especial
@@ -1363,12 +1365,29 @@ class MessageFormatter {
 
         // Adicionar a linha atual (não-tabela, não-lista)
         if (line.trim().isNotEmpty) {
-          widgets.add(
-            Padding(
-              padding: EdgeInsets.only(bottom: 4),
-              child: Text(line, style: style),
-            ),
-          );
+          // Verificar se a linha tem formatação markdown (negrito, itálico, etc.)
+          if (line.contains('**') ||
+              line.contains('__') ||
+              line.contains('`') ||
+              line.contains('[')) {
+            List<InlineSpan> spans =
+                processInlineMarkdown(line, style, isDarkMode);
+            widgets.add(
+              Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: SelectableText.rich(
+                  TextSpan(children: spans),
+                ),
+              ),
+            );
+          } else {
+            widgets.add(
+              Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: SelectableText(line, style: style),
+              ),
+            );
+          }
         } else {
           widgets.add(SizedBox(height: 8)); // Espaço para linha em branco
         }
