@@ -12,6 +12,29 @@ import 'nutrition_goals_wizard_screen.dart';
 import 'nutrition_goals_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 
+// ========== STANDARDIZED COLORS ==========
+class ProfileColors {
+  // Macronutrients
+  static const Color protein = Color(0xFF9575CD);    // Purple
+  static const Color carbs = Color(0xFFFFB74D);      // Amber/Orange
+  static const Color fat = Color(0xFF4DB6AC);        // Teal
+  static const Color fiber = Color(0xFF81C784);      // Light Green
+
+  // Status colors
+  static const Color success = Color(0xFF66BB6A);    // Green - On target
+  static const Color warning = Color(0xFFFFB74D);    // Orange - Under goal
+  static const Color danger = Color(0xFFEF5350);     // Red - Over goal
+
+  // Category colors
+  static const Color calories = Color(0xFFFF9800);   // Orange - Fire/Energy
+  static const Color streak = Color(0xFFFF9800);     // Orange - Fire
+  static const Color days = Color(0xFF42A5F5);       // Blue - Calendar
+  static const Color meals = Color(0xFF66BB6A);      // Green - Food
+  static const Color average = Color(0xFF9575CD);    // Purple - Stats
+  static const Color insights = Color(0xFF9575CD);   // Purple - Insights
+  static const Color balance = Color(0xFF42A5F5);    // Blue - Balance
+}
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
@@ -68,32 +91,32 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         _buildQuickStatsRow(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 3. Goal Adherence Card (important - shows overall progress)
+        // 3. Goal Adherence Card
         _buildGoalAdherenceCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 4. Today's Macro Distribution (current status)
-        _buildMacroDistributionCard(theme, colorScheme),
-        const SizedBox(height: 20),
-
-        // 5. Weekly Progress Heatmap (recent view)
+        // 4. Weekly Progress Heatmap
         _buildWeeklyProgressCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 6. Caloric Balance Card (progress towards goal)
+        // 5. Caloric Balance Card
         _buildCaloricBalanceCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 7. Calories History Chart
+        // 6. Calories History Chart
         _buildCaloriesChartCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 8. Macronutrients Average Chart
+        // 7. Macronutrients Average Chart
         _buildMacronutrientsChartCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 9. Best Days of Week Card
+        // 8. Best Days of Week Card
         _buildBestDaysCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 9. Today's Macro Distribution (at the end)
+        _buildMacroDistributionCard(theme, colorScheme),
         const SizedBox(height: 24),
 
         // 10. Logout Button
@@ -270,10 +293,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     Expanded(
                       child: _buildInfoCard(
                         icon: Icons.local_fire_department_rounded,
-                        iconColor: Colors.orange,
+                        iconColor: ProfileColors.calories,
                         label: context.tr.translate('profile_daily_target'),
                         value: '${nutritionProvider.caloriesGoal} kcal',
-                        valueColor: Colors.orange,
+                        valueColor: ProfileColors.calories,
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -374,7 +397,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 icon: Icons.local_fire_department_rounded,
                 value: streak.toString(),
                 label: context.tr.translate('profile_streak'),
-                color: Colors.orange,
+                color: ProfileColors.streak,
                 isDarkMode: isDarkMode,
                 theme: theme,
               ),
@@ -385,7 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 icon: Icons.calendar_today_rounded,
                 value: totalDays.toString(),
                 label: context.tr.translate('profile_days_logged'),
-                color: Colors.blue,
+                color: ProfileColors.days,
                 isDarkMode: isDarkMode,
                 theme: theme,
               ),
@@ -396,7 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 icon: Icons.restaurant_rounded,
                 value: totalMeals.toString(),
                 label: context.tr.translate('profile_meals'),
-                color: Colors.green,
+                color: ProfileColors.meals,
                 isDarkMode: isDarkMode,
                 theme: theme,
               ),
@@ -407,7 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 icon: Icons.show_chart_rounded,
                 value: avgCalories > 0 ? avgCalories.toStringAsFixed(0) : '-',
                 label: context.tr.translate('profile_avg_cal'),
-                color: Colors.purple,
+                color: ProfileColors.average,
                 isDarkMode: isDarkMode,
                 theme: theme,
               ),
@@ -626,7 +649,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             FlSpot((days - 1).toDouble(), calorieGoal),
                           ],
                           isCurved: false,
-                          color: Colors.orange.withValues(alpha: 0.6),
+                          color: ProfileColors.calories.withValues(alpha: 0.6),
                           barWidth: 2,
                           dotData: const FlDotData(show: false),
                           dashArray: [6, 4],
@@ -699,7 +722,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     const SizedBox(width: 24),
                     _buildLegendItem(
                       context.tr.translate('profile_daily_target'),
-                      Colors.orange,
+                      ProfileColors.calories,
                       theme,
                       true,
                     ),
@@ -1404,13 +1427,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.12),
+                        color: ProfileColors.balance.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.calendar_view_week_rounded,
                         size: 20,
-                        color: Colors.blue,
+                        color: ProfileColors.balance,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1443,11 +1466,11 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     if (!hasData) {
                       progressColor = Colors.grey.withValues(alpha: 0.3);
                     } else if (progress < 0.8) {
-                      progressColor = Colors.orange; // Under goal
+                      progressColor = ProfileColors.warning; // Under goal
                     } else if (progress <= 1.1) {
-                      progressColor = Colors.green; // On target
+                      progressColor = ProfileColors.success; // On target
                     } else {
-                      progressColor = Colors.red; // Over goal
+                      progressColor = ProfileColors.danger; // Over goal
                     }
 
                     return _buildWeekdayCell(
@@ -1466,11 +1489,11 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildWeeklyLegendItem(context.tr.translate('profile_under_goal'), Colors.orange, theme),
+                    _buildWeeklyLegendItem(context.tr.translate('profile_under_goal'), ProfileColors.warning, theme),
                     const SizedBox(width: 16),
-                    _buildWeeklyLegendItem(context.tr.translate('profile_on_target'), Colors.green, theme),
+                    _buildWeeklyLegendItem(context.tr.translate('profile_on_target'), ProfileColors.success, theme),
                     const SizedBox(width: 16),
-                    _buildWeeklyLegendItem(context.tr.translate('profile_over_goal'), Colors.red, theme),
+                    _buildWeeklyLegendItem(context.tr.translate('profile_over_goal'), ProfileColors.danger, theme),
                   ],
                 ),
               ],
@@ -1626,13 +1649,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.12),
+                        color: ProfileColors.success.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.track_changes_rounded,
                         size: 20,
-                        color: Colors.green,
+                        color: ProfileColors.success,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1711,7 +1734,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             icon: Icons.check_circle_rounded,
                             label: context.tr.translate('profile_on_target'),
                             value: daysOnTarget,
-                            color: Colors.green,
+                            color: ProfileColors.success,
                             theme: theme,
                           ),
                           const SizedBox(height: 12),
@@ -1719,7 +1742,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             icon: Icons.arrow_downward_rounded,
                             label: context.tr.translate('profile_under_goal'),
                             value: daysUnder,
-                            color: Colors.orange,
+                            color: ProfileColors.warning,
                             theme: theme,
                           ),
                           const SizedBox(height: 12),
@@ -1727,7 +1750,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             icon: Icons.arrow_upward_rounded,
                             label: context.tr.translate('profile_over_goal'),
                             value: daysOver,
-                            color: Colors.red,
+                            color: ProfileColors.danger,
                             theme: theme,
                           ),
                         ],
@@ -1755,9 +1778,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   Color _getAdherenceColor(double rate) {
-    if (rate >= 80) return Colors.green;
-    if (rate >= 50) return Colors.orange;
-    return Colors.red;
+    if (rate >= 80) return ProfileColors.success;
+    if (rate >= 50) return ProfileColors.warning;
+    return ProfileColors.danger;
   }
 
   Widget _buildAdherenceStatRow({
@@ -1836,7 +1859,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           isOnTrack = totalBalance.abs() < (calorieGoal * 0.1 * daysWithData);
         }
 
-        final balanceColor = isOnTrack ? Colors.green : Colors.orange;
+        final balanceColor = isOnTrack ? ProfileColors.success : ProfileColors.warning;
 
         // Estimate weight change (3500 kcal = ~0.45kg)
         final estimatedWeightChange = totalBalance / 7700; // kg
@@ -1938,7 +1961,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         value: '${totalBalance > 0 ? '+' : ''}${totalBalance.abs()}',
                         unit: 'kcal',
                         icon: totalBalance < 0 ? Icons.remove_circle_outline : Icons.add_circle_outline,
-                        color: totalBalance < 0 ? Colors.blue : Colors.orange,
+                        color: totalBalance < 0 ? ProfileColors.balance : ProfileColors.warning,
                         theme: theme,
                         isDarkMode: isDarkMode,
                       ),
@@ -1951,10 +1974,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         unit: 'kg',
                         icon: estimatedWeightChange < 0 ? Icons.fitness_center : Icons.restaurant,
                         color: wantsDeficit
-                            ? (estimatedWeightChange < 0 ? Colors.green : Colors.orange)
+                            ? (estimatedWeightChange < 0 ? ProfileColors.success : ProfileColors.warning)
                             : wantsSurplus
-                                ? (estimatedWeightChange > 0 ? Colors.green : Colors.orange)
-                                : Colors.blue,
+                                ? (estimatedWeightChange > 0 ? ProfileColors.success : ProfileColors.warning)
+                                : ProfileColors.balance,
                         theme: theme,
                         isDarkMode: isDarkMode,
                       ),
@@ -2161,13 +2184,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.purple.withValues(alpha: 0.12),
+                        color: ProfileColors.insights.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.insights_rounded,
                         size: 20,
-                        color: Colors.purple,
+                        color: ProfileColors.insights,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -2222,7 +2245,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                           label: context.tr.translate('profile_best_day'),
                           day: weekdays[bestDay - 1],
                           rate: bestRate,
-                          color: Colors.green,
+                          color: ProfileColors.success,
                           icon: Icons.emoji_events_rounded,
                           theme: theme,
                           isDarkMode: isDarkMode,
@@ -2234,7 +2257,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                           label: context.tr.translate('profile_needs_attention'),
                           day: weekdays[worstDay - 1],
                           rate: worstRate,
-                          color: Colors.orange,
+                          color: ProfileColors.warning,
                           icon: Icons.lightbulb_outline_rounded,
                           theme: theme,
                           isDarkMode: isDarkMode,
@@ -2281,13 +2304,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }) {
     Color barColor;
     if (isBest) {
-      barColor = Colors.green;
+      barColor = ProfileColors.success;
     } else if (isWorst) {
-      barColor = Colors.orange;
+      barColor = ProfileColors.warning;
     } else if (rate >= 70) {
-      barColor = Colors.green.withValues(alpha: 0.6);
+      barColor = ProfileColors.success.withValues(alpha: 0.6);
     } else if (rate >= 40) {
-      barColor = Colors.orange.withValues(alpha: 0.6);
+      barColor = ProfileColors.warning.withValues(alpha: 0.6);
     } else {
       barColor = Colors.grey.withValues(alpha: 0.4);
     }
@@ -2332,7 +2355,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             fontSize: 10,
             fontWeight: (isBest || isWorst) ? FontWeight.bold : FontWeight.normal,
             color: (isBest || isWorst)
-                ? (isBest ? Colors.green : Colors.orange)
+                ? (isBest ? ProfileColors.success : ProfileColors.warning)
                 : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
           ),
         ),
@@ -2498,12 +2521,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.red.withValues(alpha: 0.3),
+          color: ProfileColors.danger.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
       child: Material(
-        color: Colors.red.withValues(alpha: 0.08),
+        color: ProfileColors.danger.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () async {
@@ -2518,14 +2541,14 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               children: [
                 Icon(
                   Icons.logout_rounded,
-                  color: Colors.red.withValues(alpha: 0.8),
+                  color: ProfileColors.danger.withValues(alpha: 0.8),
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   context.tr.translate('sign_out'),
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: Colors.red.withValues(alpha: 0.8),
+                    color: ProfileColors.danger.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

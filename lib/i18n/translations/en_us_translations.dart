@@ -755,6 +755,14 @@ final Map<String, String> enUSTranslations = {
   'ai_tutor_meal_suggestions': 'Meal suggestions',
   'ai_tutor_ask_nutrition': 'Ask about nutrition',
 
+  // Time-based greetings
+  'greeting_breakfast': 'Good morning!\nHad breakfast?',
+  'greeting_morning_snack': 'Morning snack\ntime!',
+  'greeting_lunch': 'Lunch\ntime!',
+  'greeting_afternoon': 'Good afternoon!\nHow can I help?',
+  'greeting_dinner': 'Dinner\ntime!',
+  'greeting_night': 'Good evening!\nHow can I help?',
+
   // Daily Meals Screen - Additional Keys
   'meals': 'Meals',
   'daily_goals': 'Daily Goals',

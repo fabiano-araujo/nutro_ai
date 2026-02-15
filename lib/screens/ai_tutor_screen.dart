@@ -1299,9 +1299,17 @@ class AITutorScreenState extends State<AITutorScreen>
             });
           }
 
-          return Scaffold(
-            backgroundColor: currentScaffoldBackgroundColor,
-            body: SafeArea(
+          return PopScope(
+            canPop: _suggestions.isEmpty,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop && _suggestions.isNotEmpty) {
+                // Se tem sugestões visíveis, limpar em vez de sair
+                _clearSuggestions();
+              }
+            },
+            child: Scaffold(
+              backgroundColor: currentScaffoldBackgroundColor,
+              body: SafeArea(
               child: Column(
                 children: [
                   // AppBar sempre fixo (não se move com o scroll)
@@ -1317,6 +1325,9 @@ class AITutorScreenState extends State<AITutorScreen>
                             ? null
                             : (date) async {
                                 print('Data selecionada: $date');
+
+                                // Limpar sugestões ao mudar de dia
+                                _clearSuggestions();
 
                                 // Mostrar o header instantaneamente ao clicar em um dia
                                 setState(() {
@@ -1401,6 +1412,9 @@ class AITutorScreenState extends State<AITutorScreen>
                                               true, // Mostrar apenas o calendário semanal
                                           onDaySelected: (date) async {
                                             print('Data selecionada: $date');
+
+                                            // Limpar sugestões ao mudar de dia
+                                            _clearSuggestions();
 
                                             // Mostrar o header instantaneamente ao clicar em um dia
                                             setState(() {
@@ -1666,122 +1680,122 @@ class AITutorScreenState extends State<AITutorScreen>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // Texto de boas-vindas
+                                      // Saudação baseada no horário
                                       Text(
-                                        AppLocalizations.of(context)
-                                            .translate('ai_tutor_where_start'),
+                                        _getTimeBasedGreeting(context),
                                         style: TextStyle(
-                                          fontSize: 32,
+                                          fontSize: 28,
                                           fontWeight: FontWeight.bold,
                                           color: AppTheme.getSoftTextColor(isDarkMode),
-                                          height: 1.2,
+                                          height: 1.3,
                                         ),
                                       ),
-                                      SizedBox(height: 32),
-                                      // Botões de ação sugeridos
-                                      _buildSuggestionButton(
-                                        icon: '🍎',
-                                        text: AppLocalizations.of(context)
-                                            .translate('ai_tutor_log_meal'),
-                                        isDarkMode: isDarkMode,
-                                        onTap: () {
-                                          _showSuggestionsForAction(
-                                              'registrar_refeicao');
-                                        },
-                                      ),
-                                      SizedBox(height: 12),
-                                      _buildSuggestionButton(
-                                        icon: '📸',
-                                        text: AppLocalizations.of(context)
-                                            .translate(
-                                                'ai_tutor_analyze_photo'),
-                                        isDarkMode: isDarkMode,
-                                        onTap: () {
-                                          // Abrir tela da câmera
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CameraScanScreen(),
+                                      SizedBox(height: 24),
+                                      // Grid de ações 2x2
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildActionCard(
+                                              icon: Icons.restaurant_menu,
+                                              title: 'Registrar',
+                                              subtitle: 'Adicionar refeição',
+                                              isDarkMode: isDarkMode,
+                                              isPrimary: true,
+                                              onTap: () {
+                                                _showSuggestionsForAction('registrar_refeicao');
+                                              },
                                             ),
-                                          );
-                                        },
+                                          ),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: _buildActionCard(
+                                              icon: Icons.camera_alt,
+                                              title: 'Foto',
+                                              subtitle: 'Analisar com IA',
+                                              isDarkMode: isDarkMode,
+                                              onTap: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => CameraScanScreen(),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       SizedBox(height: 12),
-                                      // Botões condicionais baseados em se o usuário configurou metas
+                                      // Segunda linha do grid
                                       Consumer<NutritionGoalsProvider>(
-                                        builder: (context, nutritionProvider,
-                                            child) {
-                                          if (!nutritionProvider
-                                              .hasConfiguredGoals) {
-                                            // Usuário não configurou metas - mostrar botões para configurar
-                                            return Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                        builder: (context, nutritionProvider, child) {
+                                          if (!nutritionProvider.hasConfiguredGoals) {
+                                            // Usuário não configurou metas
+                                            return Row(
                                               children: [
-                                                _buildSuggestionButton(
-                                                  text: AppLocalizations.of(
-                                                          context)
-                                                      .translate(
-                                                          'ai_tutor_fill_personal_info'),
-                                                  isDarkMode: isDarkMode,
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            const NutritionGoalsWizardScreen(),
-                                                      ),
-                                                    );
-                                                  },
+                                                Expanded(
+                                                  child: _buildActionCard(
+                                                    icon: Icons.person_outline,
+                                                    title: 'Perfil',
+                                                    subtitle: 'Configurar dados',
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              const NutritionGoalsWizardScreen(),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
                                                 ),
-                                                SizedBox(height: 12),
-                                                _buildSuggestionButton(
-                                                  text: AppLocalizations.of(
-                                                          context)
-                                                      .translate(
-                                                          'ai_tutor_set_nutrition_goal'),
-                                                  isDarkMode: isDarkMode,
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            const NutritionGoalsWizardScreen(),
-                                                      ),
-                                                    );
-                                                  },
+                                                SizedBox(width: 12),
+                                                Expanded(
+                                                  child: _buildActionCard(
+                                                    icon: Icons.flag_outlined,
+                                                    title: 'Metas',
+                                                    subtitle: 'Definir objetivos',
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              const NutritionGoalsWizardScreen(),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
                                                 ),
                                               ],
                                             );
                                           } else {
-                                            // Usuário já configurou - mostrar botões normais
-                                            return Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                            // Usuário já configurou
+                                            return Row(
                                               children: [
-                                                _buildSuggestionButton(
-                                                  text: AppLocalizations.of(
-                                                          context)
-                                                      .translate(
-                                                          'ai_tutor_meal_suggestions'),
-                                                  isDarkMode: isDarkMode,
-                                                  onTap: () {
-                                                    _showSuggestionsForAction(
-                                                        'sugestoes_refeicoes');
-                                                  },
+                                                Expanded(
+                                                  child: _buildActionCard(
+                                                    icon: Icons.lightbulb_outline,
+                                                    title: 'Sugestões',
+                                                    subtitle: 'Ideias de refeição',
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: () {
+                                                      _showSuggestionsForAction('sugestoes_refeicoes');
+                                                    },
+                                                  ),
                                                 ),
-                                                SizedBox(height: 12),
-                                                _buildSuggestionButton(
-                                                  text: AppLocalizations.of(
-                                                          context)
-                                                      .translate(
-                                                          'ai_tutor_ask_nutrition'),
-                                                  isDarkMode: isDarkMode,
-                                                  onTap: () {
-                                                    _showSuggestionsForAction(
-                                                        'perguntar_nutricao');
-                                                  },
+                                                SizedBox(width: 12),
+                                                Expanded(
+                                                  child: _buildActionCard(
+                                                    icon: Icons.help_outline,
+                                                    title: 'Perguntar',
+                                                    subtitle: 'Dúvidas nutrição',
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: () {
+                                                      _showSuggestionsForAction('perguntar_nutricao');
+                                                    },
+                                                  ),
                                                 ),
                                               ],
                                             );
@@ -2038,6 +2052,7 @@ class AITutorScreenState extends State<AITutorScreen>
                 ],
               ),
             ),
+          ),
           );
         });
   }
@@ -2528,40 +2543,109 @@ class AITutorScreenState extends State<AITutorScreen>
     );
   }
 
-  // Widget para botões de sugestão na tela de boas-vindas
-  Widget _buildSuggestionButton({
-    String? icon,
-    required String text,
+  // Retorna saudação e sugestão baseada no horário
+  String _getTimeBasedGreeting(BuildContext context) {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 10) {
+      return AppLocalizations.of(context).translate('greeting_breakfast') ??
+             'Bom dia! Já tomou café?';
+    } else if (hour >= 10 && hour < 12) {
+      return AppLocalizations.of(context).translate('greeting_morning_snack') ??
+             'Hora do lanche da manhã?';
+    } else if (hour >= 12 && hour < 14) {
+      return AppLocalizations.of(context).translate('greeting_lunch') ??
+             'Hora do almoço!';
+    } else if (hour >= 14 && hour < 18) {
+      return AppLocalizations.of(context).translate('greeting_afternoon') ??
+             'Boa tarde! Como posso ajudar?';
+    } else if (hour >= 18 && hour < 21) {
+      return AppLocalizations.of(context).translate('greeting_dinner') ??
+             'Hora do jantar!';
+    } else {
+      return AppLocalizations.of(context).translate('greeting_night') ??
+             'Boa noite!';
+    }
+  }
+
+  // Retorna o placeholder do input baseado no horário
+  String _getTimeBasedPlaceholder(BuildContext context) {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 10) {
+      return 'Ex: Pão com ovo e café';
+    } else if (hour >= 10 && hour < 12) {
+      return 'Ex: Fruta ou iogurte';
+    } else if (hour >= 12 && hour < 14) {
+      return 'Ex: Arroz, feijão e frango';
+    } else if (hour >= 14 && hour < 18) {
+      return 'Ex: Lanche da tarde';
+    } else if (hour >= 18 && hour < 21) {
+      return 'Ex: Salada com proteína';
+    } else {
+      return 'O que você comeu?';
+    }
+  }
+
+  // Card de ação para o grid (estilo moderno)
+  Widget _buildActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
     required bool isDarkMode,
     required VoidCallback onTap,
+    bool isPrimary = false,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(50),
+          color: isPrimary
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
+              : (isDarkMode ? Color(0xFF1E1E1E) : Colors.white),
+          borderRadius: BorderRadius.circular(16),
+          border: isPrimary
+              ? Border.all(
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                  width: 1.5,
+                )
+              : null,
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[
-              Text(
-                icon,
-                style: TextStyle(fontSize: 20),
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isPrimary
+                    ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
+                    : (isDarkMode ? Color(0xFF2A2A2A) : Color(0xFFF5F5F5)),
+                borderRadius: BorderRadius.circular(12),
               ),
-              SizedBox(width: 12),
-            ],
+              child: Icon(
+                icon,
+                size: 24,
+                color: isPrimary
+                    ? Theme.of(context).primaryColor
+                    : (isDarkMode ? Colors.white70 : Colors.black54),
+              ),
+            ),
+            SizedBox(height: 12),
             Text(
-              text,
+              title,
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: isDarkMode
-                    ? Colors.white.withValues(alpha: 0.9)
-                    : Color(0xFF333333),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDarkMode ? Colors.white54 : Colors.black45,
               ),
             ),
           ],

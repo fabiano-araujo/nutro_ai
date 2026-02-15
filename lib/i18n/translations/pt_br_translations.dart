@@ -940,6 +940,14 @@ final Map<String, String> ptBRTranslations = {
   'ai_tutor_meal_suggestions': 'Sugestões de refeições',
   'ai_tutor_ask_nutrition': 'Perguntar sobre nutrição',
 
+  // Saudações baseadas no horário
+  'greeting_breakfast': 'Bom dia!\nJá tomou café?',
+  'greeting_morning_snack': 'Hora do lanche\nda manhã!',
+  'greeting_lunch': 'Hora do\nalmoço!',
+  'greeting_afternoon': 'Boa tarde!\nComo posso ajudar?',
+  'greeting_dinner': 'Hora do\njantar!',
+  'greeting_night': 'Boa noite!\nComo posso ajudar?',
+
   // Daily Meals Screen - Additional Keys
   'meals': 'Refeições',
   'daily_goals': 'Metas Diárias',
