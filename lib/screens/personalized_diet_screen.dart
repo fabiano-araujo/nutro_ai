@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../providers/meal_types_provider.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/meal_skeleton.dart';
 import '../widgets/macro_card_gradient.dart';
@@ -14,6 +15,7 @@ import '../services/auth_service.dart';
 import '../screens/food_page.dart';
 import '../screens/nutrition_goals_screen.dart';
 import '../screens/nutrition_goals_wizard_screen.dart';
+import '../i18n/app_localizations.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   const PersonalizedDietScreen({Key? key}) : super(key: key);
@@ -117,6 +119,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
+    final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
 
     // Check if nutrition goals are configured
     if (!nutritionGoals.hasConfiguredGoals) {
@@ -140,6 +143,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
       nutritionGoals,
+      mealTypes: mealTypesProvider.mealTypes,
       userId: userId,
       languageCode: languageCode,
     );
@@ -156,6 +160,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
+    final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
 
     // Get device locale
     final locale = Localizations.localeOf(context);
@@ -168,6 +173,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       dietProvider.selectedDate,
       mealType,
       nutritionGoals,
+      mealTypes: mealTypesProvider.mealTypes,
       userId: userId,
       languageCode: languageCode,
     );
@@ -181,28 +187,34 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
   // Replace all meals
   Future<void> _replaceAllMeals() async {
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+    final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
+    final l10n = AppLocalizations.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Substituir Todas as Refeições'),
-        content: const Text('Deseja gerar um novo plano de dieta completo para este dia?'),
+        title: Text(l10n.translate('replace_all_meals')),
+        content: Text(isWeeklyMode
+            ? l10n.translate('replace_all_meals_weekly_confirm')
+            : l10n.translate('replace_all_meals_daily_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(l10n.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sim, Gerar Novo'),
+            child: Text(l10n.translate('yes_generate_new')),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
       final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
       final authService = Provider.of<AuthService>(context, listen: false);
+      final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
 
       // Get device locale
       final locale = Localizations.localeOf(context);
@@ -214,6 +226,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       await dietProvider.replaceAllMeals(
         dietProvider.selectedDate,
         nutritionGoals,
+        mealTypes: mealTypesProvider.mealTypes,
         userId: userId,
         languageCode: languageCode,
       );
@@ -265,18 +278,21 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
-            // AppBar + Weekly Calendar
+            // AppBar + Diet Mode Selector + Weekly Calendar
             Consumer<DietPlanProvider>(
               builder: (context, dietProvider, _) {
-                final hasDiet = dietProvider.currentDietPlan != null ||
-                                dietProvider.isLoading ||
-                                dietProvider.partialDietPlan != null;
+                // Verifica se há alguma dieta (em qualquer dia) ou está carregando
+                final hasAnyDiet = dietProvider.hasAnyDietPlan ||
+                                   dietProvider.isLoading ||
+                                   dietProvider.partialDietPlan != null;
+                final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
 
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -288,9 +304,17 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                         dietProvider.setSelectedDate(date);
                       },
                       showAppBar: true,
-                      showCalendar: hasDiet, // Calendário só mostra quando há dieta
+                      // Calendário só mostra quando há alguma dieta E está no modo diário
+                      showCalendar: hasAnyDiet && !isWeeklyMode,
                     ),
-                    if (hasDiet) const SizedBox(height: 8),
+                    // Diet Mode Selector - mostra quando há alguma dieta
+                    if (hasAnyDiet) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildDietModeSelector(dietProvider, isDarkMode),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ],
                 );
               },
@@ -376,7 +400,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                                   child: ElevatedButton.icon(
                                     onPressed: null, // Disabled during loading
                                     icon: const Icon(Icons.refresh),
-                                    label: const Text('Substituir Todas as Refeições'),
+                                    label: Text(l10n.translate('replace_all_meals')),
                                     style: ElevatedButton.styleFrom(
                                       minimumSize: const Size(double.infinity, 44),
                                     ),
@@ -422,15 +446,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                         children: [
                           const Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
                           const SizedBox(height: 16),
-                          const Text(
-                            'Nenhum plano de dieta para este dia',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          Text(
+                            l10n.translate('no_diet_plan_for_day'),
+                            style: const TextStyle(fontSize: 18, color: Colors.grey),
                           ),
                           const SizedBox(height: 24),
                           ElevatedButton.icon(
                             onPressed: _generateDietPlan,
                             icon: const Icon(Icons.auto_awesome),
-                            label: const Text('Gerar Plano de Dieta'),
+                            label: Text(l10n.translate('generate_diet_plan')),
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             ),
@@ -477,7 +501,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                                 child: ElevatedButton.icon(
                                   onPressed: _replaceAllMeals,
                                   icon: const Icon(Icons.refresh),
-                                  label: const Text('Substituir Todas as Refeições'),
+                                  label: Text(l10n.translate('replace_all_meals')),
                                   style: ElevatedButton.styleFrom(
                                     minimumSize: const Size(double.infinity, 44),
                                   ),
@@ -497,6 +521,69 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDietModeSelector(DietPlanProvider dietProvider, bool isDarkMode) {
+    final isWeekly = dietProvider.dietMode == DietMode.weekly;
+    final selectedColor = isDarkMode ? AppTheme.primaryColor : AppTheme.primaryColor;
+    final unselectedColor = isDarkMode ? Colors.grey[700] : Colors.grey[300];
+    final selectedTextColor = Colors.white;
+    final unselectedTextColor = isDarkMode ? Colors.grey[400] : Colors.grey[600];
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: unselectedColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => dietProvider.setDietMode(DietMode.weekly),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: isWeekly ? selectedColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  l10n.translate('weekly_diet'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isWeekly ? selectedTextColor : unselectedTextColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => dietProvider.setDietMode(DietMode.daily),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: !isWeekly ? selectedColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  l10n.translate('daily_diet'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: !isWeekly ? selectedTextColor : unselectedTextColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

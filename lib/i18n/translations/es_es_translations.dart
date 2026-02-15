@@ -612,4 +612,14 @@ final Map<String, String> esESTranslations = {
   'add_meal': 'Agregar comida',
   'meal_added': 'Comida agregada',
   'meal_added_success': '¡Comida agregada con éxito!',
+
+  // Diet Mode Selector
+  'weekly_diet': 'Dieta Semanal',
+  'daily_diet': 'Dieta Diaria',
+  'replace_all_meals': 'Reemplazar Todas las Comidas',
+  'replace_all_meals_weekly_confirm': '¿Deseas generar un nuevo plan de dieta semanal?',
+  'replace_all_meals_daily_confirm': '¿Deseas generar un nuevo plan de dieta para este día?',
+  'yes_generate_new': 'Sí, Generar Nuevo',
+  'no_diet_plan_for_day': 'No hay plan de dieta para este día',
+  'generate_diet_plan': 'Generar Plan de Dieta',
 };

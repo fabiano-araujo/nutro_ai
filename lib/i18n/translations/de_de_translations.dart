@@ -436,4 +436,14 @@ final Map<String, String> deDETranslations = {
   'add_meal': 'Mahlzeit hinzufügen',
   'meal_added': 'Mahlzeit hinzugefügt',
   'meal_added_success': 'Mahlzeit erfolgreich hinzugefügt!',
+
+  // Diet Mode Selector
+  'weekly_diet': 'Wöchentliche Diät',
+  'daily_diet': 'Tägliche Diät',
+  'replace_all_meals': 'Alle Mahlzeiten ersetzen',
+  'replace_all_meals_weekly_confirm': 'Möchten Sie einen neuen wöchentlichen Diätplan erstellen?',
+  'replace_all_meals_daily_confirm': 'Möchten Sie einen neuen Diätplan für diesen Tag erstellen?',
+  'yes_generate_new': 'Ja, Neu erstellen',
+  'no_diet_plan_for_day': 'Kein Diätplan für diesen Tag',
+  'generate_diet_plan': 'Diätplan erstellen',
 };

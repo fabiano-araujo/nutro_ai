@@ -897,4 +897,14 @@ final Map<String, String> enUSTranslations = {
   'share_content': 'Share content',
   'use_gallery': 'Use gallery',
   'use_gallery_instead': 'Use gallery instead of camera',
+
+  // Diet Mode Selector
+  'weekly_diet': 'Weekly Diet',
+  'daily_diet': 'Daily Diet',
+  'replace_all_meals': 'Replace All Meals',
+  'replace_all_meals_weekly_confirm': 'Do you want to generate a new weekly diet plan?',
+  'replace_all_meals_daily_confirm': 'Do you want to generate a new diet plan for this day?',
+  'yes_generate_new': 'Yes, Generate New',
+  'no_diet_plan_for_day': 'No diet plan for this day',
+  'generate_diet_plan': 'Generate Diet Plan',
 };

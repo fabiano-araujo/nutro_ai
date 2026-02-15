@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../models/diet_plan_model.dart';
 import '../providers/nutrition_goals_provider.dart' show NutritionGoalsProvider;
+import '../providers/meal_types_provider.dart' show MealTypeConfig;
+import '../util/app_constants.dart';
 
 class DietPlanProvider extends ChangeNotifier {
   // Map de planos de dieta por data (YYYY-MM-DD)
@@ -23,6 +25,9 @@ class DietPlanProvider extends ChangeNotifier {
   DietPlan? _partialDietPlan;
   int _expectedMealsCount = 0;
 
+  // Chave fixa para dieta semanal única
+  static const String _weeklyKey = 'weekly';
+
   // Getters
   Map<String, DietPlan> get dietPlans => _dietPlans;
   DietPreferences get preferences => _preferences;
@@ -31,17 +36,34 @@ class DietPlanProvider extends ChangeNotifier {
   DateTime get selectedDate => _selectedDate;
   DietPlan? get partialDietPlan => _partialDietPlan;
   int get expectedMealsCount => _expectedMealsCount;
+  DietMode get dietMode => _preferences.dietMode;
 
-  // Get diet plan for selected date
+  // Check if has any diet plan (for any date or weekly)
+  bool get hasAnyDietPlan => _dietPlans.isNotEmpty;
+
+  // Get diet plan for selected date (or weekly plan if in weekly mode)
   DietPlan? get currentDietPlan {
+    if (_preferences.dietMode == DietMode.weekly) {
+      return _dietPlans[_weeklyKey];
+    }
     final dateKey = _formatDate(_selectedDate);
     return _dietPlans[dateKey];
   }
 
-  // Check if has diet plan for date
+  // Check if has diet plan for date (or weekly plan)
   bool hasDietPlanForDate(DateTime date) {
+    if (_preferences.dietMode == DietMode.weekly) {
+      return _dietPlans.containsKey(_weeklyKey);
+    }
     final dateKey = _formatDate(date);
     return _dietPlans.containsKey(dateKey);
+  }
+
+  // Set diet mode
+  void setDietMode(DietMode mode) {
+    _preferences = _preferences.copyWith(dietMode: mode);
+    _saveToPreferences();
+    notifyListeners();
   }
 
   DietPlanProvider() {
@@ -70,12 +92,13 @@ class DietPlanProvider extends ChangeNotifier {
   Future<void> generateDietPlan(
     DateTime date,
     NutritionGoalsProvider nutritionGoals, {
+    List<MealTypeConfig> mealTypes = const [],
     String userId = '',
     String languageCode = 'pt_BR',
   }) async {
     _isLoading = true;
     _error = null;
-    _expectedMealsCount = _preferences.mealsPerDay;
+    _expectedMealsCount = mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
     _parsedMealIndices.clear(); // Reset parsed meals tracker
     _partialDietPlan = DietPlan(
       date: _formatDate(date),
@@ -91,11 +114,11 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       // Build the prompt for AI
-      final prompt = _buildDietPlanPrompt(nutritionGoals, languageCode);
+      final prompt = _buildDietPlanPrompt(nutritionGoals, languageCode, mealTypes);
 
       print('🍽️ Gerando plano de dieta para ${_formatDate(date)}');
       print('📊 Refeições: $_expectedMealsCount');
-      print('🎯 Refeição principal: ${_preferences.hungriestMealTime}');
+      print('🍴 Tipos: ${mealTypes.map((m) => m.name).join(', ')}');
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
       print('👤 UserId: $userId');
@@ -105,7 +128,7 @@ class DietPlanProvider extends ChangeNotifier {
       print('⏳ Iniciando stream NDJSON da API...');
 
       // Create HTTP request
-      final endpoint = '${const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://study.snapdark.com:3001')}/ai/generate-text';
+      final endpoint = '${AppConstants.API_BASE_URL}/ai/generate-text';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
@@ -119,6 +142,7 @@ class DietPlanProvider extends ChangeNotifier {
         'userId': userId,
         'agentType': 'diet',
         'language': languageCode,
+        'mealTypes': mealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
       };
 
       request.bodyBytes = utf8.encode(jsonEncode(requestBody));
@@ -225,8 +249,8 @@ class DietPlanProvider extends ChangeNotifier {
       final updatedPlan = dietPlan.copyWith(date: _formatDate(date));
       print('✓ Data atualizada para: ${_formatDate(date)}');
 
-      // Store the diet plan
-      final dateKey = _formatDate(date);
+      // Store the diet plan (using weekly key if in weekly mode)
+      final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
       _dietPlans[dateKey] = updatedPlan;
 
       _isLoading = false;
@@ -325,25 +349,33 @@ class DietPlanProvider extends ChangeNotifier {
   }
 
   // Build prompt for AI diet generation
-  String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals, String languageCode) {
+  String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals, String languageCode, List<MealTypeConfig> mealTypes) {
     // Nutrition goals from provider (already calculated)
     final calories = nutritionGoals.caloriesGoal;
     final protein = nutritionGoals.proteinGoal;
     final carbs = nutritionGoals.carbsGoal;
     final fat = nutritionGoals.fatGoal;
 
-    // Diet preferences
-    final mealsPerDay = _preferences.mealsPerDay;
-    final largestMeal = _preferences.hungriestMealTime;
-
     // Country for cuisine
     final country = _getCountryFromLanguage(languageCode);
+
+    // Build meals list from user's configured meal types
+    final mealsCount = mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
+
+    // Build explicit meal mapping for the prompt
+    final mealMappings = mealTypes.isNotEmpty
+        ? mealTypes.map((m) => '{"type": "${m.id}", "name": "${m.name}"}').join(', ')
+        : '{"type": "breakfast", "name": "Café da Manhã"}, {"type": "lunch", "name": "Almoço"}, {"type": "dinner", "name": "Jantar"}';
 
     return '''
 Create a daily diet plan using foods from $country cuisine.
 
 TARGETS: $calories kcal, ${protein}g protein, ${carbs}g carbs, ${fat}g fat
-MEALS: $mealsPerDay meals/day. Largest meal: $largestMeal (35% of calories).
+
+MEALS TO CREATE (exactly $mealsCount meals):
+[$mealMappings]
+
+IMPORTANT: Use EXACTLY these "type" and "name" values for each meal. Do NOT change the meal names.
 
 Return ONLY valid JSON:
 {
@@ -351,9 +383,9 @@ Return ONLY valid JSON:
   "totalNutrition": {"calories": $calories, "protein": $protein, "carbs": $carbs, "fat": $fat},
   "meals": [
     {
-      "type": "breakfast|lunch|dinner|snack",
+      "type": "meal_type_id",
       "time": "HH:MM",
-      "name": "Meal Name",
+      "name": "EXACT meal name from list above",
       "foods": [{"name": "Food", "emoji": "🍳", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}],
       "mealTotals": {"calories": number, "protein": number, "carbs": number, "fat": number}
     }
@@ -369,10 +401,11 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
     DateTime date,
     String mealType,
     NutritionGoalsProvider nutritionGoals, {
+    List<MealTypeConfig> mealTypes = const [],
     String userId = '',
     String languageCode = 'pt_BR',
   }) async {
-    final dateKey = _formatDate(date);
+    final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
     final currentPlan = _dietPlans[dateKey];
 
     if (currentPlan == null) {
@@ -401,7 +434,7 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
       print('⏳ Iniciando stream NDJSON da API...');
 
       // Create HTTP request using NDJSON
-      final endpoint = '${const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://study.snapdark.com:3001')}/ai/generate-text';
+      final endpoint = '${AppConstants.API_BASE_URL}/ai/generate-text';
       final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
@@ -415,6 +448,7 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
         'userId': userId,
         'agentType': 'diet',
         'language': languageCode,
+        'mealTypes': mealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
       };
 
       request.bodyBytes = utf8.encode(jsonEncode(requestBody));
@@ -532,7 +566,7 @@ Refeição atual:
 ${jsonEncode(mealToReplace.toJson())}
 
 IMPORTANTE:
-- Mantenha o tipo de refeição (${mealToReplace.type}) e horário (${mealToReplace.time})
+- Mantenha o tipo (${mealToReplace.type}), nome ("${mealToReplace.name}") e horário (${mealToReplace.time}) EXATAMENTE iguais
 - Mantenha os totais nutricionais MUITO próximos: ${mealToReplace.mealTotals.calories} cal, ${mealToReplace.mealTotals.protein}g proteína, ${mealToReplace.mealTotals.carbs}g carbs, ${mealToReplace.mealTotals.fat}g gordura
 - Use alimentos DIFERENTES dos atuais
 - Alimentos da culinária brasileira/portuguesa
@@ -540,7 +574,7 @@ IMPORTANTE:
 {
   "type": "${mealToReplace.type}",
   "time": "${mealToReplace.time}",
-  "name": "Nome da Nova Refeição",
+  "name": "${mealToReplace.name}",
   "foods": [
     {"name": "Nome", "emoji": "🍽️", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}
   ],
@@ -553,11 +587,12 @@ IMPORTANTE:
   Future<void> replaceAllMeals(
     DateTime date,
     NutritionGoalsProvider nutritionGoals, {
+    List<MealTypeConfig> mealTypes = const [],
     String userId = '',
     String languageCode = 'pt_BR',
   }) async {
     // Simply generate a new diet plan for this date
-    await generateDietPlan(date, nutritionGoals, userId: userId, languageCode: languageCode);
+    await generateDietPlan(date, nutritionGoals, mealTypes: mealTypes, userId: userId, languageCode: languageCode);
   }
 
   // Calculate total nutrition from meals
@@ -582,9 +617,9 @@ IMPORTANTE:
     );
   }
 
-  // Delete diet plan for a date
+  // Delete diet plan for a date (or weekly plan if in weekly mode)
   void deleteDietPlan(DateTime date) {
-    final dateKey = _formatDate(date);
+    final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
     _dietPlans.remove(dateKey);
     _saveToPreferences();
     notifyListeners();

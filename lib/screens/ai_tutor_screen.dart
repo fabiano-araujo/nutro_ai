@@ -37,6 +37,7 @@ import 'dart:convert';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
+import '../widgets/mini_nutrition_card.dart';
 import '../widgets/food_json_display.dart';
 import '../providers/free_chat_provider.dart';
 import 'daily_meals_screen.dart';
@@ -132,12 +133,12 @@ class AITutorScreenState extends State<AITutorScreen>
   // Para animação do ícone pulsante
   late AnimationController _animationController;
 
-  // Controle de scroll do header (calendário + nutrition card, SEM o AppBar)
+  // Controle de scroll do NutritionCard (apenas o card de macros faz snap)
   double _headerOffset =
-      0.0; // Offset vertical do header (0 = visível, negativo = escondido)
+      0.0; // Offset vertical do NutritionCard (0 = visível, negativo = escondido)
   double _lastScrollPosition = 0.0;
   double _maxHeaderHeight =
-      235.0; // Altura inicial estimada, será calculada dinamicamente
+      160.0; // Altura do NutritionCard
   final GlobalKey _headerKey =
       GlobalKey(); // Key para medir a altura real do header
   final GlobalKey _lastAiMessageKey =
@@ -146,6 +147,15 @@ class AITutorScreenState extends State<AITutorScreen>
   bool _isCalculatingHeight = false; // Flag para evitar cálculos simultâneos
   bool _isScrollingProgrammatically =
       false; // Flag para ignorar scroll automático no _handleScroll
+
+  // Snapping behavior para o NutritionCard
+  late AnimationController _headerSnapController;
+  Animation<double>? _headerSnapAnimation;
+  bool _isHeaderSnapping = false;
+  bool _showMiniCard = false; // Mostrar mini card quando o card principal está escondido
+  double _scrollVelocity = 0.0;
+  DateTime? _lastScrollTime;
+  static const double _velocityThreshold = 0.3;
 
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
@@ -260,6 +270,12 @@ class AITutorScreenState extends State<AITutorScreen>
       duration: Duration(milliseconds: 1000),
       vsync: this,
     )..repeat(reverse: true);
+
+    // Controller para animação de snap do NutritionCard
+    _headerSnapController = AnimationController(
+      duration: Duration(milliseconds: 200),
+      vsync: this,
+    );
 
     // Adicionar listener para controlar a visibilidade do NutritionCard
     _scrollController.addListener(_handleScroll);
@@ -576,6 +592,7 @@ class AITutorScreenState extends State<AITutorScreen>
     _scrollController.dispose();
     _inputFocusNode.dispose();
     _animationController.dispose();
+    _headerSnapController.dispose();
     _controller.dispose();
 
     super.dispose();
@@ -720,34 +737,127 @@ class AITutorScreenState extends State<AITutorScreen>
     });
   }
 
-  // Método para controlar o offset do header baseado no scroll (comportamento tipo toolbar Android)
+  // Método para controlar o offset do header com comportamento de snap
   void _handleScroll() {
     if (!_scrollController.hasClients) return;
 
-    // Ignorar se for scroll programático (automático)
-    if (_isScrollingProgrammatically) {
+    // Ignorar se for scroll programático (automático) ou se estiver animando
+    if (_isScrollingProgrammatically || _isHeaderSnapping) {
       _lastScrollPosition = _scrollController.offset;
       return;
     }
 
     final currentScrollPosition = _scrollController.offset;
     final scrollDelta = currentScrollPosition - _lastScrollPosition;
+    final now = DateTime.now();
+
+    // Calcular velocidade do scroll
+    if (_lastScrollTime != null) {
+      final timeDelta = now.difference(_lastScrollTime!).inMilliseconds;
+      if (timeDelta > 0) {
+        _scrollVelocity = scrollDelta / timeDelta;
+      }
+    }
+    _lastScrollTime = now;
 
     setState(() {
-      // Atualizar o offset do header baseado no movimento do scroll
-      // scrollDelta positivo = scrollando para baixo (esconder header)
-      // scrollDelta negativo = scrollando para cima (mostrar header)
-      _headerOffset -= scrollDelta;
-
-      // Limitar o offset entre -_maxHeaderHeight (totalmente escondido) e 0 (totalmente visível)
-      _headerOffset = _headerOffset.clamp(-_maxHeaderHeight, 0.0);
-
-      // Se estiver no topo (offset < 10), forçar header totalmente visível
+      // Se estiver no topo, forçar header totalmente visível e esconder mini card
       if (currentScrollPosition < 10) {
         _headerOffset = 0.0;
+        _showMiniCard = false;
+      } else {
+        // Atualizar o offset do header baseado no movimento do scroll
+        _headerOffset -= scrollDelta;
+        _headerOffset = _headerOffset.clamp(-_maxHeaderHeight, 0.0);
+
+        // Determinar se deve fazer snap baseado na velocidade e posição
+        final isScrollingDown = scrollDelta > 0;
+        final headerVisiblePercent = 1.0 + (_headerOffset / _maxHeaderHeight);
+
+        // Se passou do threshold ou tem velocidade significativa, fazer snap
+        if (_scrollVelocity.abs() > _velocityThreshold) {
+          if (isScrollingDown && headerVisiblePercent > 0.1) {
+            // Scrollando para baixo com velocidade - esconder
+            _snapHeaderToHidden();
+          } else if (!isScrollingDown && headerVisiblePercent < 0.9) {
+            // Scrollando para cima com velocidade - mostrar
+            _snapHeaderToVisible();
+          }
+        } else if (headerVisiblePercent > 0 && headerVisiblePercent < 1) {
+          // Sem velocidade - decidir baseado na posição
+          if (headerVisiblePercent < 0.5) {
+            _snapHeaderToHidden();
+          } else {
+            _snapHeaderToVisible();
+          }
+        }
       }
 
       _lastScrollPosition = currentScrollPosition;
+    });
+  }
+
+  // Animar o header para ficar totalmente visível
+  void _snapHeaderToVisible() {
+    if (_isHeaderSnapping) return;
+    _isHeaderSnapping = true;
+
+    final startOffset = _headerOffset;
+    _headerSnapAnimation = Tween<double>(
+      begin: startOffset,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _headerSnapController,
+      curve: Curves.easeOut,
+    ));
+
+    _headerSnapAnimation!.addListener(() {
+      if (mounted) {
+        setState(() {
+          _headerOffset = _headerSnapAnimation!.value;
+        });
+      }
+    });
+
+    _headerSnapController.forward(from: 0.0).then((_) {
+      _isHeaderSnapping = false;
+      if (mounted) {
+        setState(() {
+          _showMiniCard = false;
+        });
+      }
+    });
+  }
+
+  // Animar o header para ficar totalmente escondido
+  void _snapHeaderToHidden() {
+    if (_isHeaderSnapping) return;
+    _isHeaderSnapping = true;
+
+    final startOffset = _headerOffset;
+    _headerSnapAnimation = Tween<double>(
+      begin: startOffset,
+      end: -_maxHeaderHeight,
+    ).animate(CurvedAnimation(
+      parent: _headerSnapController,
+      curve: Curves.easeOut,
+    ));
+
+    _headerSnapAnimation!.addListener(() {
+      if (mounted) {
+        setState(() {
+          _headerOffset = _headerSnapAnimation!.value;
+        });
+      }
+    });
+
+    _headerSnapController.forward(from: 0.0).then((_) {
+      _isHeaderSnapping = false;
+      if (mounted) {
+        setState(() {
+          _showMiniCard = true;
+        });
+      }
     });
   }
 
@@ -1379,6 +1489,9 @@ class AITutorScreenState extends State<AITutorScreen>
                                               ),
                                             );
                                           },
+                                          onMinimize: () {
+                                            _snapHeaderToHidden();
+                                          },
                                         );
                                       },
                                     ),
@@ -1387,6 +1500,31 @@ class AITutorScreenState extends State<AITutorScreen>
                               ),
                             ),
                           ),
+                        );
+                      },
+                    ),
+
+                  // Mini Nutrition Card (aparece quando o card principal está escondido)
+                  if (!widget.isFreeChat && _showMiniCard)
+                    Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
+                      builder: (context, nutritionProvider, mealsProvider, child) {
+                        // Só mostrar se há refeições
+                        if (mealsProvider.todayMeals.isEmpty) {
+                          return SizedBox.shrink();
+                        }
+                        return MiniNutritionCard(
+                          caloriesConsumed: mealsProvider.totalCalories,
+                          caloriesGoal: nutritionProvider.caloriesGoal,
+                          proteinConsumed: mealsProvider.totalProtein.toInt(),
+                          proteinGoal: nutritionProvider.proteinGoal,
+                          carbsConsumed: mealsProvider.totalCarbs.toInt(),
+                          carbsGoal: nutritionProvider.carbsGoal,
+                          fatsConsumed: mealsProvider.totalFat.toInt(),
+                          fatsGoal: nutritionProvider.fatGoal,
+                          onTap: () {
+                            // Ao clicar, mostrar o card completo novamente
+                            _snapHeaderToVisible();
+                          },
                         );
                       },
                     ),

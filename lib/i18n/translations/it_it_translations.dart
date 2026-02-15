@@ -434,4 +434,14 @@ final Map<String, String> itITTranslations = {
   'add_meal': 'Aggiungi pasto',
   'meal_added': 'Pasto aggiunto',
   'meal_added_success': 'Pasto aggiunto con successo!',
+
+  // Diet Mode Selector
+  'weekly_diet': 'Dieta Settimanale',
+  'daily_diet': 'Dieta Giornaliera',
+  'replace_all_meals': 'Sostituisci Tutti i Pasti',
+  'replace_all_meals_weekly_confirm': 'Vuoi generare un nuovo piano dietetico settimanale?',
+  'replace_all_meals_daily_confirm': 'Vuoi generare un nuovo piano dietetico per questo giorno?',
+  'yes_generate_new': 'Sì, Genera Nuovo',
+  'no_diet_plan_for_day': 'Nessun piano dietetico per questo giorno',
+  'generate_diet_plan': 'Genera Piano Dietetico',
 };

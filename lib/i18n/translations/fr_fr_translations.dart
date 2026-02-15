@@ -436,4 +436,14 @@ final Map<String, String> frFRTranslations = {
   'add_meal': 'Ajouter un repas',
   'meal_added': 'Repas ajouté',
   'meal_added_success': 'Repas ajouté avec succès!',
+
+  // Diet Mode Selector
+  'weekly_diet': 'Régime Hebdomadaire',
+  'daily_diet': 'Régime Quotidien',
+  'replace_all_meals': 'Remplacer Tous les Repas',
+  'replace_all_meals_weekly_confirm': 'Voulez-vous générer un nouveau plan de régime hebdomadaire?',
+  'replace_all_meals_daily_confirm': 'Voulez-vous générer un nouveau plan de régime pour ce jour?',
+  'yes_generate_new': 'Oui, Générer Nouveau',
+  'no_diet_plan_for_day': 'Aucun plan de régime pour ce jour',
+  'generate_diet_plan': 'Générer un Plan de Régime',
 };

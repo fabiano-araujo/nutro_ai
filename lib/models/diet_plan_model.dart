@@ -1,4 +1,8 @@
-import 'dart:convert';
+/// Modo de dieta: diária (cada dia diferente) ou semanal única (mesma dieta todos os dias)
+enum DietMode {
+  daily,  // Cada dia tem refeições diferentes
+  weekly, // Uma única dieta para toda a semana
+}
 
 class DietPlan {
   final String date;
@@ -183,12 +187,14 @@ class DietPreferences {
   final String hungriestMealTime; // breakfast, lunch, dinner, snack
   final List<String> foodRestrictions;
   final List<String> favoriteFoods;
+  final DietMode dietMode; // daily ou weekly
 
   DietPreferences({
     this.mealsPerDay = 3,
     this.hungriestMealTime = 'lunch',
     this.foodRestrictions = const [],
     this.favoriteFoods = const [],
+    this.dietMode = DietMode.weekly, // Padrão: dieta semanal única
   });
 
   factory DietPreferences.fromJson(Map<String, dynamic> json) {
@@ -203,6 +209,10 @@ class DietPreferences {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      dietMode: DietMode.values.firstWhere(
+        (e) => e.name == json['dietMode'],
+        orElse: () => DietMode.weekly,
+      ),
     );
   }
 
@@ -212,6 +222,7 @@ class DietPreferences {
       'hungriestMealTime': hungriestMealTime,
       'foodRestrictions': foodRestrictions,
       'favoriteFoods': favoriteFoods,
+      'dietMode': dietMode.name,
     };
   }
 
@@ -220,12 +231,14 @@ class DietPreferences {
     String? hungriestMealTime,
     List<String>? foodRestrictions,
     List<String>? favoriteFoods,
+    DietMode? dietMode,
   }) {
     return DietPreferences(
       mealsPerDay: mealsPerDay ?? this.mealsPerDay,
       hungriestMealTime: hungriestMealTime ?? this.hungriestMealTime,
       foodRestrictions: foodRestrictions ?? this.foodRestrictions,
       favoriteFoods: favoriteFoods ?? this.favoriteFoods,
+      dietMode: dietMode ?? this.dietMode,
     );
   }
 }

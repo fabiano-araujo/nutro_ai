@@ -1088,4 +1088,14 @@ final Map<String, String> ptBRTranslations = {
   'share_content': 'Compartilhar conteúdo',
   'use_gallery': 'Usar galeria',
   'use_gallery_instead': 'Usar galeria em vez da câmera',
+
+  // Diet Mode Selector
+  'weekly_diet': 'Dieta Semanal',
+  'daily_diet': 'Dieta Diária',
+  'replace_all_meals': 'Substituir Todas as Refeições',
+  'replace_all_meals_weekly_confirm': 'Deseja gerar um novo plano de dieta semanal?',
+  'replace_all_meals_daily_confirm': 'Deseja gerar um novo plano de dieta para este dia?',
+  'yes_generate_new': 'Sim, Gerar Novo',
+  'no_diet_plan_for_day': 'Nenhum plano de dieta para este dia',
+  'generate_diet_plan': 'Gerar Plano de Dieta',
 };
