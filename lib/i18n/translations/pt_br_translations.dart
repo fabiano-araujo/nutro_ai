@@ -906,11 +906,11 @@ final Map<String, String> ptBRTranslations = {
   'activity_extremely_active_desc': 'Exercício muito intenso, trabalho físico',
 
   // Fitness Goals
-  'goal_lose_weight': 'Perder peso',
-  'goal_lose_weight_slowly': 'Perder peso lentamente',
-  'goal_maintain_weight': 'Manter o peso',
-  'goal_gain_weight_slowly': 'Aumentar o peso lentamente',
-  'goal_gain_weight': 'Aumentar o peso',
+  'goal_lose_weight': 'Emagrecer',
+  'goal_lose_weight_slowly': 'Emagrecer devagar',
+  'goal_maintain_weight': 'Manter peso',
+  'goal_gain_weight_slowly': 'Ganhar peso devagar',
+  'goal_gain_weight': 'Ganhar peso',
 
   // Calculation Formulas
   'formula_mifflin': 'Mifflin-St Jeor',
@@ -932,7 +932,6 @@ final Map<String, String> ptBRTranslations = {
   'diet_custom_desc': '{carbs}% Carbs, {protein}% Proteína, {fat}% Gordura',
 
   // AI Tutor Welcome Screen
-  'ai_tutor_greeting': '{userName},',
   'ai_tutor_where_start': 'Como posso\najudar?',
   'ai_tutor_log_meal': 'Registrar refeição',
   'ai_tutor_analyze_photo': 'Analisar foto com IA',
@@ -940,7 +939,6 @@ final Map<String, String> ptBRTranslations = {
   'ai_tutor_set_nutrition_goal': 'Defina seu objetivo nutricional',
   'ai_tutor_meal_suggestions': 'Sugestões de refeições',
   'ai_tutor_ask_nutrition': 'Perguntar sobre nutrição',
-  'ai_tutor_try_asking': 'Tente perguntar:',
 
   // Daily Meals Screen - Additional Keys
   'meals': 'Refeições',
@@ -1010,6 +1008,17 @@ final Map<String, String> ptBRTranslations = {
   'weekday_fri': 'Sex',
   'weekday_sat': 'Sáb',
   'weekday_sun': 'Dom',
+  'profile_caloric_balance': 'Balanço Calórico',
+  'profile_on_track': 'No caminho',
+  'profile_adjust_needed': 'Ajustar',
+  'profile_total_balance': 'Balanço total',
+  'profile_estimated_change': 'Mudança estimada',
+  'profile_daily_average': 'Média diária',
+  'profile_day': 'dia',
+  'profile_weekly_patterns': 'Padrões Semanais',
+  'profile_last_90_days': 'Últimos 90 dias',
+  'profile_best_day': 'Melhor dia',
+  'profile_needs_attention': 'Precisa atenção',
   'bmi_underweight': 'Abaixo do peso',
   'bmi_normal_weight': 'Peso normal',
   'bmi_overweight': 'Sobrepeso',

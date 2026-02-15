@@ -747,7 +747,6 @@ final Map<String, String> enUSTranslations = {
   'diet_custom_desc': '{carbs}% Carbs, {protein}% Protein, {fat}% Fat',
 
   // AI Tutor Welcome Screen
-  'ai_tutor_greeting': '{userName},',
   'ai_tutor_where_start': 'How can I\nhelp?',
   'ai_tutor_log_meal': 'Log meal',
   'ai_tutor_analyze_photo': 'Analyze photo with AI',
@@ -755,7 +754,6 @@ final Map<String, String> enUSTranslations = {
   'ai_tutor_set_nutrition_goal': 'Set your nutrition goal',
   'ai_tutor_meal_suggestions': 'Meal suggestions',
   'ai_tutor_ask_nutrition': 'Ask about nutrition',
-  'ai_tutor_try_asking': 'Try asking:',
 
   // Daily Meals Screen - Additional Keys
   'meals': 'Meals',
@@ -825,6 +823,17 @@ final Map<String, String> enUSTranslations = {
   'weekday_fri': 'Fri',
   'weekday_sat': 'Sat',
   'weekday_sun': 'Sun',
+  'profile_caloric_balance': 'Caloric Balance',
+  'profile_on_track': 'On track',
+  'profile_adjust_needed': 'Adjust',
+  'profile_total_balance': 'Total balance',
+  'profile_estimated_change': 'Estimated change',
+  'profile_daily_average': 'Daily average',
+  'profile_day': 'day',
+  'profile_weekly_patterns': 'Weekly Patterns',
+  'profile_last_90_days': 'Last 90 days',
+  'profile_best_day': 'Best day',
+  'profile_needs_attention': 'Needs attention',
   'bmi_underweight': 'Underweight',
   'bmi_normal_weight': 'Normal weight',
   'bmi_overweight': 'Overweight',

@@ -1788,42 +1788,6 @@ class AITutorScreenState extends State<AITutorScreen>
                                           }
                                         },
                                       ),
-                                      SizedBox(height: 32),
-                                      // Sugestões rápidas de texto
-                                      Text(
-                                        AppLocalizations.of(context).translate(
-                                                'ai_tutor_try_asking') ??
-                                            'Tente perguntar:',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppTheme.getSoftTextColor(
-                                                  isDarkMode)
-                                              .withOpacity(0.7),
-                                        ),
-                                      ),
-                                      SizedBox(height: 12),
-                                      SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: Row(
-                                          children: [
-                                            _buildQuickPromptChip(
-                                                context,
-                                                "☕ Café: Pão com ovo",
-                                                isDarkMode),
-                                            SizedBox(width: 8),
-                                            _buildQuickPromptChip(
-                                                context,
-                                                "🥗 Almoço: Arroz e feijão",
-                                                isDarkMode),
-                                            SizedBox(width: 8),
-                                            _buildQuickPromptChip(
-                                                context,
-                                                "🍌 Caloria da banana?",
-                                                isDarkMode),
-                                          ],
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -2606,26 +2570,6 @@ class AITutorScreenState extends State<AITutorScreen>
     );
   }
 
-  Widget _buildQuickPromptChip(
-      BuildContext context, String text, bool isDarkMode) {
-    return ActionChip(
-      label: Text(text),
-      labelStyle: TextStyle(
-        color: isDarkMode ? Colors.white : Colors.black87,
-        fontSize: 13,
-      ),
-      backgroundColor: isDarkMode ? Color(0xFF333333) : Colors.grey[200],
-      onPressed: () {
-        _messageController.text = text;
-        _handleSendMessage();
-      },
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.transparent),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    );
-  }
 }
 
 // Implementação de AITutorSpeechMixinRef que delega para o mixin

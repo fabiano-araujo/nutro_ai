@@ -68,32 +68,32 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         _buildQuickStatsRow(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 3. Today's Macro Distribution (current status - most relevant)
+        // 3. Goal Adherence Card (important - shows overall progress)
+        _buildGoalAdherenceCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 4. Today's Macro Distribution (current status)
         _buildMacroDistributionCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 4. Weekly Progress Heatmap (recent view)
+        // 5. Weekly Progress Heatmap (recent view)
         _buildWeeklyProgressCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 5. Caloric Balance Card (progress towards goal) - NEW
+        // 6. Caloric Balance Card (progress towards goal)
         _buildCaloricBalanceCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 6. Calories History Chart
+        // 7. Calories History Chart
         _buildCaloriesChartCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 7. Macronutrients Average Chart
+        // 8. Macronutrients Average Chart
         _buildMacronutrientsChartCard(theme, colorScheme),
         const SizedBox(height: 20),
 
-        // 8. Best Days of Week Card - NEW
+        // 9. Best Days of Week Card
         _buildBestDaysCard(theme, colorScheme),
-        const SizedBox(height: 20),
-
-        // 9. Goal Adherence Card (long-term analysis)
-        _buildGoalAdherenceCard(theme, colorScheme),
         const SizedBox(height: 24),
 
         // 10. Logout Button
@@ -313,14 +313,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
+        child: Container(
           padding: const EdgeInsets.all(14),
+          constraints: const BoxConstraints(minHeight: 80),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Row(
                 children: [
-                  Icon(icon, size: 18, color: iconColor.withValues(alpha: 0.8)),
+                  Icon(icon, size: 16, color: iconColor.withValues(alpha: 0.8)),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -336,15 +338,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 value,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: valueColor,
-                  fontSize: 14,
+                  fontSize: 13,
+                  height: 1.2,
                 ),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -1791,6 +1794,612 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           ),
         ),
       ],
+    );
+  }
+
+  // ========== CALORIC BALANCE CARD ==========
+  Widget _buildCaloricBalanceCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
+      builder: (context, mealsProvider, nutritionProvider, child) {
+        final calorieGoal = nutritionProvider.caloriesGoal;
+        final fitnessGoal = nutritionProvider.fitnessGoal;
+        final history = mealsProvider.getCaloriesHistory(30);
+
+        // Calculate total deficit/surplus
+        int totalBalance = 0;
+        int daysWithData = 0;
+
+        for (var day in history) {
+          if (day['hasData'] as bool) {
+            daysWithData++;
+            final calories = day['calories'] as int;
+            totalBalance += (calories - calorieGoal);
+          }
+        }
+
+        // Determine if user wants deficit or surplus
+        final wantsDeficit = fitnessGoal == FitnessGoal.loseWeight ||
+            fitnessGoal == FitnessGoal.loseWeightSlowly;
+        final wantsSurplus = fitnessGoal == FitnessGoal.gainWeight ||
+            fitnessGoal == FitnessGoal.gainWeightSlowly;
+
+        // Check if on track
+        bool isOnTrack;
+        if (wantsDeficit) {
+          isOnTrack = totalBalance < 0;
+        } else if (wantsSurplus) {
+          isOnTrack = totalBalance > 0;
+        } else {
+          isOnTrack = totalBalance.abs() < (calorieGoal * 0.1 * daysWithData);
+        }
+
+        final balanceColor = isOnTrack ? Colors.green : Colors.orange;
+
+        // Estimate weight change (3500 kcal = ~0.45kg)
+        final estimatedWeightChange = totalBalance / 7700; // kg
+
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: balanceColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        totalBalance < 0
+                            ? Icons.trending_down_rounded
+                            : totalBalance > 0
+                                ? Icons.trending_up_rounded
+                                : Icons.trending_flat_rounded,
+                        size: 20,
+                        color: balanceColor,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr.translate('profile_caloric_balance'),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            context.tr.translate('profile_last_30_days'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // On track badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: balanceColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isOnTrack ? Icons.check_circle_rounded : Icons.info_rounded,
+                            size: 14,
+                            color: balanceColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isOnTrack
+                                ? context.tr.translate('profile_on_track')
+                                : context.tr.translate('profile_adjust_needed'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: balanceColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Main balance display
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildBalanceStatCard(
+                        label: context.tr.translate('profile_total_balance'),
+                        value: '${totalBalance > 0 ? '+' : ''}${totalBalance.abs()}',
+                        unit: 'kcal',
+                        icon: totalBalance < 0 ? Icons.remove_circle_outline : Icons.add_circle_outline,
+                        color: totalBalance < 0 ? Colors.blue : Colors.orange,
+                        theme: theme,
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildBalanceStatCard(
+                        label: context.tr.translate('profile_estimated_change'),
+                        value: '${estimatedWeightChange > 0 ? '+' : ''}${estimatedWeightChange.toStringAsFixed(2)}',
+                        unit: 'kg',
+                        icon: estimatedWeightChange < 0 ? Icons.fitness_center : Icons.restaurant,
+                        color: wantsDeficit
+                            ? (estimatedWeightChange < 0 ? Colors.green : Colors.orange)
+                            : wantsSurplus
+                                ? (estimatedWeightChange > 0 ? Colors.green : Colors.orange)
+                                : Colors.blue,
+                        theme: theme,
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Daily average
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        context.tr.translate('profile_daily_average'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      Text(
+                        daysWithData > 0
+                            ? '${(totalBalance / daysWithData).toStringAsFixed(0)} kcal/${context.tr.translate('profile_day')}'
+                            : '-',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: balanceColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (daysWithData == 0) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      context.tr.translate('profile_no_data_yet'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBalanceStatCard({
+    required String label,
+    required String value,
+    required String unit,
+    required IconData icon,
+    required Color color,
+    required ThemeData theme,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 10,
+                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 22,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  unit,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: color.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ========== BEST DAYS OF WEEK CARD ==========
+  Widget _buildBestDaysCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
+      builder: (context, mealsProvider, nutritionProvider, child) {
+        final calorieGoal = nutritionProvider.caloriesGoal.toDouble();
+        final history = mealsProvider.getCaloriesHistory(90); // Last 3 months
+
+        // Calculate success rate per weekday
+        final Map<int, List<double>> weekdayRatios = {
+          1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [],
+        };
+
+        for (var day in history) {
+          if (day['hasData'] as bool) {
+            final date = day['date'] as DateTime;
+            final calories = (day['calories'] as int).toDouble();
+            final ratio = calories / calorieGoal;
+            weekdayRatios[date.weekday]!.add(ratio);
+          }
+        }
+
+        // Calculate success rate (days within 80%-110% of goal)
+        final Map<int, double> successRates = {};
+        for (var entry in weekdayRatios.entries) {
+          if (entry.value.isEmpty) {
+            successRates[entry.key] = 0;
+          } else {
+            final successDays = entry.value.where((r) => r >= 0.8 && r <= 1.1).length;
+            successRates[entry.key] = successDays / entry.value.length * 100;
+          }
+        }
+
+        final weekdays = [
+          context.tr.translate('weekday_mon'),
+          context.tr.translate('weekday_tue'),
+          context.tr.translate('weekday_wed'),
+          context.tr.translate('weekday_thu'),
+          context.tr.translate('weekday_fri'),
+          context.tr.translate('weekday_sat'),
+          context.tr.translate('weekday_sun'),
+        ];
+
+        // Find best and worst days
+        int bestDay = 1;
+        int worstDay = 1;
+        double bestRate = 0;
+        double worstRate = 100;
+
+        for (var entry in successRates.entries) {
+          if (entry.value > bestRate && weekdayRatios[entry.key]!.isNotEmpty) {
+            bestRate = entry.value;
+            bestDay = entry.key;
+          }
+          if (entry.value < worstRate && weekdayRatios[entry.key]!.isNotEmpty) {
+            worstRate = entry.value;
+            worstDay = entry.key;
+          }
+        }
+
+        final hasData = weekdayRatios.values.any((list) => list.isNotEmpty);
+
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.insights_rounded,
+                        size: 20,
+                        color: Colors.purple,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr.translate('profile_weekly_patterns'),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            context.tr.translate('profile_last_90_days'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                if (hasData) ...[
+                  // Bar chart for each day
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(7, (index) {
+                      final dayNum = index + 1;
+                      final rate = successRates[dayNum] ?? 0;
+                      final isBest = dayNum == bestDay && bestRate > 0;
+                      final isWorst = dayNum == worstDay && worstRate < 100;
+
+                      return _buildDayBar(
+                        day: weekdays[index],
+                        rate: rate,
+                        isBest: isBest,
+                        isWorst: isWorst,
+                        theme: theme,
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 20),
+                  // Best and worst day highlights
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDayHighlight(
+                          label: context.tr.translate('profile_best_day'),
+                          day: weekdays[bestDay - 1],
+                          rate: bestRate,
+                          color: Colors.green,
+                          icon: Icons.emoji_events_rounded,
+                          theme: theme,
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDayHighlight(
+                          label: context.tr.translate('profile_needs_attention'),
+                          day: weekdays[worstDay - 1],
+                          rate: worstRate,
+                          color: Colors.orange,
+                          icon: Icons.lightbulb_outline_rounded,
+                          theme: theme,
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.insights_rounded,
+                          size: 48,
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          context.tr.translate('profile_no_data_yet'),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDayBar({
+    required String day,
+    required double rate,
+    required bool isBest,
+    required bool isWorst,
+    required ThemeData theme,
+  }) {
+    Color barColor;
+    if (isBest) {
+      barColor = Colors.green;
+    } else if (isWorst) {
+      barColor = Colors.orange;
+    } else if (rate >= 70) {
+      barColor = Colors.green.withValues(alpha: 0.6);
+    } else if (rate >= 40) {
+      barColor = Colors.orange.withValues(alpha: 0.6);
+    } else {
+      barColor = Colors.grey.withValues(alpha: 0.4);
+    }
+
+    return Column(
+      children: [
+        Container(
+          width: 28,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 28,
+                height: (rate / 100 * 80).clamp(4, 80),
+                decoration: BoxDecoration(
+                  color: barColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              if (isBest)
+                Positioned(
+                  top: 4,
+                  child: Icon(
+                    Icons.star_rounded,
+                    size: 14,
+                    color: Colors.amber,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          day,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 10,
+            fontWeight: (isBest || isWorst) ? FontWeight.bold : FontWeight.normal,
+            color: (isBest || isWorst)
+                ? (isBest ? Colors.green : Colors.orange)
+                : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+          ),
+        ),
+        Text(
+          '${rate.toStringAsFixed(0)}%',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 9,
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDayHighlight({
+    required String label,
+    required String day,
+    required double rate,
+    required Color color,
+    required IconData icon,
+    required ThemeData theme,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                  ),
+                ),
+                Text(
+                  day,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
