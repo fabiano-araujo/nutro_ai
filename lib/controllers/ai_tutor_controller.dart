@@ -692,6 +692,10 @@ class AITutorController with ChangeNotifier {
         toolDataJson: toolDataForHistory,
         // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
         autoRegisterFoods: toolType != 'free_chat',
+        onStreamComplete: () {
+          // Salvar mensagens após cada resposta da IA
+          _saveMessagesForCurrentDate();
+        },
       );
     } catch (e) {
       print(
@@ -800,6 +804,10 @@ class AITutorController with ChangeNotifier {
         toolDataJson: toolDataForHistory,
         // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
         autoRegisterFoods: toolType != 'free_chat',
+        onStreamComplete: () {
+          // Salvar mensagens após cada resposta da IA
+          _saveMessagesForCurrentDate();
+        },
       );
     } catch (e) {
       print(
@@ -1334,6 +1342,10 @@ class AITutorController with ChangeNotifier {
           toolDataJson: toolDataForHistory,
           // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
           autoRegisterFoods: toolType != 'free_chat',
+          onStreamComplete: () {
+            // Salvar mensagens após cada resposta da IA
+            _saveMessagesForCurrentDate();
+          },
         );
 
         // Incrementar as interações bem-sucedidas

@@ -465,4 +465,145 @@ class DailyMealsProvider extends ChangeNotifier {
     _saveToPreferences();
     notifyListeners();
   }
+
+  // ========== HISTORICAL DATA METHODS ==========
+
+  /// Get calories for a specific date
+  int getCaloriesForDate(DateTime date) {
+    final dateKey = _formatDate(date);
+    final meals = _mealsByDate[dateKey] ?? [];
+    return meals.fold(0, (sum, meal) => sum + meal.totalCalories);
+  }
+
+  /// Get macros for a specific date
+  Map<String, double> getMacrosForDate(DateTime date) {
+    final dateKey = _formatDate(date);
+    final meals = _mealsByDate[dateKey] ?? [];
+    return {
+      'protein': meals.fold(0.0, (sum, meal) => sum + meal.totalProtein),
+      'carbs': meals.fold(0.0, (sum, meal) => sum + meal.totalCarbs),
+      'fat': meals.fold(0.0, (sum, meal) => sum + meal.totalFat),
+      'fiber': meals.fold(0.0, (sum, meal) {
+        double fiberSum = 0;
+        for (var food in meal.foods) {
+          final nutrients = food.nutrients;
+          if (nutrients != null && nutrients.isNotEmpty) {
+            fiberSum += nutrients.first.dietaryFiber ?? 0;
+          }
+        }
+        return sum + fiberSum;
+      }),
+    };
+  }
+
+  /// Get historical calories data for the last N days
+  List<Map<String, dynamic>> getCaloriesHistory(int days) {
+    final List<Map<String, dynamic>> history = [];
+    final now = DateTime.now();
+
+    for (int i = days - 1; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final calories = getCaloriesForDate(date);
+      history.add({
+        'date': date,
+        'calories': calories,
+        'hasData': calories > 0,
+      });
+    }
+
+    return history;
+  }
+
+  /// Get historical macros data for the last N days
+  List<Map<String, dynamic>> getMacrosHistory(int days) {
+    final List<Map<String, dynamic>> history = [];
+    final now = DateTime.now();
+
+    for (int i = days - 1; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final macros = getMacrosForDate(date);
+      history.add({
+        'date': date,
+        'protein': macros['protein']!,
+        'carbs': macros['carbs']!,
+        'fat': macros['fat']!,
+        'fiber': macros['fiber']!,
+        'hasData': macros['protein']! > 0 || macros['carbs']! > 0 || macros['fat']! > 0,
+      });
+    }
+
+    return history;
+  }
+
+  /// Get average calories for the last N days (only counting days with data)
+  double getAverageCalories(int days) {
+    final history = getCaloriesHistory(days);
+    final daysWithData = history.where((d) => d['hasData'] == true).toList();
+    if (daysWithData.isEmpty) return 0;
+
+    final total = daysWithData.fold<int>(0, (sum, d) => sum + (d['calories'] as int));
+    return total / daysWithData.length;
+  }
+
+  /// Get average macros for the last N days (only counting days with data)
+  Map<String, double> getAverageMacros(int days) {
+    final history = getMacrosHistory(days);
+    final daysWithData = history.where((d) => d['hasData'] == true).toList();
+
+    if (daysWithData.isEmpty) {
+      return {'protein': 0, 'carbs': 0, 'fat': 0, 'fiber': 0};
+    }
+
+    final count = daysWithData.length;
+    return {
+      'protein': daysWithData.fold<double>(0, (sum, d) => sum + (d['protein'] as double)) / count,
+      'carbs': daysWithData.fold<double>(0, (sum, d) => sum + (d['carbs'] as double)) / count,
+      'fat': daysWithData.fold<double>(0, (sum, d) => sum + (d['fat'] as double)) / count,
+      'fiber': daysWithData.fold<double>(0, (sum, d) => sum + (d['fiber'] as double)) / count,
+    };
+  }
+
+  /// Get the current streak (consecutive days with logged meals)
+  int getCurrentStreak() {
+    int streak = 0;
+    final now = DateTime.now();
+
+    for (int i = 0; i < 365; i++) {
+      final date = now.subtract(Duration(days: i));
+      final calories = getCaloriesForDate(date);
+
+      if (calories > 0) {
+        streak++;
+      } else if (i > 0) {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
+  /// Get total days with logged meals
+  int getTotalDaysLogged() {
+    int count = 0;
+    for (var meals in _mealsByDate.values) {
+      if (meals.isNotEmpty) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Get total meals logged
+  int getTotalMealsLogged() {
+    int count = 0;
+    for (var meals in _mealsByDate.values) {
+      count += meals.length;
+    }
+    return count;
+  }
+
+  /// Check if today has any meals logged
+  bool get hasTodayMeals {
+    return totalCalories > 0;
+  }
 }

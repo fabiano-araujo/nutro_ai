@@ -12,7 +12,6 @@ import '../controllers/ai_tutor_controller.dart'; // Novo import para o controll
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/ad_manager.dart';
-import '../services/auth_service.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../providers/credit_provider.dart';
@@ -1363,10 +1362,13 @@ class AITutorScreenState extends State<AITutorScreen>
                     Consumer<DailyMealsProvider>(
                       builder: (context, mealsProvider, child) {
                         // Calcular altura esperada de forma síncrona baseado nos dados atuais
-                        // O NutritionCard tem sua própria verificação de hasMeals
                         const double calendarHeight = 75.0;
                         const double nutritionCardHeight = 160.0;
-                        final double expectedHeight = calendarHeight + nutritionCardHeight;
+                        // Só incluir altura do NutritionCard se houver refeições
+                        final bool hasMeals = mealsProvider.todayMeals.isNotEmpty;
+                        final double expectedHeight = hasMeals
+                            ? calendarHeight + nutritionCardHeight
+                            : calendarHeight;
 
                         // Usar a menor entre a altura esperada e a medida
                         final double effectiveMaxHeight = expectedHeight;
@@ -1664,55 +1666,16 @@ class AITutorScreenState extends State<AITutorScreen>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // Saudação personalizada (alinhada à esquerda)
-                                      Consumer<AuthService>(
-                                        builder: (context, authService, child) {
-                                          final userName = authService
-                                              .currentUser?.name
-                                              ?.split(' ')
-                                              .first;
-                                          return RichText(
-                                            text: TextSpan(
-                                              children: [
-                                                if (authService.isAuthenticated)
-                                                  TextSpan(
-                                                    text: AppLocalizations.of(
-                                                                context)
-                                                            .translate(
-                                                                'ai_tutor_greeting')
-                                                            .replaceAll(
-                                                                '{userName}',
-                                                                userName ??
-                                                                    '') +
-                                                        '\n',
-                                                    style: TextStyle(
-                                                      fontSize: 24,
-                                                      fontWeight:
-                                                          FontWeight.w300,
-                                                      color: AppTheme
-                                                          .getSoftTextColor(
-                                                              isDarkMode),
-                                                      height: 1.2,
-                                                    ),
-                                                  ),
-                                                TextSpan(
-                                                  text: AppLocalizations.of(
-                                                          context)
-                                                      .translate(
-                                                          'ai_tutor_where_start'),
-                                                  style: TextStyle(
-                                                    fontSize: 32,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: AppTheme
-                                                        .getSoftTextColor(
-                                                            isDarkMode),
-                                                    height: 1.2,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
+                                      // Texto de boas-vindas
+                                      Text(
+                                        AppLocalizations.of(context)
+                                            .translate('ai_tutor_where_start'),
+                                        style: TextStyle(
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.getSoftTextColor(isDarkMode),
+                                          height: 1.2,
+                                        ),
                                       ),
                                       SizedBox(height: 32),
                                       // Botões de ação sugeridos

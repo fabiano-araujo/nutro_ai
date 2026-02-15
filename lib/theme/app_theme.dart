@@ -6,6 +6,8 @@ class AppTheme {
   static const Color primaryColor = Color(0xFFC5B5E3);
   static const Color primaryLightColor = Color(0xFFE0D7F0);
   static const Color primaryDarkColor = Color(0xFFB39DDB);
+  // Versão mais escura para dark mode - roxo vibrante que combina com preto
+  static const Color primaryColorDarkMode = Color(0xFF7E57C2);
 
   // Secondary Colors
   static const Color secondaryColor = Color(0xFFDDB9E8);
@@ -224,7 +226,7 @@ class AppTheme {
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    primaryColor: primaryColor,
+    primaryColor: primaryColorDarkMode,
     scaffoldBackgroundColor: darkBackgroundColor,
     cardColor: darkCardColor,
     dividerColor: Color(0xFF2D2D2D),
@@ -239,7 +241,7 @@ class AppTheme {
       labelSmall: captionText.copyWith(color: Color(0xFFAEB7CE)),
     ),
     colorScheme: ColorScheme.dark(
-      primary: primaryColor,
+      primary: primaryColorDarkMode,
       secondary: secondaryColor,
       error: errorColor,
       background: darkBackgroundColor,
@@ -247,7 +249,7 @@ class AppTheme {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
+        backgroundColor: primaryColorDarkMode,
         foregroundColor: Colors.white,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(
@@ -258,8 +260,8 @@ class AppTheme {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: primaryColor,
-        side: BorderSide(color: primaryColor, width: 1.5),
+        foregroundColor: primaryColorDarkMode,
+        side: BorderSide(color: primaryColorDarkMode, width: 1.5),
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -268,7 +270,7 @@ class AppTheme {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: primaryColor,
+        foregroundColor: primaryColorDarkMode,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     ),
@@ -309,7 +311,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryColor, width: 2),
+        borderSide: BorderSide(color: primaryColorDarkMode, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),

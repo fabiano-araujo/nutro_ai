@@ -54,6 +54,7 @@ class AIInteractionHelper {
     Function(String?)? setConnectionId,
     String? toolDataJson, // NOVO PARÂMETRO
     bool autoRegisterFoods = true, // Se true, adiciona alimentos ao diário automaticamente
+    VoidCallback? onStreamComplete, // Callback chamado quando o stream termina (para salvar mensagens)
   }) {
     int receivedChunks = 0;
     String acumuladoAtual = '';
@@ -416,6 +417,11 @@ class AIInteractionHelper {
 
         // Limpar o índice de streaming
         setStreamingIndex(null);
+
+        // Chamar callback de conclusão para salvar mensagens
+        if (onStreamComplete != null) {
+          onStreamComplete();
+        }
       },
       onError: (error) {
         print(

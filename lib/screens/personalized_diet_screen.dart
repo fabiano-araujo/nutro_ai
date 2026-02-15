@@ -527,7 +527,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
   Widget _buildDietModeSelector(DietPlanProvider dietProvider, bool isDarkMode) {
     final isWeekly = dietProvider.dietMode == DietMode.weekly;
-    final selectedColor = isDarkMode ? AppTheme.primaryColor : AppTheme.primaryColor;
+    final selectedColor = isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
     final unselectedColor = isDarkMode ? Colors.grey[700] : Colors.grey[300];
     final selectedTextColor = Colors.white;
     final unselectedTextColor = isDarkMode ? Colors.grey[400] : Colors.grey[600];

@@ -4,43 +4,13 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../services/auth_service.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../providers/daily_meals_provider.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'nutrition_goals_screen.dart';
 import '../i18n/app_localizations_extension.dart';
-
-// Custom painter for dashed line in legend
-class DashedLinePainter extends CustomPainter {
-  final Color color;
-
-  DashedLinePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    const dashWidth = 3.0;
-    const dashSpace = 3.0;
-    double startX = 0;
-
-    while (startX < size.width) {
-      canvas.drawLine(
-        Offset(startX, size.height / 2),
-        Offset(startX + dashWidth, size.height / 2),
-        paint,
-      );
-      startX += dashWidth + dashSpace;
-    }
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -49,39 +19,24 @@ class ProfileScreen extends StatefulWidget {
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
   late ScrollController _scrollController;
+  late TabController _tabController;
 
-  // Calories chart data
-  String _selectedPeriod = '7 dias';
-  final List<double> _dailyCalories7 = [1800, 2100, 1900, 2200, 1850, 2050, 1950];
-  final List<double> _dailyCalories30 = List.generate(30, (index) => 1800 + (index % 5) * 100);
-  final List<double> _dailyCalories90 = List.generate(90, (index) => 1800 + (index % 5) * 100);
-
-  // Macronutrients chart data
-  String _selectedMacroPeriod = '7 dias';
-  final List<double> _dailyProtein7 = [80, 95, 75, 100, 85, 90, 88];
-  final List<double> _dailyCarbs7 = [200, 220, 190, 240, 210, 225, 215];
-  final List<double> _dailyFat7 = [60, 70, 55, 75, 65, 68, 62];
-  final List<double> _dailyFiber7 = [25, 30, 22, 28, 26, 29, 27];
-  final List<double> _dailyProtein30 = List.generate(30, (index) => 80 + (index % 4) * 5);
-  final List<double> _dailyCarbs30 = List.generate(30, (index) => 200 + (index % 5) * 10);
-  final List<double> _dailyFat30 = List.generate(30, (index) => 60 + (index % 4) * 5);
-  final List<double> _dailyFiber30 = List.generate(30, (index) => 25 + (index % 3) * 2);
-  final List<double> _dailyProtein90 = List.generate(90, (index) => 80 + (index % 4) * 5);
-  final List<double> _dailyCarbs90 = List.generate(90, (index) => 200 + (index % 5) * 10);
-  final List<double> _dailyFat90 = List.generate(90, (index) => 60 + (index % 4) * 5);
-  final List<double> _dailyFiber90 = List.generate(90, (index) => 25 + (index % 3) * 2);
+  String _selectedPeriod = '7';
+  String _selectedMacroPeriod = '7';
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -103,42 +58,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return ListView(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        // Profile Header
+        // 1. Profile Header with Avatar and Stats
         _buildProfileHeader(user, theme, colorScheme),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
-        // Calories Chart Card
+        // 2. Quick Stats Row (streak, days, meals, avg)
+        _buildQuickStatsRow(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 3. Today's Macro Distribution (current status - most relevant)
+        _buildMacroDistributionCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 4. Weekly Progress Heatmap (recent view)
+        _buildWeeklyProgressCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 5. Caloric Balance Card (progress towards goal) - NEW
+        _buildCaloricBalanceCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 6. Calories History Chart
         _buildCaloriesChartCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 7. Macronutrients Average Chart
+        _buildMacronutrientsChartCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 8. Best Days of Week Card - NEW
+        _buildBestDaysCard(theme, colorScheme),
+        const SizedBox(height: 20),
+
+        // 9. Goal Adherence Card (long-term analysis)
+        _buildGoalAdherenceCard(theme, colorScheme),
         const SizedBox(height: 24),
 
-        // Macronutrients Chart Card
-        _buildMacronutrientsChartCard(theme, colorScheme),
-        const SizedBox(height: 32),
-
-        // Logout Button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              await authService.logout();
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
-            icon: const Icon(Icons.logout),
-            label: Text(context.tr.translate('sign_out')),
-            style: ElevatedButton.styleFrom(
-              foregroundColor: Colors.red,
-              backgroundColor: Colors.red.withValues(alpha: 0.1),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 80),
+        // 10. Logout Button
+        _buildLogoutButton(authService),
+        const SizedBox(height: 100),
       ],
     );
   }
@@ -149,142 +109,130 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Consumer<NutritionGoalsProvider>(
       builder: (context, nutritionProvider, child) {
-        // Calculate daily calories and BMI based on user data
-        final dailyCalories = nutritionProvider.caloriesGoal.toDouble();
         final bmi = _calculateBMI(nutritionProvider.weight, nutritionProvider.height);
         final bmiColor = _getBMIColor(bmi);
         final bmiCategory = _getBMICategory(bmi, context);
 
-    return Card(
-      margin: const EdgeInsets.all(0),
-      elevation: 1.5,
-      shadowColor: isDarkMode
-          ? Colors.black.withValues(alpha: 0.3)
-          : Colors.black.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: backgroundColor,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Avatar à esquerda
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                backgroundImage: user.photo != null ? NetworkImage(user.photo!) : null,
-                child: user.photo == null
-                    ? Icon(
-                        Icons.person_outline,
-                        size: 40,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 16),
-              // Nome à direita
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Avatar and Name Row
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            user.name,
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Ícone de editar na mesma linha
-                        InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const NutritionGoalsWizardScreen(
-                                  startStep: 0,
-                                  fromProfile: true,
-                                ),
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.edit_outlined,
-                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                    // Avatar with gradient border
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
+                        shape: BoxShape.circle,
                         gradient: LinearGradient(
                           colors: [
-                            bmiColor.withValues(alpha: 0.12),
-                            bmiColor.withValues(alpha: 0.06),
+                            colorScheme.primary,
+                            colorScheme.primary.withValues(alpha: 0.5),
                           ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: bmiColor.withValues(alpha: 0.25),
-                          width: 1,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: CircleAvatar(
+                        radius: 38,
+                        backgroundColor: backgroundColor,
+                        child: CircleAvatar(
+                          radius: 35,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          backgroundImage: user.photo != null ? NetworkImage(user.photo!) : null,
+                          child: user.photo == null
+                              ? Icon(
+                                  Icons.person_rounded,
+                                  size: 36,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Name and BMI
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  user.name,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => const NutritionGoalsWizardScreen(
+                                        startStep: 0,
+                                        fromProfile: true,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: Icon(
+                                  Icons.edit_outlined,
+                                  size: 20,
+                                  color: colorScheme.primary.withValues(alpha: 0.7),
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          // BMI Badge
                           Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: bmiColor.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
+                              color: bmiColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Icon(
-                              Icons.favorite,
-                              size: 11,
-                              color: bmiColor,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'IMC ${bmi.toStringAsFixed(1)}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: bmiColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 3,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: bmiColor.withValues(alpha: 0.5),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            bmiCategory,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: bmiColor.withValues(alpha: 0.8),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.favorite_rounded,
+                                  size: 14,
+                                  color: bmiColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'IMC ${bmi.toStringAsFixed(1)} - $bmiCategory',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: bmiColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -292,130 +240,1691 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                // Goal and Calories Row
+                Row(
+                  children: [
+                    // Goal Card
+                    Expanded(
+                      child: _buildInfoCard(
+                        icon: _getGoalIcon(nutritionProvider.fitnessGoal),
+                        iconColor: colorScheme.primary,
+                        label: context.tr.translate('profile_goal'),
+                        value: _getGoalText(nutritionProvider.fitnessGoal, context),
+                        valueColor: colorScheme.primary,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const NutritionGoalsWizardScreen(
+                                startStep: 2,
+                                fromProfile: true,
+                              ),
+                            ),
+                          );
+                        },
+                        theme: theme,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Daily Calories Card
+                    Expanded(
+                      child: _buildInfoCard(
+                        icon: Icons.local_fire_department_rounded,
+                        iconColor: Colors.orange,
+                        label: context.tr.translate('profile_daily_target'),
+                        value: '${nutritionProvider.caloriesGoal} kcal',
+                        valueColor: Colors.orange,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const NutritionGoalsScreen(),
+                            ),
+                          );
+                        },
+                        theme: theme,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          // Divisor
-          Divider(
-            color: theme.colorScheme.surfaceContainerHighest,
-            thickness: 1,
-          ),
-          const SizedBox(height: 16),
-          // Objetivo e Calorias
-          Row(
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required Color valueColor,
+    required VoidCallback onTap,
+    required ThemeData theme,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: isDarkMode
+          ? Colors.white.withValues(alpha: 0.05)
+          : Colors.grey.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Objetivo
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NutritionGoalsWizardScreen(
-                          startStep: 2,
-                          fromProfile: true,
-                        ),
+              Row(
+                children: [
+                  Icon(icon, size: 18, color: iconColor.withValues(alpha: 0.8)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
                       ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              _getGoalIcon(nutritionProvider.fitnessGoal),
-                              size: 20,
-                              color: colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              context.tr.translate('profile_goal'),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _getGoalText(nutritionProvider.fitnessGoal, context),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 12),
-              // Calorias Diárias
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NutritionGoalsScreen(),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.local_fire_department,
-                              size: 20,
-                              color: Colors.orange.withValues(alpha: 0.55),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              context.tr.translate('profile_daily_target'),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${dailyCalories.toStringAsFixed(0)} kcal',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange.withValues(alpha: 0.55),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: valueColor,
+                  fontSize: 14,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-        ],
         ),
       ),
     );
+  }
+
+  Widget _buildQuickStatsRow(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Consumer<DailyMealsProvider>(
+      builder: (context, mealsProvider, child) {
+        final streak = mealsProvider.getCurrentStreak();
+        final totalDays = mealsProvider.getTotalDaysLogged();
+        final totalMeals = mealsProvider.getTotalMealsLogged();
+        final avgCalories = mealsProvider.getAverageCalories(7);
+
+        return Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.local_fire_department_rounded,
+                value: streak.toString(),
+                label: context.tr.translate('profile_streak'),
+                color: Colors.orange,
+                isDarkMode: isDarkMode,
+                theme: theme,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.calendar_today_rounded,
+                value: totalDays.toString(),
+                label: context.tr.translate('profile_days_logged'),
+                color: Colors.blue,
+                isDarkMode: isDarkMode,
+                theme: theme,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.restaurant_rounded,
+                value: totalMeals.toString(),
+                label: context.tr.translate('profile_meals'),
+                color: Colors.green,
+                isDarkMode: isDarkMode,
+                theme: theme,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.show_chart_rounded,
+                value: avgCalories > 0 ? avgCalories.toStringAsFixed(0) : '-',
+                label: context.tr.translate('profile_avg_cal'),
+                color: Colors.purple,
+                isDarkMode: isDarkMode,
+                theme: theme,
+              ),
+            ),
+          ],
+        );
       },
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+    required bool isDarkMode,
+    required ThemeData theme,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+              fontSize: 10,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaloriesChartCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
+      builder: (context, mealsProvider, nutritionProvider, child) {
+        final calorieGoal = nutritionProvider.caloriesGoal.toDouble();
+        final days = int.parse(_selectedPeriod);
+        final history = mealsProvider.getCaloriesHistory(days);
+
+        // Get calories data
+        final List<double> caloriesData = history.map((d) => (d['calories'] as int).toDouble()).toList();
+
+        // Check if we have any data
+        final hasData = caloriesData.any((c) => c > 0);
+
+        if (!hasData) {
+          return _buildEmptyChartCard(
+            title: context.tr.translate('profile_daily_calories_consumed'),
+            message: context.tr.translate('profile_no_data_yet'),
+            icon: Icons.bar_chart_rounded,
+            theme: theme,
+            colorScheme: colorScheme,
+            isDarkMode: isDarkMode,
+            backgroundColor: backgroundColor,
+            periodSelector: _buildPeriodSelector(theme, colorScheme),
+          );
+        }
+
+        // Calculate chart bounds
+        final maxDataValue = caloriesData.reduce((a, b) => a > b ? a : b);
+        final maxValue = [maxDataValue, calorieGoal].reduce((a, b) => a > b ? a : b);
+        final chartMaxY = (maxValue * 1.15).ceilToDouble();
+        final chartMinY = 0.0;
+        final interval = (chartMaxY / 4).ceilToDouble();
+
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.local_fire_department_rounded,
+                        size: 20,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.tr.translate('profile_daily_calories_consumed'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildPeriodSelector(theme, colorScheme),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 200,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: interval,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                            strokeWidth: 1,
+                          );
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 28,
+                            interval: days > 30 ? 15 : (days > 7 ? 5 : 1),
+                            getTitlesWidget: (value, meta) {
+                              if (value.toInt() >= 0 && value.toInt() < days) {
+                                final date = history[value.toInt()]['date'] as DateTime;
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    '${date.day}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: interval,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                '${value.toInt()}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                                  fontSize: 10,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      minX: 0,
+                      maxX: (days - 1).toDouble(),
+                      minY: chartMinY,
+                      maxY: chartMaxY,
+                      lineBarsData: [
+                        // Goal line
+                        LineChartBarData(
+                          spots: [
+                            FlSpot(0, calorieGoal),
+                            FlSpot((days - 1).toDouble(), calorieGoal),
+                          ],
+                          isCurved: false,
+                          color: Colors.orange.withValues(alpha: 0.6),
+                          barWidth: 2,
+                          dotData: const FlDotData(show: false),
+                          dashArray: [6, 4],
+                        ),
+                        // Calories line
+                        LineChartBarData(
+                          spots: caloriesData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
+                          isCurved: true,
+                          curveSmoothness: 0.3,
+                          color: colorScheme.primary,
+                          barWidth: 3,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) {
+                              final hasValue = spot.y > 0;
+                              return FlDotCirclePainter(
+                                radius: hasValue ? 4 : 2,
+                                color: hasValue ? colorScheme.primary : colorScheme.primary.withValues(alpha: 0.3),
+                                strokeWidth: 2,
+                                strokeColor: backgroundColor,
+                              );
+                            },
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary.withValues(alpha: 0.2),
+                                colorScheme.primary.withValues(alpha: 0.0),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                      ],
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipItems: (touchedSpots) {
+                            return touchedSpots.map((spot) {
+                              if (spot.barIndex == 1) {
+                                return LineTooltipItem(
+                                  '${spot.y.toInt()} kcal',
+                                  TextStyle(
+                                    color: colorScheme.onPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                );
+                              }
+                              return null;
+                            }).toList();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildLegendItem(
+                      context.tr.translate('profile_consumed'),
+                      colorScheme.primary,
+                      theme,
+                      false,
+                    ),
+                    const SizedBox(width: 24),
+                    _buildLegendItem(
+                      context.tr.translate('profile_daily_target'),
+                      Colors.orange,
+                      theme,
+                      true,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPeriodSelector(ThemeData theme, ColorScheme colorScheme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildPeriodChip('7', context.tr.translate('profile_7_days'), theme, colorScheme),
+        const SizedBox(width: 8),
+        _buildPeriodChip('30', context.tr.translate('profile_30_days'), theme, colorScheme),
+        const SizedBox(width: 8),
+        _buildPeriodChip('90', context.tr.translate('profile_90_days'), theme, colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildPeriodChip(String period, String label, ThemeData theme, ColorScheme colorScheme) {
+    final isSelected = _selectedPeriod == period;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedPeriod = period);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? colorScheme.primary : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: isSelected ? colorScheme.onPrimary : theme.textTheme.bodyMedium?.color,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color, ThemeData theme, bool isDashed) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 20,
+          height: 3,
+          decoration: BoxDecoration(
+            color: isDashed ? Colors.transparent : color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: isDashed
+              ? CustomPaint(
+                  painter: DashedLinePainter(color: color),
+                )
+              : null,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyChartCard({
+    required String title,
+    required String message,
+    required IconData icon,
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+    required bool isDarkMode,
+    required Color backgroundColor,
+    required Widget periodSelector,
+  }) {
+    return Card(
+      margin: const EdgeInsets.all(0),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+          width: 1,
+        ),
+      ),
+      color: backgroundColor,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 20, color: colorScheme.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            periodSelector,
+            const SizedBox(height: 40),
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    icon,
+                    size: 48,
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    message,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMacronutrientsChartCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Consumer<DailyMealsProvider>(
+      builder: (context, mealsProvider, child) {
+        final days = int.parse(_selectedMacroPeriod);
+        final avgMacros = mealsProvider.getAverageMacros(days);
+
+        final avgProtein = avgMacros['protein']!;
+        final avgCarbs = avgMacros['carbs']!;
+        final avgFat = avgMacros['fat']!;
+        final avgFiber = avgMacros['fiber']!;
+
+        // Check if we have any data
+        final hasData = avgProtein > 0 || avgCarbs > 0 || avgFat > 0;
+
+        if (!hasData) {
+          return _buildEmptyChartCard(
+            title: context.tr.translate('profile_daily_macros_average'),
+            message: context.tr.translate('profile_no_data_yet'),
+            icon: Icons.pie_chart_rounded,
+            theme: theme,
+            colorScheme: colorScheme,
+            isDarkMode: isDarkMode,
+            backgroundColor: backgroundColor,
+            periodSelector: _buildMacroPeriodSelector(theme, colorScheme),
+          );
+        }
+
+        // Calculate max for chart scale
+        final maxMacro = [avgProtein, avgCarbs, avgFat, avgFiber].reduce((a, b) => a > b ? a : b);
+        final chartMaxY = (maxMacro * 1.2).ceilToDouble();
+
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9575CD).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.pie_chart_rounded,
+                        size: 20,
+                        color: Color(0xFF9575CD),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.tr.translate('profile_daily_macros_average'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildMacroPeriodSelector(theme, colorScheme),
+                const SizedBox(height: 20),
+                // Macro Cards Grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMacroCard(
+                        label: context.tr.translate('protein_full'),
+                        value: avgProtein,
+                        color: const Color(0xFF9575CD),
+                        theme: theme,
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildMacroCard(
+                        label: context.tr.translate('carbohydrate'),
+                        value: avgCarbs,
+                        color: const Color(0xFFFFB74D),
+                        theme: theme,
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMacroCard(
+                        label: context.tr.translate('fat'),
+                        value: avgFat,
+                        color: const Color(0xFF4DB6AC),
+                        theme: theme,
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildMacroCard(
+                        label: context.tr.translate('fiber'),
+                        value: avgFiber,
+                        color: const Color(0xFF81C784),
+                        theme: theme,
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Bar Chart
+                SizedBox(
+                  height: 180,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: chartMaxY,
+                      minY: 0,
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            String label = '';
+                            switch (groupIndex) {
+                              case 0:
+                                label = context.tr.translate('protein_full');
+                                break;
+                              case 1:
+                                label = context.tr.translate('carbohydrate');
+                                break;
+                              case 2:
+                                label = context.tr.translate('fat');
+                                break;
+                              case 3:
+                                label = context.tr.translate('fiber');
+                                break;
+                            }
+                            return BarTooltipItem(
+                              '$label\n${rod.toY.toStringAsFixed(1)}g',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 35,
+                            getTitlesWidget: (value, meta) {
+                              IconData icon;
+                              Color color;
+                              switch (value.toInt()) {
+                                case 0:
+                                  icon = Icons.egg_outlined;
+                                  color = const Color(0xFF9575CD);
+                                  break;
+                                case 1:
+                                  icon = Icons.grain;
+                                  color = const Color(0xFFFFB74D);
+                                  break;
+                                case 2:
+                                  icon = Icons.water_drop_outlined;
+                                  color = const Color(0xFF4DB6AC);
+                                  break;
+                                case 3:
+                                  icon = Icons.grass;
+                                  color = const Color(0xFF81C784);
+                                  break;
+                                default:
+                                  return const SizedBox();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Icon(icon, size: 20, color: color),
+                              );
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: chartMaxY / 4,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                '${value.toInt()}g',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                                  fontSize: 10,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: chartMaxY / 4,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                            strokeWidth: 1,
+                          );
+                        },
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: [
+                        _buildBarGroup(0, avgProtein, const Color(0xFF9575CD)),
+                        _buildBarGroup(1, avgCarbs, const Color(0xFFFFB74D)),
+                        _buildBarGroup(2, avgFat, const Color(0xFF4DB6AC)),
+                        _buildBarGroup(3, avgFiber, const Color(0xFF81C784)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  BarChartGroupData _buildBarGroup(int x, double value, Color color) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: value,
+          gradient: LinearGradient(
+            colors: [color, color.withValues(alpha: 0.6)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          width: 32,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        ),
+      ],
+    );
+  }
+
+  // ========== MACRO DISTRIBUTION PIE CHART ==========
+  Widget _buildMacroDistributionCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
+      builder: (context, mealsProvider, nutritionProvider, child) {
+        // Get today's macros
+        final protein = mealsProvider.totalProtein;
+        final carbs = mealsProvider.totalCarbs;
+        final fat = mealsProvider.totalFat;
+        final total = protein + carbs + fat;
+
+        // Get goals
+        final proteinGoal = nutritionProvider.proteinGoal.toDouble();
+        final carbsGoal = nutritionProvider.carbsGoal.toDouble();
+        final fatGoal = nutritionProvider.fatGoal.toDouble();
+
+        final hasData = total > 0;
+
+        if (!hasData) {
+          return _buildEmptyChartCard(
+            title: context.tr.translate('profile_macro_distribution'),
+            message: context.tr.translate('profile_no_data_today'),
+            icon: Icons.pie_chart_outline_rounded,
+            theme: theme,
+            colorScheme: colorScheme,
+            isDarkMode: isDarkMode,
+            backgroundColor: backgroundColor,
+            periodSelector: const SizedBox.shrink(),
+          );
+        }
+
+        final proteinPercent = (protein / total * 100);
+        final carbsPercent = (carbs / total * 100);
+        final fatPercent = (fat / total * 100);
+
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9575CD).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.pie_chart_rounded,
+                        size: 20,
+                        color: Color(0xFF9575CD),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr.translate('profile_macro_distribution'),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            context.tr.translate('profile_today'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    // Pie Chart
+                    SizedBox(
+                      width: 140,
+                      height: 140,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 35,
+                          sections: [
+                            PieChartSectionData(
+                              value: protein,
+                              color: const Color(0xFF9575CD),
+                              radius: 30,
+                              title: '',
+                            ),
+                            PieChartSectionData(
+                              value: carbs,
+                              color: const Color(0xFFFFB74D),
+                              radius: 30,
+                              title: '',
+                            ),
+                            PieChartSectionData(
+                              value: fat,
+                              color: const Color(0xFF4DB6AC),
+                              radius: 30,
+                              title: '',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    // Legend with progress
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildMacroProgressRow(
+                            label: context.tr.translate('protein_full'),
+                            value: protein,
+                            goal: proteinGoal,
+                            percent: proteinPercent,
+                            color: const Color(0xFF9575CD),
+                            theme: theme,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildMacroProgressRow(
+                            label: context.tr.translate('carbohydrate'),
+                            value: carbs,
+                            goal: carbsGoal,
+                            percent: carbsPercent,
+                            color: const Color(0xFFFFB74D),
+                            theme: theme,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildMacroProgressRow(
+                            label: context.tr.translate('fat'),
+                            value: fat,
+                            goal: fatGoal,
+                            percent: fatPercent,
+                            color: const Color(0xFF4DB6AC),
+                            theme: theme,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMacroProgressRow({
+    required String label,
+    required double value,
+    required double goal,
+    required double percent,
+    required Color color,
+    required ThemeData theme,
+  }) {
+    final progress = (value / goal).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              '${percent.toStringAsFixed(0)}%',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 6,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${value.toStringAsFixed(0)}g / ${goal.toStringAsFixed(0)}g',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 10,
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== WEEKLY PROGRESS CARD ==========
+  Widget _buildWeeklyProgressCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
+      builder: (context, mealsProvider, nutritionProvider, child) {
+        final calorieGoal = nutritionProvider.caloriesGoal.toDouble();
+        final history = mealsProvider.getCaloriesHistory(7);
+
+        // Get weekday names
+        final weekdays = [
+          context.tr.translate('weekday_mon'),
+          context.tr.translate('weekday_tue'),
+          context.tr.translate('weekday_wed'),
+          context.tr.translate('weekday_thu'),
+          context.tr.translate('weekday_fri'),
+          context.tr.translate('weekday_sat'),
+          context.tr.translate('weekday_sun'),
+        ];
+
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.calendar_view_week_rounded,
+                        size: 20,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.tr.translate('profile_weekly_progress'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Weekly grid
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(7, (index) {
+                    final dayData = history[index];
+                    final date = dayData['date'] as DateTime;
+                    final calories = (dayData['calories'] as int).toDouble();
+                    final hasData = dayData['hasData'] as bool;
+                    final isToday = _isToday(date);
+
+                    // Calculate progress percentage
+                    final progress = hasData ? (calories / calorieGoal).clamp(0.0, 1.5) : 0.0;
+
+                    // Determine color based on progress
+                    Color progressColor;
+                    if (!hasData) {
+                      progressColor = Colors.grey.withValues(alpha: 0.3);
+                    } else if (progress < 0.8) {
+                      progressColor = Colors.orange; // Under goal
+                    } else if (progress <= 1.1) {
+                      progressColor = Colors.green; // On target
+                    } else {
+                      progressColor = Colors.red; // Over goal
+                    }
+
+                    return _buildWeekdayCell(
+                      day: weekdays[date.weekday - 1],
+                      progress: progress,
+                      color: progressColor,
+                      hasData: hasData,
+                      isToday: isToday,
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+                // Legend
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildWeeklyLegendItem(context.tr.translate('profile_under_goal'), Colors.orange, theme),
+                    const SizedBox(width: 16),
+                    _buildWeeklyLegendItem(context.tr.translate('profile_on_target'), Colors.green, theme),
+                    const SizedBox(width: 16),
+                    _buildWeeklyLegendItem(context.tr.translate('profile_over_goal'), Colors.red, theme),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month && date.day == now.day;
+  }
+
+  Widget _buildWeekdayCell({
+    required String day,
+    required double progress,
+    required Color color,
+    required bool hasData,
+    required bool isToday,
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+  }) {
+    return Column(
+      children: [
+        Text(
+          day,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+            color: isToday ? colorScheme.primary : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: hasData ? color.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+            border: isToday
+                ? Border.all(color: colorScheme.primary, width: 2)
+                : null,
+          ),
+          child: Center(
+            child: hasData
+                ? Icon(
+                    progress <= 1.1 ? Icons.check_rounded : Icons.warning_rounded,
+                    size: 18,
+                    color: color,
+                  )
+                : Icon(
+                    Icons.remove_rounded,
+                    size: 14,
+                    color: Colors.grey.withValues(alpha: 0.5),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          hasData ? '${(progress * 100).toStringAsFixed(0)}%' : '-',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: hasData ? color : Colors.grey.withValues(alpha: 0.5),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeeklyLegendItem(String label, Color color, ThemeData theme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 10,
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== GOAL ADHERENCE CARD ==========
+  Widget _buildGoalAdherenceCard(ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
+      builder: (context, mealsProvider, nutritionProvider, child) {
+        final calorieGoal = nutritionProvider.caloriesGoal.toDouble();
+        final history = mealsProvider.getCaloriesHistory(30);
+
+        // Calculate adherence stats
+        int daysOnTarget = 0;
+        int daysUnder = 0;
+        int daysOver = 0;
+        int totalDaysWithData = 0;
+
+        for (var day in history) {
+          if (day['hasData'] as bool) {
+            totalDaysWithData++;
+            final calories = (day['calories'] as int).toDouble();
+            final ratio = calories / calorieGoal;
+
+            if (ratio < 0.8) {
+              daysUnder++;
+            } else if (ratio <= 1.1) {
+              daysOnTarget++;
+            } else {
+              daysOver++;
+            }
+          }
+        }
+
+        final adherenceRate = totalDaysWithData > 0
+            ? (daysOnTarget / totalDaysWithData * 100)
+            : 0.0;
+
+        return Card(
+          margin: const EdgeInsets.all(0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 1,
+            ),
+          ),
+          color: backgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.track_changes_rounded,
+                        size: 20,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr.translate('profile_goal_adherence'),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            context.tr.translate('profile_last_30_days'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Circular progress indicator
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 100,
+                      height: 100,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 100,
+                            height: 100,
+                            child: CircularProgressIndicator(
+                              value: adherenceRate / 100,
+                              strokeWidth: 10,
+                              backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                _getAdherenceColor(adherenceRate),
+                              ),
+                              strokeCap: StrokeCap.round,
+                            ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${adherenceRate.toStringAsFixed(0)}%',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: _getAdherenceColor(adherenceRate),
+                                ),
+                              ),
+                              Text(
+                                context.tr.translate('profile_adherence'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    // Stats breakdown
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildAdherenceStatRow(
+                            icon: Icons.check_circle_rounded,
+                            label: context.tr.translate('profile_on_target'),
+                            value: daysOnTarget,
+                            color: Colors.green,
+                            theme: theme,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildAdherenceStatRow(
+                            icon: Icons.arrow_downward_rounded,
+                            label: context.tr.translate('profile_under_goal'),
+                            value: daysUnder,
+                            color: Colors.orange,
+                            theme: theme,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildAdherenceStatRow(
+                            icon: Icons.arrow_upward_rounded,
+                            label: context.tr.translate('profile_over_goal'),
+                            value: daysOver,
+                            color: Colors.red,
+                            theme: theme,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (totalDaysWithData == 0) ...[
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      context.tr.translate('profile_no_data_yet'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getAdherenceColor(double rate) {
+    if (rate >= 80) return Colors.green;
+    if (rate >= 50) return Colors.orange;
+    return Colors.red;
+  }
+
+  Widget _buildAdherenceStatRow({
+    required IconData icon,
+    required String label,
+    required int value,
+    required Color color,
+    required ThemeData theme,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 14, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
+        Text(
+          '$value ${context.tr.translate('profile_days_suffix')}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMacroCard({
+    required String label,
+    required double value,
+    required Color color,
+    required ThemeData theme,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${value.toStringAsFixed(1)}g',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroPeriodSelector(ThemeData theme, ColorScheme colorScheme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildMacroPeriodChip('7', context.tr.translate('profile_7_days'), theme, colorScheme),
+        const SizedBox(width: 8),
+        _buildMacroPeriodChip('30', context.tr.translate('profile_30_days'), theme, colorScheme),
+        const SizedBox(width: 8),
+        _buildMacroPeriodChip('90', context.tr.translate('profile_90_days'), theme, colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildMacroPeriodChip(String period, String label, ThemeData theme, ColorScheme colorScheme) {
+    final isSelected = _selectedMacroPeriod == period;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedMacroPeriod = period);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? colorScheme.primary : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: isSelected ? colorScheme.onPrimary : theme.textTheme.bodyMedium?.color,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(AuthService authService) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.red.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.red.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () async {
+            await authService.logout();
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.logout_rounded,
+                  color: Colors.red.withValues(alpha: 0.8),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  context.tr.translate('sign_out'),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: Colors.red.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -423,12 +1932,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     switch (goal) {
       case FitnessGoal.loseWeight:
       case FitnessGoal.loseWeightSlowly:
-        return Icons.trending_down;
+        return Icons.trending_down_rounded;
       case FitnessGoal.gainWeight:
       case FitnessGoal.gainWeightSlowly:
-        return Icons.trending_up;
+        return Icons.trending_up_rounded;
       case FitnessGoal.maintainWeight:
-        return Icons.trending_flat;
+        return Icons.trending_flat_rounded;
     }
   }
 
@@ -448,7 +1957,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   double _calculateBMI(double weight, double height) {
-    // IMC = peso (kg) / altura (m)²
     final heightInMeters = height / 100;
     return weight / (heightInMeters * heightInMeters);
   }
@@ -467,13 +1975,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Color _getBMIColor(double bmi) {
     if (bmi < 18.5) {
-      return const Color(0xFF64B5F6); // Azul suave - Abaixo do peso
+      return const Color(0xFF64B5F6);
     } else if (bmi < 25) {
-      return const Color(0xFF66BB6A); // Verde suave - Peso normal
+      return const Color(0xFF66BB6A);
     } else if (bmi < 30) {
-      return const Color(0xFFFFB74D); // Laranja suave - Sobrepeso
+      return const Color(0xFFFFB74D);
     } else {
-      return const Color(0xFFEF5350); // Vermelho suave - Obesidade
+      return const Color(0xFFEF5350);
     }
   }
 
@@ -483,22 +1991,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.account_circle,
-              size: 100,
-              color: colorScheme.primary.withValues(alpha: 0.5),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person_rounded,
+                size: 64,
+                color: colorScheme.primary.withValues(alpha: 0.7),
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Text(
               context.tr.translate('login_to_access_profile'),
-              style: theme.textTheme.titleLarge,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               context.tr.translate('login_description'),
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -506,583 +2023,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: _navigateToLogin,
-                icon: const Icon(Icons.login),
-                label: Text(context.tr.translate('sign_in')),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.login_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.tr.translate('sign_in'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCaloriesChartCard(ThemeData theme, ColorScheme colorScheme) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-    final calorieGoal = nutritionProvider.caloriesGoal.toDouble();
-
-    List<double> currentData;
-    int daysCount;
-
-    switch (_selectedPeriod) {
-      case '30 dias':
-        currentData = _dailyCalories30;
-        daysCount = 30;
-        break;
-      case '90 dias':
-        currentData = _dailyCalories90;
-        daysCount = 90;
-        break;
-      default:
-        currentData = _dailyCalories7;
-        daysCount = 7;
-    }
-
-    // Calcular min e max dinamicamente
-    final maxDataValue = currentData.reduce((a, b) => a > b ? a : b);
-    final minDataValue = currentData.reduce((a, b) => a < b ? a : b);
-
-    // Incluir a meta no cálculo do range
-    final maxValue = [maxDataValue, calorieGoal].reduce((a, b) => a > b ? a : b);
-    final minValue = [minDataValue, calorieGoal].reduce((a, b) => a < b ? a : b);
-
-    // Adicionar margem de 10% acima e abaixo
-    final range = maxValue - minValue;
-    final chartMaxY = (maxValue + range * 0.15).ceilToDouble();
-    final chartMinY = (minValue - range * 0.15).floorToDouble();
-
-    // Calcular intervalo apropriado para as linhas de grade
-    final totalRange = chartMaxY - chartMinY;
-    final interval = (totalRange / 5).ceilToDouble();
-
-    return Card(
-      margin: const EdgeInsets.all(0),
-      elevation: 1.5,
-      shadowColor: isDarkMode
-          ? Colors.black.withValues(alpha: 0.3)
-          : Colors.black.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: backgroundColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.tr.translate('profile_daily_calories_consumed'),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildPeriodChip('7 dias', context.tr.translate('profile_7_days'), theme, colorScheme),
-              const SizedBox(width: 8),
-              _buildPeriodChip('30 dias', context.tr.translate('profile_30_days'), theme, colorScheme),
-              const SizedBox(width: 8),
-              _buildPeriodChip('90 dias', context.tr.translate('profile_90_days'), theme, colorScheme),
-            ],
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 250,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: interval,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      strokeWidth: 1,
-                    );
-                  },
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      interval: daysCount > 30 ? 15 : (daysCount > 7 ? 5 : 1),
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 && value.toInt() < daysCount) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              '${value.toInt() + 1}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: interval,
-                      reservedSize: 45,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${value.toInt()}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: theme.colorScheme.surfaceContainerHighest, width: 1),
-                    left: BorderSide(color: theme.colorScheme.surfaceContainerHighest, width: 1),
-                  ),
-                ),
-                minX: 0,
-                maxX: (daysCount - 1).toDouble(),
-                minY: chartMinY,
-                maxY: chartMaxY,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: [
-                      FlSpot(0, calorieGoal),
-                      FlSpot((daysCount - 1).toDouble(), calorieGoal),
-                    ],
-                    isCurved: false,
-                    color: Colors.orange.withValues(alpha: 0.55),
-                    barWidth: 2,
-                    isStrokeCapRound: false,
-                    dotData: const FlDotData(show: false),
-                    dashArray: [5, 5],
-                  ),
-                  LineChartBarData(
-                    spots: currentData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
-                    isCurved: true,
-                    color: colorScheme.primary.withValues(alpha: 0.55),
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 3,
-                          color: colorScheme.primary.withValues(alpha: 0.55),
-                          strokeWidth: 2,
-                          strokeColor: theme.cardColor,
-                        );
-                      },
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: colorScheme.primary.withValues(alpha: 0.1),
-                    ),
-                  ),
-                ],
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        if (spot.barIndex == 1) {
-                          return LineTooltipItem(
-                            '${spot.y.toInt()} kcal',
-                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                          );
-                        }
-                        return null;
-                      }).toList();
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem(context.tr.translate('profile_consumed'), colorScheme.primary, theme, false),
-              const SizedBox(width: 24),
-              _buildLegendItem(context.tr.translate('profile_daily_target'), Colors.orange, theme, true),
-            ],
-          ),
-        ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPeriodChip(String period, String label, ThemeData theme, ColorScheme colorScheme) {
-    final isSelected = _selectedPeriod == period;
-    return GestureDetector(
-      onTap: () {
-        setState(() => _selectedPeriod = period);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(String label, Color color, ThemeData theme, bool isDashed) {
-    return Row(
-      children: [
-        Container(
-          width: 20,
-          height: 4,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(2),
-          ),
-          child: isDashed ? CustomPaint(painter: DashedLinePainter(color: color.withValues(alpha: 0.55))) : null,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMacronutrientsChartCard(ThemeData theme, ColorScheme colorScheme) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
-    List<double> proteinData, carbsData, fatData, fiberData;
-
-    switch (_selectedMacroPeriod) {
-      case '30 dias':
-        proteinData = _dailyProtein30;
-        carbsData = _dailyCarbs30;
-        fatData = _dailyFat30;
-        fiberData = _dailyFiber30;
-        break;
-      case '90 dias':
-        proteinData = _dailyProtein90;
-        carbsData = _dailyCarbs90;
-        fatData = _dailyFat90;
-        fiberData = _dailyFiber90;
-        break;
-      default:
-        proteinData = _dailyProtein7;
-        carbsData = _dailyCarbs7;
-        fatData = _dailyFat7;
-        fiberData = _dailyFiber7;
-    }
-
-    // Calculate averages
-    final avgProtein = proteinData.reduce((a, b) => a + b) / proteinData.length;
-    final avgCarbs = carbsData.reduce((a, b) => a + b) / carbsData.length;
-    final avgFat = fatData.reduce((a, b) => a + b) / fatData.length;
-    final avgFiber = fiberData.reduce((a, b) => a + b) / fiberData.length;
-
-    return Card(
-      margin: const EdgeInsets.all(0),
-      elevation: 1.5,
-      shadowColor: isDarkMode
-          ? Colors.black.withValues(alpha: 0.3)
-          : Colors.black.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: backgroundColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.tr.translate('profile_daily_macros_average'),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildMacroPeriodChip('7 dias', context.tr.translate('profile_7_days'), theme, colorScheme),
-              const SizedBox(width: 8),
-              _buildMacroPeriodChip('30 dias', context.tr.translate('profile_30_days'), theme, colorScheme),
-              const SizedBox(width: 8),
-              _buildMacroPeriodChip('90 dias', context.tr.translate('profile_90_days'), theme, colorScheme),
-            ],
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 250,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 250,
-                minY: 0,
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      String label = '';
-                      switch (groupIndex) {
-                        case 0:
-                          label = context.tr.translate('protein_full');
-                          break;
-                        case 1:
-                          label = context.tr.translate('carbohydrate');
-                          break;
-                        case 2:
-                          label = context.tr.translate('fat');
-                          break;
-                        case 3:
-                          label = context.tr.translate('fiber');
-                          break;
-                      }
-                      return BarTooltipItem(
-                        '$label\n${rod.toY.toStringAsFixed(1)}g',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        String text = '';
-                        Color color = Colors.black;
-                        switch (value.toInt()) {
-                          case 0:
-                            text = context.tr.translate('protein_full');
-                            color = const Color(0xFF9575CD).withValues(alpha: 0.55);
-                            break;
-                          case 1:
-                            text = context.tr.translate('carbohydrate');
-                            color = const Color(0xFFFFB74D).withValues(alpha: 0.55);
-                            break;
-                          case 2:
-                            text = context.tr.translate('fat');
-                            color = const Color(0xFF4DB6AC).withValues(alpha: 0.55);
-                            break;
-                          case 3:
-                            text = context.tr.translate('fiber');
-                            color = const Color(0xFF81C784).withValues(alpha: 0.55);
-                            break;
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            text,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 10,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 50,
-                      reservedSize: 45,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${value.toInt()}g',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 50,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      strokeWidth: 1,
-                    );
-                  },
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: theme.colorScheme.surfaceContainerHighest, width: 1),
-                    left: BorderSide(color: theme.colorScheme.surfaceContainerHighest, width: 1),
-                  ),
-                ),
-                barGroups: [
-                  BarChartGroupData(
-                    x: 0,
-                    barRods: [
-                      BarChartRodData(
-                        toY: avgProtein,
-                        color: const Color(0xFF9575CD).withValues(alpha: 0.55),
-                        width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                  BarChartGroupData(
-                    x: 1,
-                    barRods: [
-                      BarChartRodData(
-                        toY: avgCarbs,
-                        color: const Color(0xFFFFB74D).withValues(alpha: 0.55),
-                        width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                  BarChartGroupData(
-                    x: 2,
-                    barRods: [
-                      BarChartRodData(
-                        toY: avgFat,
-                        color: const Color(0xFF4DB6AC).withValues(alpha: 0.55),
-                        width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                  BarChartGroupData(
-                    x: 3,
-                    barRods: [
-                      BarChartRodData(
-                        toY: avgFiber,
-                        color: const Color(0xFF81C784).withValues(alpha: 0.55),
-                        width: 40,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              _buildMacroLegendItem('${context.tr.translate('protein_full')}: ${avgProtein.toStringAsFixed(1)}g', const Color(0xFF9575CD), theme),
-              _buildMacroLegendItem('${context.tr.translate('carbohydrate')}: ${avgCarbs.toStringAsFixed(1)}g', const Color(0xFFFFB74D), theme),
-              _buildMacroLegendItem('${context.tr.translate('fat')}: ${avgFat.toStringAsFixed(1)}g', const Color(0xFF4DB6AC), theme),
-              _buildMacroLegendItem('${context.tr.translate('fiber')}: ${avgFiber.toStringAsFixed(1)}g', const Color(0xFF81C784), theme),
-            ],
-          ),
-        ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroPeriodChip(String period, String label, ThemeData theme, ColorScheme colorScheme) {
-    final isSelected = _selectedMacroPeriod == period;
-    return GestureDetector(
-      onTap: () {
-        setState(() => _selectedMacroPeriod = period);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroLegendItem(String label, Color color, ThemeData theme) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 4,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-            fontSize: 11,
-          ),
-        ),
-      ],
     );
   }
 
@@ -1095,7 +2066,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
         title: Text(
           context.tr.translate('profile_and_settings'),
@@ -1108,15 +2079,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         actions: [
           if (authService.isAuthenticated)
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                );
-              },
+                  child: Icon(
+                    Icons.settings_rounded,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
             ),
         ],
       ),
@@ -1125,4 +2110,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : _buildUnauthenticatedContent(),
     );
   }
+}
+
+// Custom painter for dashed line in legend
+class DashedLinePainter extends CustomPainter {
+  final Color color;
+
+  DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    const dashWidth = 4.0;
+    const dashSpace = 3.0;
+    double startX = 0;
+
+    while (startX < size.width) {
+      canvas.drawLine(
+        Offset(startX, size.height / 2),
+        Offset(startX + dashWidth, size.height / 2),
+        paint,
+      );
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

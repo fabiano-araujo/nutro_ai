@@ -114,9 +114,21 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
       } else {
         // Tratar erro de registro
         setState(() {
-          _errorMessage = data['message'] ??
-              context.tr.translate('registration_failed') ??
-              'Falha ao realizar cadastro. Tente novamente.';
+          // Verificar se é erro de email já em uso
+          final errorDetail = (data['error']?.toString() ?? '').toLowerCase();
+          final message = (data['message']?.toString() ?? '').toLowerCase();
+
+          if (errorDetail.contains('email já está em uso') ||
+              errorDetail.contains('email already') ||
+              message.contains('email já está em uso') ||
+              message.contains('email already')) {
+            _errorMessage = context.tr.translate('email_already_in_use') ??
+                'Este email já está cadastrado. Tente fazer login ou use outro email.';
+          } else {
+            _errorMessage = data['message'] ??
+                context.tr.translate('registration_failed') ??
+                'Falha ao realizar cadastro. Tente novamente.';
+          }
         });
       }
     } catch (e) {
