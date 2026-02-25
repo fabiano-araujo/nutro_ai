@@ -36,7 +36,6 @@ import 'dart:convert';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/nutrition_card.dart';
-import '../widgets/mini_nutrition_card.dart';
 import '../widgets/food_json_display.dart';
 import '../providers/free_chat_provider.dart';
 import 'daily_meals_screen.dart';
@@ -132,29 +131,14 @@ class AITutorScreenState extends State<AITutorScreen>
   // Para animação do ícone pulsante
   late AnimationController _animationController;
 
-  // Controle de scroll do NutritionCard (apenas o card de macros faz snap)
-  double _headerOffset =
-      0.0; // Offset vertical do NutritionCard (0 = visível, negativo = escondido)
+  // Controle de visibilidade do header (calendário + nutrition card)
+  // Usa offset gradual para efeito suave como o AppBar nativo
+  double _headerOffset = 0.0; // 0 = totalmente visível, negativo = parcialmente escondido
   double _lastScrollPosition = 0.0;
-  double _maxHeaderHeight =
-      100.0; // Altura do NutritionCard
-  final GlobalKey _headerKey =
-      GlobalKey(); // Key para medir a altura real do header
   final GlobalKey _lastAiMessageKey =
       GlobalKey(); // Key para rastrear a última mensagem da IA
-  Timer? _heightCalculationTimer; // Timer para debounce do cálculo de altura
-  bool _isCalculatingHeight = false; // Flag para evitar cálculos simultâneos
   bool _isScrollingProgrammatically =
       false; // Flag para ignorar scroll automático no _handleScroll
-
-  // Snapping behavior para o NutritionCard
-  late AnimationController _headerSnapController;
-  Animation<double>? _headerSnapAnimation;
-  bool _isHeaderSnapping = false;
-  bool _showMiniCard = false; // Mostrar mini card quando o card principal está escondido
-  double _scrollVelocity = 0.0;
-  DateTime? _lastScrollTime;
-  static const double _velocityThreshold = 0.3;
 
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
@@ -270,22 +254,11 @@ class AITutorScreenState extends State<AITutorScreen>
       vsync: this,
     )..repeat(reverse: true);
 
-    // Controller para animação de snap do NutritionCard
-    _headerSnapController = AnimationController(
-      duration: Duration(milliseconds: 200),
-      vsync: this,
-    );
-
-    // Adicionar listener para controlar a visibilidade do NutritionCard
+    // Adicionar listener para controlar a visibilidade do header
     _scrollController.addListener(_handleScroll);
 
     // Registrar observer para detectar mudanças no teclado
     WidgetsBinding.instance.addObserver(this);
-
-    // Calcular a altura real do header após o primeiro frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _calculateHeaderHeight();
-    });
 
     // MODO CONVERSA LIVRE
     if (widget.isFreeChat) {
@@ -584,14 +557,10 @@ class AITutorScreenState extends State<AITutorScreen>
     // Remover listener do scroll
     _scrollController.removeListener(_handleScroll);
 
-    // Cancelar timer de cálculo de altura
-    _heightCalculationTimer?.cancel();
-
     _messageController.dispose();
     _scrollController.dispose();
     _inputFocusNode.dispose();
     _animationController.dispose();
-    _headerSnapController.dispose();
     _controller.dispose();
 
     super.dispose();
@@ -704,160 +673,45 @@ class AITutorScreenState extends State<AITutorScreen>
     });
   }
 
-  // Método para calcular a altura real do header após o build (com debounce)
-  void _calculateHeaderHeight() {
-    // Cancelar timer anterior se existir
-    _heightCalculationTimer?.cancel();
-
-    // Criar novo timer com debounce de 100ms
-    _heightCalculationTimer = Timer(Duration(milliseconds: 100), () {
-      if (_isCalculatingHeight) return;
-
-      _isCalculatingHeight = true;
-      try {
-        final RenderBox? renderBox =
-            _headerKey.currentContext?.findRenderObject() as RenderBox?;
-        if (renderBox != null && renderBox.hasSize) {
-          final newHeight = renderBox.size.height;
-          // Só atualizar se a diferença for maior que 5px (evitar recálculos por pequenas variações)
-          if (newHeight > 0 && (newHeight - _maxHeaderHeight).abs() > 5) {
-            setState(() {
-              _maxHeaderHeight = newHeight;
-              print(
-                  'Header height calculado dinamicamente: $_maxHeaderHeight px');
-            });
-          }
-        }
-      } catch (e) {
-        print('Erro ao calcular altura do header: $e');
-      } finally {
-        _isCalculatingHeight = false;
-      }
-    });
-  }
-
-  // Método para controlar o offset do header com comportamento de snap
+  // Método simples para controlar visibilidade do header baseado na direção do scroll
+  // Similar ao comportamento nativo do AppBar com floating: true, snap: true
   void _handleScroll() {
     if (!_scrollController.hasClients) return;
 
-    // Ignorar se for scroll programático (automático) ou se estiver animando
-    if (_isScrollingProgrammatically || _isHeaderSnapping) {
+    // Ignorar se for scroll programático (automático)
+    if (_isScrollingProgrammatically) {
       _lastScrollPosition = _scrollController.offset;
       return;
     }
 
     final currentScrollPosition = _scrollController.offset;
     final scrollDelta = currentScrollPosition - _lastScrollPosition;
-    final now = DateTime.now();
 
-    // Calcular velocidade do scroll
-    if (_lastScrollTime != null) {
-      final timeDelta = now.difference(_lastScrollTime!).inMilliseconds;
-      if (timeDelta > 0) {
-        _scrollVelocity = scrollDelta / timeDelta;
-      }
-    }
-    _lastScrollTime = now;
+    // Threshold mínimo para evitar mudanças por micro-movimentos
+    if (scrollDelta.abs() < 2) return;
 
     setState(() {
-      // Se estiver no topo, forçar header totalmente visível e esconder mini card
+      // Se estiver no topo, sempre mostrar o header completamente
       if (currentScrollPosition < 10) {
         _headerOffset = 0.0;
-        _showMiniCard = false;
       } else {
-        // Atualizar o offset do header baseado no movimento do scroll
-        _headerOffset -= scrollDelta;
-        _headerOffset = _headerOffset.clamp(-_maxHeaderHeight, 0.0);
-
-        // Determinar se deve fazer snap baseado na velocidade e posição
-        final isScrollingDown = scrollDelta > 0;
-        final headerVisiblePercent = 1.0 + (_headerOffset / _maxHeaderHeight);
-
-        // Se passou do threshold ou tem velocidade significativa, fazer snap
-        if (_scrollVelocity.abs() > _velocityThreshold) {
-          if (isScrollingDown && headerVisiblePercent > 0.1) {
-            // Scrollando para baixo com velocidade - esconder
-            _snapHeaderToHidden();
-          } else if (!isScrollingDown && headerVisiblePercent < 0.9) {
-            // Scrollando para cima com velocidade - mostrar
-            _snapHeaderToVisible();
-          }
-        } else if (headerVisiblePercent > 0 && headerVisiblePercent < 1) {
-          // Sem velocidade - decidir baseado na posição
-          if (headerVisiblePercent < 0.5) {
-            _snapHeaderToHidden();
-          } else {
-            _snapHeaderToVisible();
-          }
-        }
+        // Atualizar offset gradualmente baseado no movimento do scroll
+        // scrollDelta > 0 = scrollando para baixo = esconder (offset negativo)
+        // scrollDelta < 0 = scrollando para cima = mostrar (offset volta para 0)
+        _headerOffset = (_headerOffset - scrollDelta).clamp(-175.0, 0.0);
       }
 
       _lastScrollPosition = currentScrollPosition;
     });
   }
 
-  // Animar o header para ficar totalmente visível
-  void _snapHeaderToVisible() {
-    if (_isHeaderSnapping) return;
-    _isHeaderSnapping = true;
-
-    final startOffset = _headerOffset;
-    _headerSnapAnimation = Tween<double>(
-      begin: startOffset,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _headerSnapController,
-      curve: Curves.easeOut,
-    ));
-
-    _headerSnapAnimation!.addListener(() {
-      if (mounted) {
-        setState(() {
-          _headerOffset = _headerSnapAnimation!.value;
-        });
-      }
-    });
-
-    _headerSnapController.forward(from: 0.0).then((_) {
-      _isHeaderSnapping = false;
-      if (mounted) {
-        setState(() {
-          _showMiniCard = false;
-        });
-      }
-    });
-  }
-
-  // Animar o header para ficar totalmente escondido
-  void _snapHeaderToHidden() {
-    if (_isHeaderSnapping) return;
-    _isHeaderSnapping = true;
-
-    final startOffset = _headerOffset;
-    _headerSnapAnimation = Tween<double>(
-      begin: startOffset,
-      end: -_maxHeaderHeight,
-    ).animate(CurvedAnimation(
-      parent: _headerSnapController,
-      curve: Curves.easeOut,
-    ));
-
-    _headerSnapAnimation!.addListener(() {
-      if (mounted) {
-        setState(() {
-          _headerOffset = _headerSnapAnimation!.value;
-        });
-      }
-    });
-
-    _headerSnapController.forward(from: 0.0).then((_) {
-      _isHeaderSnapping = false;
-      if (mounted) {
-        setState(() {
-          _showMiniCard = true;
-        });
-      }
-    });
+  // Método para mostrar o header programaticamente
+  void _showHeader() {
+    if (_headerOffset < 0) {
+      setState(() {
+        _headerOffset = 0.0;
+      });
+    }
   }
 
   // --- Métodos removidos (agora no controller) ---
@@ -1329,25 +1183,11 @@ class AITutorScreenState extends State<AITutorScreen>
                                 // Limpar sugestões ao mudar de dia
                                 _clearSuggestions();
 
-                                // Mostrar o header instantaneamente ao clicar em um dia
-                                setState(() {
-                                  _headerOffset = 0.0;
-                                  _lastScrollPosition = 0.0;
-                                });
+                                // Mostrar o header ao clicar em um dia
+                                _showHeader();
 
                                 mealsProvider.setSelectedDate(date);
                                 await _controller.changeSelectedDate(date);
-
-                                // Recalcular altura após mudança de data (múltiplas tentativas para garantir)
-                                WidgetsBinding.instance
-                                    .addPostFrameCallback((_) {
-                                  _calculateHeaderHeight();
-                                  // Recalcular novamente após 150ms para garantir que o conteúdo foi renderizado
-                                  Future.delayed(Duration(milliseconds: 150),
-                                      () {
-                                    _calculateHeaderHeight();
-                                  });
-                                });
 
                                 // Scroll instantâneo para a última resposta da IA
                                 _scrollToLastAiResponse();
@@ -1368,179 +1208,92 @@ class AITutorScreenState extends State<AITutorScreen>
                   ),
 
                   // Calendário semanal + Nutrition card com comportamento de toolbar Android
+                  // Usa Transform.translate para movimento gradual suave
                   // Não mostrar no modo conversa livre
                   if (!widget.isFreeChat)
                     Consumer<DailyMealsProvider>(
                       builder: (context, mealsProvider, child) {
-                        // Calcular altura esperada de forma síncrona baseado nos dados atuais
-                        const double calendarHeight = 75.0;
-                        const double nutritionCardHeight = 100.0;
-                        // Só incluir altura do NutritionCard se houver refeições
+                        // Calcular altura baseado se tem refeições
                         final bool hasMeals = mealsProvider.todayMeals.isNotEmpty;
-                        final double expectedHeight = hasMeals
-                            ? calendarHeight + nutritionCardHeight
-                            : calendarHeight;
-
-                        // Usar a menor entre a altura esperada e a medida
-                        final double effectiveMaxHeight = expectedHeight;
+                        final double maxHeight = hasMeals ? 175.0 : 75.0;
+                        // Altura visível = maxHeight + offset (offset é negativo)
+                        final double visibleHeight =
+                            (maxHeight + _headerOffset).clamp(0.0, maxHeight);
 
                         return SizedBox(
-                          height: (effectiveMaxHeight + _headerOffset)
-                              .clamp(0.0, effectiveMaxHeight),
+                          height: visibleHeight,
                           child: ClipRect(
-                            clipBehavior: Clip.hardEdge,
                             child: OverflowBox(
-                              maxHeight: expectedHeight +
-                                  50, // +50px margem de segurança para transições
+                              maxHeight: maxHeight,
                               alignment: Alignment.topCenter,
                               child: Transform.translate(
                                 offset: Offset(0, _headerOffset),
                                 child: Column(
-                                  key:
-                                      _headerKey, // Key para medir a altura real do header
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Calendário semanal (apenas os dias da semana, sem AppBar)
-                                    Consumer<DailyMealsProvider>(
-                                      builder: (context, mealsProvider, child) {
-                                        return WeeklyCalendar(
-                                          selectedDate:
-                                              mealsProvider.selectedDate,
-                                          showAppBar:
-                                              false, // Não mostrar o AppBar (já está fixo acima)
-                                          showCalendar:
-                                              true, // Mostrar apenas o calendário semanal
-                                          onDaySelected: (date) async {
-                                            print('Data selecionada: $date');
-
-                                            // Limpar sugestões ao mudar de dia
-                                            _clearSuggestions();
-
-                                            // Mostrar o header instantaneamente ao clicar em um dia
-                                            setState(() {
-                                              _headerOffset = 0.0;
-                                              _lastScrollPosition = 0.0;
-                                            });
-
-                                            mealsProvider.setSelectedDate(date);
-                                            await _controller
-                                                .changeSelectedDate(date);
-
-                                            // Recalcular altura após mudança de data (múltiplas tentativas para garantir)
-                                            WidgetsBinding.instance
-                                                .addPostFrameCallback((_) {
-                                              _calculateHeaderHeight();
-                                              // Recalcular novamente após 150ms para garantir que o conteúdo foi renderizado
-                                              Future.delayed(
-                                                  Duration(milliseconds: 150),
-                                                  () {
-                                                _calculateHeaderHeight();
-                                              });
-                                            });
-
-                                            // Scroll instantâneo para a última resposta da IA
-                                            _scrollToLastAiResponse();
-                                          },
-                                          onSearchPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const FoodSearchScreen(),
-                                              ),
-                                            );
-                                          },
+                                    // Calendário semanal (apenas os dias da semana)
+                                    WeeklyCalendar(
+                                      selectedDate: mealsProvider.selectedDate,
+                                      showAppBar: false,
+                                      showCalendar: true,
+                                      onDaySelected: (date) async {
+                                        print('Data selecionada: $date');
+                                        _clearSuggestions();
+                                        _showHeader();
+                                        mealsProvider.setSelectedDate(date);
+                                        await _controller.changeSelectedDate(date);
+                                        _scrollToLastAiResponse();
+                                      },
+                                      onSearchPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const FoodSearchScreen(),
+                                          ),
                                         );
                                       },
                                     ),
 
                                     // Nutrition card
-                                    Consumer2<NutritionGoalsProvider,
-                                        DailyMealsProvider>(
-                                      builder: (context, nutritionProvider,
-                                          mealsProvider, child) {
-                                        // Recalcular altura quando o conteúdo mudar (múltiplas tentativas)
-                                        WidgetsBinding.instance
-                                            .addPostFrameCallback((_) {
-                                          _calculateHeaderHeight();
-                                          // Recalcular após 100ms e 250ms para garantir
-                                          Future.delayed(
-                                              Duration(milliseconds: 100), () {
-                                            _calculateHeaderHeight();
-                                          });
-                                          Future.delayed(
-                                              Duration(milliseconds: 250), () {
-                                            _calculateHeaderHeight();
-                                          });
-                                        });
-
-                                        // Ocultar o card se não houver refeições registradas no dia
-                                        if (mealsProvider.todayMeals.isEmpty) {
-                                          return SizedBox.shrink();
-                                        }
-
-                                        return NutritionCard(
-                                          caloriesConsumed:
-                                              mealsProvider.totalCalories,
-                                          caloriesGoal:
-                                              nutritionProvider.caloriesGoal,
-                                          proteinConsumed: mealsProvider
-                                              .totalProtein
-                                              .toInt(),
-                                          proteinGoal:
-                                              nutritionProvider.proteinGoal,
-                                          carbsConsumed:
-                                              mealsProvider.totalCarbs.toInt(),
-                                          carbsGoal:
-                                              nutritionProvider.carbsGoal,
-                                          fatsConsumed:
-                                              mealsProvider.totalFat.toInt(),
-                                          fatsGoal: nutritionProvider.fatGoal,
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const DailyMealsScreen(),
-                                              ),
-                                            );
-                                          },
-                                          onMinimize: () {
-                                            _snapHeaderToHidden();
-                                          },
-                                        );
-                                      },
-                                    ),
+                                    if (hasMeals)
+                                      Consumer2<NutritionGoalsProvider,
+                                          DailyMealsProvider>(
+                                        builder: (context, nutritionProvider,
+                                            mealsProvider, child) {
+                                          return NutritionCard(
+                                            caloriesConsumed:
+                                                mealsProvider.totalCalories,
+                                            caloriesGoal:
+                                                nutritionProvider.caloriesGoal,
+                                            proteinConsumed: mealsProvider
+                                                .totalProtein
+                                                .toInt(),
+                                            proteinGoal:
+                                                nutritionProvider.proteinGoal,
+                                            carbsConsumed:
+                                                mealsProvider.totalCarbs.toInt(),
+                                            carbsGoal: nutritionProvider.carbsGoal,
+                                            fatsConsumed:
+                                                mealsProvider.totalFat.toInt(),
+                                            fatsGoal: nutritionProvider.fatGoal,
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const DailyMealsScreen(),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
                                   ],
                                 ),
                               ),
                             ),
                           ),
-                        );
-                      },
-                    ),
-
-                  // Mini Nutrition Card (aparece quando o card principal está escondido)
-                  if (!widget.isFreeChat && _showMiniCard)
-                    Consumer2<NutritionGoalsProvider, DailyMealsProvider>(
-                      builder: (context, nutritionProvider, mealsProvider, child) {
-                        // Só mostrar se há refeições
-                        if (mealsProvider.todayMeals.isEmpty) {
-                          return SizedBox.shrink();
-                        }
-                        return MiniNutritionCard(
-                          caloriesConsumed: mealsProvider.totalCalories,
-                          caloriesGoal: nutritionProvider.caloriesGoal,
-                          proteinConsumed: mealsProvider.totalProtein.toInt(),
-                          proteinGoal: nutritionProvider.proteinGoal,
-                          carbsConsumed: mealsProvider.totalCarbs.toInt(),
-                          carbsGoal: nutritionProvider.carbsGoal,
-                          fatsConsumed: mealsProvider.totalFat.toInt(),
-                          fatsGoal: nutritionProvider.fatGoal,
-                          onTap: () {
-                            // Ao clicar, mostrar o card completo novamente
-                            _snapHeaderToVisible();
-                          },
                         );
                       },
                     ),

@@ -396,6 +396,7 @@ class _MealCardState extends State<MealCard> {
                         padding: EdgeInsets.only(bottom: 12),
                         child: TextField(
                           controller: controllers[index],
+                          autofocus: index == 0,
                           decoration: InputDecoration(
                             prefixIcon: Padding(
                               padding: EdgeInsets.only(left: 12, right: 8),

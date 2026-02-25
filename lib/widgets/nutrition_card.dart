@@ -35,53 +35,7 @@ class NutritionCard extends StatefulWidget {
   State<NutritionCard> createState() => _NutritionCardState();
 }
 
-class _NutritionCardState extends State<NutritionCard>
-    with SingleTickerProviderStateMixin {
-  double _dragOffset = 0.0;
-  late AnimationController _resetController;
-  Animation<double>? _resetAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _resetController = AnimationController(
-      duration: Duration(milliseconds: 200),
-      vsync: this,
-    );
-  }
-
-  @override
-  void dispose() {
-    _resetController.dispose();
-    super.dispose();
-  }
-
-  void _onDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      _dragOffset += details.delta.dx;
-      // Limit drag to reasonable range
-      _dragOffset = _dragOffset.clamp(-100.0, 100.0);
-    });
-  }
-
-  void _onDragEnd(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    final shouldMinimize = _dragOffset.abs() > 50 || velocity.abs() > 200;
-
-    if (shouldMinimize && widget.onMinimize != null) {
-      widget.onMinimize!();
-      setState(() => _dragOffset = 0);
-    } else {
-      // Animate back to center
-      _resetAnimation = Tween<double>(begin: _dragOffset, end: 0).animate(
-        CurvedAnimation(parent: _resetController, curve: Curves.easeOut),
-      )..addListener(() {
-          setState(() => _dragOffset = _resetAnimation!.value);
-        });
-      _resetController.forward(from: 0);
-    }
-  }
-
+class _NutritionCardState extends State<NutritionCard> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -90,18 +44,9 @@ class _NutritionCardState extends State<NutritionCard>
     // Cores para quando excede a meta
     final exceededColor = Color(0xFFE57373);
 
-    // Calculate opacity based on drag (fade out as you drag)
-    final dragOpacity = (1.0 - (_dragOffset.abs() / 150)).clamp(0.5, 1.0);
-
     return GestureDetector(
       onTap: widget.onTap,
-      onHorizontalDragUpdate: _onDragUpdate,
-      onHorizontalDragEnd: _onDragEnd,
-      child: Transform.translate(
-        offset: Offset(_dragOffset, 0),
-        child: Opacity(
-          opacity: dragOpacity,
-          child: Card(
+      child: Card(
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
         elevation: 1.5,
         shadowColor: isDarkMode
@@ -215,9 +160,7 @@ class _NutritionCardState extends State<NutritionCard>
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
+            ],
           ),
         ),
       ),
