@@ -526,6 +526,7 @@ final Map<String, String> esESTranslations = {
 
   // Nutrition Card
   'remaining': 'restantes',
+  'exceeded': 'exceso',
   'protein': 'Proteínas',
   'carbs': 'Carbohidratos',
   'fats': 'Grasas',

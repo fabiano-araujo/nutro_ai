@@ -595,6 +595,7 @@ final Map<String, String> enUSTranslations = {
 
   // Nutrition Card
   'remaining': 'remaining',
+  'exceeded': 'over',
   'protein': 'Proteins',
   'carbs': 'Carbs',
   'fats': 'Fats',
@@ -860,6 +861,7 @@ final Map<String, String> enUSTranslations = {
   'emoji_label': 'Emoji: ',
   'edit_meal': 'Edit Meal',
   'delete_meal': 'Delete Meal',
+  'delete_meal_confirm': 'Are you sure you want to delete this meal?',
   'delete_meal_confirmation': 'Are you sure you want to delete "{mealName}"?',
   'changes_saved_successfully': 'Changes saved successfully!',
   'restore_default_confirmation':

@@ -391,6 +391,7 @@ final Map<String, String> frFRTranslations = {
 
   // Nutrition Card
   'remaining': 'restant',
+  'exceeded': 'excès',
   'calories': 'Calories',
   'protein': 'Protéines',
   'carbs': 'Glucides',

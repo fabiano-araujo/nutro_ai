@@ -18,6 +18,7 @@ class MealCard extends StatefulWidget {
   final Function(MealType)? onMealTypeChanged;
   final VoidCallback? onAddFood;
   final Function(Meal)? onMealUpdated;
+  final VoidCallback? onDelete;
   final double topContentPadding;
 
   const MealCard({
@@ -27,6 +28,7 @@ class MealCard extends StatefulWidget {
     this.onMealTypeChanged,
     this.onAddFood,
     this.onMealUpdated,
+    this.onDelete,
     this.topContentPadding = 16,
   }) : super(key: key);
 
@@ -91,15 +93,8 @@ class _MealCardState extends State<MealCard> {
       final languageCode =
           languageController.localeToString(languageController.currentLocale);
 
-      // Prompt para interpretar a descrição livre do alimento
-      final prompt = '''
-Analise o seguinte alimento: "$foodDescription".
-Retorne APENAS um JSON com as informações nutricionais.
-Identifique o nome do alimento e a quantidade/porção a partir do texto.
-Formato exato:
-{"foods":[{"name":"Nome identificado","portion":"Quantidade identificada","macros":{"calories":0,"protein":0,"carbohydrate":0,"fat":0,"serving_size":0,"serving_unit":"g"}}]}
-Não inclua texto adicional, apenas o JSON.
-''';
+      // Prompt simples - o servidor injeta instruções de idioma automaticamente
+      final prompt = '$foodDescription';
 
       String fullResponse = '';
 
@@ -235,7 +230,7 @@ Não inclua texto adicional, apenas o JSON.
     return '🍽️';
   }
 
-  /// Mostra o diálogo de edição para um alimento específico
+  /// Mostra o BottomSheet de edição para um alimento específico
   Future<void> _showEditFoodDialog(int index) async {
     final food = _currentMeal.foods[index];
     // Combinar quantidade e nome para edição única (ex: "150g Arroz branco")
@@ -245,97 +240,258 @@ Não inclua texto adicional, apenas o JSON.
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    await showDialog(
+    await showModalBottomSheet(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
           ),
-          title: Row(
-            children: [
-              Text(
-                food.emoji,
-                style: TextStyle(fontSize: 24),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  context.tr.translate('edit_food'),
-                  style: TextStyle(
-                    color: isDarkMode
-                        ? AppTheme.darkTextColor
-                        : AppTheme.textPrimaryColor,
-                    fontSize: 18,
-                  ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Header com emoji e título
+                    Row(
+                      children: [
+                        // Emoji container com fundo
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? AppTheme.darkComponentColor
+                                : Color(0xFFF5F7FA),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            food.emoji,
+                            style: TextStyle(fontSize: 32),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr.translate('edit_food'),
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? AppTheme.darkTextColor
+                                      : AppTheme.textPrimaryColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                food.name,
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 24),
+
+                    // Campo de descrição
+                    Text(
+                      context.tr.translate('food_description'),
+                      style: TextStyle(
+                        color: isDarkMode
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: InputDecoration(
+                        hintText: 'Ex: 150g de Arroz branco',
+                        hintStyle: TextStyle(
+                          color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.grey[700]! : Colors.grey[300]!,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.grey[700]! : Colors.grey[300]!,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: AppTheme.primaryColor,
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: isDarkMode
+                            ? AppTheme.darkComponentColor
+                            : Color(0xFFF8F9FA),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                      ),
+                      style: TextStyle(
+                        color: isDarkMode
+                            ? AppTheme.darkTextColor
+                            : AppTheme.textPrimaryColor,
+                        fontSize: 16,
+                      ),
+                      autofocus: true,
+                      maxLines: null,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    SizedBox(height: 8),
+
+                    // Dica com ícone
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          size: 14,
+                          color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'A IA vai identificar o alimento e calcular os nutrientes',
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.grey[500]
+                                  : Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 24),
+
+                    // Botões
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheetContext),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                color: isDarkMode
+                                    ? Colors.grey[700]!
+                                    : Colors.grey[300]!,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              context.tr.translate('cancel'),
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(sheetContext);
+
+                              final newDescription =
+                                  descriptionController.text.trim();
+
+                              if (newDescription.isEmpty) return;
+
+                              // Se mudou algo, manda pra IA
+                              if (newDescription != initialText) {
+                                _fetchNutritionFromAI(index, newDescription);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  context.tr.translate('save'),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Campo único de descrição
-              TextField(
-                controller: descriptionController,
-                decoration: InputDecoration(
-                  labelText: context.tr.translate('food_description'),
-                  hintText: 'Ex: 150g de Arroz branco',
-                  prefixIcon: Icon(Icons.edit, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: isDarkMode
-                      ? AppTheme.darkComponentColor
-                      : Colors.grey[50],
-                  helperText: 'A IA identificará o nome e a quantidade.',
-                  helperMaxLines: 2,
-                ),
-                style: TextStyle(
-                  color: isDarkMode
-                      ? AppTheme.darkTextColor
-                      : AppTheme.textPrimaryColor,
-                ),
-                autofocus: true,
-                maxLines: null,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(
-                context.tr.translate('cancel'),
-                style: TextStyle(color: Colors.grey),
               ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-
-                final newDescription = descriptionController.text.trim();
-
-                if (newDescription.isEmpty) return;
-
-                // Se mudou algo, manda pra IA
-                if (newDescription != initialText) {
-                  _fetchNutritionFromAI(index, newDescription);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                context.tr.translate('save'),
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -413,6 +569,112 @@ Não inclua texto adicional, apenas o JSON.
         );
       },
     );
+  }
+
+  /// Mostra menu de mais opções (excluir, etc)
+  void _showMoreOptionsMenu() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Opção: Excluir refeição
+              if (widget.onDelete != null)
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_outline,
+                    color: Color(0xFFE57373),
+                  ),
+                  title: Text(
+                    context.tr.translate('delete_meal'),
+                    style: TextStyle(
+                      color: Color(0xFFE57373),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    context.tr.translate('delete_meal_confirm'),
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _confirmDelete();
+                  },
+                ),
+              SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Confirma a exclusão da refeição
+  Future<void> _confirmDelete() async {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          context.tr.translate('delete_meal'),
+          style: TextStyle(
+            color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+          ),
+        ),
+        content: Text(
+          context.tr.translate('delete_meal_confirm'),
+          style: TextStyle(
+            color: isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              context.tr.translate('cancel'),
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              context.tr.translate('delete'),
+              style: TextStyle(color: Color(0xFFE57373)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      widget.onDelete?.call();
+    }
   }
 
   Future<void> _showEditAllFoodsDialog() async {
@@ -603,81 +865,68 @@ Não inclua texto adicional, apenas o JSON.
     }
   }
 
-  Widget _buildMacroCardGradient({
-    required String icon,
+  /// Macro compacto inline - com label visível para melhor compreensão
+  Widget _buildCompactMacro({
     required String label,
     required String value,
     required String unit,
-    required Color startColor,
-    required Color endColor,
+    required Color color,
     required bool isDarkMode,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            startColor.withValues(alpha: isDarkMode ? 0.2 : 0.1),
-            endColor.withValues(alpha: isDarkMode ? 0.12 : 0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: startColor.withValues(alpha: isDarkMode ? 0.2 : 0.15),
-          width: 0.5,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w600,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-              letterSpacing: 0.2,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 3,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(2),
           ),
-          const SizedBox(height: 3),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Flexible(
-                child: Text(
+        ),
+        SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                letterSpacing: 0.2,
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
                   value,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                     color: isDarkMode
-                        ? Colors.white.withValues(alpha: 0.85)
-                        : Colors.black.withValues(alpha: 0.65),
+                        ? Colors.white.withValues(alpha: 0.9)
+                        : Colors.black.withValues(alpha: 0.75),
+                    height: 1.1,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              if (unit.isNotEmpty)
                 Text(
                   unit,
                   style: TextStyle(
-                    fontSize: 7,
+                    fontSize: 9,
                     fontWeight: FontWeight.w500,
                     color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
                   ),
                 ),
-            ],
-          ),
-        ],
-      ),
+              ],
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -690,7 +939,7 @@ Não inclua texto adicional, apenas o JSON.
     final double topPadding =
         widget.topContentPadding < 0 ? 0 : widget.topContentPadding;
 
-    return Card(
+    final card = Card(
       margin: EdgeInsets.only(top: 0, bottom: 12),
       elevation: 1.5,
       shadowColor: isDarkMode
@@ -748,59 +997,41 @@ Não inclua texto adicional, apenas o JSON.
               ),
             ),
 
-          SizedBox(height: 12),
+          SizedBox(height: 8),
 
-          // Macros Summary
+          // Macros Summary - Compacto com labels claros
           Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: _buildMacroCardGradient(
-                    icon: '🔥',
-                    label: 'Cal',
-                    value: _currentMeal.totalCalories.toStringAsFixed(0),
-                    unit: 'kcal',
-                    startColor: const Color(0xFFFF6B9D),
-                    endColor: const Color(0xFFFFA06B),
-                    isDarkMode: isDarkMode,
-                  ),
+                _buildCompactMacro(
+                  label: context.tr.translate('calories'),
+                  value: _currentMeal.totalCalories.toStringAsFixed(0),
+                  unit: 'kcal',
+                  color: const Color(0xFFFF6B9D),
+                  isDarkMode: isDarkMode,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildMacroCardGradient(
-                    icon: '💪',
-                    label: 'Prot',
-                    value: _currentMeal.totalProtein.toStringAsFixed(1),
-                    unit: 'g',
-                    startColor: const Color(0xFF9575CD),
-                    endColor: const Color(0xFFBA68C8),
-                    isDarkMode: isDarkMode,
-                  ),
+                _buildCompactMacro(
+                  label: context.tr.translate('protein'),
+                  value: _currentMeal.totalProtein.toStringAsFixed(1),
+                  unit: 'g',
+                  color: const Color(0xFF9575CD),
+                  isDarkMode: isDarkMode,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildMacroCardGradient(
-                    icon: '🌾',
-                    label: 'Carb',
-                    value: _currentMeal.totalCarbs.toStringAsFixed(1),
-                    unit: 'g',
-                    startColor: const Color(0xFFFFB74D),
-                    endColor: const Color(0xFFFF9800),
-                    isDarkMode: isDarkMode,
-                  ),
+                _buildCompactMacro(
+                  label: context.tr.translate('carbs'),
+                  value: _currentMeal.totalCarbs.toStringAsFixed(1),
+                  unit: 'g',
+                  color: const Color(0xFFFFB74D),
+                  isDarkMode: isDarkMode,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildMacroCardGradient(
-                    icon: '🥑',
-                    label: 'Gord',
-                    value: _currentMeal.totalFat.toStringAsFixed(1),
-                    unit: 'g',
-                    startColor: const Color(0xFF4DB6AC),
-                    endColor: const Color(0xFF26A69A),
-                    isDarkMode: isDarkMode,
-                  ),
+                _buildCompactMacro(
+                  label: context.tr.translate('fats'),
+                  value: _currentMeal.totalFat.toStringAsFixed(1),
+                  unit: 'g',
+                  color: const Color(0xFF4DB6AC),
+                  isDarkMode: isDarkMode,
                 ),
               ],
             ),
@@ -808,7 +1039,7 @@ Não inclua texto adicional, apenas o JSON.
 
           // Header - Nome da refeição com ícones (no final)
           Container(
-            padding: EdgeInsets.fromLTRB(16, 2, 12, 12),
+            padding: EdgeInsets.fromLTRB(16, 0, 12, 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -867,9 +1098,7 @@ Não inclua texto adicional, apenas o JSON.
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () {
-                          // More options action
-                        },
+                        onTap: _showMoreOptionsMenu,
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           padding: EdgeInsets.all(6),
@@ -968,6 +1197,74 @@ Não inclua texto adicional, apenas o JSON.
         ],
       ),
     );
+
+    // Se tem callback de delete, envolve com Dismissible para swipe-to-delete
+    if (widget.onDelete != null) {
+      return Dismissible(
+        key: Key('meal_${_currentMeal.id}'),
+        direction: DismissDirection.endToStart,
+        confirmDismiss: (direction) async {
+          // Mostrar confirmação antes de deletar
+          return await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                context.tr.translate('delete_meal'),
+                style: TextStyle(
+                  color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+                ),
+              ),
+              content: Text(
+                context.tr.translate('delete_meal_confirm'),
+                style: TextStyle(
+                  color: isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(
+                    context.tr.translate('cancel'),
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(
+                    context.tr.translate('delete'),
+                    style: TextStyle(color: Color(0xFFE57373)),
+                  ),
+                ),
+              ],
+            ),
+          ) ?? false;
+        },
+        onDismissed: (direction) {
+          widget.onDelete?.call();
+        },
+        background: Container(
+          margin: EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Color(0xFFE57373),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          alignment: Alignment.centerRight,
+          padding: EdgeInsets.only(right: 20),
+          child: Icon(
+            Icons.delete_outline,
+            color: Colors.white,
+            size: 28,
+          ),
+        ),
+        child: card,
+      );
+    }
+
+    return card;
   }
 }
 

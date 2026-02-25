@@ -35,6 +35,12 @@ class NutritionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final caloriesRemaining = caloriesGoal - caloriesConsumed;
+    final isCaloriesExceeded = caloriesRemaining < 0;
+    final displayCalories = isCaloriesExceeded ? -caloriesRemaining : caloriesRemaining;
+
+    // Cores para quando excede a meta
+    final exceededColor = Color(0xFFE57373); // Vermelho suave
+    final exceededTextColor = Color(0xFFFF5252); // Vermelho mais vibrante
 
     return GestureDetector(
       onTap: onTap,
@@ -69,29 +75,51 @@ class NutritionCard extends StatelessWidget {
                               consumed: caloriesConsumed,
                               goal: caloriesGoal,
                               isDarkMode: isDarkMode,
+                              isExceeded: isCaloriesExceeded,
                             ),
                             child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    caloriesRemaining.toString(),
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: (isDarkMode
-                                              ? AppTheme.darkTextColor
-                                              : AppTheme.textPrimaryColor)
-                                          .withValues(alpha: 0.85),
-                                    ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      if (isCaloriesExceeded)
+                                        Text(
+                                          '+',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: exceededTextColor,
+                                          ),
+                                        ),
+                                      Text(
+                                        displayCalories.toString(),
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: isCaloriesExceeded
+                                              ? exceededTextColor
+                                              : (isDarkMode
+                                                      ? AppTheme.darkTextColor
+                                                      : AppTheme.textPrimaryColor)
+                                                  .withValues(alpha: 0.85),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   Text(
-                                    context.tr.translate('remaining'),
+                                    isCaloriesExceeded
+                                        ? context.tr.translate('exceeded')
+                                        : context.tr.translate('remaining'),
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: isDarkMode
-                                          ? Color(0xFFAEB7CE)
-                                          : AppTheme.textSecondaryColor,
+                                      color: isCaloriesExceeded
+                                          ? exceededColor
+                                          : (isDarkMode
+                                              ? Color(0xFFAEB7CE)
+                                              : AppTheme.textSecondaryColor),
                                     ),
                                   ),
                                 ],
@@ -105,9 +133,11 @@ class NutritionCard extends StatelessWidget {
                           '$caloriesConsumed / $caloriesGoal kcal',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDarkMode
-                                ? Color(0xFFAEB7CE)
-                                : AppTheme.textSecondaryColor,
+                            color: isCaloriesExceeded
+                                ? exceededColor
+                                : (isDarkMode
+                                    ? Color(0xFFAEB7CE)
+                                    : AppTheme.textSecondaryColor),
                           ),
                         ),
                       ],
@@ -201,7 +231,10 @@ class _MacroRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = (consumed / goal).clamp(0.0, 1.0);
+    final progress = consumed / goal;
+    final isExceeded = progress > 1.0;
+    final clampedProgress = progress.clamp(0.0, 1.0);
+    final exceededColor = Color(0xFFE57373); // Vermelho suave
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,51 +242,131 @@ class _MacroRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: (isDarkMode
-                    ? AppTheme.darkTextColor
-                    : AppTheme.textPrimaryColor).withValues(alpha: 0.85),
-              ),
+            Row(
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: (isDarkMode
+                        ? AppTheme.darkTextColor
+                        : AppTheme.textPrimaryColor).withValues(alpha: 0.85),
+                  ),
+                ),
+                if (isExceeded) ...[
+                  SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_upward,
+                    size: 12,
+                    color: exceededColor,
+                  ),
+                ],
+              ],
             ),
             Text(
               '$consumed / $goal$unit',
               style: TextStyle(
                 fontSize: 12,
-                color: (isDarkMode
-                    ? Color(0xFFAEB7CE)
-                    : AppTheme.textSecondaryColor).withValues(alpha: 0.85),
+                fontWeight: isExceeded ? FontWeight.w600 : FontWeight.normal,
+                color: isExceeded
+                    ? exceededColor
+                    : (isDarkMode
+                        ? Color(0xFFAEB7CE)
+                        : AppTheme.textSecondaryColor).withValues(alpha: 0.85),
               ),
             ),
           ],
         ),
         SizedBox(height: 3),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor:
-                isDarkMode ? Color(0xFF2F2F2F) : Color(0xFFF5F7FA),
-            valueColor: AlwaysStoppedAnimation<Color>(color.withValues(alpha: 0.45)),
-            minHeight: 5,
-          ),
+        // Stack para mostrar overflow visual
+        Stack(
+          children: [
+            // Barra de fundo
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Color(0xFF2F2F2F) : Color(0xFFF5F7FA),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            // Barra de progresso
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: FractionallySizedBox(
+                widthFactor: clampedProgress,
+                child: Container(
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isExceeded
+                        ? exceededColor.withValues(alpha: 0.7)
+                        : color.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+            // Indicador de overflow (listras quando excede)
+            if (isExceeded)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: CustomPaint(
+                    painter: _OverflowStripesPainter(
+                      color: exceededColor,
+                      isDarkMode: isDarkMode,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ],
     );
   }
 }
 
+/// Painter para desenhar listras diagonais indicando overflow
+class _OverflowStripesPainter extends CustomPainter {
+  final Color color;
+  final bool isDarkMode;
+
+  _OverflowStripesPainter({required this.color, required this.isDarkMode});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.15)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    const spacing = 6.0;
+    for (double i = -size.height; i < size.width + size.height; i += spacing) {
+      canvas.drawLine(
+        Offset(i, size.height),
+        Offset(i + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class CalorieCirclePainter extends CustomPainter {
   final int consumed;
   final int goal;
   final bool isDarkMode;
+  final bool isExceeded;
 
   CalorieCirclePainter({
     required this.consumed,
     required this.goal,
     required this.isDarkMode,
+    this.isExceeded = false,
   });
 
   @override
@@ -271,9 +384,13 @@ class CalorieCirclePainter extends CustomPainter {
 
     canvas.drawCircle(center, radius, bgPaint);
 
-    // Progress arc (cor principal)
+    // Progress arc - vermelho se excedeu, rosa se normal
+    final progressColor = isExceeded
+        ? Color(0xFFE57373) // Vermelho suave quando excede
+        : Color(0xFFFF6B9D); // Rosa normal
+
     final progressPaint = Paint()
-      ..color = Color(0xFFFF6B9D).withValues(alpha: 0.45)
+      ..color = progressColor.withValues(alpha: isExceeded ? 0.7 : 0.45)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;
@@ -294,6 +411,7 @@ class CalorieCirclePainter extends CustomPainter {
   bool shouldRepaint(CalorieCirclePainter oldDelegate) {
     return oldDelegate.consumed != consumed ||
         oldDelegate.goal != goal ||
-        oldDelegate.isDarkMode != isDarkMode;
+        oldDelegate.isDarkMode != isDarkMode ||
+        oldDelegate.isExceeded != isExceeded;
   }
 }

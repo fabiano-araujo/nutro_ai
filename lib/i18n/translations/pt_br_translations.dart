@@ -780,6 +780,7 @@ final Map<String, String> ptBRTranslations = {
 
   // Nutrition Card
   'remaining': 'restantes',
+  'exceeded': 'excesso',
   'protein': 'Proteínas',
   'carbs': 'Carboidratos',
   'fats': 'Gorduras',
@@ -1045,6 +1046,7 @@ final Map<String, String> ptBRTranslations = {
   'emoji_label': 'Emoji: ',
   'edit_meal': 'Editar Refeição',
   'delete_meal': 'Excluir Refeição',
+  'delete_meal_confirm': 'Tem certeza que deseja excluir esta refeição?',
   'delete_meal_confirmation': 'Tem certeza que deseja excluir "{mealName}"?',
   'changes_saved_successfully': 'Mudanças salvas com sucesso!',
   'restore_default_confirmation':

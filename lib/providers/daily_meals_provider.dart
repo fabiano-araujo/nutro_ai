@@ -186,6 +186,30 @@ class DailyMealsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remove uma refeição completa pelo ID
+  void deleteMeal(String mealId) {
+    final dateKey = _formatDate(_selectedDate);
+    final meals = _mealsByDate[dateKey];
+    if (meals == null) return;
+
+    meals.removeWhere((m) => m.id == mealId);
+
+    _saveToPreferences();
+    notifyListeners();
+  }
+
+  /// Remove uma refeição pelo tipo
+  void deleteMealByType(MealType type) {
+    final dateKey = _formatDate(_selectedDate);
+    final meals = _mealsByDate[dateKey];
+    if (meals == null) return;
+
+    meals.removeWhere((m) => m.type == type);
+
+    _saveToPreferences();
+    notifyListeners();
+  }
+
   void updateGoals({
     int? calories,
     int? protein,

@@ -97,6 +97,23 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     // TODO: Considerar atualizar a refeição no provider se ela já foi adicionada
   }
 
+  void _handleDelete() {
+    if (!_isAdded) return;
+
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
+
+    mealsProvider.deleteMeal(_meal.id);
+
+    if (mounted) {
+      setState(() {
+        _isAdded = false;
+        // Limpar a refeição para esconder o card
+        _meal = _meal.copyWith(foods: []);
+      });
+    }
+  }
+
   void _addMealToDay() {
     if (_meal.foods.isEmpty || _isAdded) return;
 
@@ -132,6 +149,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           meal: _meal,
           onMealTypeChanged: _handleMealTypeChanged,
           onMealUpdated: _handleMealUpdated,
+          onDelete: _isAdded ? _handleDelete : null,
           topContentPadding: 16,
         ),
       ],

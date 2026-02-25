@@ -389,6 +389,7 @@ final Map<String, String> itITTranslations = {
 
   // Nutrition Card
   'remaining': 'rimanenti',
+  'exceeded': 'eccesso',
   'calories': 'Calorie',
   'protein': 'Proteine',
   'carbs': 'Carboidrati',
