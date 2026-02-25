@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -9,7 +10,9 @@ import '../widgets/reward_ad_dialog.dart';
 import 'settings_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  final VoidCallback? onOpenDrawer;
+
+  const LoginScreen({Key? key, this.onOpenDrawer}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -124,12 +127,29 @@ class _LoginScreenState extends State<LoginScreen>
     final Color currentScaffoldBackgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
 
+    // Set status bar icons to dark in light mode
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
+    ));
+
     return Scaffold(
       backgroundColor: currentScaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: currentScaffoldBackgroundColor,
+        leading: widget.onOpenDrawer != null
+            ? IconButton(
+                icon: Icon(
+                  Icons.menu,
+                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                ),
+                onPressed: widget.onOpenDrawer,
+                tooltip: 'Menu',
+              )
+            : null,
         title: Text(context.tr.translate('login_title') ?? 'Login'),
-        centerTitle: false,
+        centerTitle: true,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
         actions: [

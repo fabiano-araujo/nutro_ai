@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 
@@ -13,30 +14,38 @@ import 'nutrition_goals_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 
 // ========== STANDARDIZED COLORS ==========
+// Harmonized palette using soft purples and muted pastels
 class ProfileColors {
-  // Macronutrients
-  static const Color protein = Color(0xFF9575CD);    // Purple
-  static const Color carbs = Color(0xFFFFB74D);      // Amber/Orange
-  static const Color fat = Color(0xFF4DB6AC);        // Teal
-  static const Color fiber = Color(0xFF81C784);      // Light Green
+  // Primary purple tones (main accent)
+  static const Color primary = Color(0xFF9575CD);       // Main purple
+  static const Color primaryLight = Color(0xFFB39DDB);  // Light purple
+  static const Color primaryMuted = Color(0xFF7E57C2);  // Deeper purple
 
-  // Status colors
-  static const Color success = Color(0xFF66BB6A);    // Green - On target
-  static const Color warning = Color(0xFFFFB74D);    // Orange - Under goal
-  static const Color danger = Color(0xFFEF5350);     // Red - Over goal
+  // Macronutrients - soft muted tones
+  static const Color protein = Color(0xFF9575CD);       // Purple
+  static const Color carbs = Color(0xFFE8B87D);         // Soft warm beige/amber
+  static const Color fat = Color(0xFF80CBC4);           // Soft teal (muted)
+  static const Color fiber = Color(0xFFA5D6A7);         // Soft green (muted)
 
-  // Category colors
-  static const Color calories = Color(0xFFFF9800);   // Orange - Fire/Energy
-  static const Color streak = Color(0xFFFF9800);     // Orange - Fire
-  static const Color days = Color(0xFF42A5F5);       // Blue - Calendar
-  static const Color meals = Color(0xFF66BB6A);      // Green - Food
-  static const Color average = Color(0xFF9575CD);    // Purple - Stats
-  static const Color insights = Color(0xFF9575CD);   // Purple - Insights
-  static const Color balance = Color(0xFF42A5F5);    // Blue - Balance
+  // Status colors - softer versions
+  static const Color success = Color(0xFF81C784);       // Soft green - On target
+  static const Color warning = Color(0xFFE8B87D);       // Soft amber - Under goal
+  static const Color danger = Color(0xFFE57373);        // Soft red - Over goal
+
+  // Category colors - unified purple-based with subtle variations
+  static const Color calories = Color(0xFF9575CD);      // Purple (unified)
+  static const Color streak = Color(0xFFE8B87D);        // Soft amber for fire
+  static const Color days = Color(0xFF90CAF9);          // Very soft blue
+  static const Color meals = Color(0xFF81C784);         // Soft green
+  static const Color average = Color(0xFFB39DDB);       // Light purple
+  static const Color insights = Color(0xFF9575CD);      // Purple
+  static const Color balance = Color(0xFF90CAF9);       // Soft blue
 }
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  final VoidCallback? onOpenDrawer;
+
+  const ProfileScreen({Key? key, this.onOpenDrawer}) : super(key: key);
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -937,13 +946,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9575CD).withValues(alpha: 0.12),
+                        color: ProfileColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.pie_chart_rounded,
                         size: 20,
-                        color: Color(0xFF9575CD),
+                        color: ProfileColors.primary,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -967,7 +976,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       child: _buildMacroCard(
                         label: context.tr.translate('protein_full'),
                         value: avgProtein,
-                        color: const Color(0xFF9575CD),
+                        color: ProfileColors.protein,
                         theme: theme,
                         isDarkMode: isDarkMode,
                       ),
@@ -977,7 +986,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       child: _buildMacroCard(
                         label: context.tr.translate('carbohydrate'),
                         value: avgCarbs,
-                        color: const Color(0xFFFFB74D),
+                        color: ProfileColors.carbs,
                         theme: theme,
                         isDarkMode: isDarkMode,
                       ),
@@ -991,7 +1000,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       child: _buildMacroCard(
                         label: context.tr.translate('fat'),
                         value: avgFat,
-                        color: const Color(0xFF4DB6AC),
+                        color: ProfileColors.fat,
                         theme: theme,
                         isDarkMode: isDarkMode,
                       ),
@@ -1001,7 +1010,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       child: _buildMacroCard(
                         label: context.tr.translate('fiber'),
                         value: avgFiber,
-                        color: const Color(0xFF81C784),
+                        color: ProfileColors.fiber,
                         theme: theme,
                         isDarkMode: isDarkMode,
                       ),
@@ -1060,19 +1069,19 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                               switch (value.toInt()) {
                                 case 0:
                                   icon = Icons.egg_outlined;
-                                  color = const Color(0xFF9575CD);
+                                  color = ProfileColors.protein;
                                   break;
                                 case 1:
                                   icon = Icons.grain;
-                                  color = const Color(0xFFFFB74D);
+                                  color = ProfileColors.carbs;
                                   break;
                                 case 2:
                                   icon = Icons.water_drop_outlined;
-                                  color = const Color(0xFF4DB6AC);
+                                  color = ProfileColors.fat;
                                   break;
                                 case 3:
                                   icon = Icons.grass;
-                                  color = const Color(0xFF81C784);
+                                  color = ProfileColors.fiber;
                                   break;
                                 default:
                                   return const SizedBox();
@@ -1114,10 +1123,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       ),
                       borderData: FlBorderData(show: false),
                       barGroups: [
-                        _buildBarGroup(0, avgProtein, const Color(0xFF9575CD)),
-                        _buildBarGroup(1, avgCarbs, const Color(0xFFFFB74D)),
-                        _buildBarGroup(2, avgFat, const Color(0xFF4DB6AC)),
-                        _buildBarGroup(3, avgFiber, const Color(0xFF81C784)),
+                        _buildBarGroup(0, avgProtein, ProfileColors.protein),
+                        _buildBarGroup(1, avgCarbs, ProfileColors.carbs),
+                        _buildBarGroup(2, avgFat, ProfileColors.fat),
+                        _buildBarGroup(3, avgFiber, ProfileColors.fiber),
                       ],
                     ),
                   ),
@@ -1208,13 +1217,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9575CD).withValues(alpha: 0.12),
+                        color: ProfileColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.pie_chart_rounded,
                         size: 20,
-                        color: Color(0xFF9575CD),
+                        color: ProfileColors.primary,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1253,19 +1262,19 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                           sections: [
                             PieChartSectionData(
                               value: protein,
-                              color: const Color(0xFF9575CD),
+                              color: ProfileColors.protein,
                               radius: 30,
                               title: '',
                             ),
                             PieChartSectionData(
                               value: carbs,
-                              color: const Color(0xFFFFB74D),
+                              color: ProfileColors.carbs,
                               radius: 30,
                               title: '',
                             ),
                             PieChartSectionData(
                               value: fat,
-                              color: const Color(0xFF4DB6AC),
+                              color: ProfileColors.fat,
                               radius: 30,
                               title: '',
                             ),
@@ -1283,7 +1292,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             value: protein,
                             goal: proteinGoal,
                             percent: proteinPercent,
-                            color: const Color(0xFF9575CD),
+                            color: ProfileColors.protein,
                             theme: theme,
                           ),
                           const SizedBox(height: 12),
@@ -1292,7 +1301,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             value: carbs,
                             goal: carbsGoal,
                             percent: carbsPercent,
-                            color: const Color(0xFFFFB74D),
+                            color: ProfileColors.carbs,
                             theme: theme,
                           ),
                           const SizedBox(height: 12),
@@ -1301,7 +1310,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             value: fat,
                             goal: fatGoal,
                             percent: fatPercent,
-                            color: const Color(0xFF4DB6AC),
+                            color: ProfileColors.fat,
                             theme: theme,
                           ),
                         ],
@@ -2607,13 +2616,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
   Color _getBMIColor(double bmi) {
     if (bmi < 18.5) {
-      return const Color(0xFF64B5F6);
+      return ProfileColors.balance;   // Soft blue - underweight
     } else if (bmi < 25) {
-      return const Color(0xFF66BB6A);
+      return ProfileColors.success;   // Soft green - normal
     } else if (bmi < 30) {
-      return const Color(0xFFFFB74D);
+      return ProfileColors.warning;   // Soft amber - overweight
     } else {
-      return const Color(0xFFEF5350);
+      return ProfileColors.danger;    // Soft red - obese
     }
   }
 
@@ -2695,11 +2704,28 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
+    // Set status bar icons to dark in light mode
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
+    ));
+
     return Scaffold(
       backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
+        leading: widget.onOpenDrawer != null
+            ? IconButton(
+                icon: Icon(
+                  Icons.menu,
+                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                ),
+                onPressed: widget.onOpenDrawer,
+                tooltip: 'Menu',
+              )
+            : null,
         title: Text(
           context.tr.translate('profile_and_settings'),
           style: theme.textTheme.titleLarge?.copyWith(

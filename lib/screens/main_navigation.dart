@@ -34,15 +34,17 @@ final navigationController = NavigationController();
 
 // Wrapper para a tela de perfil que decide qual tela mostrar
 class ProfileTabWrapper extends StatelessWidget {
-  const ProfileTabWrapper({Key? key}) : super(key: key);
+  final VoidCallback? onOpenDrawer;
+
+  const ProfileTabWrapper({Key? key, this.onOpenDrawer}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthService>(
       builder: (context, authService, child) {
         return authService.isAuthenticated
-            ? const ProfileScreen()
-            : const LoginScreen();
+            ? ProfileScreen(onOpenDrawer: onOpenDrawer)
+            : LoginScreen(onOpenDrawer: onOpenDrawer);
       },
     );
   }
@@ -127,10 +129,20 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: _buildDrawer(isDarkMode),
-      body: IndexedStack(
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          // Se não está na aba inicial, voltar para ela
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: _buildDrawer(isDarkMode),
+        body: IndexedStack(
         index: _selectedIndex,
         children: [
           // Aba 0: Início / Chat
@@ -142,13 +154,15 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
 
           // Aba 1: Minha Dieta
-          const PersonalizedDietScreen(),
+          PersonalizedDietScreen(
+            onOpenDrawer: _openDrawer,
+          ),
 
           // Aba 2: Perfil
-          const ProfileTabWrapper(),
+          ProfileTabWrapper(onOpenDrawer: _openDrawer),
         ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
+        ),
+        bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -175,6 +189,7 @@ class _MainNavigationState extends State<MainNavigation> {
             label: context.tr.translate('profile') ?? 'Perfil',
           ),
         ],
+        ),
       ),
     );
   }

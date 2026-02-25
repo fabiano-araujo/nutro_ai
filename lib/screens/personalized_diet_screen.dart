@@ -18,7 +18,14 @@ import '../screens/nutrition_goals_wizard_screen.dart';
 import '../i18n/app_localizations.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
-  const PersonalizedDietScreen({Key? key}) : super(key: key);
+  final VoidCallback? onOpenDrawer;
+  final VoidCallback? onSearchPressed;
+
+  const PersonalizedDietScreen({
+    Key? key,
+    this.onOpenDrawer,
+    this.onSearchPressed,
+  }) : super(key: key);
 
   @override
   State<PersonalizedDietScreen> createState() => _PersonalizedDietScreenState();
@@ -306,6 +313,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                       showAppBar: true,
                       // Calendário só mostra quando há alguma dieta E está no modo diário
                       showCalendar: hasAnyDiet && !isWeeklyMode,
+                      onOpenDrawer: widget.onOpenDrawer,
+                      onSearchPressed: widget.onSearchPressed,
                     ),
                     // Diet Mode Selector - mostra quando há alguma dieta
                     if (hasAnyDiet) ...[

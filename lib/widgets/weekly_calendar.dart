@@ -189,42 +189,41 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
             ),
           ] else ...[
             // Botão "Hoje" (só aparece quando não está no dia atual)
-            SizedBox(
-              width: 70,
-              child: !isToday
-                  ? InkWell(
-                      onTap: _goToToday,
+            if (!isToday)
+              SizedBox(
+                width: 70,
+                child: InkWell(
+                  onTap: _goToToday,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withAlpha(38),
                       borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withAlpha(38),
-                          borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          context.tr.translate('today'),
+                          style: TextStyle(
+                            color: Theme.of(context).primaryColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              context.tr.translate('today'),
-                              style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(width: 2),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 10,
-                              color: Theme.of(context).primaryColor,
-                            ),
-                          ],
+                        SizedBox(width: 2),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 10,
+                          color: Theme.of(context).primaryColor,
                         ),
-                      ),
-                    )
-                  : SizedBox.shrink(),
-            ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Título centralizado (data selecionada)
             Expanded(
@@ -246,6 +245,10 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                 ),
               ),
             ),
+
+            // Espaçador para balancear quando não há botão "Hoje"
+            if (isToday && widget.onSearchPressed != null)
+              SizedBox(width: 48),
           ],
 
           // Ícone de pesquisa à direita
