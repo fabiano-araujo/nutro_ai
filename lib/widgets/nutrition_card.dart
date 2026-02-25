@@ -37,7 +37,6 @@ class NutritionCard extends StatefulWidget {
 
 class _NutritionCardState extends State<NutritionCard>
     with SingleTickerProviderStateMixin {
-  bool _showConsumed = false;
   double _dragOffset = 0.0;
   late AnimationController _resetController;
   Animation<double>? _resetAnimation;
@@ -86,24 +85,10 @@ class _NutritionCardState extends State<NutritionCard>
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final caloriesRemaining = widget.caloriesGoal - widget.caloriesConsumed;
-    final isCaloriesExceeded = caloriesRemaining < 0;
-
-    // Valor a exibir baseado no toggle
-    final displayCalories = _showConsumed
-        ? widget.caloriesConsumed
-        : (isCaloriesExceeded ? -caloriesRemaining : caloriesRemaining);
-
-    // Label a exibir baseado no toggle
-    final displayLabel = _showConsumed
-        ? context.tr.translate('consumed')
-        : (isCaloriesExceeded
-            ? context.tr.translate('exceeded')
-            : context.tr.translate('remaining'));
+    final isCaloriesExceeded = widget.caloriesConsumed > widget.caloriesGoal;
 
     // Cores para quando excede a meta
     final exceededColor = Color(0xFFE57373);
-    final exceededTextColor = Color(0xFFFF5252);
 
     // Calculate opacity based on drag (fade out as you drag)
     final dragOpacity = (1.0 - (_dragOffset.abs() / 150)).clamp(0.5, 1.0);
@@ -117,7 +102,7 @@ class _NutritionCardState extends State<NutritionCard>
         child: Opacity(
           opacity: dragOpacity,
           child: Card(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
         elevation: 1.5,
         shadowColor: isDarkMode
             ? Colors.black.withValues(alpha: 0.3)
@@ -135,75 +120,50 @@ class _NutritionCardState extends State<NutritionCard>
                 flex: 2,
                 child: Column(
                       children: [
-                        // Gráfico circular de calorias - com toggle
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _showConsumed = !_showConsumed;
-                            });
-                          },
-                          child: SizedBox(
-                            width: 70,
-                            height: 70,
-                            child: CustomPaint(
-                              painter: CalorieCirclePainter(
-                                consumed: widget.caloriesConsumed,
-                                goal: widget.caloriesGoal,
-                                isDarkMode: isDarkMode,
-                                isExceeded: isCaloriesExceeded,
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        if (isCaloriesExceeded && !_showConsumed)
-                                          Text(
-                                            '+',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: exceededTextColor,
-                                            ),
-                                          ),
-                                        Text(
-                                          displayCalories.toString(),
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: (isCaloriesExceeded && !_showConsumed)
-                                                ? exceededTextColor
-                                                : (isDarkMode
-                                                        ? AppTheme.darkTextColor
-                                                        : AppTheme.textPrimaryColor)
-                                                    .withValues(alpha: 0.85),
-                                          ),
-                                        ),
-                                      ],
+                        // Gráfico circular de calorias - simplificado
+                        SizedBox(
+                          width: 70,
+                          height: 70,
+                          child: CustomPaint(
+                            painter: CalorieCirclePainter(
+                              consumed: widget.caloriesConsumed,
+                              goal: widget.caloriesGoal,
+                              isDarkMode: isDarkMode,
+                              isExceeded: isCaloriesExceeded,
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${widget.caloriesConsumed}',
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                      color: isCaloriesExceeded
+                                          ? exceededColor
+                                          : (isDarkMode
+                                              ? AppTheme.darkTextColor
+                                              : AppTheme.textPrimaryColor),
                                     ),
-                                    Text(
-                                      displayLabel,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: (isCaloriesExceeded && !_showConsumed)
-                                            ? exceededColor
-                                            : (isDarkMode
-                                                ? Color(0xFFAEB7CE)
-                                                : AppTheme.textSecondaryColor),
-                                      ),
+                                  ),
+                                  Text(
+                                    'kcal',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isDarkMode
+                                          ? Color(0xFFAEB7CE)
+                                          : AppTheme.textSecondaryColor,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        // Total de calorias
+                        // Meta de calorias
                         Text(
-                          '${widget.caloriesConsumed}/${widget.caloriesGoal} kcal',
+                          'de ${widget.caloriesGoal}',
                           style: TextStyle(
                             fontSize: 11,
                             color: isCaloriesExceeded
