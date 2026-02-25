@@ -28,6 +28,10 @@ import 'providers/nutrition_goals_provider.dart';
 import 'providers/food_history_provider.dart';
 import 'providers/diet_plan_provider.dart';
 import 'providers/free_chat_provider.dart';
+import 'providers/streak_provider.dart';
+import 'providers/friends_provider.dart';
+import 'providers/challenges_provider.dart';
+import 'providers/feed_provider.dart';
 
 // Chave global para acessar o navigator de qualquer lugar do app
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -198,6 +202,18 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider(
           create: (_) => FreeChatProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StreakProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FriendsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ChallengesProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FeedProvider(),
         ),
       ],
       child: Consumer2<ThemeProvider, LanguageController>(

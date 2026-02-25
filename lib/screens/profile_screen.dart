@@ -5,13 +5,15 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/daily_meals_provider.dart';
-import '../i18n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
+import 'statistics_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'nutrition_goals_screen.dart';
+import 'social_hub_screen.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../widgets/streak_display.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
@@ -87,6 +89,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         // Profile Header
         _buildProfileHeader(user, theme, colorScheme, isDarkMode),
+        const SizedBox(height: 24),
+
+        // Streak Card
+        const StreakDetailCard(),
+        const SizedBox(height: 16),
+
+        // Social Hub Card
+        _buildSocialHubCard(theme, isDarkMode),
         const SizedBox(height: 24),
 
         // Goal Card
@@ -168,6 +178,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildSocialHubCard(ThemeData theme, bool isDarkMode) {
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const SocialHubScreen(),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDarkMode
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.people,
+                color: Theme.of(context).primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Social',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Amigos, desafios e feed',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDarkMode ? Colors.white60 : Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: isDarkMode ? Colors.white54 : Colors.grey,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -380,6 +458,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
+          _buildSettingsItem(
+            icon: Icons.bar_chart_rounded,
+            title: context.tr.translate('statistics'),
+            theme: theme,
+            colorScheme: colorScheme,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const StatisticsScreen(),
+                ),
+              );
+            },
+          ),
+          _buildDivider(colorScheme),
           _buildSettingsItem(
             icon: Icons.person_outline_rounded,
             title: context.tr.translate('edit_profile'),
@@ -623,32 +715,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  IconData _getGoalIcon(String goal) {
+  IconData _getGoalIcon(FitnessGoal goal) {
     switch (goal) {
-      case 'lose_weight':
-      case 'lose_weight_fast':
+      case FitnessGoal.loseWeight:
+      case FitnessGoal.loseWeightSlowly:
         return Icons.trending_down_rounded;
-      case 'gain_weight':
-      case 'gain_weight_fast':
+      case FitnessGoal.gainWeight:
+      case FitnessGoal.gainWeightSlowly:
         return Icons.trending_up_rounded;
-      case 'maintain':
-      default:
+      case FitnessGoal.maintainWeight:
         return Icons.balance_rounded;
     }
   }
 
-  String _getGoalText(String goal, BuildContext context) {
+  String _getGoalText(FitnessGoal goal, BuildContext context) {
     switch (goal) {
-      case 'lose_weight':
+      case FitnessGoal.loseWeight:
         return context.tr.translate('goal_lose_weight');
-      case 'lose_weight_fast':
-        return context.tr.translate('goal_lose_weight_fast');
-      case 'gain_weight':
+      case FitnessGoal.loseWeightSlowly:
+        return context.tr.translate('goal_lose_weight_slowly');
+      case FitnessGoal.gainWeight:
         return context.tr.translate('goal_gain_weight');
-      case 'gain_weight_fast':
-        return context.tr.translate('goal_gain_weight_fast');
-      case 'maintain':
-      default:
+      case FitnessGoal.gainWeightSlowly:
+        return context.tr.translate('goal_gain_weight_slowly');
+      case FitnessGoal.maintainWeight:
         return context.tr.translate('goal_maintain');
     }
   }

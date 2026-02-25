@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/meal_model.dart';
 import '../models/food_model.dart';
 import '../models/Nutrient.dart';
+import '../services/meals_sync_service.dart';
 
 class DailyMealsProvider extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now();
@@ -18,8 +20,122 @@ class DailyMealsProvider extends ChangeNotifier {
   int fatsGoal = 67;
   int waterGoal = 8; // Default 8 glasses
 
+  // ========== SYNC WITH SERVER ==========
+  String? _userId;
+  String? _token;
+  Timer? _syncDebounce;
+  bool _isSyncing = false;
+  bool _isLoadingFromServer = false;
+
+  // Getters para estado de sync
+  bool get isSyncing => _isSyncing;
+  bool get isAuthenticated => _userId != null && _token != null;
+
   DailyMealsProvider() {
     _loadFromPreferences();
+  }
+
+  /// Define credenciais de autenticação e carrega dados do servidor
+  Future<void> setAuth(String userId, String token) async {
+    print('[DailyMealsProvider] setAuth chamado - userId: $userId');
+    _userId = userId;
+    _token = token;
+    await _loadFromServer();
+  }
+
+  /// Limpa credenciais de autenticação
+  void clearAuth() {
+    print('[DailyMealsProvider] clearAuth chamado');
+    _userId = null;
+    _token = null;
+    _syncDebounce?.cancel();
+  }
+
+  /// Carrega dados do servidor (últimos 30 dias)
+  Future<void> _loadFromServer() async {
+    if (_userId == null || _token == null) return;
+    if (_isLoadingFromServer) return;
+
+    _isLoadingFromServer = true;
+    print('[DailyMealsProvider] Carregando dados do servidor...');
+
+    try {
+      final summaries = await MealsSyncService.getMealsRange(
+        token: _token!,
+        from: DateTime.now().subtract(const Duration(days: 30)),
+        to: DateTime.now(),
+      );
+
+      print('[DailyMealsProvider] ${summaries.length} dias carregados do servidor');
+
+      // Mesclar com dados locais (servidor tem prioridade)
+      for (final summary in summaries) {
+        final dateKey = _formatDate(summary.date);
+
+        // Se há dados do servidor, sobrescreve os locais
+        if (summary.meals.isNotEmpty) {
+          _mealsByDate[dateKey] = summary.meals;
+          _waterByDate[dateKey] = summary.waterGlasses;
+        }
+      }
+
+      // Salvar dados mesclados localmente
+      await _saveToPreferences();
+      notifyListeners();
+    } catch (e) {
+      print('[DailyMealsProvider] Erro ao carregar do servidor: $e');
+    } finally {
+      _isLoadingFromServer = false;
+    }
+  }
+
+  /// Agenda sincronização com debounce de 3 segundos
+  void _scheduleSync() {
+    if (_userId == null || _token == null) return;
+
+    _syncDebounce?.cancel();
+    _syncDebounce = Timer(const Duration(seconds: 3), () {
+      _syncToServer();
+    });
+  }
+
+  /// Sincroniza dados do dia selecionado com o servidor
+  Future<void> _syncToServer() async {
+    if (_isSyncing || _userId == null || _token == null) return;
+
+    _isSyncing = true;
+    print('[DailyMealsProvider] Sincronizando com servidor...');
+
+    try {
+      final dateKey = _formatDate(_selectedDate);
+      final meals = _mealsByDate[dateKey] ?? [];
+      final water = _waterByDate[dateKey] ?? 0;
+
+      await MealsSyncService.syncDay(
+        token: _token!,
+        date: _selectedDate,
+        meals: meals,
+        waterGlasses: water,
+        goals: MealGoals(
+          calories: caloriesGoal,
+          protein: proteinGoal,
+          carbs: carbsGoal,
+          fat: fatsGoal,
+        ),
+      );
+
+      print('[DailyMealsProvider] Sincronização concluída');
+    } catch (e) {
+      print('[DailyMealsProvider] Erro ao sincronizar: $e');
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  /// Força sincronização imediata (para uso manual)
+  Future<void> forceSync() async {
+    _syncDebounce?.cancel();
+    await _syncToServer();
   }
 
   DateTime get selectedDate => _selectedDate;
@@ -63,6 +179,7 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     _waterByDate[dateKey] = (_waterByDate[dateKey] ?? 0) + 1;
     _saveWaterToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 
@@ -71,6 +188,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if ((_waterByDate[dateKey] ?? 0) > 0) {
       _waterByDate[dateKey] = _waterByDate[dateKey]! - 1;
       _saveWaterToPreferences();
+      _scheduleSync(); // Sync com servidor
       notifyListeners();
     }
   }
@@ -215,6 +333,7 @@ class DailyMealsProvider extends ChangeNotifier {
     }
 
     _saveToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 
@@ -239,6 +358,7 @@ class DailyMealsProvider extends ChangeNotifier {
     }
 
     _saveToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 
@@ -261,6 +381,7 @@ class DailyMealsProvider extends ChangeNotifier {
     }
 
     _saveToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 
@@ -273,6 +394,7 @@ class DailyMealsProvider extends ChangeNotifier {
     meals.removeWhere((m) => m.id == mealId);
 
     _saveToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 
@@ -285,6 +407,7 @@ class DailyMealsProvider extends ChangeNotifier {
     meals.removeWhere((m) => m.type == type);
 
     _saveToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 
@@ -299,6 +422,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (carbs != null) carbsGoal = carbs;
     if (fats != null) fatsGoal = fats;
     _saveToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 
@@ -565,6 +689,7 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] = [];
     _saveToPreferences();
+    _scheduleSync(); // Sync com servidor
     notifyListeners();
   }
 

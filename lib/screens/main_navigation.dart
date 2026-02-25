@@ -10,6 +10,11 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/free_chat_provider.dart';
+import '../providers/daily_meals_provider.dart';
+import '../providers/streak_provider.dart';
+import '../providers/friends_provider.dart';
+import '../providers/challenges_provider.dart';
+import '../providers/feed_provider.dart';
 
 // Controlador global para gerenciar a navegação entre abas
 class NavigationController {
@@ -73,6 +78,9 @@ class _MainNavigationState extends State<MainNavigation> {
   // Índice da aba selecionada no BottomNavigationBar
   int _selectedIndex = 0;
 
+  // Controle para evitar chamadas duplicadas de auth
+  bool _authInitialized = false;
+
   @override
   void initState() {
     super.initState();
@@ -86,7 +94,55 @@ class _MainNavigationState extends State<MainNavigation> {
       Future.delayed(Duration(seconds: 2), () {
         RateAppService.promptForRating(context);
       });
+
+      // Configurar sync de refeições com auth
+      _setupMealsSyncAuth();
     });
+  }
+
+  /// Configura a sincronização de refeições com o servidor baseado no estado de auth
+  void _setupMealsSyncAuth() {
+    if (_authInitialized) return;
+    _authInitialized = true;
+
+    final authService = context.read<AuthService>();
+    final dailyMealsProvider = context.read<DailyMealsProvider>();
+
+    // Configurar auth inicial se já estiver logado
+    _updateMealsProviderAuth(authService, dailyMealsProvider);
+
+    // Escutar mudanças no estado de autenticação
+    authService.addListener(() {
+      _updateMealsProviderAuth(authService, dailyMealsProvider);
+    });
+  }
+
+  /// Atualiza o DailyMealsProvider e providers sociais com as credenciais de auth
+  void _updateMealsProviderAuth(AuthService authService, DailyMealsProvider dailyMealsProvider) {
+    final streakProvider = context.read<StreakProvider>();
+    final friendsProvider = context.read<FriendsProvider>();
+    final challengesProvider = context.read<ChallengesProvider>();
+    final feedProvider = context.read<FeedProvider>();
+
+    if (authService.isAuthenticated && authService.currentUser != null) {
+      final userId = authService.currentUser!.id.toString();
+      final token = authService.token ?? '';
+      if (token.isNotEmpty) {
+        print('[MainNavigation] Configurando auth para sync de refeições e social - userId: $userId');
+        dailyMealsProvider.setAuth(userId, token);
+        streakProvider.setToken(token);
+        friendsProvider.setToken(token);
+        challengesProvider.setToken(token);
+        feedProvider.setToken(token);
+      }
+    } else {
+      print('[MainNavigation] Limpando auth de sync de refeições e social');
+      dailyMealsProvider.clearAuth();
+      streakProvider.clearAuth();
+      friendsProvider.clearAuth();
+      challengesProvider.clearAuth();
+      feedProvider.clearAuth();
+    }
   }
 
   void _onItemTapped(int index) {
