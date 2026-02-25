@@ -35,6 +35,9 @@ final Map<String, String> deDETranslations = {
       'Melden Sie sich an, um Ihren Verlauf, Favoriten und persönliche Einstellungen einzusehen.',
   'sign_in': 'Anmelden',
   'sign_out': 'Abmelden',
+  'logout': 'Abmelden',
+  'logout_confirmation': 'Sind Sie sicher, dass Sie sich abmelden möchten?',
+  'edit_profile': 'Profil bearbeiten',
 
   // Registrierungsbildschirme
   'register_title': 'Konto Erstellen',
@@ -449,4 +452,18 @@ final Map<String, String> deDETranslations = {
   'yes_generate_new': 'Ja, Neu erstellen',
   'no_diet_plan_for_day': 'Kein Diätplan für diesen Tag',
   'generate_diet_plan': 'Diätplan erstellen',
+
+  // Streaks
+  'your_streaks': 'Aufeinanderfolgende Tage',
+  'streak_registration': 'Protokoll',
+  'streak_protein': 'Protein',
+  'streak_goal': 'Ziel',
+  'streak_freeze_active': 'Freeze Aktiv',
+  'best_streak': 'Beste',
+  'freezes': 'Freezes',
+  'streak_in_danger': 'Ihre Serie ist in Gefahr! Protokollieren Sie heute etwas, um sie nicht zu verlieren.',
+  'activate_freeze': 'Freeze Aktivieren',
+  'activate_freeze_title': 'Freeze Aktivieren?',
+  'activate_freeze_description': 'Der Freeze schützt Ihre Serie für 24 Stunden. Sie haben {count} Freeze(s) verfügbar.',
+  'activate': 'Aktivieren',
 };

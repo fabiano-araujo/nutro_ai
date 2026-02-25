@@ -5,8 +5,10 @@ import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'personalized_diet_screen.dart';
 import 'food_search_screen.dart';
+import 'social_hub_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/free_chat_provider.dart';
@@ -15,6 +17,7 @@ import '../providers/streak_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/challenges_provider.dart';
 import '../providers/feed_provider.dart';
+import '../providers/credit_provider.dart';
 
 // Controlador global para gerenciar a navegação entre abas
 class NavigationController {
@@ -123,6 +126,7 @@ class _MainNavigationState extends State<MainNavigation> {
     final friendsProvider = context.read<FriendsProvider>();
     final challengesProvider = context.read<ChallengesProvider>();
     final feedProvider = context.read<FeedProvider>();
+    final creditProvider = context.read<CreditProvider>();
 
     if (authService.isAuthenticated && authService.currentUser != null) {
       final userId = authService.currentUser!.id.toString();
@@ -134,6 +138,9 @@ class _MainNavigationState extends State<MainNavigation> {
         friendsProvider.setToken(token);
         challengesProvider.setToken(token);
         feedProvider.setToken(token);
+
+        // Carregar créditos do servidor após login
+        _loadUserDataFromServer(token, authService.currentUser!.id, creditProvider);
       }
     } else {
       print('[MainNavigation] Limpando auth de sync de refeições e social');
@@ -142,6 +149,22 @@ class _MainNavigationState extends State<MainNavigation> {
       friendsProvider.clearAuth();
       challengesProvider.clearAuth();
       feedProvider.clearAuth();
+    }
+  }
+
+  /// Carrega dados do usuário do servidor (créditos, etc.)
+  Future<void> _loadUserDataFromServer(String token, int userId, CreditProvider creditProvider) async {
+    try {
+      print('[MainNavigation] Carregando dados do usuário do servidor...');
+      final userData = await ApiService.getUserData(token, userId);
+
+      // Atualizar créditos do servidor
+      if (userData.containsKey('credits')) {
+        await creditProvider.updateCreditsFromServer(userData);
+        print('[MainNavigation] Créditos atualizados do servidor');
+      }
+    } catch (e) {
+      print('[MainNavigation] Erro ao carregar dados do servidor: $e');
     }
   }
 
@@ -223,7 +246,10 @@ class _MainNavigationState extends State<MainNavigation> {
             },
           ),
 
-          // Aba 2: Perfil
+          // Aba 2: Social
+          SocialHubScreen(onOpenDrawer: _openDrawer),
+
+          // Aba 3: Perfil
           ProfileTabWrapper(onOpenDrawer: _openDrawer),
         ],
         ),
@@ -247,6 +273,11 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.restaurant_menu_outlined),
             activeIcon: Icon(Icons.restaurant_menu),
             label: context.tr.translate('my_diet') ?? 'Minha Dieta',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Social',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

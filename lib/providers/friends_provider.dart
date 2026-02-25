@@ -24,6 +24,7 @@ class FriendsProvider extends ChangeNotifier {
   List<BuddyPing> get pings => _pings;
   int get unseenPingsCount => _unseenPingsCount;
   bool get hasPendingRequests => _receivedRequests.isNotEmpty;
+  bool get hasSentRequests => _sentRequests.isNotEmpty;
 
   /// Configura o token de autenticação
   void setToken(String token) {
@@ -140,6 +141,11 @@ class FriendsProvider extends ChangeNotifier {
       await loadRequests();
     }
     return success;
+  }
+
+  /// Cancelar pedido enviado
+  Future<bool> cancelSentRequest(int friendshipId) async {
+    return rejectRequest(friendshipId);
   }
 
   /// Remover amigo

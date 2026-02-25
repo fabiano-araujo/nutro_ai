@@ -35,6 +35,9 @@ final Map<String, String> enUSTranslations = {
       'Sign in to view your history, favorites, and personalized settings.',
   'sign_in': 'Sign in',
   'sign_out': 'Sign Out',
+  'logout': 'Log Out',
+  'logout_confirmation': 'Are you sure you want to log out of your account?',
+  'edit_profile': 'Edit Profile',
 
   // Registration Screens
   'register_title': 'Create Account',
@@ -981,4 +984,18 @@ final Map<String, String> enUSTranslations = {
   'day_thu_short': 'Thu',
   'day_fri_short': 'Fri',
   'day_sat_short': 'Sat',
+
+  // Streaks
+  'your_streaks': 'Daily Streaks',
+  'streak_registration': 'Logging',
+  'streak_protein': 'Protein',
+  'streak_goal': 'Goal',
+  'streak_freeze_active': 'Freeze Active',
+  'best_streak': 'Best',
+  'freezes': 'Freezes',
+  'streak_in_danger': 'Your streak is in danger! Log something today to keep it.',
+  'activate_freeze': 'Activate Freeze',
+  'activate_freeze_title': 'Activate Freeze?',
+  'activate_freeze_description': 'The freeze protects your streak for 24 hours. You have {count} freeze(s) available.',
+  'activate': 'Activate',
 };

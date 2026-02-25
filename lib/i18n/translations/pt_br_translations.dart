@@ -35,6 +35,9 @@ final Map<String, String> ptBRTranslations = {
       'Entre para ver seu histórico, favoritos e configurações personalizadas.',
   'sign_in': 'Entrar',
   'sign_out': 'Sair da Conta',
+  'logout': 'Sair',
+  'logout_confirmation': 'Tem certeza que deseja sair da sua conta?',
+  'edit_profile': 'Editar Perfil',
 
   // Telas de Registro
   'register_title': 'Criar Conta',
@@ -1172,4 +1175,18 @@ final Map<String, String> ptBRTranslations = {
   'day_thu_short': 'Qui',
   'day_fri_short': 'Sex',
   'day_sat_short': 'Sáb',
+
+  // Streaks
+  'your_streaks': 'Dias Consecutivos',
+  'streak_registration': 'Registro',
+  'streak_protein': 'Proteína',
+  'streak_goal': 'Meta',
+  'streak_freeze_active': 'Freeze Ativo',
+  'best_streak': 'Melhor',
+  'freezes': 'Freezes',
+  'streak_in_danger': 'Seu progresso está em perigo! Registre algo hoje para não perder.',
+  'activate_freeze': 'Ativar Freeze',
+  'activate_freeze_title': 'Ativar Freeze?',
+  'activate_freeze_description': 'O freeze protege seu progresso por 24 horas. Você tem {count} freeze(s) disponível(is).',
+  'activate': 'Ativar',
 };

@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_model.dart';
 import 'api_service.dart';
+import 'notification_service.dart';
 
 class AuthService with ChangeNotifier {
   User? _currentUser;
@@ -114,6 +115,10 @@ class AuthService with ChangeNotifier {
         print(
             '[AuthService] Usuário autenticado e salvo: ${_currentUser!.name}');
         _errorMessage = null;
+
+        // Registrar token FCM para notificacoes push
+        _registerFcmToken();
+
         notifyListeners();
         return true;
       } else {
@@ -205,6 +210,9 @@ class AuthService with ChangeNotifier {
     _setLoading(true);
     try {
       print('[AuthService] Iniciando processo de logout (silent: $silent)');
+
+      // Desregistrar token FCM antes de limpar dados
+      await _unregisterFcmToken();
 
       // Tentar fazer logout do Google, mas não falhar se não conseguir
       try {
@@ -407,6 +415,10 @@ class AuthService with ChangeNotifier {
         print(
             '[AuthService] Usuário autenticado via email: ${_currentUser!.name}');
         _errorMessage = null;
+
+        // Registrar token FCM para notificacoes push
+        _registerFcmToken();
+
         notifyListeners();
         return true;
       } else {
@@ -425,5 +437,31 @@ class AuthService with ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  // Registrar token FCM para notificacoes push
+  Future<void> _registerFcmToken() async {
+    if (_token == null) return;
+
+    try {
+      final notificationService = NotificationService();
+      await notificationService.registerTokenWithBackend(_token!);
+      print('[AuthService] FCM token registered');
+    } catch (e) {
+      print('[AuthService] Error registering FCM token: $e');
+    }
+  }
+
+  // Desregistrar token FCM (chamado no logout)
+  Future<void> _unregisterFcmToken() async {
+    if (_token == null) return;
+
+    try {
+      final notificationService = NotificationService();
+      await notificationService.unregisterTokenFromBackend(_token!);
+      print('[AuthService] FCM token unregistered');
+    } catch (e) {
+      print('[AuthService] Error unregistering FCM token: $e');
+    }
   }
 }

@@ -178,4 +178,12 @@ class EssayProvider with ChangeNotifier {
     _currentEssay = null;
     notifyListeners();
   }
+
+  /// Limpa todos os dados de redações do usuário (chamado durante logout)
+  void clearUserData() {
+    _essays = [];
+    _currentEssay = null;
+    notifyListeners();
+    print('[EssayProvider] Dados de redações limpos');
+  }
 }

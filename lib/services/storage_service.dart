@@ -402,4 +402,51 @@ class StorageService {
       return null;
     }
   }
+
+  // Método genérico para remover dados
+  Future<bool> removeData(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return await prefs.remove(key);
+    } catch (e) {
+      print('Erro ao remover dados ($key): $e');
+      return false;
+    }
+  }
+
+  /// Limpa todos os dados do usuário (chamado durante logout)
+  /// Isso inclui histórico, favoritos, créditos e conversas do chat
+  Future<void> clearAllUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Limpar histórico e favoritos
+      await prefs.remove(_historyKey);
+      await prefs.remove(_favoritesKey);
+      await prefs.remove(_creditDataKey);
+
+      // Limpar todas as conversas de nutrição (chaves que começam com 'nutrition_chat_')
+      final allKeys = prefs.getKeys();
+      for (final key in allKeys) {
+        if (key.startsWith('nutrition_chat_') ||
+            key.startsWith('daily_meals_') ||
+            key.startsWith('food_history_') ||
+            key.startsWith('meal_types_') ||
+            key.startsWith('nutrition_goals_') ||
+            key.startsWith('diet_plan_') ||
+            key.startsWith('streak_') ||
+            key.startsWith('free_chat_') ||
+            key.startsWith('conversation_')) {
+          await prefs.remove(key);
+        }
+      }
+
+      print('[StorageService] Todos os dados do usuário foram limpos');
+
+      // Notificar que o histórico foi atualizado (agora vazio)
+      _eventService.notifyHistoryUpdated();
+    } catch (e) {
+      print('[StorageService] Erro ao limpar dados do usuário: $e');
+    }
+  }
 }

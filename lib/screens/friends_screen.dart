@@ -17,6 +17,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<SearchedUser> _searchResults = [];
   bool _showPendingRequests = false;
+  bool _showSentRequests = false;
 
   @override
   void dispose() {
@@ -122,6 +123,38 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       );
                     },
                     childCount: friendsProvider.receivedRequests.length,
+                  ),
+                ),
+
+              // Sent requests toggle
+              if (friendsProvider.hasSentRequests)
+                SliverToBoxAdapter(
+                  child: _SentRequestsHeader(
+                    count: friendsProvider.sentRequests.length,
+                    isExpanded: _showSentRequests,
+                    onToggle: () => setState(() => _showSentRequests = !_showSentRequests),
+                  ),
+                ),
+
+              // Sent requests list
+              if (_showSentRequests && friendsProvider.sentRequests.isNotEmpty)
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final request = friendsProvider.sentRequests[index];
+                      return _SentRequestCard(
+                        request: request,
+                        onCancel: () async {
+                          final success = await friendsProvider.cancelSentRequest(request.id);
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Pedido cancelado')),
+                            );
+                          }
+                        },
+                      );
+                    },
+                    childCount: friendsProvider.sentRequests.length,
                   ),
                 ),
 
@@ -514,6 +547,110 @@ class _PendingRequestCard extends StatelessWidget {
               onPressed: onAccept,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inDays > 0) return '${diff.inDays}d atras';
+    if (diff.inHours > 0) return '${diff.inHours}h atras';
+    return '${diff.inMinutes}min atras';
+  }
+}
+
+class _SentRequestsHeader extends StatelessWidget {
+  final int count;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+
+  const _SentRequestsHeader({
+    required this.count,
+    required this.isExpanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onToggle,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue.withAlpha(26),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue.withAlpha(51)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.send, color: Colors.blue),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$count pedido${count > 1 ? 's' : ''} enviado${count > 1 ? 's' : ''}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+            Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              color: Colors.blue,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SentRequestCard extends StatelessWidget {
+  final FriendRequest request;
+  final VoidCallback onCancel;
+
+  const _SentRequestCard({
+    required this.request,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.blue.withAlpha(51),
+          child: Text(
+            request.user.name.isNotEmpty ? request.user.name[0].toUpperCase() : '?',
+            style: const TextStyle(color: Colors.blue),
+          ),
+        ),
+        title: Text(
+          request.user.name,
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+        ),
+        subtitle: Text(
+          'Enviado ${_formatTime(request.createdAt)}',
+          style: TextStyle(
+            fontSize: 12,
+            color: isDarkMode ? Colors.white54 : Colors.grey,
+          ),
+        ),
+        trailing: TextButton.icon(
+          onPressed: onCancel,
+          icon: const Icon(Icons.close, color: Colors.red, size: 18),
+          label: const Text('Cancelar', style: TextStyle(color: Colors.red)),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
         ),
       ),
     );

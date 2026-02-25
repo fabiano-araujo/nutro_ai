@@ -35,6 +35,9 @@ final Map<String, String> esESTranslations = {
       'Inicia sesión para ver tu historial, favoritos y configuraciones personalizadas.',
   'sign_in': 'Iniciar sesión',
   'sign_out': 'Cerrar Sesión',
+  'logout': 'Cerrar Sesión',
+  'logout_confirmation': '¿Estás seguro de que deseas cerrar sesión?',
+  'edit_profile': 'Editar Perfil',
 
   // Pantallas de Registro
   'register_title': 'Crear Cuenta',
@@ -625,4 +628,18 @@ final Map<String, String> esESTranslations = {
   'yes_generate_new': 'Sí, Generar Nuevo',
   'no_diet_plan_for_day': 'No hay plan de dieta para este día',
   'generate_diet_plan': 'Generar Plan de Dieta',
+
+  // Streaks
+  'your_streaks': 'Días Consecutivos',
+  'streak_registration': 'Registro',
+  'streak_protein': 'Proteína',
+  'streak_goal': 'Meta',
+  'streak_freeze_active': 'Freeze Activo',
+  'best_streak': 'Mejor',
+  'freezes': 'Freezes',
+  'streak_in_danger': '¡Tu racha está en peligro! Registra algo hoy para no perderla.',
+  'activate_freeze': 'Activar Freeze',
+  'activate_freeze_title': '¿Activar Freeze?',
+  'activate_freeze_description': 'El freeze protege tu racha por 24 horas. Tienes {count} freeze(s) disponible(s).',
+  'activate': 'Activar',
 };

@@ -3,15 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../services/storage_service.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/daily_meals_provider.dart';
+import '../providers/credit_provider.dart';
+import '../providers/essay_provider.dart';
+import '../providers/food_history_provider.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'nutrition_goals_screen.dart';
-import 'social_hub_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/streak_display.dart';
 
@@ -29,6 +32,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
+  }
+
+  /// Limpa todos os dados do usuário de todos os providers e storage
+  Future<void> _clearAllUserData() async {
+    print('[ProfileScreen] Iniciando limpeza de dados do usuário...');
+
+    try {
+      // Limpar dados do StorageService (histórico, favoritos, conversas, etc.)
+      final storageService = StorageService();
+      await storageService.clearAllUserData();
+
+      // Limpar CreditProvider
+      final creditProvider = Provider.of<CreditProvider>(context, listen: false);
+      await creditProvider.clearUserData();
+
+      // Limpar EssayProvider
+      final essayProvider = Provider.of<EssayProvider>(context, listen: false);
+      essayProvider.clearUserData();
+
+      // Limpar DailyMealsProvider
+      final dailyMealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+      dailyMealsProvider.clearAuth();
+      dailyMealsProvider.clearAllMeals();
+
+      // Limpar FoodHistoryProvider
+      final foodHistoryProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
+      await foodHistoryProvider.clearAll();
+
+      print('[ProfileScreen] Todos os dados do usuário foram limpos com sucesso');
+    } catch (e) {
+      print('[ProfileScreen] Erro ao limpar dados do usuário: $e');
+    }
   }
 
   @override
@@ -93,10 +128,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // Streak Card
         const StreakDetailCard(),
-        const SizedBox(height: 16),
-
-        // Social Hub Card
-        _buildSocialHubCard(theme, isDarkMode),
         const SizedBox(height: 24),
 
         // Goal Card
@@ -140,6 +171,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 radius: 48,
                 backgroundColor: colorScheme.surfaceContainerHighest,
                 backgroundImage: user.photo != null ? NetworkImage(user.photo!) : null,
+                onBackgroundImageError: user.photo != null
+                    ? (_, __) {}
+                    : null,
                 child: user.photo == null
                     ? Icon(
                         Icons.person_rounded,
@@ -178,74 +212,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildSocialHubCard(ThemeData theme, bool isDarkMode) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
-    return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const SocialHubScreen(),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDarkMode
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.05),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.people,
-                color: Theme.of(context).primaryColor,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Social',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Amigos, desafios e feed',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDarkMode ? Colors.white60 : Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: isDarkMode ? Colors.white54 : Colors.grey,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -598,6 +564,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
 
         if (shouldLogout == true) {
+          // Limpar todos os dados do usuário antes de fazer logout
+          await _clearAllUserData();
           await authService.logout();
         }
       },

@@ -131,4 +131,12 @@ class CreditProvider extends ChangeNotifier {
       print('Erro ao atualizar créditos do servidor: $e');
     }
   }
+
+  /// Limpa os dados de crédito do usuário (chamado durante logout)
+  Future<void> clearUserData() async {
+    _creditModel = CreditModel.initial();
+    await _saveCredits();
+    notifyListeners();
+    print('[CreditProvider] Dados de crédito limpos');
+  }
 }

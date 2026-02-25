@@ -52,6 +52,10 @@ dependencies:
   share_plus: ^7.2.1
   shimmer: ^3.0.0
 
+  # Firebase para notificacoes push
+  firebase_core: ^2.25.0
+  firebase_messaging: ^14.7.9
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

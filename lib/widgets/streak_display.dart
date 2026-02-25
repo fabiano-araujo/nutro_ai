@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/streak_provider.dart';
 import '../theme/app_theme.dart';
+import '../i18n/app_localizations_extension.dart';
 
 /// Widget compacto para exibir os 3 streaks
 class StreakDisplay extends StatelessWidget {
@@ -31,13 +32,12 @@ class StreakDisplay extends StatelessWidget {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
         return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _StreakItem(
               emoji: '🔥',
               count: streakProvider.registrationStreak,
-              label: 'Registro',
+              label: context.tr.translate('streak_registration'),
               color: Colors.orange,
               showLabel: showLabels,
               compact: compact,
@@ -48,7 +48,7 @@ class StreakDisplay extends StatelessWidget {
             _StreakItem(
               emoji: '💪',
               count: streakProvider.proteinStreak,
-              label: 'Proteína',
+              label: context.tr.translate('streak_protein'),
               color: Colors.green,
               showLabel: showLabels,
               compact: compact,
@@ -58,7 +58,7 @@ class StreakDisplay extends StatelessWidget {
             _StreakItem(
               emoji: '🎯',
               count: streakProvider.goalStreak,
-              label: 'Meta',
+              label: context.tr.translate('streak_goal'),
               color: Colors.blue,
               showLabel: showLabels,
               compact: compact,
@@ -172,7 +172,7 @@ class StreakDetailCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Seus Streaks',
+                    context.tr.translate('your_streaks'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -196,7 +196,7 @@ class StreakDetailCard extends StatelessWidget {
                           Text('❄️', style: TextStyle(fontSize: 12)),
                           SizedBox(width: 4),
                           Text(
-                            'Freeze Ativo',
+                            context.tr.translate('streak_freeze_active'),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blue,
@@ -220,13 +220,13 @@ class StreakDetailCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _StatItem(
-                    label: 'Melhor Streak',
+                    label: context.tr.translate('best_streak'),
                     value: streakProvider.bestOverallStreak.toString(),
                     emoji: '🏆',
                     isDarkMode: isDarkMode,
                   ),
                   _StatItem(
-                    label: 'Freezes',
+                    label: context.tr.translate('freezes'),
                     value: '${streakProvider.freezesAvailable}/1',
                     emoji: '❄️',
                     isDarkMode: isDarkMode,
@@ -250,7 +250,7 @@ class StreakDetailCard extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Seu streak está em perigo! Registre algo hoje para não perder.',
+                          context.tr.translate('streak_in_danger'),
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.red[700],
@@ -270,20 +270,20 @@ class StreakDetailCard extends StatelessWidget {
                     onPressed: () async {
                       final confirmed = await showDialog<bool>(
                         context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text('Ativar Freeze?'),
+                        builder: (dialogContext) => AlertDialog(
+                          title: Text(context.tr.translate('activate_freeze_title')),
                           content: Text(
-                            'O freeze protege seu streak por 24 horas. '
-                            'Você tem ${streakProvider.freezesAvailable} freeze(s) disponível(is).',
+                            context.tr.translate('activate_freeze_description')
+                                .replaceAll('{count}', streakProvider.freezesAvailable.toString()),
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: Text('Cancelar'),
+                              onPressed: () => Navigator.pop(dialogContext, false),
+                              child: Text(context.tr.translate('cancel')),
                             ),
                             ElevatedButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: Text('Ativar'),
+                              onPressed: () => Navigator.pop(dialogContext, true),
+                              child: Text(context.tr.translate('activate')),
                             ),
                           ],
                         ),
@@ -294,7 +294,7 @@ class StreakDetailCard extends StatelessWidget {
                       }
                     },
                     icon: Text('❄️'),
-                    label: Text('Ativar Freeze'),
+                    label: Text(context.tr.translate('activate_freeze')),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.blue,
                       side: BorderSide(color: Colors.blue.withValues(alpha: 0.5)),

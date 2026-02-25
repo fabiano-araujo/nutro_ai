@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Permissão para faturamento in-app -->
     <uses-permission android:name="com.android.vending.BILLING" />
+    <!-- Permissão para notificações push (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
     <application
         android:label="Nutro AI"

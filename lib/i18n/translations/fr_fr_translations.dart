@@ -372,6 +372,9 @@ final Map<String, String> frFRTranslations = {
       'Connectez-vous pour voir votre historique, vos favoris et vos paramètres personnalisés.',
   'sign_in': 'Se connecter',
   'sign_out': 'Déconnexion',
+  'logout': 'Déconnexion',
+  'logout_confirmation': 'Êtes-vous sûr de vouloir vous déconnecter?',
+  'edit_profile': 'Modifier le profil',
 
   // Écrans d'inscription
   'register_title': 'Créer un Compte',
@@ -449,4 +452,18 @@ final Map<String, String> frFRTranslations = {
   'yes_generate_new': 'Oui, Générer Nouveau',
   'no_diet_plan_for_day': 'Aucun plan de régime pour ce jour',
   'generate_diet_plan': 'Générer un Plan de Régime',
+
+  // Streaks
+  'your_streaks': 'Jours Consécutifs',
+  'streak_registration': 'Enregistrement',
+  'streak_protein': 'Protéine',
+  'streak_goal': 'Objectif',
+  'streak_freeze_active': 'Freeze Actif',
+  'best_streak': 'Meilleur',
+  'freezes': 'Freezes',
+  'streak_in_danger': 'Votre série est en danger! Enregistrez quelque chose aujourd\'hui pour ne pas la perdre.',
+  'activate_freeze': 'Activer Freeze',
+  'activate_freeze_title': 'Activer Freeze?',
+  'activate_freeze_description': 'Le freeze protège votre série pendant 24 heures. Vous avez {count} freeze(s) disponible(s).',
+  'activate': 'Activer',
 };

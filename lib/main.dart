@@ -7,6 +7,9 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/main_navigation.dart';
@@ -40,6 +43,20 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Inicializa as plataformas WebView
   _initializeWebView();
+
+  // Inicializar Firebase para notificacoes push
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp();
+      // Configurar handler de mensagens em background
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      // Inicializar servico de notificacoes
+      await NotificationService().initialize();
+      print('[Main] Firebase initialized');
+    } catch (e) {
+      print('[Main] Error initializing Firebase: $e');
+    }
+  }
 
   // Inicializar serviços de anúncios apenas em plataformas não web
   if (!kIsWeb) {
