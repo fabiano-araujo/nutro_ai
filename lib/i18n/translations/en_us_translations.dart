@@ -615,6 +615,8 @@ final Map<String, String> enUSTranslations = {
   'dinner': 'Dinner',
   'snack': 'Snack',
   'free_meal': 'Free Meal',
+  'meal': 'Meal',
+  'select_meal_type': 'Select meal type',
 
   // Food Search
   'search_food': 'Search Food',

@@ -1624,6 +1624,34 @@ class AITutorController with ChangeNotifier {
     }
   }
 
+  /// Deleta uma mensagem e sua correspondente (usuário + IA) pelo índice
+  /// Se a mensagem deletada for da IA, também deleta a mensagem do usuário anterior
+  /// Se a mensagem deletada for do usuário, também deleta a resposta da IA seguinte
+  void deleteMessagePair(int messageIndex) {
+    if (messageIndex < 0 || messageIndex >= _messages.length) return;
+
+    final isUser = _messages[messageIndex]['isUser'] == true;
+
+    if (isUser) {
+      // Se for mensagem do usuário, deletar ela e a resposta da IA seguinte
+      if (messageIndex + 1 < _messages.length &&
+          _messages[messageIndex + 1]['isUser'] == false) {
+        _messages.removeAt(messageIndex + 1); // Remove resposta da IA primeiro
+      }
+      _messages.removeAt(messageIndex); // Remove mensagem do usuário
+    } else {
+      // Se for mensagem da IA, deletar ela e a mensagem do usuário anterior
+      _messages.removeAt(messageIndex); // Remove resposta da IA primeiro
+      if (messageIndex > 0 && _messages[messageIndex - 1]['isUser'] == true) {
+        _messages.removeAt(messageIndex - 1); // Remove mensagem do usuário
+      }
+    }
+
+    notifyListeners();
+    _saveMessagesForCurrentDate();
+    print('🗑️ AITutorController - Par de mensagens deletado no índice $messageIndex');
+  }
+
   /// Formata a data para usar como chave de armazenamento (yyyy-MM-dd)
   String _formatDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

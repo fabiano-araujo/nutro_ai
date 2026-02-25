@@ -167,12 +167,35 @@ class DailyMealsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Busca uma refeição pelo messageId (ID da mensagem do chat que a gerou)
+  Meal? getMealByMessageId(String messageId) {
+    final dateKey = _formatDate(_selectedDate);
+    final meals = _mealsByDate[dateKey];
+    if (meals == null) return null;
+
+    try {
+      return meals.firstWhere((m) => m.messageId == messageId);
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Adiciona uma refeição completa ao dia selecionado
   void addMeal(Meal meal) {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] ??= [];
 
     final meals = _mealsByDate[dateKey]!;
+
+    // Se tem messageId, verificar se já existe uma refeição com esse messageId
+    // para evitar duplicação
+    if (meal.messageId != null) {
+      final existingByMessageId = meals.any((m) => m.messageId == meal.messageId);
+      if (existingByMessageId) {
+        print('⚠️ DailyMealsProvider - Refeição com messageId ${meal.messageId} já existe, ignorando duplicata');
+        return;
+      }
+    }
 
     // Verificar se já existe uma refeição do mesmo tipo
     final existingIndex = meals.indexWhere((m) => m.type == meal.type);
@@ -181,7 +204,11 @@ class DailyMealsProvider extends ChangeNotifier {
       // Se já existe, mesclar os alimentos
       final existingMeal = meals[existingIndex];
       final mergedFoods = List<Food>.from(existingMeal.foods)..addAll(meal.foods);
-      meals[existingIndex] = existingMeal.copyWith(foods: mergedFoods);
+      // Preservar o messageId da nova refeição se existir
+      meals[existingIndex] = existingMeal.copyWith(
+        foods: mergedFoods,
+        messageId: meal.messageId ?? existingMeal.messageId,
+      );
     } else {
       // Senão, adicionar a nova refeição
       meals.add(meal.copyWith(dateTime: _selectedDate));

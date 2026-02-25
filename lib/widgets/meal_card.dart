@@ -37,8 +37,6 @@ class MealCard extends StatefulWidget {
 }
 
 class _MealCardState extends State<MealCard> {
-  bool showMealOptions = false;
-
   // State for editing
   late Meal _currentMeal;
 
@@ -61,6 +59,118 @@ class _MealCardState extends State<MealCard> {
 
   void _notifyMealUpdated() {
     widget.onMealUpdated?.call(_currentMeal);
+  }
+
+  /// Mostra BottomSheet para selecionar o tipo de refeição
+  void _showMealTypeBottomSheet() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final secondaryTextColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: secondaryTextColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Title
+            Text(
+              context.tr.translate('select_meal_type'),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: secondaryTextColor,
+              ),
+            ),
+            SizedBox(height: 16),
+            // Meal options
+            ...getMealOptions(context).map((option) {
+              final isSelected = option.type == _currentMeal.type;
+              return Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      widget.onMealTypeChanged?.call(option.type);
+                      setState(() {
+                        _currentMeal = _currentMeal.copyWith(type: option.type);
+                      });
+                      _notifyMealUpdated();
+                      Navigator.pop(context);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? (isDarkMode
+                                ? AppTheme.primaryColor.withValues(alpha: 0.15)
+                                : AppTheme.primaryColor.withValues(alpha: 0.08))
+                            : (isDarkMode
+                                ? AppTheme.darkComponentColor
+                                : Color(0xFFF5F7FA)),
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                width: 1.5)
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            option.emoji,
+                            style: TextStyle(fontSize: 24),
+                          ),
+                          SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              option.name,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected
+                                    ? AppTheme.primaryColor
+                                    : secondaryTextColor,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: AppTheme.primaryColor,
+                              size: 22,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+            SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Atualiza apenas nome e quantidade sem recalcular macros
@@ -769,11 +879,10 @@ class _MealCardState extends State<MealCard> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Nome da refeição com botão para expandir opções
+                // Nome da refeição com botão para abrir BottomSheet
                 Expanded(
                   child: InkWell(
-                    onTap: () =>
-                        setState(() => showMealOptions = !showMealOptions),
+                    onTap: _showMealTypeBottomSheet,
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 2),
@@ -783,7 +892,7 @@ class _MealCardState extends State<MealCard> {
                             '${context.tr.translate('meal')}: ',
                             style: TextStyle(
                               color: secondaryTextColor.withValues(alpha: 0.5),
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -791,18 +900,16 @@ class _MealCardState extends State<MealCard> {
                             getMealTypeName(_currentMeal.type),
                             style: TextStyle(
                               color: secondaryTextColor.withValues(alpha: 0.7),
-                              fontSize: 16,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               letterSpacing: -0.2,
                             ),
                           ),
-                          SizedBox(width: 4),
+                          SizedBox(width: 2),
                           Icon(
-                            showMealOptions
-                                ? Icons.keyboard_arrow_up_rounded
-                                : Icons.keyboard_arrow_down_rounded,
-                            color: secondaryTextColor.withValues(alpha: 0.5),
-                            size: 18,
+                            Icons.unfold_more_rounded,
+                            color: secondaryTextColor.withValues(alpha: 0.4),
+                            size: 16,
                           ),
                         ],
                       ),
@@ -856,84 +963,6 @@ class _MealCardState extends State<MealCard> {
             ),
           ),
 
-          // Meal Options - Show when clicked
-          if (showMealOptions)
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? AppTheme.darkComponentColor
-                    : Color(0xFFF5F7FA),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: getMealOptions(context).map((option) {
-                  final isSelected = option.type == _currentMeal.type;
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: 6),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          widget.onMealTypeChanged?.call(option.type);
-                          setState(() {
-                            _currentMeal =
-                                _currentMeal.copyWith(type: option.type);
-                            showMealOptions = false;
-                          });
-                          _notifyMealUpdated();
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? (isDarkMode
-                                    ? AppTheme.primaryColor
-                                        .withValues(alpha: 0.15)
-                                    : AppTheme.primaryColor
-                                        .withValues(alpha: 0.08))
-                                : backgroundColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: isSelected
-                                ? Border.all(
-                                    color: AppTheme.primaryColor
-                                        .withValues(alpha: 0.3),
-                                    width: 1.5)
-                                : null,
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                option.emoji,
-                                style: TextStyle(fontSize: 22),
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                option.name,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w700
-                                      : FontWeight.w600,
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : secondaryTextColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-          if (showMealOptions) SizedBox(height: 16),
         ],
       ),
     );

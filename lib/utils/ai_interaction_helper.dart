@@ -196,44 +196,8 @@ class AIInteractionHelper {
         print(
             '📊 AIInteractionHelper - Resposta final: ${responseContent.length} caracteres');
 
-        // Detectar e adicionar alimentos automaticamente se houver JSON
-        // Só registra se autoRegisterFoods for true (não é modo Conversa Livre)
-        if (FoodJsonParser.containsFoodJson(responseContent)) {
-          if (!autoRegisterFoods) {
-            print('🍽️ AIInteractionHelper - JSON detectado mas auto-registro DESABILITADO (modo Conversa Livre)');
-          } else {
-            print('🍽️ AIInteractionHelper - JSON de alimentos detectado, iniciando auto-registro');
-            try {
-              final jsonStr = FoodJsonParser.extractFoodJson(responseContent);
-              if (jsonStr != null) {
-                final foods = FoodJsonParser.parseFoodJson(jsonStr);
-                if (foods != null && foods.isNotEmpty) {
-                  // Obter o provider de refeições
-                  if (context.mounted) {
-                    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
-
-                    // Extrair tipo de refeição do JSON da IA (ou usar fallback por horário)
-                    final mealTypeStr = FoodJsonParser.extractMealType(jsonStr);
-                    final mealType = mealTypeStr != null
-                        ? FoodJsonParser.mealTypeFromString(mealTypeStr)
-                        : getMealTypeByTime();
-                    print('🍽️ AIInteractionHelper - Tipo de refeição: $mealType (da IA: $mealTypeStr)');
-
-                    // Adicionar cada alimento à refeição correspondente
-                    for (final food in foods) {
-                      mealsProvider.addFoodToMeal(mealType, food);
-                      print('🍽️ AIInteractionHelper - Alimento adicionado: ${food.name} -> $mealType');
-                    }
-
-                    print('✅ AIInteractionHelper - ${foods.length} alimentos adicionados automaticamente');
-                  }
-                }
-              }
-            } catch (e) {
-              print('❌ AIInteractionHelper - Erro ao processar JSON de alimentos: $e');
-            }
-          }
-        }
+        // NOTA: A adição de alimentos é feita pelo FoodJsonDisplay quando renderizado
+        // Não adicionar aqui para evitar duplicação
 
         // Marcar que não está mais em streaming
         messageNotifier.setStreaming(false);

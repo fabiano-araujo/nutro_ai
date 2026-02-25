@@ -25,12 +25,14 @@ class Meal {
   final MealType type;
   final List<Food> foods;
   final DateTime dateTime;
+  final String? messageId; // ID da mensagem do chat que gerou esta refeição
 
   Meal({
     required this.id,
     required this.type,
     required this.foods,
     DateTime? dateTime,
+    this.messageId,
   }) : dateTime = dateTime ?? DateTime.now();
 
   int get totalCalories => foods.fold(0, (sum, food) => sum + food.calories);
@@ -55,6 +57,7 @@ class Meal {
       dateTime: json['dateTime'] != null
           ? DateTime.parse(json['dateTime'])
           : DateTime.now(),
+      messageId: json['messageId'],
     );
   }
 
@@ -64,6 +67,7 @@ class Meal {
       'type': type.toString().split('.').last,
       'foods': foods.map((food) => food.toJson()).toList(),
       'dateTime': dateTime.toIso8601String(),
+      if (messageId != null) 'messageId': messageId,
     };
   }
 
@@ -72,12 +76,14 @@ class Meal {
     MealType? type,
     List<Food>? foods,
     DateTime? dateTime,
+    String? messageId,
   }) {
     return Meal(
       id: id ?? this.id,
       type: type ?? this.type,
       foods: foods ?? this.foods,
       dateTime: dateTime ?? this.dateTime,
+      messageId: messageId ?? this.messageId,
     );
   }
 }

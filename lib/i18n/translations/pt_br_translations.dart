@@ -800,6 +800,8 @@ final Map<String, String> ptBRTranslations = {
   'dinner': 'Jantar',
   'snack': 'Lanche',
   'free_meal': 'Refeição Livre',
+  'meal': 'Refeição',
+  'select_meal_type': 'Selecionar tipo de refeição',
 
   // Food Search
   'search_food': 'Buscar Alimento',

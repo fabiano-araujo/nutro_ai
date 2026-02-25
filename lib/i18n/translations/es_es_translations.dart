@@ -546,6 +546,8 @@ final Map<String, String> esESTranslations = {
   'dinner': 'Cena',
   'snack': 'Merienda',
   'free_meal': 'Comida Libre',
+  'meal': 'Comida',
+  'select_meal_type': 'Seleccionar tipo de comida',
 
   // Food Search
   'search_food': 'Buscar Alimento',

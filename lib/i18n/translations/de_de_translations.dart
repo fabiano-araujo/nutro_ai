@@ -412,6 +412,8 @@ final Map<String, String> deDETranslations = {
   'dinner': 'Abendessen',
   'snack': 'Snack',
   'free_meal': 'Freie Mahlzeit',
+  'meal': 'Mahlzeit',
+  'select_meal_type': 'Mahlzeittyp auswählen',
 
   // Schublade und freie Gespräche
   'diary': 'Tagebuch',

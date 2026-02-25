@@ -12,12 +12,16 @@ class FoodJsonDisplay extends StatefulWidget {
   final String message;
   final bool isDarkMode;
   final DateTime selectedDate;
+  final String? messageId; // ID da mensagem do chat para vinculação
+  final VoidCallback? onDeleteMessage; // Callback para excluir a mensagem do chat
 
   const FoodJsonDisplay({
     Key? key,
     required this.message,
     required this.isDarkMode,
     required this.selectedDate,
+    this.messageId,
+    this.onDeleteMessage,
   }) : super(key: key);
 
   @override
@@ -38,6 +42,23 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     _parseMeal();
     // Adicionar automaticamente após o frame atual para garantir acesso ao contexto
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      // Verificar se já existe uma refeição com este messageId no provider
+      if (widget.messageId != null) {
+        final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+        final existingMeal = mealsProvider.getMealByMessageId(widget.messageId!);
+        if (existingMeal != null) {
+          // Já foi adicionado anteriormente, apenas atualizar o estado local
+          setState(() {
+            _isAdded = true;
+            _meal = existingMeal;
+          });
+          return;
+        }
+      }
+
+      // Só adiciona se ainda não foi adicionado
       if (!_isAdded) {
         _addMealToDay();
       }
@@ -105,6 +126,9 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
     mealsProvider.deleteMeal(_meal.id);
 
+    // Chamar callback para excluir a mensagem do chat também
+    widget.onDeleteMessage?.call();
+
     if (mounted) {
       setState(() {
         _isAdded = false;
@@ -120,10 +144,11 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     final mealsProvider =
         Provider.of<DailyMealsProvider>(context, listen: false);
 
-    // Criar cópia da refeição com a data selecionada
+    // Criar cópia da refeição com a data selecionada e messageId
     final mealToAdd = _meal.copyWith(
       dateTime: widget.selectedDate,
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      messageId: widget.messageId,
     );
 
     mealsProvider.addMeal(mealToAdd);
@@ -131,6 +156,8 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     if (mounted) {
       setState(() {
         _isAdded = true;
+        // Atualizar _meal com o ID correto
+        _meal = mealToAdd;
       });
     }
   }

@@ -101,12 +101,6 @@ class MessageUIHelper {
   }) {
     final double safeBottomSpacing =
         bottomSpacing < 0 ? 0 : bottomSpacing;
-    // Definir cores das bolhas
-    final bubbleColor = isUser
-        ? Color(0xFF3E4042) // Cinza escuro para usuário
-        : isError
-            ? Color(0xFF3B2532) // Vermelho escuro para erros
-            : Colors.transparent; // Transparente para IA
 
     // Verificar se o tema é escuro ou claro
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -141,9 +135,7 @@ class MessageUIHelper {
           MessageFormatter.buildFormattedText(
             message,
             style: TextStyle(
-              color: isUser || isDarkMode
-                  ? Colors.white
-                  : AppTheme.textPrimaryColor,
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
               fontSize: 16,
             ),
             isDarkMode: isDarkMode,
@@ -155,32 +147,51 @@ class MessageUIHelper {
       messageContent = MessageFormatter.buildFormattedText(
         message,
         style: TextStyle(
-          color:
-              isUser || isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+          color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
           fontSize: 16,
         ),
         isDarkMode: isDarkMode,
       );
     }
 
+    // Mensagem do usuário: simples, sem card, alinhado à direita
+    if (isUser) {
+      return GestureDetector(
+        onLongPress: onLongPress,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            margin: EdgeInsets.only(bottom: safeBottomSpacing),
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: messageContent,
+          ),
+        ),
+      );
+    }
+
+    // Mensagem da IA: card estilizado similar ao MealCard
+    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final errorBackgroundColor = isDarkMode ? Color(0xFF3B2532) : Color(0xFFFFF0F0);
+
     return GestureDetector(
       onLongPress: onLongPress,
       child: Align(
-        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
+        alignment: Alignment.centerLeft,
+        child: Card(
           margin: EdgeInsets.only(bottom: safeBottomSpacing),
-          padding:
-              EdgeInsets.symmetric(horizontal: isUser ? 12 : 10, vertical: 8),
-          width: isUser ? null : double.infinity,
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: BorderRadius.circular(isUser ? 18 : 0),
+          elevation: 1.5,
+          shadowColor: isDarkMode
+              ? Colors.black.withValues(alpha: 0.3)
+              : Colors.black.withValues(alpha: 0.08),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          constraints: isUser
-              ? BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.75)
-              : null,
-          child: messageContent,
+          color: isError ? errorBackgroundColor : backgroundColor,
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16),
+            child: messageContent,
+          ),
         ),
       ),
     );

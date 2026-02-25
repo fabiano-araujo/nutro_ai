@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/nutrition_card.dart';
 import '../widgets/macro_card_gradient.dart';
 import '../widgets/weekly_calendar.dart';
+import '../widgets/water_tracker.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
 import 'food_search_screen.dart';
@@ -216,6 +217,24 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     carbsGoal: goalsProvider.carbsGoal,
                     fatsConsumed: mealsProvider.totalFat.toInt(),
                     fatsGoal: goalsProvider.fatGoal,
+                  ),
+                ),
+
+                SizedBox(height: 12),
+
+                // Water Tracker
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      WaterTracker(
+                        consumed: mealsProvider.todayWaterGlasses,
+                        goal: mealsProvider.waterGoal,
+                        onAdd: () => mealsProvider.addWater(),
+                        onRemove: () => mealsProvider.removeWater(),
+                      ),
+                      const Spacer(),
+                    ],
                   ),
                 ),
 

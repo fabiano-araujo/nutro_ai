@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/meal_skeleton.dart';
 import '../widgets/macro_card_gradient.dart';
-import '../widgets/water_tracker.dart';
 import '../providers/daily_meals_provider.dart';
 import '../models/diet_plan_model.dart';
 import '../models/food_model.dart';
@@ -34,14 +32,12 @@ class PersonalizedDietScreen extends StatefulWidget {
 }
 
 class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
-  // Controle de scroll do header (nutrition summary)
-  double _headerOffset = 0.0; // Offset vertical do header (0 = visível, negativo = escondido)
-  double _lastScrollPosition = 0.0;
-  double _maxHeaderHeight = 100.0; // Altura inicial estimada, será calculada dinamicamente
-  final GlobalKey _headerKey = GlobalKey(); // Key para medir a altura real do header
-  Timer? _heightCalculationTimer; // Timer para debounce do cálculo de altura
-  bool _isCalculatingHeight = false; // Flag para evitar cálculos simultâneos
   final ScrollController _scrollController = ScrollController();
+
+  // Controle de visibilidade do header (macro cards)
+  double _headerOffset = 0.0; // 0 = visível, negativo = escondido
+  double _lastScrollPosition = 0.0;
+  static const double _maxHeaderHeight = 160.0; // Altura: DietModeSelector (36px + 8px) + macro cards (108px + 8px)
 
   // FAB expansível
   bool _isFabExpanded = false;
@@ -49,59 +45,17 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Adicionar listener para controlar a visibilidade do nutrition summary
     _scrollController.addListener(_handleScroll);
-
-    // Calcular a altura real do header após o primeiro frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _calculateHeaderHeight();
-    });
   }
 
   @override
   void dispose() {
-    // Remover listener do scroll
     _scrollController.removeListener(_handleScroll);
-
-    // Cancelar timer de cálculo de altura
-    _heightCalculationTimer?.cancel();
-
     _scrollController.dispose();
     super.dispose();
   }
 
-  // Método para calcular a altura real do header após o build (com debounce)
-  void _calculateHeaderHeight() {
-    // Cancelar timer anterior se existir
-    _heightCalculationTimer?.cancel();
-
-    // Criar novo timer com debounce de 100ms
-    _heightCalculationTimer = Timer(Duration(milliseconds: 100), () {
-      if (_isCalculatingHeight) return;
-
-      _isCalculatingHeight = true;
-      try {
-        final RenderBox? renderBox = _headerKey.currentContext?.findRenderObject() as RenderBox?;
-        if (renderBox != null && renderBox.hasSize) {
-          final newHeight = renderBox.size.height;
-          // Só atualizar se a diferença for maior que 5px (evitar recálculos por pequenas variações)
-          if (newHeight > 0 && (newHeight - _maxHeaderHeight).abs() > 5) {
-            setState(() {
-              _maxHeaderHeight = newHeight;
-              print('Nutrition summary height calculado dinamicamente: $_maxHeaderHeight px');
-            });
-          }
-        }
-      } catch (e) {
-        print('Erro ao calcular altura do nutrition summary: $e');
-      } finally {
-        _isCalculatingHeight = false;
-      }
-    });
-  }
-
-  // Método para controlar o offset do header baseado no scroll (comportamento tipo toolbar Android)
+  // Controle de scroll para esconder/mostrar header (como toolbar Android)
   void _handleScroll() {
     if (!_scrollController.hasClients) return;
 
@@ -109,19 +63,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final scrollDelta = currentScrollPosition - _lastScrollPosition;
 
     setState(() {
-      // Atualizar o offset do header baseado no movimento do scroll
-      // scrollDelta positivo = scrollando para baixo (esconder header)
-      // scrollDelta negativo = scrollando para cima (mostrar header)
-      _headerOffset -= scrollDelta;
-
-      // Limitar o offset entre -_maxHeaderHeight (totalmente escondido) e 0 (totalmente visível)
-      _headerOffset = _headerOffset.clamp(-_maxHeaderHeight, 0.0);
-
-      // Se estiver no topo (offset < 10), forçar header totalmente visível
       if (currentScrollPosition < 10) {
         _headerOffset = 0.0;
+      } else {
+        _headerOffset = (_headerOffset - scrollDelta).clamp(-_maxHeaderHeight, 0.0);
       }
-
       _lastScrollPosition = currentScrollPosition;
     });
   }
@@ -298,39 +244,23 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // AppBar + Diet Mode Selector + Weekly Calendar
+            // AppBar + Weekly Calendar (fixos no topo)
             Consumer<DietPlanProvider>(
               builder: (context, dietProvider, _) {
-                // Verifica se há alguma dieta (em qualquer dia) ou está carregando
                 final hasAnyDiet = dietProvider.hasAnyDietPlan ||
                                    dietProvider.isLoading ||
                                    dietProvider.partialDietPlan != null;
                 final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
 
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // AppBar sempre visível
-                    WeeklyCalendar(
-                      selectedDate: dietProvider.selectedDate,
-                      onDaySelected: (date) {
-                        dietProvider.setSelectedDate(date);
-                      },
-                      showAppBar: true,
-                      // Calendário só mostra quando há alguma dieta E está no modo diário
-                      showCalendar: hasAnyDiet && !isWeeklyMode,
-                      onOpenDrawer: widget.onOpenDrawer,
-                      onSearchPressed: widget.onSearchPressed,
-                    ),
-                    // Diet Mode Selector - mostra quando há alguma dieta
-                    if (hasAnyDiet) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _buildDietModeSelector(dietProvider, isDarkMode),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ],
+                return WeeklyCalendar(
+                  selectedDate: dietProvider.selectedDate,
+                  onDaySelected: (date) {
+                    dietProvider.setSelectedDate(date);
+                  },
+                  showAppBar: true,
+                  showCalendar: hasAnyDiet && !isWeeklyMode,
+                  onOpenDrawer: widget.onOpenDrawer,
+                  onSearchPressed: widget.onSearchPressed,
                 );
               },
             ),
@@ -339,43 +269,41 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             Expanded(
               child: Consumer<DietPlanProvider>(
                 builder: (context, dietProvider, _) {
-                  // Recalcular altura quando o conteúdo mudar
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _calculateHeaderHeight();
-                    // Recalcular após 100ms para garantir que o conteúdo foi renderizado
-                    Future.delayed(Duration(milliseconds: 100), () {
-                      _calculateHeaderHeight();
-                    });
-                  });
-
                   // Show incremental loading with partial plan
                   if (dietProvider.isLoading && dietProvider.partialDietPlan != null) {
                     final partialPlan = dietProvider.partialDietPlan!;
                     final loadedMealsCount = partialPlan.meals.length;
                     final expectedMealsCount = dietProvider.expectedMealsCount;
 
+                    // Altura visível durante carregamento
+                    final double visibleHeight = (_maxHeaderHeight + _headerOffset).clamp(0.0, _maxHeaderHeight);
+
                     return Column(
                       children: [
-                        // Nutrition Summary with scroll-to-hide behavior
+                        // DietModeSelector + Nutrition Summary com scroll-to-hide
                         SizedBox(
-                          height: (_maxHeaderHeight + _headerOffset).clamp(0.0, _maxHeaderHeight),
+                          height: visibleHeight,
                           child: ClipRect(
-                            clipBehavior: Clip.hardEdge,
                             child: OverflowBox(
-                              maxHeight: _maxHeaderHeight + 50, // +50px margem de segurança para transições
+                              maxHeight: _maxHeaderHeight,
                               alignment: Alignment.topCenter,
                               child: Transform.translate(
                                 offset: Offset(0, _headerOffset),
-                                child: Container(
-                                  key: _headerKey, // Key para medir a altura real do header
-                                  child: _buildNutritionSummary(partialPlan.totalNutrition),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      child: _buildDietModeSelector(dietProvider, isDarkMode),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildNutritionSummary(partialPlan.totalNutrition),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-
-                        const SizedBox(height: 4),
 
                         // Progress indicator
                         Padding(
@@ -405,7 +333,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                         Expanded(
                           child: ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
                             itemCount: expectedMealsCount + 1, // +1 for the button at the end
                             itemBuilder: (context, index) {
                               // Last item is the button
@@ -479,21 +407,30 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                     );
                   }
 
+                  // Altura visível = maxHeight + offset (offset é negativo quando escondendo)
+                  final double visibleHeight = (_maxHeaderHeight + _headerOffset).clamp(0.0, _maxHeaderHeight);
+
                   return Column(
                     children: [
-                      // Nutrition Summary with scroll-to-hide behavior
+                      // DietModeSelector + Nutrition Summary com scroll-to-hide
                       SizedBox(
-                        height: (_maxHeaderHeight + _headerOffset).clamp(0.0, _maxHeaderHeight),
+                        height: visibleHeight,
                         child: ClipRect(
-                          clipBehavior: Clip.hardEdge,
                           child: OverflowBox(
-                            maxHeight: _maxHeaderHeight + 50, // +50px margem de segurança para transições
+                            maxHeight: _maxHeaderHeight,
                             alignment: Alignment.topCenter,
                             child: Transform.translate(
                               offset: Offset(0, _headerOffset),
-                              child: Container(
-                                key: _headerKey, // Key para medir a altura real do header
-                                child: _buildNutritionSummary(dietPlan.totalNutrition),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: _buildDietModeSelector(dietProvider, isDarkMode),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildNutritionSummary(dietPlan.totalNutrition),
+                                ],
                               ),
                             ),
                           ),
@@ -504,7 +441,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                       Expanded(
                         child: ListView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
                           itemCount: dietPlan.meals.length + 1, // +1 for the button at the end
                           itemBuilder: (context, index) {
                             // Last item is the button
@@ -695,19 +632,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                       },
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Water Tracker
-              Row(
-                children: [
-                  WaterTracker(
-                    consumed: mealsProvider.todayWaterGlasses,
-                    goal: mealsProvider.waterGoal,
-                    onAdd: () => mealsProvider.addWater(),
-                    onRemove: () => mealsProvider.removeWater(),
-                  ),
-                  const Spacer(),
                 ],
               ),
             ],

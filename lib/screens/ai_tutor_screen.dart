@@ -975,7 +975,8 @@ class AITutorScreenState extends State<AITutorScreen>
                     );
                   },
                 ),
-              // Ler em voz alta - faz mais sentido para mensagens da IA, mas pode ser útil para ambas
+              // Ler em voz alta - apenas para mensagens da IA
+              if (!isUser)
               ListTile(
                 leading: Icon(
                     isSpeaking ? Icons.stop : Icons.volume_up_outlined,
@@ -1865,22 +1866,26 @@ class AITutorScreenState extends State<AITutorScreen>
                 ? FoodJsonParser.removeJsonFromMessage(notifier.message)
                 : notifier.message;
 
+            // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
+            final bool showMessageBubble = cleanMessage.trim().isNotEmpty || notifier.isStreaming;
+
             return Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                MessageUIHelper.buildSimpleMessageBubble(
-                  context: context,
-                  message: cleanMessage,
-                  isUser: isUser,
-                  isError: notifier.isError,
-                  isStreaming: notifier.isStreaming,
-                  onLongPress: () =>
-                      _showMessageOptions(notifier.message, isUser),
-                  bottomSpacing:
-                      hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
-                ),
+                if (showMessageBubble)
+                  MessageUIHelper.buildSimpleMessageBubble(
+                    context: context,
+                    message: cleanMessage,
+                    isUser: isUser,
+                    isError: notifier.isError,
+                    isStreaming: notifier.isStreaming,
+                    onLongPress: () =>
+                        _showMessageOptions(notifier.message, isUser),
+                    bottomSpacing:
+                        hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
+                  ),
                 if (hasJsonInNotifier && !notifier.isStreaming)
                   Consumer<DailyMealsProvider>(
                     builder: (context, mealsProvider, _) {
@@ -1888,6 +1893,10 @@ class AITutorScreenState extends State<AITutorScreen>
                         message: notifier.message,
                         isDarkMode: isDarkMode,
                         selectedDate: mealsProvider.selectedDate,
+                        messageId: index.toString(),
+                        onDeleteMessage: () {
+                          _controller.deleteMessagePair(index);
+                        },
                       );
                     },
                   ),
@@ -1898,20 +1907,24 @@ class AITutorScreenState extends State<AITutorScreen>
       );
     } else {
       // Se não for notificador, usamos a forma tradicional
+      // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
+      final bool showMessageBubble = displayMessage.trim().isNotEmpty || isStreaming;
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          MessageUIHelper.buildSimpleMessageBubble(
-            context: context,
-            message: displayMessage,
-            isUser: isUser,
-            isError: isError,
-            isStreaming: isStreaming,
-            onLongPress: () => _showMessageOptions(message, isUser),
-            imageBytes: imageBytes,
-            bottomSpacing: hasFoodJson && !isStreaming ? 4 : 8,
-          ),
+          if (showMessageBubble)
+            MessageUIHelper.buildSimpleMessageBubble(
+              context: context,
+              message: displayMessage,
+              isUser: isUser,
+              isError: isError,
+              isStreaming: isStreaming,
+              onLongPress: () => _showMessageOptions(message, isUser),
+              imageBytes: imageBytes,
+              bottomSpacing: hasFoodJson && !isStreaming ? 4 : 8,
+            ),
           if (hasFoodJson && !isStreaming) ...[
             Consumer<DailyMealsProvider>(
               builder: (context, mealsProvider, _) {
@@ -1919,6 +1932,10 @@ class AITutorScreenState extends State<AITutorScreen>
                   message: message,
                   isDarkMode: isDarkMode,
                   selectedDate: mealsProvider.selectedDate,
+                  messageId: index.toString(),
+                  onDeleteMessage: () {
+                    _controller.deleteMessagePair(index);
+                  },
                 );
               },
             ),

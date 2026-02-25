@@ -410,6 +410,8 @@ final Map<String, String> itITTranslations = {
   'dinner': 'Cena',
   'snack': 'Spuntino',
   'free_meal': 'Pasto Libero',
+  'meal': 'Pasto',
+  'select_meal_type': 'Seleziona tipo di pasto',
 
   // Drawer e conversazioni libere
   'diary': 'Diario',

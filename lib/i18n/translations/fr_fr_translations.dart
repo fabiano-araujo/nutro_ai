@@ -412,6 +412,8 @@ final Map<String, String> frFRTranslations = {
   'dinner': 'Dîner',
   'snack': 'Collation',
   'free_meal': 'Repas Libre',
+  'meal': 'Repas',
+  'select_meal_type': 'Sélectionner le type de repas',
 
   // Tiroir et conversations libres
   'diary': 'Journal',
