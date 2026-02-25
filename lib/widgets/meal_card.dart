@@ -779,6 +779,14 @@ class _MealCardState extends State<MealCard> {
                       child: Row(
                         children: [
                           Text(
+                            '${context.tr.translate('meal')}: ',
+                            style: TextStyle(
+                              color: secondaryTextColor.withValues(alpha: 0.5),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
                             getMealTypeName(_currentMeal.type),
                             style: TextStyle(
                               color: secondaryTextColor.withValues(alpha: 0.7),
@@ -804,33 +812,39 @@ class _MealCardState extends State<MealCard> {
                 Row(
                   children: [
                     // Botão de editar com menu
-                    Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                      child: InkWell(
-                        onTap: _showEditOptionsMenu,
+                    Tooltip(
+                      message: context.tr.translate('edit_foods'),
+                      child: Material(
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.edit_outlined,
-                            size: 18,
-                            color: secondaryTextColor.withValues(alpha: 0.5),
+                        child: InkWell(
+                          onTap: _showEditOptionsMenu,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              size: 18,
+                              color: secondaryTextColor.withValues(alpha: 0.5),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _showMoreOptionsMenu,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.more_vert_rounded,
-                            size: 18,
-                            color: secondaryTextColor.withValues(alpha: 0.5),
+                    Tooltip(
+                      message: context.tr.translate('more_options'),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _showMoreOptionsMenu,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.more_vert_rounded,
+                              size: 18,
+                              color: secondaryTextColor.withValues(alpha: 0.5),
+                            ),
                           ),
                         ),
                       ),
@@ -923,55 +937,93 @@ class _MealCardState extends State<MealCard> {
       ),
     );
 
-    // Se tem callback de delete, envolve com Dismissible para swipe-to-delete
+    // Se tem callback de delete, envolve com Dismissible para swipe-to-delete e swipe-to-edit
     if (widget.onDelete != null) {
       return Dismissible(
         key: Key('meal_${_currentMeal.id}'),
-        direction: DismissDirection.endToStart,
+        direction: DismissDirection.horizontal,
         confirmDismiss: (direction) async {
-          // Mostrar confirmação antes de deletar
-          return await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Text(
-                context.tr.translate('delete_meal'),
-                style: TextStyle(
-                  color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+          if (direction == DismissDirection.startToEnd) {
+            // Swipe para direita = Editar
+            _showEditOptionsMenu();
+            return false; // Não dismissar, apenas abrir edição
+          } else {
+            // Swipe para esquerda = Deletar
+            return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ),
-              content: Text(
-                context.tr.translate('delete_meal_confirm'),
-                style: TextStyle(
-                  color: isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor,
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text(
-                    context.tr.translate('cancel'),
-                    style: TextStyle(color: Colors.grey),
+                title: Text(
+                  context.tr.translate('delete_meal'),
+                  style: TextStyle(
+                    color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
                   ),
                 ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text(
-                    context.tr.translate('delete'),
-                    style: TextStyle(color: Color(0xFFE57373)),
+                content: Text(
+                  context.tr.translate('delete_meal_confirm'),
+                  style: TextStyle(
+                    color: isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor,
                   ),
                 ),
-              ],
-            ),
-          ) ?? false;
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      context.tr.translate('cancel'),
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text(
+                      context.tr.translate('delete'),
+                      style: TextStyle(color: Color(0xFFE57373)),
+                    ),
+                  ),
+                ],
+              ),
+            ) ?? false;
+          }
         },
         onDismissed: (direction) {
-          widget.onDelete?.call();
+          if (direction == DismissDirection.endToStart) {
+            widget.onDelete?.call();
+          }
         },
+        // Background para swipe direita (editar)
         background: Container(
+          margin: EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: EdgeInsets.only(left: 20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.edit_outlined,
+                color: Colors.white,
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text(
+                context.tr.translate('edit'),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // SecondaryBackground para swipe esquerda (deletar)
+        secondaryBackground: Container(
           margin: EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: Color(0xFFE57373),
@@ -979,10 +1031,24 @@ class _MealCardState extends State<MealCard> {
           ),
           alignment: Alignment.centerRight,
           padding: EdgeInsets.only(right: 20),
-          child: Icon(
-            Icons.delete_outline,
-            color: Colors.white,
-            size: 28,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.tr.translate('delete'),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(width: 8),
+              Icon(
+                Icons.delete_outline,
+                color: Colors.white,
+                size: 24,
+              ),
+            ],
           ),
         ),
         child: card,
@@ -1058,21 +1124,6 @@ class _FoodItem extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Indicador de loading
-                        if (isLoading)
-                          Padding(
-                            padding: EdgeInsets.only(left: 8),
-                            child: SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primaryColor,
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                     SizedBox(height: 1),

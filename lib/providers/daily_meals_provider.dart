@@ -8,6 +8,7 @@ import '../models/Nutrient.dart';
 class DailyMealsProvider extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now();
   final Map<String, List<Meal>> _mealsByDate = {};
+  final Map<String, int> _waterByDate = {};
   bool _isLoaded = false;
 
   // Goals (can be customized by user later)
@@ -15,6 +16,7 @@ class DailyMealsProvider extends ChangeNotifier {
   int proteinGoal = 150;
   int carbsGoal = 250;
   int fatsGoal = 67;
+  int waterGoal = 8; // Default 8 glasses
 
   DailyMealsProvider() {
     _loadFromPreferences();
@@ -51,6 +53,33 @@ class DailyMealsProvider extends ChangeNotifier {
   int get carbsRemaining => carbsGoal - totalCarbs.toInt();
   int get fatsRemaining => fatsGoal - totalFat.toInt();
 
+  // Water tracking
+  int get todayWaterGlasses {
+    final dateKey = _formatDate(_selectedDate);
+    return _waterByDate[dateKey] ?? 0;
+  }
+
+  void addWater() {
+    final dateKey = _formatDate(_selectedDate);
+    _waterByDate[dateKey] = (_waterByDate[dateKey] ?? 0) + 1;
+    _saveWaterToPreferences();
+    notifyListeners();
+  }
+
+  void removeWater() {
+    final dateKey = _formatDate(_selectedDate);
+    if ((_waterByDate[dateKey] ?? 0) > 0) {
+      _waterByDate[dateKey] = _waterByDate[dateKey]! - 1;
+      _saveWaterToPreferences();
+      notifyListeners();
+    }
+  }
+
+  int getWaterForDate(DateTime date) {
+    final dateKey = _formatDate(date);
+    return _waterByDate[dateKey] ?? 0;
+  }
+
   // Load meals from SharedPreferences
   Future<void> _loadFromPreferences() async {
     try {
@@ -75,6 +104,17 @@ class DailyMealsProvider extends ChangeNotifier {
       proteinGoal = prefs.getInt('meals_protein_goal') ?? 150;
       carbsGoal = prefs.getInt('meals_carbs_goal') ?? 250;
       fatsGoal = prefs.getInt('meals_fats_goal') ?? 67;
+      waterGoal = prefs.getInt('water_goal') ?? 8;
+
+      // Load water data
+      final waterJson = prefs.getString('water_by_date');
+      if (waterJson != null) {
+        final Map<String, dynamic> decodedWater = jsonDecode(waterJson);
+        _waterByDate.clear();
+        decodedWater.forEach((key, value) {
+          _waterByDate[key] = value as int;
+        });
+      }
 
       _isLoaded = true;
       notifyListeners();
@@ -102,8 +142,19 @@ class DailyMealsProvider extends ChangeNotifier {
       await prefs.setInt('meals_protein_goal', proteinGoal);
       await prefs.setInt('meals_carbs_goal', carbsGoal);
       await prefs.setInt('meals_fats_goal', fatsGoal);
+      await prefs.setInt('water_goal', waterGoal);
     } catch (e) {
       print('Error saving daily meals: $e');
+    }
+  }
+
+  Future<void> _saveWaterToPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('water_by_date', jsonEncode(_waterByDate));
+      await prefs.setInt('water_goal', waterGoal);
+    } catch (e) {
+      print('Error saving water data: $e');
     }
   }
 

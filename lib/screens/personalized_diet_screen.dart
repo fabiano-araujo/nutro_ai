@@ -7,6 +7,8 @@ import '../providers/meal_types_provider.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/meal_skeleton.dart';
 import '../widgets/macro_card_gradient.dart';
+import '../widgets/water_tracker.dart';
+import '../providers/daily_meals_provider.dart';
 import '../models/diet_plan_model.dart';
 import '../models/food_model.dart';
 import '../models/Nutrient.dart';
@@ -40,6 +42,9 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   Timer? _heightCalculationTimer; // Timer para debounce do cálculo de altura
   bool _isCalculatingHeight = false; // Flag para evitar cálculos simultâneos
   final ScrollController _scrollController = ScrollController();
+
+  // FAB expansível
+  bool _isFabExpanded = false;
 
   @override
   void initState() {
@@ -289,6 +294,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
     return Scaffold(
       backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      floatingActionButton: _buildExpandableFab(isDarkMode),
       body: SafeArea(
         child: Column(
           children: [
@@ -494,8 +500,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 4),
-
                       // Meals List with button at the end
                       Expanded(
                         child: ListView.builder(
@@ -600,95 +604,202 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   Widget _buildNutritionSummary(DailyNutrition nutrition) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: MacroCardGradient(
-              icon: '🔥',
-              label: 'Calorias',
-              value: nutrition.calories.toStringAsFixed(0),
-              unit: 'kcal',
-              startColor: const Color(0xFFFF6B9D),
-              endColor: const Color(0xFFFFA06B),
-              isDarkMode: isDarkMode,
-              isCompact: true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NutritionGoalsScreen(),
+    return Consumer<DailyMealsProvider>(
+      builder: (context, mealsProvider, child) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: MacroCardGradient(
+                      icon: '🔥',
+                      label: 'Calorias',
+                      value: nutrition.calories.toStringAsFixed(0),
+                      unit: 'kcal',
+                      startColor: const Color(0xFFFF6B9D),
+                      endColor: const Color(0xFFFFA06B),
+                      isDarkMode: isDarkMode,
+                      isCompact: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NutritionGoalsScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: MacroCardGradient(
-              icon: '💪',
-              label: 'Proteínas',
-              value: nutrition.protein.toStringAsFixed(1),
-              unit: 'g',
-              startColor: const Color(0xFF9575CD),
-              endColor: const Color(0xFFBA68C8),
-              isDarkMode: isDarkMode,
-              isCompact: true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NutritionGoalsScreen(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: MacroCardGradient(
+                      icon: '💪',
+                      label: 'Proteínas',
+                      value: nutrition.protein.toStringAsFixed(1),
+                      unit: 'g',
+                      startColor: const Color(0xFF9575CD),
+                      endColor: const Color(0xFFBA68C8),
+                      isDarkMode: isDarkMode,
+                      isCompact: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NutritionGoalsScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: MacroCardGradient(
-              icon: '🌾',
-              label: 'Carboidratos',
-              value: nutrition.carbs.toStringAsFixed(1),
-              unit: 'g',
-              startColor: const Color(0xFFFFB74D),
-              endColor: const Color(0xFFFF9800),
-              isDarkMode: isDarkMode,
-              isCompact: true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NutritionGoalsScreen(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: MacroCardGradient(
+                      icon: '🌾',
+                      label: 'Carboidratos',
+                      value: nutrition.carbs.toStringAsFixed(1),
+                      unit: 'g',
+                      startColor: const Color(0xFFFFB74D),
+                      endColor: const Color(0xFFFF9800),
+                      isDarkMode: isDarkMode,
+                      isCompact: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NutritionGoalsScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: MacroCardGradient(
-              icon: '🥑',
-              label: 'Gorduras',
-              value: nutrition.fat.toStringAsFixed(1),
-              unit: 'g',
-              startColor: const Color(0xFF4DB6AC),
-              endColor: const Color(0xFF26A69A),
-              isDarkMode: isDarkMode,
-              isCompact: true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NutritionGoalsScreen(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: MacroCardGradient(
+                      icon: '🥑',
+                      label: 'Gorduras',
+                      value: nutrition.fat.toStringAsFixed(1),
+                      unit: 'g',
+                      startColor: const Color(0xFF4DB6AC),
+                      endColor: const Color(0xFF26A69A),
+                      isDarkMode: isDarkMode,
+                      isCompact: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NutritionGoalsScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                );
-              },
-            ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Water Tracker
+              Row(
+                children: [
+                  WaterTracker(
+                    consumed: mealsProvider.todayWaterGlasses,
+                    goal: mealsProvider.waterGoal,
+                    onAdd: () => mealsProvider.addWater(),
+                    onRemove: () => mealsProvider.removeWater(),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildExpandableFab(bool isDarkMode) {
+    final l10n = AppLocalizations.of(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Sub-actions (visible when expanded)
+        if (_isFabExpanded) ...[
+          _buildFabAction(
+            icon: Icons.camera_alt,
+            label: l10n.translate('scan_food'),
+            isDarkMode: isDarkMode,
+            onTap: () {
+              setState(() => _isFabExpanded = false);
+              widget.onSearchPressed?.call();
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildFabAction(
+            icon: Icons.search,
+            label: l10n.translate('search_food'),
+            isDarkMode: isDarkMode,
+            onTap: () {
+              setState(() => _isFabExpanded = false);
+              widget.onSearchPressed?.call();
+            },
+          ),
+          const SizedBox(height: 12),
         ],
-      ),
+        // Main FAB
+        FloatingActionButton(
+          backgroundColor: AppTheme.primaryColor,
+          onPressed: () => setState(() => _isFabExpanded = !_isFabExpanded),
+          child: AnimatedRotation(
+            turns: _isFabExpanded ? 0.125 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFabAction({
+    required IconData icon,
+    required String label,
+    required bool isDarkMode,
+    required VoidCallback onTap,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        FloatingActionButton.small(
+          heroTag: 'fab_$label',
+          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.9),
+          onPressed: onTap,
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+      ],
     );
   }
 

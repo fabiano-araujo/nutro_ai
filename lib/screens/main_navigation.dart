@@ -4,6 +4,7 @@ import 'ai_tutor_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'personalized_diet_screen.dart';
+import 'food_search_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -156,6 +157,14 @@ class _MainNavigationState extends State<MainNavigation> {
           // Aba 1: Minha Dieta
           PersonalizedDietScreen(
             onOpenDrawer: _openDrawer,
+            onSearchPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const FoodSearchScreen(),
+                ),
+              );
+            },
           ),
 
           // Aba 2: Perfil
@@ -168,8 +177,8 @@ class _MainNavigationState extends State<MainNavigation> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
         selectedItemColor: isDarkMode ? Colors.white : Colors.black,
         unselectedItemColor: isDarkMode ? Colors.grey[600] : Colors.grey[700],
         items: [

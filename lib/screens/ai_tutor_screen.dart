@@ -137,7 +137,7 @@ class AITutorScreenState extends State<AITutorScreen>
       0.0; // Offset vertical do NutritionCard (0 = visível, negativo = escondido)
   double _lastScrollPosition = 0.0;
   double _maxHeaderHeight =
-      160.0; // Altura do NutritionCard
+      100.0; // Altura do NutritionCard
   final GlobalKey _headerKey =
       GlobalKey(); // Key para medir a altura real do header
   final GlobalKey _lastAiMessageKey =
@@ -1374,7 +1374,7 @@ class AITutorScreenState extends State<AITutorScreen>
                       builder: (context, mealsProvider, child) {
                         // Calcular altura esperada de forma síncrona baseado nos dados atuais
                         const double calendarHeight = 75.0;
-                        const double nutritionCardHeight = 160.0;
+                        const double nutritionCardHeight = 100.0;
                         // Só incluir altura do NutritionCard se houver refeições
                         final bool hasMeals = mealsProvider.todayMeals.isNotEmpty;
                         final double expectedHeight = hasMeals

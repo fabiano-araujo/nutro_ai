@@ -245,10 +245,6 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                 ),
               ),
             ),
-
-            // Espaçador para balancear quando não há botão "Hoje"
-            if (isToday && widget.onSearchPressed != null)
-              SizedBox(width: 48),
           ],
 
           // Ícone de pesquisa à direita
@@ -272,7 +268,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     final isDarkMode = brightness == Brightness.dark;
 
     return Container(
-      height: 75,
+      height: 56,
       color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       child: PageView.builder(
         controller: _pageController,
@@ -323,60 +319,40 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
         widget.onDaySelected?.call(date);
       },
       child: Container(
-        width: 50,
-        padding: EdgeInsets.symmetric(vertical: 6),
+        width: 44,
+        padding: EdgeInsets.only(bottom: 4),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Nome do dia da semana
+            Text(
+              dayName,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? Theme.of(context).primaryColor
+                    : isToday
+                        ? Theme.of(context).primaryColor
+                        : isDarkMode
+                            ? Colors.white70
+                            : AppTheme.textSecondaryColor,
+              ),
+            ),
+            // Número do dia
             Container(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
                     ? Theme.of(context).primaryColor
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(
-                dayName,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected
-                      ? Colors.white
-                      : isToday
-                          ? Theme.of(context).primaryColor
-                          : isDarkMode
-                              ? Colors.white70
-                              : AppTheme.textSecondaryColor,
-                ),
-              ),
-            ),
-            SizedBox(height: 4),
-            // Número do dia
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : isDarkMode
-                        ? Colors.white.withAlpha(13)
-                        : Colors.black.withAlpha(13),
-                shape: BoxShape.circle,
-                // Borda para o dia atual
-                border: isToday && !isSelected
-                    ? Border.all(
-                        color: Theme.of(context).primaryColor,
-                        width: 2.5,
-                      )
-                    : null,
-              ),
-              alignment: Alignment.center,
               child: Text(
                 dayNumber,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
                   color: isSelected
                       ? Colors.white

@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import '../i18n/app_localizations_extension.dart';
 import '../theme/app_theme.dart';
 
-class NutritionCard extends StatelessWidget {
+class NutritionCard extends StatefulWidget {
   final int caloriesConsumed;
   final int caloriesGoal;
   final int proteinConsumed;
@@ -32,20 +32,92 @@ class NutritionCard extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<NutritionCard> createState() => _NutritionCardState();
+}
+
+class _NutritionCardState extends State<NutritionCard>
+    with SingleTickerProviderStateMixin {
+  bool _showConsumed = false;
+  double _dragOffset = 0.0;
+  late AnimationController _resetController;
+  Animation<double>? _resetAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetController = AnimationController(
+      duration: Duration(milliseconds: 200),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _resetController.dispose();
+    super.dispose();
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragOffset += details.delta.dx;
+      // Limit drag to reasonable range
+      _dragOffset = _dragOffset.clamp(-100.0, 100.0);
+    });
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final shouldMinimize = _dragOffset.abs() > 50 || velocity.abs() > 200;
+
+    if (shouldMinimize && widget.onMinimize != null) {
+      widget.onMinimize!();
+      setState(() => _dragOffset = 0);
+    } else {
+      // Animate back to center
+      _resetAnimation = Tween<double>(begin: _dragOffset, end: 0).animate(
+        CurvedAnimation(parent: _resetController, curve: Curves.easeOut),
+      )..addListener(() {
+          setState(() => _dragOffset = _resetAnimation!.value);
+        });
+      _resetController.forward(from: 0);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final caloriesRemaining = caloriesGoal - caloriesConsumed;
+    final caloriesRemaining = widget.caloriesGoal - widget.caloriesConsumed;
     final isCaloriesExceeded = caloriesRemaining < 0;
-    final displayCalories = isCaloriesExceeded ? -caloriesRemaining : caloriesRemaining;
+
+    // Valor a exibir baseado no toggle
+    final displayCalories = _showConsumed
+        ? widget.caloriesConsumed
+        : (isCaloriesExceeded ? -caloriesRemaining : caloriesRemaining);
+
+    // Label a exibir baseado no toggle
+    final displayLabel = _showConsumed
+        ? context.tr.translate('consumed')
+        : (isCaloriesExceeded
+            ? context.tr.translate('exceeded')
+            : context.tr.translate('remaining'));
 
     // Cores para quando excede a meta
-    final exceededColor = Color(0xFFE57373); // Vermelho suave
-    final exceededTextColor = Color(0xFFFF5252); // Vermelho mais vibrante
+    final exceededColor = Color(0xFFE57373);
+    final exceededTextColor = Color(0xFFFF5252);
+
+    // Calculate opacity based on drag (fade out as you drag)
+    final dragOpacity = (1.0 - (_dragOffset.abs() / 150)).clamp(0.5, 1.0);
 
     return GestureDetector(
-      onTap: onTap,
-      child: Card(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      onTap: widget.onTap,
+      onHorizontalDragUpdate: _onDragUpdate,
+      onHorizontalDragEnd: _onDragEnd,
+      child: Transform.translate(
+        offset: Offset(_dragOffset, 0),
+        child: Opacity(
+          opacity: dragOpacity,
+          child: Card(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         elevation: 1.5,
         shadowColor: isDarkMode
             ? Colors.black.withValues(alpha: 0.3)
@@ -54,85 +126,86 @@ class NutritionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(8, 10, 8, 4),
-              child: Row(
-                children: [
-                  // Lado esquerdo - Calorias
-                  Expanded(
-                    flex: 2,
-                    child: Column(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(8, 6, 8, 6),
+          child: Row(
+            children: [
+              // Lado esquerdo - Calorias
+              Expanded(
+                flex: 2,
+                child: Column(
                       children: [
-                        // Gráfico circular de calorias
-                        SizedBox(
-                          width: 95,
-                          height: 95,
-                          child: CustomPaint(
-                            painter: CalorieCirclePainter(
-                              consumed: caloriesConsumed,
-                              goal: caloriesGoal,
-                              isDarkMode: isDarkMode,
-                              isExceeded: isCaloriesExceeded,
-                            ),
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      if (isCaloriesExceeded)
+                        // Gráfico circular de calorias - com toggle
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showConsumed = !_showConsumed;
+                            });
+                          },
+                          child: SizedBox(
+                            width: 70,
+                            height: 70,
+                            child: CustomPaint(
+                              painter: CalorieCirclePainter(
+                                consumed: widget.caloriesConsumed,
+                                goal: widget.caloriesGoal,
+                                isDarkMode: isDarkMode,
+                                isExceeded: isCaloriesExceeded,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        if (isCaloriesExceeded && !_showConsumed)
+                                          Text(
+                                            '+',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: exceededTextColor,
+                                            ),
+                                          ),
                                         Text(
-                                          '+',
+                                          displayCalories.toString(),
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: 18,
                                             fontWeight: FontWeight.bold,
-                                            color: exceededTextColor,
+                                            color: (isCaloriesExceeded && !_showConsumed)
+                                                ? exceededTextColor
+                                                : (isDarkMode
+                                                        ? AppTheme.darkTextColor
+                                                        : AppTheme.textPrimaryColor)
+                                                    .withValues(alpha: 0.85),
                                           ),
                                         ),
-                                      Text(
-                                        displayCalories.toString(),
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: isCaloriesExceeded
-                                              ? exceededTextColor
-                                              : (isDarkMode
-                                                      ? AppTheme.darkTextColor
-                                                      : AppTheme.textPrimaryColor)
-                                                  .withValues(alpha: 0.85),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    isCaloriesExceeded
-                                        ? context.tr.translate('exceeded')
-                                        : context.tr.translate('remaining'),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: isCaloriesExceeded
-                                          ? exceededColor
-                                          : (isDarkMode
-                                              ? Color(0xFFAEB7CE)
-                                              : AppTheme.textSecondaryColor),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                    Text(
+                                      displayLabel,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: (isCaloriesExceeded && !_showConsumed)
+                                            ? exceededColor
+                                            : (isDarkMode
+                                                ? Color(0xFFAEB7CE)
+                                                : AppTheme.textSecondaryColor),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                        SizedBox(height: 2),
                         // Total de calorias
                         Text(
-                          '$caloriesConsumed / $caloriesGoal kcal',
+                          '${widget.caloriesConsumed}/${widget.caloriesGoal} kcal',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: isCaloriesExceeded
                                 ? exceededColor
                                 : (isDarkMode
@@ -155,30 +228,26 @@ class NutritionCard extends StatelessWidget {
                         // Protein
                         _MacroRow(
                           label: context.tr.translate('protein'),
-                          consumed: proteinConsumed,
-                          goal: proteinGoal,
+                          consumed: widget.proteinConsumed,
+                          goal: widget.proteinGoal,
                           unit: 'g',
                           color: Color(0xFF9575CD),
                           isDarkMode: isDarkMode,
                         ),
-                        SizedBox(height: 6),
-
-                        // Carbs
+                        SizedBox(height: 3),
                         _MacroRow(
                           label: context.tr.translate('carbs'),
-                          consumed: carbsConsumed,
-                          goal: carbsGoal,
+                          consumed: widget.carbsConsumed,
+                          goal: widget.carbsGoal,
                           unit: 'g',
                           color: Color(0xFFFFB74D),
                           isDarkMode: isDarkMode,
                         ),
-                        SizedBox(height: 6),
-
-                        // Fats
+                        SizedBox(height: 3),
                         _MacroRow(
                           label: context.tr.translate('fats'),
-                          consumed: fatsConsumed,
-                          goal: fatsGoal,
+                          consumed: widget.fatsConsumed,
+                          goal: widget.fatsGoal,
                           unit: 'g',
                           color: Color(0xFF4DB6AC),
                           isDarkMode: isDarkMode,
@@ -189,22 +258,7 @@ class NutritionCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Chevron de minimizar na parte inferior
-            if (onMinimize != null)
-              GestureDetector(
-                onTap: onMinimize,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.only(bottom: 4, top: 0),
-                  child: Icon(
-                    Icons.expand_less,
-                    color: isDarkMode ? Colors.white38 : Colors.black26,
-                    size: 22,
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -234,7 +288,7 @@ class _MacroRow extends StatelessWidget {
     final progress = consumed / goal;
     final isExceeded = progress > 1.0;
     final clampedProgress = progress.clamp(0.0, 1.0);
-    final exceededColor = Color(0xFFE57373); // Vermelho suave
+    final exceededColor = Color(0xFFE57373);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,10 +301,11 @@ class _MacroRow extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 13,
-                    color: (isDarkMode
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode
                         ? AppTheme.darkTextColor
-                        : AppTheme.textPrimaryColor).withValues(alpha: 0.85),
+                        : AppTheme.textPrimaryColor,
                   ),
                 ),
                 if (isExceeded) ...[
@@ -264,28 +319,28 @@ class _MacroRow extends StatelessWidget {
               ],
             ),
             Text(
-              '$consumed / $goal$unit',
+              '$consumed/$goal$unit',
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: isExceeded ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 11,
+                fontWeight: isExceeded ? FontWeight.w600 : FontWeight.w500,
                 color: isExceeded
                     ? exceededColor
                     : (isDarkMode
-                        ? Color(0xFFAEB7CE)
-                        : AppTheme.textSecondaryColor).withValues(alpha: 0.85),
+                        ? Colors.white70
+                        : AppTheme.textSecondaryColor),
               ),
             ),
           ],
         ),
-        SizedBox(height: 3),
+        SizedBox(height: 2),
         // Stack para mostrar overflow visual
         Stack(
           children: [
             // Barra de fundo
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(3),
               child: Container(
-                height: 5,
+                height: 4,
                 decoration: BoxDecoration(
                   color: isDarkMode ? Color(0xFF2F2F2F) : Color(0xFFF5F7FA),
                   borderRadius: BorderRadius.circular(4),
@@ -294,16 +349,16 @@ class _MacroRow extends StatelessWidget {
             ),
             // Barra de progresso
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(3),
               child: FractionallySizedBox(
                 widthFactor: clampedProgress,
                 child: Container(
-                  height: 5,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: isExceeded
                         ? exceededColor.withValues(alpha: 0.7)
                         : color.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
               ),
@@ -312,7 +367,7 @@ class _MacroRow extends StatelessWidget {
             if (isExceeded)
               Positioned.fill(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(3),
                   child: CustomPaint(
                     painter: _OverflowStripesPainter(
                       color: exceededColor,
@@ -372,30 +427,30 @@ class CalorieCirclePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 2 - 8;
+    final radius = math.min(size.width, size.height) / 2 - 5;
     final progress = (consumed / goal).clamp(0.0, 1.0);
 
     // Background circle (cinza claro)
     final bgPaint = Paint()
       ..color = isDarkMode ? Color(0xFF3A3A3A) : Color(0xFFF2F4F7)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
+      ..strokeWidth = 5
       ..strokeCap = StrokeCap.round;
 
     canvas.drawCircle(center, radius, bgPaint);
 
     // Progress arc - vermelho se excedeu, rosa se normal
     final progressColor = isExceeded
-        ? Color(0xFFE57373) // Vermelho suave quando excede
-        : Color(0xFFFF6B9D); // Rosa normal
+        ? Color(0xFFE57373)
+        : Color(0xFFFF6B9D);
 
     final progressPaint = Paint()
       ..color = progressColor.withValues(alpha: isExceeded ? 0.7 : 0.45)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
+      ..strokeWidth = 5
       ..strokeCap = StrokeCap.round;
 
-    const startAngle = -math.pi / 2; // Começar no topo
+    const startAngle = -math.pi / 2;
     final sweepAngle = 2 * math.pi * progress;
 
     canvas.drawArc(
