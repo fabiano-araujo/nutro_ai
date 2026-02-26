@@ -1,13 +1,24 @@
 import Flutter
 import UIKit
 import GoogleMobileAds
+import FirebaseCore
+import FirebaseMessaging
+import UserNotifications
 
 @UIApplicationMain
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, MessagingDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Configurar Firebase
+    FirebaseApp.configure()
+    Messaging.messaging().delegate = self
+
+    // Configurar notificações push
+    UNUserNotificationCenter.current().delegate = self
+    application.registerForRemoteNotifications()
+
     GeneratedPluginRegistrant.register(with: self)
     
     // Registrar a factory de anúncios nativos personalizada
