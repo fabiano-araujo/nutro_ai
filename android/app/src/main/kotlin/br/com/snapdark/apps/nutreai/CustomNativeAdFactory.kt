@@ -1,4 +1,4 @@
-package br.com.snapdark.apps.studyai
+package br.com.snapdark.apps.nutreai
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
@@ -26,35 +26,35 @@ class CustomNativeAdFactory(private val context: Context) : NativeAdFactory {
         val rootView = LayoutInflater.from(context).inflate(R.layout.custom_native_ad, null)
         // Obtém a referência para o NativeAdView pelo ID
         val nativeAdView = rootView.findViewById<NativeAdView>(R.id.native_ad_view)
-        
+
         // Garante que a view não tenha um parent antes de usá-la
         val parent = nativeAdView.parent as? ViewGroup
         parent?.removeView(nativeAdView)
 
         // Verifica se o dispositivo está em modo escuro ou claro
-        val isDarkMode = (context.resources.configuration.uiMode and 
+        val isDarkMode = (context.resources.configuration.uiMode and
                 Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        
+
         // Define as cores de texto e fundo com base no modo
         val textColor = if (isDarkMode) Color.WHITE else Color.BLACK
         val attributionBgColor = if (isDarkMode) Color.parseColor("#444444") else Color.parseColor("#F2F2F2")
         val attributionTextColor = if (isDarkMode) Color.parseColor("#AAAAAA") else Color.parseColor("#666666")
-        
+
         // Personaliza as cores dos elementos do anúncio
         nativeAdView.findViewById<TextView>(R.id.ad_headline).setTextColor(textColor)
         nativeAdView.findViewById<TextView>(R.id.ad_advertiser).setTextColor(textColor)
-        
+
         // Personaliza o label "Ad"
         val adAttribution = nativeAdView.findViewById<TextView>(R.id.ad_attribution)
         adAttribution?.apply {
             setBackgroundColor(attributionBgColor)
             setTextColor(attributionTextColor)
         }
-        
+
         // Personaliza o botão CTA programaticamente para garantir cor e bordas arredondadas
         val ctaButton = nativeAdView.findViewById<AppCompatButton>(R.id.ad_call_to_action)
         val buttonColor = Color.parseColor("#6E81F2")
-        
+
         // Aplica drawable programaticamente com bordas arredondadas
         val drawable = GradientDrawable()
         drawable.shape = GradientDrawable.RECTANGLE
@@ -105,4 +105,4 @@ class CustomNativeAdFactory(private val context: Context) : NativeAdFactory {
 
         return nativeAdView
     }
-} 
+}
