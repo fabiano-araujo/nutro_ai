@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -167,20 +168,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   width: 2,
                 ),
               ),
-              child: CircleAvatar(
-                radius: 48,
-                backgroundColor: colorScheme.surfaceContainerHighest,
-                backgroundImage: user.photo != null ? NetworkImage(user.photo!) : null,
-                onBackgroundImageError: user.photo != null
-                    ? (_, __) {}
-                    : null,
-                child: user.photo == null
-                    ? Icon(
-                        Icons.person_rounded,
-                        size: 48,
-                        color: colorScheme.onSurfaceVariant,
+              child: ClipOval(
+                child: user.photo != null
+                    ? CachedNetworkImage(
+                        imageUrl: user.photo!,
+                        width: 96,
+                        height: 96,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          width: 96,
+                          height: 96,
+                          color: colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.person_rounded,
+                            size: 48,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          width: 96,
+                          height: 96,
+                          color: colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.person_rounded,
+                            size: 48,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       )
-                    : null,
+                    : Container(
+                        width: 96,
+                        height: 96,
+                        color: colorScheme.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.person_rounded,
+                          size: 48,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 16),

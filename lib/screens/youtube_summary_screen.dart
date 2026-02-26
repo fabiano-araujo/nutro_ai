@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../i18n/app_localizations.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../services/youtube_service.dart';
@@ -332,17 +333,25 @@ Por favor, forneça:
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              Container(
-                                width: double.infinity,
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  image: DecorationImage(
-                                    image: NetworkImage(
-                                      _videoInfo!['thumbnail'],
-                                    ),
-                                    fit: BoxFit.cover,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CachedNetworkImage(
+                                  imageUrl: _videoInfo!['thumbnail'],
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
+                                    width: double.infinity,
+                                    height: 200,
+                                    color: Colors.grey[300],
+                                    child: Center(child: Icon(Icons.video_library, size: 48, color: Colors.grey)),
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
+                                  errorWidget: (context, url, error) => Container(
+                                    width: double.infinity,
+                                    height: 200,
+                                    color: Colors.grey[300],
+                                    child: Center(child: Icon(Icons.error, size: 48, color: Colors.grey)),
+                                  ),
                                 ),
                               ),
                               Container(

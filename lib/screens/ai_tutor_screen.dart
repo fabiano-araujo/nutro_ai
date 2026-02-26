@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -2157,19 +2158,23 @@ class AITutorScreenState extends State<AITutorScreen>
               child: Center(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
-                  child: Image.network(
-                    thumbnailUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: thumbnailUrl,
                     height: 180,
                     width: 180,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 180,
-                        width: 180,
-                        color: Colors.grey[300],
-                        child: Center(child: Icon(Icons.broken_image)),
-                      );
-                    },
+                    placeholder: (context, url) => Container(
+                      height: 180,
+                      width: 180,
+                      color: Colors.grey[300],
+                      child: Center(child: Icon(Icons.image, color: Colors.grey)),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 180,
+                      width: 180,
+                      color: Colors.grey[300],
+                      child: Center(child: Icon(Icons.broken_image)),
+                    ),
                   ),
                 ),
               ),

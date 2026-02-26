@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
 import '../models/Nutrient.dart';
@@ -945,17 +946,21 @@ class _FoodPageState extends State<FoodPage> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
                               child: currentFood.imageUrl != null
-                                  ? Image.network(
-                                      currentFood.imageUrl!,
+                                  ? CachedNetworkImage(
+                                      imageUrl: currentFood.imageUrl!,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Center(
-                                          child: Text(
-                                            currentFood.emoji,
-                                            style: TextStyle(fontSize: 40),
-                                          ),
-                                        );
-                                      },
+                                      placeholder: (context, url) => Center(
+                                        child: Text(
+                                          currentFood.emoji,
+                                          style: TextStyle(fontSize: 40),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) => Center(
+                                        child: Text(
+                                          currentFood.emoji,
+                                          style: TextStyle(fontSize: 40),
+                                        ),
+                                      ),
                                     )
                                   : Center(
                                       child: Text(
