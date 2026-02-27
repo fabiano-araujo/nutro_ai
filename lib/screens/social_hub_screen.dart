@@ -9,6 +9,25 @@ import '../theme/app_theme.dart';
 import 'friends_screen.dart';
 import 'challenge_detail_screen.dart';
 
+// Controlador global para gerenciar a navegacao interna do SocialHubScreen
+class SocialTabController {
+  static final SocialTabController _instance = SocialTabController._internal();
+
+  factory SocialTabController() => _instance;
+
+  SocialTabController._internal();
+
+  Function(int)? tabChangeCallback;
+
+  void changeTab(int index) {
+    if (tabChangeCallback != null) {
+      tabChangeCallback!(index);
+    }
+  }
+}
+
+final socialTabController = SocialTabController();
+
 class SocialHubScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
 
@@ -26,10 +45,18 @@ class _SocialHubScreenState extends State<SocialHubScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+
+    // Registrar callback para mudanca de aba via notificacao
+    socialTabController.tabChangeCallback = (index) {
+      if (mounted && index >= 0 && index < 3) {
+        _tabController.animateTo(index);
+      }
+    };
   }
 
   @override
   void dispose() {
+    socialTabController.tabChangeCallback = null;
     _tabController.dispose();
     super.dispose();
   }

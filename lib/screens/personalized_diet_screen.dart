@@ -78,6 +78,32 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
     final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context);
+
+    // Check if user is authenticated
+    if (!authService.isAuthenticated || authService.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.translate('login_required_for_diet')),
+          action: SnackBarAction(
+            label: l10n.translate('sign_in'),
+            onPressed: () {
+              // Navigate to login screen
+              Navigator.pushNamed(context, '/login');
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Set auth on diet provider
+    if (!dietProvider.isAuthenticated) {
+      await dietProvider.setAuth(
+        authService.token ?? '',
+        authService.currentUser!.id,
+      );
+    }
 
     // Check if nutrition goals are configured
     if (!nutritionGoals.hasConfiguredGoals) {
@@ -119,6 +145,23 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
     final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context);
+
+    // Check if user is authenticated
+    if (!authService.isAuthenticated || authService.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.translate('login_required_for_diet'))),
+      );
+      return;
+    }
+
+    // Set auth on diet provider if needed
+    if (!dietProvider.isAuthenticated) {
+      await dietProvider.setAuth(
+        authService.token ?? '',
+        authService.currentUser!.id,
+      );
+    }
 
     // Get device locale
     final locale = Localizations.localeOf(context);

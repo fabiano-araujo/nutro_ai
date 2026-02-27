@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import '../util/app_constants.dart';
+import '../screens/main_navigation.dart';
+import '../screens/social_hub_screen.dart';
 
 /// Handler de mensagens em background - deve ser top-level
 @pragma('vm:entry-point')
@@ -110,11 +112,19 @@ class NotificationService {
     final screen = data['screen'];
 
     print('[NotificationService] Navigate to: $screen (type: $type)');
-    // TODO: Implementar navegacao usando navigatorKey global
-    // Por exemplo:
-    // if (type == 'friend_request') {
-    //   navigatorKey.currentState?.pushNamed('/social');
-    // }
+
+    // Navegar para a aba correta baseado no tipo de notificacao
+    if (type == 'friend_request' || type == 'friend_accepted' || type == 'buddy_ping') {
+      // Aba Social = index 2 do navbar
+      navigationController.changeTab(2);
+      // Aba Amigos = index 2 do TabBar interno (com delay para garantir que a tela carregou)
+      Future.delayed(const Duration(milliseconds: 300), () {
+        socialTabController.changeTab(2);
+      });
+    } else if (type == 'streak_risk') {
+      // Aba Dieta = index 1
+      navigationController.changeTab(1);
+    }
   }
 
   /// Trata refresh de token

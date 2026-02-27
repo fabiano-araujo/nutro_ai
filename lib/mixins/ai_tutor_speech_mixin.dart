@@ -82,35 +82,49 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
   void _onSpeechStatus(String status) {
     print('Status do reconhecimento de voz: $status');
 
-    // Em dispositivos Android, implementar continuidade de fala
+    // Em dispositivos Android, implementar escuta contínua
+    // O Android para automaticamente após ~5 segundos de silêncio (limitação do OS)
+    // A solução é reiniciar o listener quando o status for "done"
     if (!kIsWeb && Platform.isAndroid) {
       if (status == 'done' &&
           _isListening &&
           !_isBusyRecovering &&
           !_forceStop) {
-        // Quando o status for "done", garantir que o texto reconhecido seja preservado
-        // para que o botão de enviar apareça, mas manter a escuta ativa
-        if (mounted) {
-          // Usar um pequeno delay para evitar bugs visuais na UI
-          Future.delayed(Duration(milliseconds: 50), () {
-            if (mounted) {
-              setState(() {
-                // Indicar que não está mais escutando para atualizar a UI
-                _isListening = false;
-                _forceStop = true;
-              });
-            }
-          });
-        }
+        print('🎤 AITutorSpeechMixin - Status "done" detectado, reiniciando escuta...');
 
-        // Parar o reconhecimento atual para mostrar o botão de enviar
-        Future.delayed(Duration(milliseconds: 150), () {
-          _speechToText.stop();
-          print(
-              '🎤 AITutorSpeechMixin - Reconhecimento pausado após "done". Botão de enviar visível.');
+        // Marcar como em recuperação para evitar múltiplos reinícios
+        _isBusyRecovering = true;
+
+        // Aguardar os recursos do OS serem liberados antes de reiniciar
+        Future.delayed(Duration(milliseconds: 300), () async {
+          if (mounted && !_forceStop) {
+            try {
+              // Reiniciar o reconhecimento preservando o texto atual
+              await _speechToText.listen(
+                onResult: _onSpeechResult,
+                localeId: 'pt_BR',
+                listenMode: stt.ListenMode.dictation,
+                pauseFor: Duration(seconds: 30),
+                cancelOnError: false,
+                partialResults: true,
+                listenFor: Duration(minutes: 5),
+              );
+              print('🎤 AITutorSpeechMixin - Escuta reiniciada com sucesso');
+            } catch (e) {
+              print('❌ AITutorSpeechMixin - Erro ao reiniciar escuta: $e');
+              if (mounted) {
+                setState(() {
+                  _isListening = false;
+                });
+              }
+            } finally {
+              _isBusyRecovering = false;
+            }
+          } else {
+            _isBusyRecovering = false;
+          }
         });
 
-        // Não tentar reiniciar o reconhecimento automaticamente
         return;
       }
     } else {
@@ -174,7 +188,7 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
 
       // Configurar timer para auto-parar depois de um tempo mesmo se não detectar fala
       // e mostrar o botão de enviar
-      _autoStopTimer = Timer(Duration(minutes: 2), () {
+      _autoStopTimer = Timer(Duration(minutes: 5), () {
         if (_isListening) {
           print('🎤 AITutorSpeechMixin - Auto-stop após timeout');
           if (mounted) {
@@ -261,10 +275,10 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
           onResult: _onSpeechResult,
           localeId: 'pt_BR',
           listenMode: stt.ListenMode.dictation,
-          pauseFor: Duration(seconds: 10), // Reduzido para 10 segundos
+          pauseFor: Duration(seconds: 30), // Aumentado para aguardar mais antes de parar
           cancelOnError: false,
           partialResults: true,
-          listenFor: Duration(minutes: 2), // Mantido em 2 minutos
+          listenFor: Duration(minutes: 5), // Aumentado para permitir ditados mais longos
         );
       } else {
         await _speechToText.listen(

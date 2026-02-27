@@ -119,11 +119,16 @@ class FriendsProvider extends ChangeNotifier {
 
   /// Aceitar pedido
   Future<bool> acceptRequest(int friendshipId) async {
-    if (_token == null) return false;
+    print('[FriendsProvider] acceptRequest - friendshipId: $friendshipId, hasToken: ${_token != null}');
+    if (_token == null) {
+      print('[FriendsProvider] Token is null, cannot accept');
+      return false;
+    }
     final success = await SocialService.acceptFriendRequest(
       token: _token!,
       friendshipId: friendshipId,
     );
+    print('[FriendsProvider] acceptRequest result: $success');
     if (success) {
       await loadAll();
     }

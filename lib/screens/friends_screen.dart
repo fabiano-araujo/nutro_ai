@@ -16,7 +16,7 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<SearchedUser> _searchResults = [];
-  bool _showPendingRequests = false;
+  bool _showPendingRequests = true; // Auto-expand pending requests
   bool _showSentRequests = false;
 
   @override
@@ -118,8 +118,33 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       final request = friendsProvider.receivedRequests[index];
                       return _PendingRequestCard(
                         request: request,
-                        onAccept: () => friendsProvider.acceptRequest(request.id),
-                        onReject: () => friendsProvider.rejectRequest(request.id),
+                        onAccept: () async {
+                          print('[FriendsScreen] Accept button pressed for request.id: ${request.id}');
+                          final success = await friendsProvider.acceptRequest(request.id);
+                          print('[FriendsScreen] Accept result: $success');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(success
+                                    ? 'Pedido aceito! ${request.user.name} agora é seu amigo.'
+                                    : 'Erro ao aceitar pedido'),
+                                backgroundColor: success ? Colors.green : Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        onReject: () async {
+                          final success = await friendsProvider.rejectRequest(request.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(success
+                                    ? 'Pedido rejeitado'
+                                    : 'Erro ao rejeitar pedido'),
+                              ),
+                            );
+                          }
+                        },
                       );
                     },
                     childCount: friendsProvider.receivedRequests.length,
@@ -498,16 +523,47 @@ class _PendingRequestsHeader extends StatelessWidget {
   }
 }
 
-class _PendingRequestCard extends StatelessWidget {
+class _PendingRequestCard extends StatefulWidget {
   final FriendRequest request;
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
+  final Future<void> Function() onAccept;
+  final Future<void> Function() onReject;
 
   const _PendingRequestCard({
     required this.request,
     required this.onAccept,
     required this.onReject,
   });
+
+  @override
+  State<_PendingRequestCard> createState() => _PendingRequestCardState();
+}
+
+class _PendingRequestCardState extends State<_PendingRequestCard> {
+  bool _isLoading = false;
+
+  Future<void> _handleAccept() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      await widget.onAccept();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleReject() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      await widget.onReject();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -520,34 +576,40 @@ class _PendingRequestCard extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).primaryColor.withAlpha(51),
           child: Text(
-            request.user.name.isNotEmpty ? request.user.name[0].toUpperCase() : '?',
+            widget.request.user.name.isNotEmpty ? widget.request.user.name[0].toUpperCase() : '?',
             style: TextStyle(color: Theme.of(context).primaryColor),
           ),
         ),
         title: Text(
-          request.user.name,
+          widget.request.user.name,
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
         ),
         subtitle: Text(
-          _formatTime(request.createdAt),
+          _formatTime(widget.request.createdAt),
           style: TextStyle(
             fontSize: 12,
             color: isDarkMode ? Colors.white54 : Colors.grey,
           ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.red),
-              onPressed: onReject,
-            ),
-            IconButton(
-              icon: const Icon(Icons.check, color: Colors.green),
-              onPressed: onAccept,
-            ),
-          ],
-        ),
+        trailing: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    onPressed: _handleReject,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.check, color: Colors.green),
+                    onPressed: _handleAccept,
+                  ),
+                ],
+              ),
       ),
     );
   }

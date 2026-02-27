@@ -313,14 +313,17 @@ class SocialService {
     required int friendshipId,
   }) async {
     try {
+      final url = '$baseUrl/friends/accept/$friendshipId';
+      print('[SocialService] Accepting friend request: POST $url');
       final response = await http.post(
-        Uri.parse('$baseUrl/friends/accept/$friendshipId'),
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
 
+      print('[SocialService] Accept response: ${response.statusCode} - ${response.body}');
       return response.statusCode == 200;
     } catch (e) {
       print('[SocialService] Erro ao aceitar pedido: $e');

@@ -114,8 +114,10 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
       await _flutterTts.setPitch(_pitch);
       await _flutterTts.setSpeechRate(_rate);
 
-      // Definir o idioma padrão com base no dispositivo
-      await _setLanguage('pt-BR');
+      // Definir o idioma com base no idioma regional do dispositivo
+      final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
+      final deviceLanguageTag = '${deviceLocale.languageCode}-${deviceLocale.countryCode}';
+      await _setLanguage(deviceLanguageTag);
 
       // Carregar as vozes disponíveis
       await _loadVoices();
@@ -179,15 +181,33 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
       // Se não tivermos vozes disponíveis, não há o que fazer
       if (_availableVoices.isEmpty) return;
 
-      // Filtrar vozes por idioma (preferir português)
+      // Obter o idioma regional do dispositivo
+      final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
+      final deviceLanguageTag = '${deviceLocale.languageCode}_${deviceLocale.countryCode}'.toLowerCase();
+      final deviceLanguageTagAlt = '${deviceLocale.languageCode}-${deviceLocale.countryCode}'.toLowerCase();
+
+      print('Idioma do dispositivo: $deviceLanguageTag');
+
+      // Primeiro, tentar encontrar vozes que correspondam exatamente ao idioma regional do dispositivo
+      var exactMatchVoices = _availableVoices
+          .where((voice) =>
+              voice['locale'] != null &&
+              (voice['locale']!.toLowerCase() == deviceLanguageTag ||
+               voice['locale']!.toLowerCase() == deviceLanguageTagAlt ||
+               voice['locale']!.toLowerCase().replaceAll('-', '_') == deviceLanguageTag))
+          .toList();
+
+      // Se não encontrar correspondência exata, usar vozes do mesmo idioma base
       var ptVoices = _availableVoices
           .where((voice) =>
               voice['locale'] != null &&
-              voice['locale']!.toLowerCase().startsWith('pt'))
+              voice['locale']!.toLowerCase().startsWith(deviceLocale.languageCode))
           .toList();
 
-      // Se não tiver vozes em português, usar todas as vozes
-      var candidateVoices = ptVoices.isEmpty ? _availableVoices : ptVoices;
+      // Priorizar correspondência exata, depois idioma base, depois todas as vozes
+      var candidateVoices = exactMatchVoices.isNotEmpty
+          ? exactMatchVoices
+          : (ptVoices.isNotEmpty ? ptVoices : _availableVoices);
 
       // No Android, procurar vozes de alta qualidade
       if (Platform.isAndroid) {
@@ -360,15 +380,31 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
         _currentLanguageCode = matchedLanguage;
         print('TTS language set to: $_currentLanguageCode');
       } else {
-        // Caso não encontre, tenta usar o PT-BR
-        if (languages is List && languages.contains('pt-BR')) {
-          await _flutterTts.setLanguage('pt-BR');
-          _currentLanguageCode = 'pt-BR';
+        // Caso não encontre correspondência exata, tentar o idioma base do dispositivo
+        final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
+        final baseLanguage = deviceLocale.languageCode;
+
+        // Procurar qualquer idioma que comece com o código do idioma do dispositivo
+        String? fallbackLanguage;
+        if (languages is List) {
+          for (final lang in languages) {
+            if (lang.toString().toLowerCase().startsWith(baseLanguage.toLowerCase())) {
+              fallbackLanguage = lang.toString();
+              break;
+            }
+          }
+        }
+
+        if (fallbackLanguage != null) {
+          await _flutterTts.setLanguage(fallbackLanguage);
+          _currentLanguageCode = fallbackLanguage;
+          print('TTS language fallback to: $_currentLanguageCode');
         }
         // Fallback para o primeiro idioma disponível
         else if (languages is List && languages.isNotEmpty) {
           await _flutterTts.setLanguage(languages.first.toString());
           _currentLanguageCode = languages.first.toString();
+          print('TTS language fallback to first available: $_currentLanguageCode');
         }
       }
     } catch (e) {

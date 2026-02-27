@@ -33,6 +33,7 @@ final Map<String, String> ptBRTranslations = {
   'login_to_access_profile': 'Entre para acessar seu perfil',
   'login_description':
       'Entre para ver seu histórico, favoritos e configurações personalizadas.',
+  'login_required_for_diet': 'É necessário estar logado para gerar dietas personalizadas',
   'sign_in': 'Entrar',
   'sign_out': 'Sair da Conta',
   'logout': 'Sair',

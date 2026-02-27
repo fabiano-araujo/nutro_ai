@@ -45,6 +45,9 @@ class AuthService with ChangeNotifier {
         print(
             '[AuthService] Dados de sessão restaurados para: ${_currentUser!.name}');
 
+        // Registrar token FCM para notificacoes push (sessão restaurada)
+        _registerFcmToken();
+
         // Não é mais necessário validar token em background
         // Uma vez que o login é feito, o token é válido enquanto o usuário estiver logado
       } else {

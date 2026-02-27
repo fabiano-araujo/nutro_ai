@@ -33,6 +33,7 @@ final Map<String, String> enUSTranslations = {
   'login_to_access_profile': 'Login to access your profile',
   'login_description':
       'Sign in to view your history, favorites, and personalized settings.',
+  'login_required_for_diet': 'You need to be logged in to generate personalized diets',
   'sign_in': 'Sign in',
   'sign_out': 'Sign Out',
   'logout': 'Log Out',

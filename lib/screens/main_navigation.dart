@@ -18,6 +18,7 @@ import '../providers/friends_provider.dart';
 import '../providers/challenges_provider.dart';
 import '../providers/feed_provider.dart';
 import '../providers/credit_provider.dart';
+import '../providers/diet_plan_provider.dart';
 
 // Controlador global para gerenciar a navegação entre abas
 class NavigationController {
@@ -127,6 +128,7 @@ class _MainNavigationState extends State<MainNavigation> {
     final challengesProvider = context.read<ChallengesProvider>();
     final feedProvider = context.read<FeedProvider>();
     final creditProvider = context.read<CreditProvider>();
+    final dietPlanProvider = context.read<DietPlanProvider>();
 
     if (authService.isAuthenticated && authService.currentUser != null) {
       final userId = authService.currentUser!.id.toString();
@@ -139,6 +141,9 @@ class _MainNavigationState extends State<MainNavigation> {
         challengesProvider.setToken(token);
         feedProvider.setToken(token);
 
+        // Configurar auth para DietPlanProvider (carrega dietas do servidor)
+        dietPlanProvider.setAuth(token, authService.currentUser!.id);
+
         // Carregar créditos do servidor após login
         _loadUserDataFromServer(token, authService.currentUser!.id, creditProvider);
       }
@@ -149,6 +154,7 @@ class _MainNavigationState extends State<MainNavigation> {
       friendsProvider.clearAuth();
       challengesProvider.clearAuth();
       feedProvider.clearAuth();
+      dietPlanProvider.clearAuth();
     }
   }
 

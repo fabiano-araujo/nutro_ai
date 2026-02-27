@@ -10,6 +10,8 @@ import '../providers/daily_meals_provider.dart';
 import '../providers/credit_provider.dart';
 import '../providers/essay_provider.dart';
 import '../providers/food_history_provider.dart';
+import '../providers/diet_plan_provider.dart';
+import '../providers/free_chat_provider.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
@@ -60,6 +62,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Limpar FoodHistoryProvider
       final foodHistoryProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
       await foodHistoryProvider.clearAll();
+
+      // Limpar DietPlanProvider (dietas personalizadas)
+      final dietPlanProvider = Provider.of<DietPlanProvider>(context, listen: false);
+      await dietPlanProvider.clearAll();
+
+      // Limpar FreeChatProvider (conversas livres do AI Tutor)
+      final freeChatProvider = Provider.of<FreeChatProvider>(context, listen: false);
+      await freeChatProvider.clearAll();
 
       print('[ProfileScreen] Todos os dados do usuário foram limpos com sucesso');
     } catch (e) {

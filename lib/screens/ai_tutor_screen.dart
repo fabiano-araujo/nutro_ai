@@ -1364,11 +1364,8 @@ class AITutorScreenState extends State<AITutorScreen>
                                 return messageBubble;
                               } else {
                                 // Exibir botões de ação após a última mensagem da IA
-                                return Padding(
-                                  padding: EdgeInsets.only(top: 4),
-                                  child: _buildActionButtons(
-                                      currentlySpeakingMessageIndex),
-                                );
+                                return _buildActionButtons(
+                                    currentlySpeakingMessageIndex);
                               }
                             },
                           ),
@@ -1951,7 +1948,7 @@ class AITutorScreenState extends State<AITutorScreen>
     final messages = _controller.messages;
 
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.only(top: 0, bottom: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [

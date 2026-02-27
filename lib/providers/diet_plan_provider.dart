@@ -28,6 +28,15 @@ class DietPlanProvider extends ChangeNotifier {
   // Chave fixa para dieta semanal única
   static const String _weeklyKey = 'weekly';
 
+  // Autenticação
+  String? _authToken;
+  int? _userId;
+  bool _isPremium = false;
+
+  // Getters para status de autenticação
+  bool get isAuthenticated => _authToken != null && _userId != null;
+  bool get isPremium => _isPremium;
+
   // Getters
   Map<String, DietPlan> get dietPlans => _dietPlans;
   DietPreferences get preferences => _preferences;
@@ -61,6 +70,13 @@ class DietPlanProvider extends ChangeNotifier {
 
   // Set diet mode
   void setDietMode(DietMode mode) {
+    // Verificar se é modo semanal e se o usuário é premium
+    if (mode == DietMode.weekly && !_isPremium) {
+      _error = 'Dieta semanal disponível apenas para usuários premium';
+      notifyListeners();
+      return;
+    }
+
     _preferences = _preferences.copyWith(dietMode: mode);
     _saveToPreferences();
     notifyListeners();
@@ -68,6 +84,236 @@ class DietPlanProvider extends ChangeNotifier {
 
   DietPlanProvider() {
     _loadFromPreferences();
+  }
+
+  /// Define as credenciais de autenticação e carrega dados do servidor
+  Future<void> setAuth(String token, int userId) async {
+    _authToken = token;
+    _userId = userId;
+    print('🔐 DietPlanProvider: Auth configurado para userId: $userId');
+
+    // Verificar status premium e carregar dietas do servidor
+    await _checkPremiumStatus();
+    await _loadFromServer();
+    notifyListeners();
+  }
+
+  /// Limpa as credenciais de autenticação
+  void clearAuth() {
+    _authToken = null;
+    _userId = null;
+    _isPremium = false;
+    print('🔓 DietPlanProvider: Auth limpo');
+    notifyListeners();
+  }
+
+  /// Verifica se o usuário é premium
+  Future<void> _checkPremiumStatus() async {
+    if (!isAuthenticated) return;
+
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/premium-status'),
+        headers: {
+          'Authorization': 'Bearer $_authToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _isPremium = data['isPremium'] ?? false;
+        print('👑 DietPlanProvider: Status premium: $_isPremium');
+      }
+    } catch (e) {
+      print('❌ DietPlanProvider: Erro ao verificar status premium: $e');
+    }
+  }
+
+  /// Carrega dietas do servidor
+  Future<void> _loadFromServer() async {
+    if (!isAuthenticated) return;
+
+    try {
+      print('📥 DietPlanProvider: Carregando dietas do servidor...');
+
+      final response = await http.get(
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plans'),
+        headers: {
+          'Authorization': 'Bearer $_authToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> plansData = jsonDecode(response.body);
+
+        for (final planData in plansData) {
+          final dateKey = planData['dateKey'] as String;
+          final dietPlan = _parseDietPlanFromServer(planData);
+          _dietPlans[dateKey] = dietPlan;
+        }
+
+        await _saveToPreferences();
+        print('✅ DietPlanProvider: ${plansData.length} dietas carregadas do servidor');
+      }
+    } catch (e) {
+      print('❌ DietPlanProvider: Erro ao carregar do servidor: $e');
+    }
+  }
+
+  /// Converte dados do servidor para DietPlan
+  DietPlan _parseDietPlanFromServer(Map<String, dynamic> data) {
+    final meals = (data['meals'] as List<dynamic>?)?.map((mealData) {
+      final foods = (mealData['foods'] as List<dynamic>?)?.map((foodData) {
+        return PlannedFood(
+          name: foodData['name'] ?? '',
+          emoji: foodData['emoji'] ?? '🍽️',
+          amount: (foodData['amount'] is String)
+              ? double.tryParse(foodData['amount']) ?? 100
+              : (foodData['amount'] as num?)?.toDouble() ?? 100,
+          unit: foodData['unit'] ?? 'g',
+          calories: (foodData['calories'] as num?)?.toInt() ?? 0,
+          protein: (foodData['protein'] is String)
+              ? double.tryParse(foodData['protein']) ?? 0
+              : (foodData['protein'] as num?)?.toDouble() ?? 0,
+          carbs: (foodData['carbs'] is String)
+              ? double.tryParse(foodData['carbs']) ?? 0
+              : (foodData['carbs'] as num?)?.toDouble() ?? 0,
+          fat: (foodData['fat'] is String)
+              ? double.tryParse(foodData['fat']) ?? 0
+              : (foodData['fat'] as num?)?.toDouble() ?? 0,
+        );
+      }).toList() ?? [];
+
+      return PlannedMeal(
+        type: mealData['type'] ?? '',
+        time: mealData['time'] ?? '',
+        name: mealData['name'] ?? '',
+        foods: foods,
+        mealTotals: DailyNutrition(
+          calories: (mealData['calories'] as num?)?.toInt() ?? 0,
+          protein: (mealData['protein'] is String)
+              ? double.tryParse(mealData['protein']) ?? 0
+              : (mealData['protein'] as num?)?.toDouble() ?? 0,
+          carbs: (mealData['carbs'] is String)
+              ? double.tryParse(mealData['carbs']) ?? 0
+              : (mealData['carbs'] as num?)?.toDouble() ?? 0,
+          fat: (mealData['fat'] is String)
+              ? double.tryParse(mealData['fat']) ?? 0
+              : (mealData['fat'] as num?)?.toDouble() ?? 0,
+        ),
+      );
+    }).toList() ?? [];
+
+    return DietPlan(
+      date: data['dateKey'] ?? '',
+      totalNutrition: DailyNutrition(
+        calories: (data['totalCalories'] as num?)?.toInt() ?? 0,
+        protein: (data['totalProtein'] is String)
+            ? double.tryParse(data['totalProtein']) ?? 0
+            : (data['totalProtein'] as num?)?.toDouble() ?? 0,
+        carbs: (data['totalCarbs'] is String)
+            ? double.tryParse(data['totalCarbs']) ?? 0
+            : (data['totalCarbs'] as num?)?.toDouble() ?? 0,
+        fat: (data['totalFat'] is String)
+            ? double.tryParse(data['totalFat']) ?? 0
+            : (data['totalFat'] as num?)?.toDouble() ?? 0,
+      ),
+      meals: meals,
+    );
+  }
+
+  /// Salva dieta no servidor
+  Future<void> _saveToServer(String dateKey, DietPlan plan) async {
+    if (!isAuthenticated) {
+      print('⚠️ DietPlanProvider: Não autenticado, pulando sync com servidor');
+      return;
+    }
+
+    try {
+      print('📤 DietPlanProvider: Salvando dieta no servidor...');
+
+      final body = {
+        'dateKey': dateKey,
+        'dietMode': _preferences.dietMode == DietMode.weekly ? 'weekly' : 'daily',
+        'totalCalories': plan.totalNutrition.calories,
+        'totalProtein': plan.totalNutrition.protein,
+        'totalCarbs': plan.totalNutrition.carbs,
+        'totalFat': plan.totalNutrition.fat,
+        'meals': plan.meals.asMap().entries.map((entry) {
+          final index = entry.key;
+          final meal = entry.value;
+          return {
+            'type': meal.type,
+            'name': meal.name,
+            'time': meal.time,
+            'sortOrder': index,
+            'calories': meal.mealTotals.calories,
+            'protein': meal.mealTotals.protein,
+            'carbs': meal.mealTotals.carbs,
+            'fat': meal.mealTotals.fat,
+            'foods': meal.foods.asMap().entries.map((foodEntry) {
+              final foodIndex = foodEntry.key;
+              final food = foodEntry.value;
+              return {
+                'name': food.name,
+                'emoji': food.emoji,
+                'amount': food.amount,
+                'unit': food.unit,
+                'sortOrder': foodIndex,
+                'calories': food.calories,
+                'protein': food.protein,
+                'carbs': food.carbs,
+                'fat': food.fat,
+              };
+            }).toList(),
+          };
+        }).toList(),
+      };
+
+      final response = await http.post(
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plan'),
+        headers: {
+          'Authorization': 'Bearer $_authToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ DietPlanProvider: Dieta salva no servidor');
+      } else if (response.statusCode == 403) {
+        final data = jsonDecode(response.body);
+        if (data['code'] == 'PREMIUM_REQUIRED') {
+          _error = 'Dieta semanal disponível apenas para usuários premium';
+          _isPremium = false;
+          notifyListeners();
+        }
+      } else {
+        print('❌ DietPlanProvider: Erro ao salvar no servidor: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ DietPlanProvider: Erro ao salvar no servidor: $e');
+    }
+  }
+
+  /// Deleta dieta do servidor
+  Future<void> _deleteFromServer(String dateKey) async {
+    if (!isAuthenticated) return;
+
+    try {
+      await http.delete(
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plan/$dateKey'),
+        headers: {
+          'Authorization': 'Bearer $_authToken',
+          'Content-Type': 'application/json',
+        },
+      );
+      print('✅ DietPlanProvider: Dieta deletada do servidor');
+    } catch (e) {
+      print('❌ DietPlanProvider: Erro ao deletar do servidor: $e');
+    }
   }
 
   // Format date as YYYY-MM-DD
@@ -96,6 +342,20 @@ class DietPlanProvider extends ChangeNotifier {
     String userId = '',
     String languageCode = 'pt_BR',
   }) async {
+    // Verificar se está autenticado
+    if (!isAuthenticated) {
+      _error = 'É necessário estar logado para gerar dietas personalizadas';
+      notifyListeners();
+      return;
+    }
+
+    // Verificar se está tentando usar modo semanal sem ser premium
+    if (_preferences.dietMode == DietMode.weekly && !_isPremium) {
+      _error = 'Dieta semanal disponível apenas para usuários premium';
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     _expectedMealsCount = mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
@@ -260,6 +520,9 @@ class DietPlanProvider extends ChangeNotifier {
       // Save to preferences
       await _saveToPreferences();
 
+      // Save to server
+      await _saveToServer(dateKey, updatedPlan);
+
       notifyListeners();
 
       print('✅ Plano de dieta gerado com sucesso para $dateKey');
@@ -405,6 +668,13 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
     String userId = '',
     String languageCode = 'pt_BR',
   }) async {
+    // Verificar se está autenticado
+    if (!isAuthenticated) {
+      _error = 'É necessário estar logado para modificar dietas';
+      notifyListeners();
+      return;
+    }
+
     final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
     final currentPlan = _dietPlans[dateKey];
 
@@ -533,15 +803,20 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
       // Recalculate total nutrition
       final newTotalNutrition = _calculateTotalNutrition(updatedMeals);
 
-      _dietPlans[dateKey] = currentPlan.copyWith(
+      final updatedPlan = currentPlan.copyWith(
         meals: updatedMeals,
         totalNutrition: newTotalNutrition,
       );
+      _dietPlans[dateKey] = updatedPlan;
 
       _isLoading = false;
       _error = null;
 
       await _saveToPreferences();
+
+      // Save to server
+      await _saveToServer(dateKey, updatedPlan);
+
       notifyListeners();
 
       print('✅ Refeição substituída com sucesso');
@@ -618,11 +893,38 @@ IMPORTANTE:
   }
 
   // Delete diet plan for a date (or weekly plan if in weekly mode)
-  void deleteDietPlan(DateTime date) {
+  Future<void> deleteDietPlan(DateTime date) async {
     final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
     _dietPlans.remove(dateKey);
     _saveToPreferences();
+
+    // Delete from server
+    await _deleteFromServer(dateKey);
+
     notifyListeners();
+  }
+
+  /// Limpa todos os dados de dieta (usado no logout)
+  Future<void> clearAll() async {
+    _dietPlans.clear();
+    _preferences = DietPreferences();
+    _partialDietPlan = null;
+    _isLoading = false;
+    _error = null;
+    _parsedMealIndices.clear();
+
+    // Limpar autenticação
+    _authToken = null;
+    _userId = null;
+    _isPremium = false;
+
+    // Limpar SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('diet_preferences');
+    await prefs.remove('diet_plans');
+
+    notifyListeners();
+    print('✅ DietPlanProvider: Todos os dados de dieta foram limpos');
   }
 
   // Load from SharedPreferences
