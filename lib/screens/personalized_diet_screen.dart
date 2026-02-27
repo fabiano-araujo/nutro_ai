@@ -283,7 +283,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
     return Scaffold(
       backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      floatingActionButton: _buildExpandableFab(isDarkMode),
+      floatingActionButton: Consumer<DietPlanProvider>(
+        builder: (context, dietProvider, _) {
+          // Ocultar FAB quando não há dieta (tela de seleção)
+          if (dietProvider.currentDietPlan == null) {
+            return const SizedBox.shrink();
+          }
+          return _buildExpandableFab(isDarkMode);
+        },
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -426,28 +434,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                   final dietPlan = dietProvider.currentDietPlan;
 
                   if (dietPlan == null) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
-                          const SizedBox(height: 16),
-                          Text(
-                            l10n.translate('no_diet_plan_for_day'),
-                            style: const TextStyle(fontSize: 18, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _generateDietPlan,
-                            icon: const Icon(Icons.auto_awesome),
-                            label: Text(l10n.translate('generate_diet_plan')),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                    return _buildEmptyDietSelection(isDarkMode, l10n, dietProvider);
                   }
 
                   // Altura visível = maxHeight + offset (offset é negativo quando escondendo)
@@ -681,6 +668,256 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           ),
         );
       },
+    );
+  }
+
+  // Widget para seleção de tipo de dieta quando não há dieta
+  Widget _buildEmptyDietSelection(bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider) {
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryTextColor = isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final isPremium = authService.currentUser?.subscription.isPremium ?? false;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 32),
+          // Ícone principal
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.restaurant_menu,
+              size: 64,
+              color: AppTheme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Título
+          Text(
+            l10n.translate('choose_diet_type'),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          // Subtítulo
+          Text(
+            l10n.translate('choose_diet_type_description'),
+            style: TextStyle(
+              fontSize: 14,
+              color: secondaryTextColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+
+          // Card Dieta Semanal (gratuito)
+          _buildDietTypeCard(
+            isDarkMode: isDarkMode,
+            cardColor: cardColor,
+            textColor: textColor,
+            secondaryTextColor: secondaryTextColor,
+            icon: Icons.calendar_view_week,
+            title: l10n.translate('weekly_diet'),
+            description: l10n.translate('weekly_diet_description'),
+            isPremiumFeature: false,
+            isPremiumUser: isPremium,
+            onTap: () async {
+              final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+              final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
+              await dietProvider.createEmptyWeeklyDiet(
+                mealTypes: mealTypesProvider.mealTypes,
+                nutritionGoals: nutritionGoals,
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Card Dieta Diária (premium - gerada por IA)
+          _buildDietTypeCard(
+            isDarkMode: isDarkMode,
+            cardColor: cardColor,
+            textColor: textColor,
+            secondaryTextColor: secondaryTextColor,
+            icon: Icons.auto_awesome,
+            title: l10n.translate('daily_diet_ai'),
+            description: l10n.translate('daily_diet_ai_description'),
+            isPremiumFeature: true,
+            isPremiumUser: isPremium,
+            onTap: () {
+              if (isPremium) {
+                dietProvider.setDietMode(DietMode.daily);
+                _generateDietPlan();
+              } else {
+                // Mostrar dialog de upgrade para premium
+                _showPremiumDialog();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card para seleção de tipo de dieta
+  Widget _buildDietTypeCard({
+    required bool isDarkMode,
+    required Color cardColor,
+    required Color textColor,
+    required Color secondaryTextColor,
+    required IconData icon,
+    required String title,
+    required String description,
+    required bool isPremiumFeature,
+    required bool isPremiumUser,
+    required VoidCallback onTap,
+  }) {
+    final isLocked = isPremiumFeature && !isPremiumUser;
+
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isPremiumFeature
+                  ? Colors.amber.withValues(alpha: 0.5)
+                  : (isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor),
+              width: isPremiumFeature ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Ícone
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isPremiumFeature
+                      ? Colors.amber.withValues(alpha: 0.15)
+                      : AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 28,
+                  color: isPremiumFeature ? Colors.amber[700] : AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Texto
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                        if (isPremiumFeature) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'PRO',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Seta ou cadeado
+              Icon(
+                isLocked ? Icons.lock_outline : Icons.arrow_forward_ios,
+                size: 18,
+                color: isLocked ? Colors.amber[700] : secondaryTextColor,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Dialog para upgrade premium
+  void _showPremiumDialog() {
+    final l10n = AppLocalizations.of(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.amber[700]),
+            const SizedBox(width: 8),
+            Text(l10n.translate('premium_feature')),
+          ],
+        ),
+        content: Text(l10n.translate('daily_diet_premium_description')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.translate('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navegar para tela de assinatura
+              Navigator.pushNamed(context, '/subscription');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber[700],
+            ),
+            child: Text(l10n.translate('upgrade_to_pro')),
+          ),
+        ],
+      ),
     );
   }
 

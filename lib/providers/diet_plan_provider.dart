@@ -904,6 +904,77 @@ IMPORTANTE:
     notifyListeners();
   }
 
+  /// Cria uma dieta semanal vazia com as refeições configuradas
+  Future<void> createEmptyWeeklyDiet({
+    List<MealTypeConfig> mealTypes = const [],
+    NutritionGoalsProvider? nutritionGoals,
+  }) async {
+    // Definir modo como semanal
+    _preferences = _preferences.copyWith(dietMode: DietMode.weekly);
+
+    // Criar lista de refeições vazias baseadas nos tipos configurados
+    final List<PlannedMeal> emptyMeals = [];
+
+    // Se mealTypes foi fornecido, usar. Senão, usar padrões
+    final mealsToCreate = mealTypes.isNotEmpty
+        ? mealTypes
+        : [
+            MealTypeConfig(id: 'breakfast', name: 'Café da Manhã', emoji: '🍳', order: 0),
+            MealTypeConfig(id: 'lunch', name: 'Almoço', emoji: '🍽️', order: 1),
+            MealTypeConfig(id: 'dinner', name: 'Jantar', emoji: '🍝', order: 2),
+          ];
+
+    // Horários padrão para cada refeição
+    final defaultTimes = {
+      'breakfast': '07:00',
+      'morning_snack': '10:00',
+      'lunch': '12:00',
+      'afternoon_snack': '15:00',
+      'dinner': '19:00',
+      'supper': '21:00',
+    };
+
+    for (final mealType in mealsToCreate) {
+      emptyMeals.add(PlannedMeal(
+        type: mealType.id,
+        time: defaultTimes[mealType.id] ?? '12:00',
+        name: mealType.name,
+        foods: [],
+        mealTotals: DailyNutrition(
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        ),
+      ));
+    }
+
+    // Criar plano de dieta vazio
+    final emptyPlan = DietPlan(
+      date: _weeklyKey,
+      totalNutrition: DailyNutrition(
+        calories: nutritionGoals?.caloriesGoal ?? 0,
+        protein: nutritionGoals?.proteinGoal.toDouble() ?? 0,
+        carbs: nutritionGoals?.carbsGoal.toDouble() ?? 0,
+        fat: nutritionGoals?.fatGoal.toDouble() ?? 0,
+      ),
+      meals: emptyMeals,
+    );
+
+    // Salvar o plano
+    _dietPlans[_weeklyKey] = emptyPlan;
+
+    await _saveToPreferences();
+
+    // Salvar no servidor se autenticado
+    if (isAuthenticated) {
+      await _saveToServer(_weeklyKey, emptyPlan);
+    }
+
+    notifyListeners();
+    print('✅ DietPlanProvider: Dieta semanal vazia criada com ${emptyMeals.length} refeições');
+  }
+
   /// Limpa todos os dados de dieta (usado no logout)
   Future<void> clearAll() async {
     _dietPlans.clear();

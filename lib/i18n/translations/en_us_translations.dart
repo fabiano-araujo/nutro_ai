@@ -955,6 +955,14 @@ final Map<String, String> enUSTranslations = {
   'yes_generate_new': 'Yes, Generate New',
   'no_diet_plan_for_day': 'No diet plan for this day',
   'generate_diet_plan': 'Generate Diet Plan',
+  'choose_diet_type': 'Choose Diet Type',
+  'choose_diet_type_description': 'Select how you want to organize your meals',
+  'weekly_diet_description': 'Organize your meals for the whole week manually',
+  'daily_diet_ai': 'Daily Diet with AI',
+  'daily_diet_ai_description': 'Automatically generate a personalized diet plan with artificial intelligence',
+  'premium_feature': 'Premium Feature',
+  'daily_diet_premium_description': 'Automatic AI diet generation is an exclusive feature for Premium subscribers. Upgrade to get access to automatically generated personalized diets!',
+  'upgrade_to_pro': 'Upgrade',
 
   // Statistics Screen
   'stats_7_days': '7 days',

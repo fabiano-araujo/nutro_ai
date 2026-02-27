@@ -1146,6 +1146,14 @@ final Map<String, String> ptBRTranslations = {
   'yes_generate_new': 'Sim, Gerar Novo',
   'no_diet_plan_for_day': 'Nenhum plano de dieta para este dia',
   'generate_diet_plan': 'Gerar Plano de Dieta',
+  'choose_diet_type': 'Escolha o Tipo de Dieta',
+  'choose_diet_type_description': 'Selecione como deseja organizar sua alimentação',
+  'weekly_diet_description': 'Organize suas refeições para a semana toda de forma manual',
+  'daily_diet_ai': 'Dieta Diária com IA',
+  'daily_diet_ai_description': 'Gere automaticamente um plano de dieta personalizado com inteligência artificial',
+  'premium_feature': 'Recurso Premium',
+  'daily_diet_premium_description': 'A geração automática de dietas com IA é um recurso exclusivo para assinantes Premium. Faça upgrade para ter acesso a dietas personalizadas geradas automaticamente!',
+  'upgrade_to_pro': 'Fazer Upgrade',
 
   // Statistics Screen
   'stats_7_days': '7 dias',
