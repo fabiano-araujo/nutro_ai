@@ -39,41 +39,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// Limpa todos os dados do usuário de todos os providers e storage
   Future<void> _clearAllUserData() async {
-    print('[ProfileScreen] Iniciando limpeza de dados do usuário...');
+    print('[🔄 AUTH_DATA] ========== INICIANDO LOGOUT - LIMPEZA DE DADOS ==========');
 
     try {
       // Limpar dados do StorageService (histórico, favoritos, conversas, etc.)
+      print('[🔄 AUTH_DATA] 1/7 Limpando StorageService...');
       final storageService = StorageService();
       await storageService.clearAllUserData();
+      print('[🔄 AUTH_DATA] 1/7 ✅ StorageService limpo');
 
       // Limpar CreditProvider
+      print('[🔄 AUTH_DATA] 2/7 Limpando CreditProvider...');
       final creditProvider = Provider.of<CreditProvider>(context, listen: false);
       await creditProvider.clearUserData();
+      print('[🔄 AUTH_DATA] 2/7 ✅ CreditProvider limpo');
 
       // Limpar EssayProvider
+      print('[🔄 AUTH_DATA] 3/7 Limpando EssayProvider...');
       final essayProvider = Provider.of<EssayProvider>(context, listen: false);
       essayProvider.clearUserData();
+      print('[🔄 AUTH_DATA] 3/7 ✅ EssayProvider limpo');
 
-      // Limpar DailyMealsProvider
+      // Limpar DailyMealsProvider (todas as refeições e dados de água)
+      print('[🔄 AUTH_DATA] 4/7 Limpando DailyMealsProvider...');
       final dailyMealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
       dailyMealsProvider.clearAuth();
-      dailyMealsProvider.clearAllMeals();
+      await dailyMealsProvider.clearAllData();
+      print('[🔄 AUTH_DATA] 4/7 ✅ DailyMealsProvider limpo');
 
       // Limpar FoodHistoryProvider
+      print('[🔄 AUTH_DATA] 5/7 Limpando FoodHistoryProvider...');
       final foodHistoryProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
       await foodHistoryProvider.clearAll();
+      print('[🔄 AUTH_DATA] 5/7 ✅ FoodHistoryProvider limpo');
 
       // Limpar DietPlanProvider (dietas personalizadas)
+      print('[🔄 AUTH_DATA] 6/7 Limpando DietPlanProvider...');
       final dietPlanProvider = Provider.of<DietPlanProvider>(context, listen: false);
       await dietPlanProvider.clearAll();
+      print('[🔄 AUTH_DATA] 6/7 ✅ DietPlanProvider limpo');
 
       // Limpar FreeChatProvider (conversas livres do AI Tutor)
+      print('[🔄 AUTH_DATA] 7/7 Limpando FreeChatProvider...');
       final freeChatProvider = Provider.of<FreeChatProvider>(context, listen: false);
       await freeChatProvider.clearAll();
+      print('[🔄 AUTH_DATA] 7/7 ✅ FreeChatProvider limpo');
 
-      print('[ProfileScreen] Todos os dados do usuário foram limpos com sucesso');
+      // Limpar NutritionGoalsProvider (metas nutricionais)
+      print('[🔄 AUTH_DATA] EXTRA: Limpando NutritionGoalsProvider...');
+      final nutritionGoalsProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+      await nutritionGoalsProvider.clearAllData();
+      print('[🔄 AUTH_DATA] EXTRA: ✅ NutritionGoalsProvider limpo');
+
+      print('[🔄 AUTH_DATA] ========== LOGOUT CONCLUÍDO - TODOS OS DADOS LIMPOS ==========');
     } catch (e) {
-      print('[ProfileScreen] Erro ao limpar dados do usuário: $e');
+      print('[🔄 AUTH_DATA] ❌ ERRO durante limpeza de dados: $e');
     }
   }
 

@@ -37,18 +37,21 @@ class DailyMealsProvider extends ChangeNotifier {
 
   /// Define credenciais de autenticação e carrega dados do servidor
   Future<void> setAuth(String userId, String token) async {
-    print('[DailyMealsProvider] setAuth chamado - userId: $userId');
+    print('[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - userId: $userId');
     _userId = userId;
     _token = token;
+    print('[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - Carregando dados do servidor...');
     await _loadFromServer();
+    print('[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - ✅ Carregamento concluído');
   }
 
   /// Limpa credenciais de autenticação
   void clearAuth() {
-    print('[DailyMealsProvider] clearAuth chamado');
+    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAuth() - Limpando auth...');
     _userId = null;
     _token = null;
     _syncDebounce?.cancel();
+    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAuth() - ✅ Auth limpo');
   }
 
   /// Carrega dados do servidor (últimos 30 dias)
@@ -832,5 +835,34 @@ class DailyMealsProvider extends ChangeNotifier {
   /// Check if today has any meals logged
   bool get hasTodayMeals {
     return totalCalories > 0;
+  }
+
+  /// Limpa todos os dados de refeições e água (usado no logout)
+  Future<void> clearAllData() async {
+    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Iniciando limpeza...');
+    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Refeições antes: ${_mealsByDate.length} dias');
+    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Água antes: ${_waterByDate.length} dias');
+
+    _mealsByDate.clear();
+    _waterByDate.clear();
+
+    // Limpar do SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final removedMeals = await prefs.remove('daily_meals');
+      final removedWater = await prefs.remove('water_by_date');
+      print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater');
+
+      // Verificar se foi removido
+      final checkMeals = prefs.getString('daily_meals');
+      final checkWater = prefs.getString('water_by_date');
+      print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Verificação: meals=${checkMeals == null ? "NULL (OK)" : "TEM DADOS!"}, water=${checkWater == null ? "NULL (OK)" : "TEM DADOS!"}');
+
+      print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - ✅ Todos os dados de refeições foram limpos');
+    } catch (e) {
+      print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - ❌ ERRO: $e');
+    }
+
+    notifyListeners();
   }
 }

@@ -16,7 +16,6 @@ import '../helpers/webview_helper.dart';
 import '../widgets/macro_nutrient_row.dart';
 import '../widgets/sub_nutrient_row.dart';
 import '../widgets/micro_nutrient_row.dart';
-import '../widgets/macro_card_gradient.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
@@ -455,6 +454,55 @@ class _FoodPageState extends State<FoodPage> {
         _currentServingSize = newValue;
       });
     }
+  }
+
+  Widget _buildMacroCardCompact({
+    required String emoji,
+    required String value,
+    required String unit,
+    required Color color,
+    required bool isDarkMode,
+  }) {
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            unit,
+            style: TextStyle(
+              fontSize: 10,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addToMeal(MealType mealType) {
@@ -1149,54 +1197,42 @@ class _FoodPageState extends State<FoodPage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: MacroCardGradient(
-                              icon: '🔥',
-                              label: 'Calorias',
+                            child: _buildMacroCardCompact(
+                              emoji: '🔥',
                               value: calories.toStringAsFixed(0),
                               unit: 'kcal',
-                              startColor: const Color(0xFFFF6B9D),
-                              endColor: const Color(0xFFFFA06B),
+                              color: const Color(0xFFFF6B9D),
                               isDarkMode: isDarkMode,
-                              isCompact: true,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: MacroCardGradient(
-                              icon: '💪',
-                              label: 'Proteínas',
+                            child: _buildMacroCardCompact(
+                              emoji: '💪',
                               value: protein.toStringAsFixed(1),
-                              unit: 'g',
-                              startColor: const Color(0xFF9575CD),
-                              endColor: const Color(0xFFBA68C8),
+                              unit: 'g prot',
+                              color: const Color(0xFF9575CD),
                               isDarkMode: isDarkMode,
-                              isCompact: true,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: MacroCardGradient(
-                              icon: '🌾',
-                              label: 'Carboidratos',
+                            child: _buildMacroCardCompact(
+                              emoji: '🌾',
                               value: carbs.toStringAsFixed(1),
-                              unit: 'g',
-                              startColor: const Color(0xFFFFB74D),
-                              endColor: const Color(0xFFFF9800),
+                              unit: 'g carb',
+                              color: const Color(0xFFFFB74D),
                               isDarkMode: isDarkMode,
-                              isCompact: true,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: MacroCardGradient(
-                              icon: '🥑',
-                              label: 'Gorduras',
+                            child: _buildMacroCardCompact(
+                              emoji: '🥑',
                               value: fat.toStringAsFixed(1),
-                              unit: 'g',
-                              startColor: const Color(0xFF4DB6AC),
-                              endColor: const Color(0xFF26A69A),
+                              unit: 'g gord',
+                              color: const Color(0xFF4DB6AC),
                               isDarkMode: isDarkMode,
-                              isCompact: true,
                             ),
                           ),
                         ],

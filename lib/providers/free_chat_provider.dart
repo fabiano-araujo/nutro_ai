@@ -67,9 +67,12 @@ class FreeChatProvider extends ChangeNotifier {
 
   /// Carrega conversas do armazenamento local
   Future<void> _loadConversations() async {
+    print('[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - Iniciando carregamento...');
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? data = prefs.getString(_storageKey);
+
+      print('[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - Dados no storage: ${data != null ? "${data.length} chars" : "null"}');
 
       if (data != null && data.isNotEmpty) {
         final List<dynamic> jsonList = jsonDecode(data);
@@ -80,23 +83,37 @@ class FreeChatProvider extends ChangeNotifier {
         // Ordenar por última atualização (mais recente primeiro)
         _conversations.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
 
+        print('[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - ✅ Carregadas ${_conversations.length} conversas');
+        for (var conv in _conversations) {
+          print('[🔄 AUTH_DATA]   - "${conv.title}" (${conv.messages.length} msgs, ${conv.lastUpdated})');
+        }
         notifyListeners();
-        print('✅ FreeChatProvider: Carregadas ${_conversations.length} conversas');
+      } else {
+        print('[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - Nenhuma conversa encontrada no storage');
+        _conversations = [];
       }
     } catch (e) {
-      print('❌ FreeChatProvider: Erro ao carregar conversas: $e');
+      print('[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - ❌ ERRO: $e');
     }
+  }
+
+  /// Recarrega conversas do storage (usado após login)
+  Future<void> reloadConversations() async {
+    print('[🔄 AUTH_DATA] FreeChatProvider.reloadConversations() - Chamado');
+    await _loadConversations();
   }
 
   /// Salva conversas no armazenamento local
   Future<void> _saveConversations() async {
+    print('[🔄 AUTH_DATA] FreeChatProvider._saveConversations() - Salvando ${_conversations.length} conversas...');
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = _conversations.map((c) => c.toJson()).toList();
-      await prefs.setString(_storageKey, jsonEncode(jsonList));
-      print('✅ FreeChatProvider: Conversas salvas');
+      final jsonString = jsonEncode(jsonList);
+      await prefs.setString(_storageKey, jsonString);
+      print('[🔄 AUTH_DATA] FreeChatProvider._saveConversations() - ✅ Salvo (${jsonString.length} chars)');
     } catch (e) {
-      print('❌ FreeChatProvider: Erro ao salvar conversas: $e');
+      print('[🔄 AUTH_DATA] FreeChatProvider._saveConversations() - ❌ ERRO: $e');
     }
   }
 
@@ -214,8 +231,25 @@ class FreeChatProvider extends ChangeNotifier {
 
   /// Limpa todas as conversas
   Future<void> clearAll() async {
+    print('[🔄 AUTH_DATA] FreeChatProvider.clearAll() - Limpando ${_conversations.length} conversas...');
+
+    // Limpar lista em memória
     _conversations.clear();
-    await _saveConversations();
+
+    // Limpar diretamente do SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final removed = await prefs.remove(_storageKey);
+      print('[🔄 AUTH_DATA] FreeChatProvider.clearAll() - SharedPreferences.remove("$_storageKey"): $removed');
+
+      // Verificar se realmente foi removido
+      final checkData = prefs.getString(_storageKey);
+      print('[🔄 AUTH_DATA] FreeChatProvider.clearAll() - Verificação após remoção: ${checkData == null ? "NULL (OK)" : "AINDA TEM DADOS!"}');
+    } catch (e) {
+      print('[🔄 AUTH_DATA] FreeChatProvider.clearAll() - ❌ ERRO ao limpar SharedPreferences: $e');
+    }
+
     notifyListeners();
+    print('[🔄 AUTH_DATA] FreeChatProvider.clearAll() - ✅ Concluído. Lista atual: ${_conversations.length} conversas');
   }
 }

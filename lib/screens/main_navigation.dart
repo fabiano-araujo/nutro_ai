@@ -129,32 +129,86 @@ class _MainNavigationState extends State<MainNavigation> {
     final feedProvider = context.read<FeedProvider>();
     final creditProvider = context.read<CreditProvider>();
     final dietPlanProvider = context.read<DietPlanProvider>();
+    final freeChatProvider = context.read<FreeChatProvider>();
 
     if (authService.isAuthenticated && authService.currentUser != null) {
       final userId = authService.currentUser!.id.toString();
       final token = authService.token ?? '';
       if (token.isNotEmpty) {
-        print('[MainNavigation] Configurando auth para sync de refeições e social - userId: $userId');
+        print('[🔄 AUTH_DATA] ========== LOGIN DETECTADO ==========');
+        print('[🔄 AUTH_DATA] UserId: $userId');
+        print('[🔄 AUTH_DATA] Configurando providers...');
+
         dailyMealsProvider.setAuth(userId, token);
+        print('[🔄 AUTH_DATA] ✅ DailyMealsProvider configurado');
+
         streakProvider.setToken(token);
+        print('[🔄 AUTH_DATA] ✅ StreakProvider configurado');
+
         friendsProvider.setToken(token);
+        print('[🔄 AUTH_DATA] ✅ FriendsProvider configurado');
+
         challengesProvider.setToken(token);
+        print('[🔄 AUTH_DATA] ✅ ChallengesProvider configurado');
+
         feedProvider.setToken(token);
+        print('[🔄 AUTH_DATA] ✅ FeedProvider configurado');
 
         // Configurar auth para DietPlanProvider (carrega dietas do servidor)
         dietPlanProvider.setAuth(token, authService.currentUser!.id);
+        print('[🔄 AUTH_DATA] ✅ DietPlanProvider configurado');
+
+        // Recarregar conversas do FreeChatProvider (dados locais do usuário)
+        print('[🔄 AUTH_DATA] Recarregando FreeChatProvider...');
+        freeChatProvider.reloadConversations();
+        print('[🔄 AUTH_DATA] ✅ FreeChatProvider recarregado');
 
         // Carregar créditos do servidor após login
         _loadUserDataFromServer(token, authService.currentUser!.id, creditProvider);
+
+        // Forçar recriação do AITutorScreen para carregar dados do usuário
+        print('[🔄 AUTH_DATA] Forçando recriação do AITutorScreen para login...');
+        setState(() {
+          _aiTutorKey = UniqueKey();
+          _currentMode = 'diary';
+          _currentFreeChatId = null;
+        });
+        print('[🔄 AUTH_DATA] ✅ AITutorScreen será recriado');
+
+        print('[🔄 AUTH_DATA] ========== LOGIN CONFIGURAÇÃO CONCLUÍDA ==========');
       }
     } else {
-      print('[MainNavigation] Limpando auth de sync de refeições e social');
+      print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
+      print('[🔄 AUTH_DATA] Limpando auth de todos os providers...');
+
       dailyMealsProvider.clearAuth();
+      print('[🔄 AUTH_DATA] ✅ DailyMealsProvider limpo');
+
       streakProvider.clearAuth();
+      print('[🔄 AUTH_DATA] ✅ StreakProvider limpo');
+
       friendsProvider.clearAuth();
+      print('[🔄 AUTH_DATA] ✅ FriendsProvider limpo');
+
       challengesProvider.clearAuth();
+      print('[🔄 AUTH_DATA] ✅ ChallengesProvider limpo');
+
       feedProvider.clearAuth();
+      print('[🔄 AUTH_DATA] ✅ FeedProvider limpo');
+
       dietPlanProvider.clearAuth();
+      print('[🔄 AUTH_DATA] ✅ DietPlanProvider limpo');
+
+      // Forçar recriação do AITutorScreen para limpar estado visual
+      print('[🔄 AUTH_DATA] Forçando recriação do AITutorScreen...');
+      setState(() {
+        _aiTutorKey = UniqueKey();
+        _currentMode = 'diary';
+        _currentFreeChatId = null;
+      });
+      print('[🔄 AUTH_DATA] ✅ AITutorScreen será recriado');
+
+      print('[🔄 AUTH_DATA] ========== LOGOUT AUTH LIMPEZA CONCLUÍDA ==========');
     }
   }
 

@@ -70,13 +70,6 @@ class DietPlanProvider extends ChangeNotifier {
 
   // Set diet mode
   void setDietMode(DietMode mode) {
-    // Verificar se é modo semanal e se o usuário é premium
-    if (mode == DietMode.weekly && !_isPremium) {
-      _error = 'Dieta semanal disponível apenas para usuários premium';
-      notifyListeners();
-      return;
-    }
-
     _preferences = _preferences.copyWith(dietMode: mode);
     _saveToPreferences();
     notifyListeners();
@@ -113,7 +106,7 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       final response = await http.get(
-        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/premium-status'),
+        Uri.parse('${AppConstants.API_BASE_URL}/diet/premium-status'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -138,7 +131,7 @@ class DietPlanProvider extends ChangeNotifier {
       print('📥 DietPlanProvider: Carregando dietas do servidor...');
 
       final response = await http.get(
-        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plans'),
+        Uri.parse('${AppConstants.API_BASE_URL}/diet/plans'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -273,7 +266,7 @@ class DietPlanProvider extends ChangeNotifier {
       };
 
       final response = await http.post(
-        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plan'),
+        Uri.parse('${AppConstants.API_BASE_URL}/diet/plan'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -304,7 +297,7 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       await http.delete(
-        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plan/$dateKey'),
+        Uri.parse('${AppConstants.API_BASE_URL}/diet/plan/$dateKey'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -349,9 +342,10 @@ class DietPlanProvider extends ChangeNotifier {
       return;
     }
 
-    // Verificar se está tentando usar modo semanal sem ser premium
-    if (_preferences.dietMode == DietMode.weekly && !_isPremium) {
-      _error = 'Dieta semanal disponível apenas para usuários premium';
+    // Verificar se está tentando usar modo diário sem ser premium
+    // Dieta semanal é gratuita, dieta diária é paga
+    if (_preferences.dietMode == DietMode.daily && !_isPremium) {
+      _error = 'daily_diet_premium_required';
       notifyListeners();
       return;
     }
@@ -977,6 +971,9 @@ IMPORTANTE:
 
   /// Limpa todos os dados de dieta (usado no logout)
   Future<void> clearAll() async {
+    print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Iniciando limpeza...');
+    print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Dietas antes: ${_dietPlans.length}');
+
     _dietPlans.clear();
     _preferences = DietPreferences();
     _partialDietPlan = null;
@@ -990,12 +987,22 @@ IMPORTANTE:
     _isPremium = false;
 
     // Limpar SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('diet_preferences');
-    await prefs.remove('diet_plans');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final removedPrefs = await prefs.remove('diet_preferences');
+      final removedPlans = await prefs.remove('diet_plans');
+      print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - SharedPreferences: prefs=$removedPrefs, plans=$removedPlans');
+
+      // Verificar se foi removido
+      final checkPrefs = prefs.getString('diet_preferences');
+      final checkPlans = prefs.getString('diet_plans');
+      print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Verificação: prefs=${checkPrefs == null ? "NULL (OK)" : "TEM DADOS!"}, plans=${checkPlans == null ? "NULL (OK)" : "TEM DADOS!"}');
+    } catch (e) {
+      print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - ❌ ERRO ao limpar SharedPreferences: $e');
+    }
 
     notifyListeners();
-    print('✅ DietPlanProvider: Todos os dados de dieta foram limpos');
+    print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - ✅ Todos os dados de dieta foram limpos');
   }
 
   // Load from SharedPreferences

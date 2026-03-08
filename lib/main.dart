@@ -8,7 +8,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
@@ -48,8 +47,6 @@ void main() async {
   if (!kIsWeb) {
     try {
       await Firebase.initializeApp();
-      // Configurar handler de mensagens em background
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       // Inicializar servico de notificacoes
       await NotificationService().initialize();
       print('[Main] Firebase initialized');

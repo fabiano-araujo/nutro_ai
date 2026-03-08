@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_model.dart';
@@ -7,11 +8,16 @@ import 'api_service.dart';
 import 'notification_service.dart';
 
 class AuthService with ChangeNotifier {
+  static const String _webGoogleClientId =
+      '853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com';
+
   User? _currentUser;
   String? _token;
   bool _isLoading = false;
   String? _errorMessage; // Para armazenar mensagens de erro
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb ? _webGoogleClientId : null,
+  );
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   User? get currentUser => _currentUser;

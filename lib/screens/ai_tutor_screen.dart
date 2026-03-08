@@ -1943,6 +1943,20 @@ class AITutorScreenState extends State<AITutorScreen>
     }
   }
 
+  // Método para criar um botão de ação com cor baseada no tema
+  Widget _buildActionIcon(IconData icon, VoidCallback onPressed) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor;
+
+    return IconButton(
+      icon: Icon(icon, color: iconColor, size: 20),
+      onPressed: onPressed,
+      splashRadius: 20,
+      constraints: BoxConstraints(),
+      padding: EdgeInsets.all(8),
+    );
+  }
+
   // Widget para os botões de ação abaixo da última mensagem
   Widget _buildActionButtons(int? currentlySpeakingMessageIndex) {
     final messages = _controller.messages;
@@ -1952,7 +1966,7 @@ class AITutorScreenState extends State<AITutorScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          MessageUIHelper.buildActionButton(Icons.content_copy, () {
+          _buildActionIcon(Icons.content_copy, () {
             // Copiar última mensagem da IA
             if (messages.isNotEmpty) {
               int lastAIIndex = messages.length - 1;
@@ -1977,7 +1991,7 @@ class AITutorScreenState extends State<AITutorScreen>
           SizedBox(width: 12), // Espaçamento menor entre os ícones
           GestureDetector(
             onLongPress: _showVoiceSettingsDialog,
-            child: MessageUIHelper.buildActionButton(
+            child: _buildActionIcon(
                 isSpeaking &&
                         currentlySpeakingMessageIndex == messages.length - 1
                     ? Icons.stop
@@ -1988,7 +2002,7 @@ class AITutorScreenState extends State<AITutorScreen>
             }),
           ),
           SizedBox(width: 16),
-          MessageUIHelper.buildActionButton(Icons.refresh_outlined, () async {
+          _buildActionIcon(Icons.refresh_outlined, () async {
             // Regenerar resposta - verificar se há créditos suficientes
             final hadEnoughCredits =
                 await _controller.regenerateLastResponse(context);

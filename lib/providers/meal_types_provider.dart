@@ -51,11 +51,20 @@ class MealTypeConfig {
 class MealTypesProvider extends ChangeNotifier {
   List<MealTypeConfig> _mealTypes = [];
   static const String _storageKey = 'meal_types_config';
+  bool _isLoaded = false;
 
   List<MealTypeConfig> get mealTypes => List.unmodifiable(_mealTypes);
+  bool get isLoaded => _isLoaded;
 
   MealTypesProvider() {
     _loadMealTypes();
+  }
+
+  /// Ensure meal types are loaded before using
+  Future<void> ensureLoaded() async {
+    if (!_isLoaded) {
+      await _loadMealTypes();
+    }
   }
 
   // Load meal types from storage or use defaults
@@ -80,6 +89,7 @@ class MealTypesProvider extends ChangeNotifier {
       print('Error loading meal types: $e');
       _setDefaultMealTypes();
     }
+    _isLoaded = true;
     notifyListeners();
   }
 

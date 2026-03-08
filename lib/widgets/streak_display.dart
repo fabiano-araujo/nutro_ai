@@ -296,8 +296,8 @@ class StreakDetailCard extends StatelessWidget {
                     icon: Text('❄️'),
                     label: Text(context.tr.translate('activate_freeze')),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue,
-                      side: BorderSide(color: Colors.blue.withValues(alpha: 0.5)),
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
                     ),
                   ),
                 ),

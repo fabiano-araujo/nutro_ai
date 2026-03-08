@@ -417,16 +417,21 @@ class StorageService {
   /// Limpa todos os dados do usuário (chamado durante logout)
   /// Isso inclui histórico, favoritos, créditos e conversas do chat
   Future<void> clearAllUserData() async {
+    print('[🔄 AUTH_DATA] StorageService.clearAllUserData() - Iniciando limpeza...');
+
     try {
       final prefs = await SharedPreferences.getInstance();
 
       // Limpar histórico e favoritos
+      print('[🔄 AUTH_DATA] StorageService.clearAllUserData() - Removendo histórico, favoritos, créditos...');
       await prefs.remove(_historyKey);
       await prefs.remove(_favoritesKey);
       await prefs.remove(_creditDataKey);
 
       // Limpar todas as conversas de nutrição (chaves que começam com 'nutrition_chat_')
       final allKeys = prefs.getKeys();
+      final keysToRemove = <String>[];
+
       for (final key in allKeys) {
         if (key.startsWith('nutrition_chat_') ||
             key.startsWith('daily_meals_') ||
@@ -437,16 +442,37 @@ class StorageService {
             key.startsWith('streak_') ||
             key.startsWith('free_chat_') ||
             key.startsWith('conversation_')) {
-          await prefs.remove(key);
+          keysToRemove.add(key);
         }
       }
 
-      print('[StorageService] Todos os dados do usuário foram limpos');
+      print('[🔄 AUTH_DATA] StorageService.clearAllUserData() - Encontradas ${keysToRemove.length} chaves para remover:');
+      for (final key in keysToRemove) {
+        print('[🔄 AUTH_DATA]   - $key');
+        await prefs.remove(key);
+      }
+
+      // Verificar chaves restantes
+      final remainingKeys = prefs.getKeys();
+      final relevantRemainingKeys = remainingKeys.where((key) =>
+          key.startsWith('nutrition_chat_') ||
+          key.startsWith('daily_meals_') ||
+          key.startsWith('food_history_') ||
+          key.startsWith('free_chat_') ||
+          key.startsWith('conversation_'));
+
+      if (relevantRemainingKeys.isNotEmpty) {
+        print('[🔄 AUTH_DATA] StorageService.clearAllUserData() - ⚠️ AVISO: Chaves ainda presentes: $relevantRemainingKeys');
+      } else {
+        print('[🔄 AUTH_DATA] StorageService.clearAllUserData() - ✅ Todas as chaves relevantes foram removidas');
+      }
+
+      print('[🔄 AUTH_DATA] StorageService.clearAllUserData() - ✅ Todos os dados do usuário foram limpos');
 
       // Notificar que o histórico foi atualizado (agora vazio)
       _eventService.notifyHistoryUpdated();
     } catch (e) {
-      print('[StorageService] Erro ao limpar dados do usuário: $e');
+      print('[🔄 AUTH_DATA] StorageService.clearAllUserData() - ❌ ERRO: $e');
     }
   }
 }

@@ -604,4 +604,46 @@ class NutritionGoalsProvider extends ChangeNotifier {
             .replaceAll('{fat}', '$_fatPercentage');
     }
   }
+
+  /// Limpa todas as metas nutricionais (usado no logout)
+  Future<void> clearAllData() async {
+    print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - Iniciando limpeza...');
+
+    // Resetar para valores padrão
+    _sex = 'male';
+    _age = 30;
+    _weight = 70.0;
+    _height = 170.0;
+    _bodyFat = null;
+    _heightUnit = HeightUnit.cm;
+    _weightUnit = WeightUnit.kg;
+    _activityLevel = ActivityLevel.moderatelyActive;
+    _fitnessGoal = FitnessGoal.maintainWeight;
+    _formula = CalculationFormula.mifflinStJeor;
+    _dietType = DietType.balanced;
+    _carbsPercentage = 50;
+    _proteinPercentage = 20;
+    _fatPercentage = 30;
+    _useCalculatedGoals = true;
+    _manualCaloriesGoal = 2000;
+    _manualProteinGoal = 150;
+    _manualCarbsGoal = 250;
+    _manualFatGoal = 67;
+    _hasConfiguredGoals = false;
+
+    // Limpar do SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keysToRemove = prefs.getKeys().where((key) => key.startsWith('nutrition_')).toList();
+      print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - Removendo ${keysToRemove.length} chaves: $keysToRemove');
+      for (final key in keysToRemove) {
+        await prefs.remove(key);
+      }
+      print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - ✅ Todas as metas nutricionais foram limpas');
+    } catch (e) {
+      print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - ❌ ERRO: $e');
+    }
+
+    notifyListeners();
+  }
 }
