@@ -70,8 +70,8 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Chave para reiniciar o AITutorScreen
-  Key _aiTutorKey = UniqueKey();
+  // Chave para reiniciar o NutritionAssistantScreen
+  Key _nutritionAssistantKey = UniqueKey();
 
   // Modo atual: 'diary' para diário (com JSON/calendário), 'free_chat' para conversa livre
   String _currentMode = 'diary';
@@ -122,7 +122,8 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   /// Atualiza o DailyMealsProvider e providers sociais com as credenciais de auth
-  void _updateMealsProviderAuth(AuthService authService, DailyMealsProvider dailyMealsProvider) {
+  void _updateMealsProviderAuth(
+      AuthService authService, DailyMealsProvider dailyMealsProvider) {
     final streakProvider = context.read<StreakProvider>();
     final friendsProvider = context.read<FriendsProvider>();
     final challengesProvider = context.read<ChallengesProvider>();
@@ -164,18 +165,21 @@ class _MainNavigationState extends State<MainNavigation> {
         print('[🔄 AUTH_DATA] ✅ FreeChatProvider recarregado');
 
         // Carregar créditos do servidor após login
-        _loadUserDataFromServer(token, authService.currentUser!.id, creditProvider);
+        _loadUserDataFromServer(
+            token, authService.currentUser!.id, creditProvider);
 
-        // Forçar recriação do AITutorScreen para carregar dados do usuário
-        print('[🔄 AUTH_DATA] Forçando recriação do AITutorScreen para login...');
+        // Forçar recriação do NutritionAssistantScreen para carregar dados do usuário
+        print(
+            '[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen para login...');
         setState(() {
-          _aiTutorKey = UniqueKey();
+          _nutritionAssistantKey = UniqueKey();
           _currentMode = 'diary';
           _currentFreeChatId = null;
         });
-        print('[🔄 AUTH_DATA] ✅ AITutorScreen será recriado');
+        print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
 
-        print('[🔄 AUTH_DATA] ========== LOGIN CONFIGURAÇÃO CONCLUÍDA ==========');
+        print(
+            '[🔄 AUTH_DATA] ========== LOGIN CONFIGURAÇÃO CONCLUÍDA ==========');
       }
     } else {
       print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
@@ -199,21 +203,23 @@ class _MainNavigationState extends State<MainNavigation> {
       dietPlanProvider.clearAuth();
       print('[🔄 AUTH_DATA] ✅ DietPlanProvider limpo');
 
-      // Forçar recriação do AITutorScreen para limpar estado visual
-      print('[🔄 AUTH_DATA] Forçando recriação do AITutorScreen...');
+      // Forçar recriação do NutritionAssistantScreen para limpar estado visual
+      print('[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen...');
       setState(() {
-        _aiTutorKey = UniqueKey();
+        _nutritionAssistantKey = UniqueKey();
         _currentMode = 'diary';
         _currentFreeChatId = null;
       });
-      print('[🔄 AUTH_DATA] ✅ AITutorScreen será recriado');
+      print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
 
-      print('[🔄 AUTH_DATA] ========== LOGOUT AUTH LIMPEZA CONCLUÍDA ==========');
+      print(
+          '[🔄 AUTH_DATA] ========== LOGOUT AUTH LIMPEZA CONCLUÍDA ==========');
     }
   }
 
   /// Carrega dados do usuário do servidor (créditos, etc.)
-  Future<void> _loadUserDataFromServer(String token, int userId, CreditProvider creditProvider) async {
+  Future<void> _loadUserDataFromServer(
+      String token, int userId, CreditProvider creditProvider) async {
     try {
       print('[MainNavigation] Carregando dados do usuário do servidor...');
       final userData = await ApiService.getUserData(token, userId);
@@ -243,7 +249,7 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       _currentMode = 'free_chat';
       _currentFreeChatId = null;
-      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
+      _nutritionAssistantKey = UniqueKey(); // Forçar recriação do widget
     });
   }
 
@@ -252,7 +258,7 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       _currentMode = 'diary';
       _currentFreeChatId = null;
-      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
+      _nutritionAssistantKey = UniqueKey(); // Forçar recriação do widget
     });
   }
 
@@ -261,7 +267,7 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       _currentMode = 'free_chat';
       _currentFreeChatId = chatId;
-      _aiTutorKey = UniqueKey(); // Forçar recriação do widget
+      _nutritionAssistantKey = UniqueKey(); // Forçar recriação do widget
     });
   }
 
@@ -283,68 +289,68 @@ class _MainNavigationState extends State<MainNavigation> {
         key: _scaffoldKey,
         drawer: _buildDrawer(isDarkMode),
         body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          // Aba 0: Início / Chat
-          AITutorScreen(
-            key: _aiTutorKey,
-            isFreeChat: _currentMode == 'free_chat',
-            freeChatId: _currentFreeChatId,
-            onOpenDrawer: _openDrawer,
-          ),
+          index: _selectedIndex,
+          children: [
+            // Aba 0: Início / Chat
+            NutritionAssistantScreen(
+              key: _nutritionAssistantKey,
+              isFreeChat: _currentMode == 'free_chat',
+              freeChatId: _currentFreeChatId,
+              onOpenDrawer: _openDrawer,
+            ),
 
-          // Aba 1: Minha Dieta
-          PersonalizedDietScreen(
-            onOpenDrawer: _openDrawer,
-            onSearchPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FoodSearchScreen(),
-                ),
-              );
-            },
-          ),
+            // Aba 1: Minha Dieta
+            PersonalizedDietScreen(
+              onOpenDrawer: _openDrawer,
+              onSearchPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FoodSearchScreen(),
+                  ),
+                );
+              },
+            ),
 
-          // Aba 2: Social
-          SocialHubScreen(onOpenDrawer: _openDrawer),
+            // Aba 2: Social
+            SocialHubScreen(onOpenDrawer: _openDrawer),
 
-          // Aba 3: Perfil
-          ProfileTabWrapper(onOpenDrawer: _openDrawer),
-        ],
+            // Aba 3: Perfil
+            ProfileTabWrapper(onOpenDrawer: _openDrawer),
+          ],
         ),
         bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-        type: BottomNavigationBarType.fixed,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        selectedItemColor: isDarkMode ? Colors.white : Colors.black,
-        unselectedItemColor: isDarkMode ? Colors.grey[600] : Colors.grey[700],
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: context.tr.translate('home') ?? 'Início',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            activeIcon: Icon(Icons.restaurant_menu),
-            label: context.tr.translate('my_diet') ?? 'Minha Dieta',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Social',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: context.tr.translate('profile') ?? 'Perfil',
-          ),
-        ],
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          elevation: 0,
+          type: BottomNavigationBarType.fixed,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+          selectedItemColor: isDarkMode ? Colors.white : Colors.black,
+          unselectedItemColor: isDarkMode ? Colors.grey[600] : Colors.grey[700],
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              activeIcon: Icon(Icons.chat_bubble),
+              label: context.tr.translate('home') ?? 'Início',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.restaurant_menu_outlined),
+              activeIcon: Icon(Icons.restaurant_menu),
+              label: context.tr.translate('my_diet') ?? 'Minha Dieta',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_outline),
+              activeIcon: Icon(Icons.people),
+              label: 'Social',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: context.tr.translate('profile') ?? 'Perfil',
+            ),
+          ],
         ),
       ),
     );
@@ -575,7 +581,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 setState(() {
                   _currentMode = 'diet';
                   _currentFreeChatId = null;
-                  _aiTutorKey = UniqueKey();
+                  _nutritionAssistantKey = UniqueKey();
                 });
               }
             },

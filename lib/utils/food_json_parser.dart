@@ -11,7 +11,8 @@ class FoodJsonParser {
       final normalized = message.replaceAll('\n', '').replaceAll('\r', '');
 
       // Procurar por padrões como: {"foods": ou {\"foods\":
-      if (!normalized.contains('"foods"') && !normalized.contains('\\"foods\\"')) {
+      if (!normalized.contains('"foods"') &&
+          !normalized.contains('\\"foods\\"')) {
         return false;
       }
 
@@ -20,9 +21,78 @@ class FoodJsonParser {
       if (jsonStr == null) return false;
 
       final decoded = jsonDecode(jsonStr);
-      return decoded is Map && decoded.containsKey('foods') && decoded['foods'] is List;
+      return decoded is Map &&
+          decoded.containsKey('foods') &&
+          decoded['foods'] is List;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Detecta o início de um JSON de refeição ainda incompleto no stream.
+  /// Isso permite esconder o payload bruto antes do JSON estar completo.
+  static int? findFoodJsonCandidateStart(String message) {
+    try {
+      if (message.trim().isEmpty) return null;
+
+      final completeJson = extractFoodJson(message);
+      if (completeJson != null) {
+        final completeStart = message.indexOf(completeJson);
+        if (completeStart != -1) {
+          return completeStart;
+        }
+      }
+
+      final firstNonWhitespace = message.indexOf(RegExp(r'\S'));
+      if (firstNonWhitespace != -1 && message[firstNonWhitespace] == '{') {
+        final trimmedStart = message.substring(firstNonWhitespace);
+
+        if (trimmedStart.contains('"mealType"') ||
+            trimmedStart.contains('\\"mealType\\"') ||
+            trimmedStart.contains('"foods"') ||
+            trimmedStart.contains('\\"foods\\"') ||
+            trimmedStart.startsWith('{')) {
+          return firstNonWhitespace;
+        }
+      }
+
+      final inlineMealTypeMatch =
+          RegExp(r'\{\s*\\?"mealType').firstMatch(message);
+      if (inlineMealTypeMatch != null) {
+        return inlineMealTypeMatch.start;
+      }
+
+      final inlineFoodsMatch = RegExp(r'\{\s*\\?"foods').firstMatch(message);
+      if (inlineFoodsMatch != null) {
+        return inlineFoodsMatch.start;
+      }
+
+      final multilineJsonMatch = RegExp(r'[\r\n]\s*\{').firstMatch(message);
+      if (multilineJsonMatch != null) {
+        final matched = multilineJsonMatch.group(0)!;
+        return multilineJsonMatch.start + matched.lastIndexOf('{');
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Remove da mensagem tanto o JSON completo quanto um candidato parcial em streaming.
+  static String removeJsonCandidateFromMessage(String message) {
+    try {
+      final jsonStr = extractFoodJson(message);
+      if (jsonStr != null) {
+        return removeJsonFromMessage(message);
+      }
+
+      final candidateStart = findFoodJsonCandidateStart(message);
+      if (candidateStart == null) return message;
+
+      return message.substring(0, candidateStart).trimRight();
+    } catch (e) {
+      return message;
     }
   }
 
@@ -30,9 +100,8 @@ class FoodJsonParser {
   static String? extractFoodJson(String message) {
     try {
       // Fazer unescape se necessário
-      String cleanMessage = message.contains('\\"')
-          ? message.replaceAll('\\"', '"')
-          : message;
+      String cleanMessage =
+          message.contains('\\"') ? message.replaceAll('\\"', '"') : message;
 
       // Encontrar a posição inicial do JSON
       final foodsIndex = cleanMessage.indexOf('"foods"');
@@ -126,16 +195,23 @@ class FoodJsonParser {
     if (type == 'freemeal' || type == 'free_meal') return MealType.freeMeal;
 
     // Tipos personalizados comuns mapeados para enum
-    if (type.contains('breakfast') || type.contains('cafe') || type.contains('manhã')) {
+    if (type.contains('breakfast') ||
+        type.contains('cafe') ||
+        type.contains('manhã')) {
       return MealType.breakfast;
     }
-    if (type.contains('lunch') || type.contains('almoço') || type.contains('almoco')) {
+    if (type.contains('lunch') ||
+        type.contains('almoço') ||
+        type.contains('almoco')) {
       return MealType.lunch;
     }
     if (type.contains('dinner') || type.contains('jantar')) {
       return MealType.dinner;
     }
-    if (type.contains('snack') || type.contains('lanche') || type.contains('afternoon') || type.contains('tarde')) {
+    if (type.contains('snack') ||
+        type.contains('lanche') ||
+        type.contains('afternoon') ||
+        type.contains('tarde')) {
       return MealType.snack;
     }
     if (type.contains('supper') || type.contains('ceia')) {
@@ -193,7 +269,8 @@ class FoodJsonParser {
         // Extrair valores nutricionais (com fallback para 0)
         final calories = _parseDouble(macros['calories']) ?? 0.0;
         final protein = _parseDouble(macros['protein']) ?? 0.0;
-        final carbs = _parseDouble(macros['carbohydrate'] ?? macros['carbs']) ?? 0.0;
+        final carbs =
+            _parseDouble(macros['carbohydrate'] ?? macros['carbs']) ?? 0.0;
         final fat = _parseDouble(macros['fat']) ?? 0.0;
 
         // Extrair porção e unidade
@@ -209,9 +286,11 @@ class FoodJsonParser {
           protein: protein,
           carbohydrate: carbs,
           fat: fat,
-          saturatedFat: _parseDouble(macros['saturated_fat'] ?? macros['saturatedFat']),
+          saturatedFat:
+              _parseDouble(macros['saturated_fat'] ?? macros['saturatedFat']),
           transFat: _parseDouble(macros['trans_fat'] ?? macros['transFat']),
-          dietaryFiber: _parseDouble(macros['dietary_fiber'] ?? macros['dietaryFiber']),
+          dietaryFiber:
+              _parseDouble(macros['dietary_fiber'] ?? macros['dietaryFiber']),
           sugars: _parseDouble(macros['sugars']),
           cholesterol: _parseDouble(macros['cholesterol']),
           sodium: _parseDouble(macros['sodium']),
@@ -222,7 +301,8 @@ class FoodJsonParser {
           vitaminC: _parseDouble(macros['vitamin_c'] ?? macros['vitaminC']),
           vitaminD: _parseDouble(macros['vitamin_d'] ?? macros['vitaminD']),
           vitaminB6: _parseDouble(macros['vitamin_b6'] ?? macros['vitaminB6']),
-          vitaminB12: _parseDouble(macros['vitamin_b12'] ?? macros['vitaminB12']),
+          vitaminB12:
+              _parseDouble(macros['vitamin_b12'] ?? macros['vitaminB12']),
         );
 
         // Criar objeto Food
@@ -293,7 +373,9 @@ class FoodJsonParser {
     if (name.contains('coffee') || name.contains('café')) return '☕';
 
     // Snacks
-    if (name.contains('nuts') || name.contains('castanha') || name.contains('amendoim')) return '🥜';
+    if (name.contains('nuts') ||
+        name.contains('castanha') ||
+        name.contains('amendoim')) return '🥜';
     if (name.contains('chocolate')) return '🍫';
 
     // Default
@@ -301,7 +383,8 @@ class FoodJsonParser {
   }
 
   /// Cria uma Meal a partir de uma lista de Foods
-  static Meal createMealFromFoods(List<Food> foods, {MealType type = MealType.freeMeal, DateTime? dateTime}) {
+  static Meal createMealFromFoods(List<Food> foods,
+      {MealType type = MealType.freeMeal, DateTime? dateTime}) {
     return Meal(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: type,

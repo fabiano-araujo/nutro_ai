@@ -33,7 +33,8 @@ final Map<String, String> enUSTranslations = {
   'login_to_access_profile': 'Login to access your profile',
   'login_description':
       'Sign in to view your history, favorites, and personalized settings.',
-  'login_required_for_diet': 'You need to be logged in to generate personalized diets',
+  'login_required_for_diet':
+      'You need to be logged in to generate personalized diets',
   'sign_in': 'Sign in',
   'sign_out': 'Sign Out',
   'logout': 'Log Out',
@@ -924,7 +925,8 @@ final Map<String, String> enUSTranslations = {
   'camera_initializing': 'Initializing camera...',
   'camera_stuck': 'Camera stuck',
   'camera_timeout': 'Timeout',
-  'camera_timeout_description': 'The camera took too long to respond. Please try again.',
+  'camera_timeout_description':
+      'The camera took too long to respond. Please try again.',
   'camera_wait_message': 'Please wait while the camera is being prepared',
   'configure_meals': 'Configure meals',
   'configure_meals_description': 'Customize your daily meals',
@@ -950,8 +952,10 @@ final Map<String, String> enUSTranslations = {
   'weekly_diet': 'Weekly Diet',
   'daily_diet': 'Daily Diet',
   'replace_all_meals': 'Replace All Meals',
-  'replace_all_meals_weekly_confirm': 'Do you want to generate a new weekly diet plan?',
-  'replace_all_meals_daily_confirm': 'Do you want to generate a new diet plan for this day?',
+  'replace_all_meals_weekly_confirm':
+      'Do you want to generate a new weekly diet plan?',
+  'replace_all_meals_daily_confirm':
+      'Do you want to generate a new diet plan for this day?',
   'yes_generate_new': 'Yes, Generate New',
   'no_diet_plan_for_day': 'No diet plan for this day',
   'generate_diet_plan': 'Generate Diet Plan',
@@ -959,30 +963,43 @@ final Map<String, String> enUSTranslations = {
   'choose_diet_type_description': 'Select how you want to organize your meals',
   'weekly_diet_description': 'Organize your meals for the whole week manually',
   'daily_diet_ai': 'Daily Diet with AI',
-  'daily_diet_ai_description': 'Automatically generate a personalized diet plan with artificial intelligence',
+  'daily_diet_ai_description':
+      'Automatically generate a personalized diet plan with artificial intelligence',
   'premium_feature': 'Premium Feature',
-  'daily_diet_premium_description': 'Automatic AI diet generation is an exclusive feature for Premium subscribers. Upgrade to get access to automatically generated personalized diets!',
+  'daily_diet_premium_description':
+      'Automatic AI diet generation is an exclusive feature for Premium subscribers. Upgrade to get access to automatically generated personalized diets!',
   'upgrade_to_pro': 'Upgrade',
   'replace_all': 'Replace',
   'weekly_diet_active': 'Your weekly diet is active',
   'daily_diet_active': 'Your daily diet is active',
   'change_diet_type': 'Change Diet Type',
-  'change_diet_type_confirm': 'Are you sure you want to change the diet type? This will delete the current diet.',
+  'change_diet_type_confirm':
+      'Are you sure you want to change the diet type? This will delete the current diet.',
   'yes_change': 'Yes, Change',
   'no_meals_yet': 'No meals yet',
   'add_meals_description': 'Use the + button to add foods to your meals',
   'no_weekly_diet': 'Your week without a meal plan',
-  'no_weekly_diet_description': 'Our virtual nutritionist will create a complete, balanced weekly menu personalized to your goals',
+  'no_weekly_diet_description':
+      'Our virtual nutritionist will create a complete, balanced weekly menu personalized to your goals',
   'no_daily_diet': 'Your day without a meal plan',
-  'no_daily_diet_description': 'Our virtual nutritionist will create a complete, balanced daily menu personalized to your goals',
+  'no_daily_diet_description':
+      'Our virtual nutritionist will create a complete, balanced daily menu personalized to your goals',
   'generating_diet_plan': 'Your nutritionist is preparing your menu...',
   'generating_meals': 'Preparing meals...',
   'create_weekly_diet': 'Create Weekly Diet',
   'generate_diet_ai': 'Create my Menu',
   'daily_diet_premium_required': 'Daily diet available only for subscribers',
   'daily_diet_premium_title': 'Premium Feature',
-  'daily_diet_premium_description': 'The personalized daily menu is exclusive for subscribers. With it you can have a different diet every day!',
+  'daily_diet_premium_description':
+      'The personalized daily menu is exclusive for subscribers. With it you can have a different diet every day!',
   'weekly_diet_free': 'Weekly diet is free',
+  'repeat_diet_other_days': 'Repeat on other days',
+  'repeat_diet_select_days':
+      'Select the upcoming days where this menu should be copied. Existing diets will be replaced.',
+  'repeat_diet_replace_existing':
+      'Replaces the diet already saved for this day',
+  'repeat_diet_apply': 'Repeat diet',
+  'repeat_diet_success': 'Diet repeated on {count} day(s)',
 
   // Statistics Screen
   'stats_7_days': '7 days',
@@ -992,19 +1009,23 @@ final Map<String, String> enUSTranslations = {
   'stats_days_logged': 'Days logged',
   'stats_on_target': 'On target',
   'stats_goal_adherence': 'Goal Adherence',
-  'stats_goal_adherence_desc': 'How many days you stayed within your calorie goal',
+  'stats_goal_adherence_desc':
+      'How many days you stayed within your calorie goal',
   'stats_on_target_days': 'On target',
   'stats_below_goal': 'Below goal',
   'stats_above_goal': 'Above goal',
   'stats_days': 'days',
   'stats_calories_history': 'Calories History',
-  'stats_calories_history_desc': 'Your calories consumed compared to your daily goal',
+  'stats_calories_history_desc':
+      'Your calories consumed compared to your daily goal',
   'stats_consumed': 'Consumed',
   'stats_goal': 'Goal',
   'stats_weekly_consistency': 'Weekly Consistency',
-  'stats_weekly_consistency_desc': 'Which days you log your meals most frequently',
+  'stats_weekly_consistency_desc':
+      'Which days you log your meals most frequently',
   'stats_macros_average': 'Macros Average',
-  'stats_macros_average_desc': 'Your average macronutrients for the selected period',
+  'stats_macros_average_desc':
+      'Your average macronutrients for the selected period',
   'stats_no_data': 'Log your meals to see the data',
   'day_sun_short': 'Sun',
   'day_mon_short': 'Mon',
@@ -1022,9 +1043,11 @@ final Map<String, String> enUSTranslations = {
   'streak_freeze_active': 'Freeze Active',
   'best_streak': 'Best',
   'freezes': 'Protections',
-  'streak_in_danger': 'Your streak is in danger! Log something today to keep it.',
+  'streak_in_danger':
+      'Your streak is in danger! Log something today to keep it.',
   'activate_freeze': 'Protect my streak',
   'activate_freeze_title': 'Protect streak?',
-  'activate_freeze_description': 'The protection freezes your streak for 24 hours, even if you don\'t log anything. You have {count} protection(s) available.',
+  'activate_freeze_description':
+      'The protection freezes your streak for 24 hours, even if you don\'t log anything. You have {count} protection(s) available.',
   'activate': 'Activate',
 };

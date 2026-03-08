@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'tools_screen.dart';
-import 'ai_tutor_screen.dart';
-import '../theme/app_theme.dart';
-import '../i18n/app_localizations_extension.dart';
-import '../services/rate_app_service.dart';
+import 'lib/screens/tools_screen.dart';
+import 'lib/screens/ai_tutor_screen.dart';
+import 'lib/theme/app_theme.dart';
+import 'lib/i18n/app_localizations_extension.dart';
+import 'lib/services/rate_app_service.dart';
 
 // Controlador global para gerenciar a navegau00e7u00e3o entre abas
 class NavigationController {
@@ -43,7 +43,7 @@ class _MainNavigationState extends State<MainNavigation> {
     super.initState();
     // Registrar callback para mudanu00e7a de aba
     navigationController.tabChangeCallback = (index) {
-      // Verificar se o usuário está saindo da tela de AITutor (índice 0)
+      // Verificar se o usuário está saindo da tela do assistente (índice 0)
       // Esta verificação é crucial para saber quando mostrar o anúncio intersticial
       bool leavingAITutor = _currentIndex == 0 && index != 0;
 
@@ -53,12 +53,12 @@ class _MainNavigationState extends State<MainNavigation> {
         _currentIndex = index;
       });
 
-      // Se saiu da tela do AITutor, acionar o método para mostrar anúncio
+      // Se saiu da tela do assistente, acionar o método para mostrar anúncio
       // Este é o ponto chave para simular o comportamento de deactivate()
       // que não é chamado automaticamente pelo IndexedStack
       if (leavingAITutor) {
-        // Chamar o método estático para notificar AITutorScreen
-        AITutorScreen.handleTabExit();
+        // Chamar o método estático para notificar NutritionAssistantScreen
+        NutritionAssistantScreen.handleTabExit();
       }
     };
 
@@ -72,7 +72,7 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   final List<Widget> _screens = [
-    AITutorScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
+    NutritionAssistantScreen(), // Chat com IA integrado diretamente - PRIMEIRA ABA
     ToolsScreen(), // Ferramentas (Tools) - Dark theme
   ];
 
@@ -87,9 +87,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
     return WillPopScope(
       onWillPop: () async {
-        // Se não estiver na primeira aba (AI Tutor)
+        // Se não estiver na primeira aba do assistente
         if (_currentIndex != 0) {
-          // Se estiver saindo da aba do AITutor para outra, acionar o método
+          // Se estiver saindo da aba do assistente para outra, acionar o método
           // Mesmo padrão de verificação usado no callback de mudança de aba
           bool leavingAITutor = _currentIndex == 0;
 
@@ -99,11 +99,11 @@ class _MainNavigationState extends State<MainNavigation> {
             _currentIndex = 0;
           });
 
-          // Se saiu da tela do AITutor, acionar o método para mostrar anúncio
+          // Se saiu da tela do assistente, acionar o método para mostrar anúncio
           // Esta lógica garante que o anúncio também apareça quando o usuário
-          // usa o botão de voltar para sair da aba AITutor
+          // usa o botão de voltar para sair da aba do assistente
           if (leavingAITutor) {
-            AITutorScreen.handleTabExit();
+            NutritionAssistantScreen.handleTabExit();
           }
 
           // Previne o comportamento padrão do botão voltar

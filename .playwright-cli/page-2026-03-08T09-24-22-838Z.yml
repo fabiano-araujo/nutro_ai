@@ -1,0 +1,33 @@
+- generic [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button "Menu" [active] [ref=e8]
+            - button "Hoje" [ref=e9]
+            - button "Pesquisar alimentos" [ref=e10]
+            - generic:
+              - generic:
+                - generic:
+                  - button "DOM 8" [ref=e11]
+                  - button "SEG 9" [ref=e12]
+                  - button "TER 10" [ref=e13]
+                  - button "QUA 11" [ref=e14]
+                  - button "QUI 12" [ref=e15]
+                  - button "SEX 13" [ref=e16]
+                  - button "SÁB 14" [ref=e17]
+            - group:
+              - generic [ref=e18]:
+                - generic: Bom dia! Já tomou café?
+              - button "Registrar Adicionar refeição" [ref=e19]
+              - button "Foto Analisar com IA" [ref=e20]
+              - button "Perfil Configurar dados" [ref=e21]
+              - button "Metas Definir objetivos" [ref=e22]
+            - button [ref=e23]
+            - textbox "O que você comeu?" [ref=e25]
+            - button [ref=e26]
+            - button "Início Guia 1 de 4" [ref=e27]
+            - button "Minha Dieta Guia 2 de 4" [ref=e28]
+            - button "Social Guia 3 de 4" [ref=e29]
+            - button "Perfil Guia 4 de 4" [ref=e30]

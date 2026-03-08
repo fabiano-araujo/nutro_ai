@@ -6,18 +6,22 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_recognition_error.dart';
 
-import '../screens/ai_tutor_screen.dart'; // Import necessário para State<AITutorScreen>
+import '../screens/ai_tutor_screen.dart'; // Import necessário para State<NutritionAssistantScreen>
 import '../utils/ui_utils.dart'; // Para usar os diálogos/toasts
 
 // Mixin para encapsular a lógica de reconhecimento de voz
-mixin AITutorSpeechMixin on State<AITutorScreen> {
+mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
+  static const Duration _speechPauseTimeout = Duration(seconds: 30);
+  static const Duration _speechListenTimeout = Duration(minutes: 5);
+  static const Duration _speechRestartDelay = Duration(milliseconds: 300);
+
   // Variáveis para reconhecimento de voz
   final stt.SpeechToText _speechToText = stt.SpeechToText();
   bool _isListening = false;
   String _recognizedText = '';
-  double _speechConfidence = 0.0;
+  String _committedRecognizedText = '';
+  String _activeRecognizedSegment = '';
 
   // Getters para acesso às variáveis privadas
   bool get isListening => _isListening;
@@ -33,10 +37,8 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
 
   // Variáveis para controlar tentativas de recuperação
   bool _isBusyRecovering = false;
-  int _retryCount = 0;
 
   // Variáveis adicionais para controle de sessão de reconhecimento
-  int _maxRetries = 1; // Voltar para apenas uma tentativa
   bool _forceStop = false;
   int _noMatchCount = 0;
   Timer? _autoStopTimer;
@@ -47,7 +49,8 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
 
   // Inicialização do reconhecimento de voz
   Future<void> initSpeechRecognition() async {
-    print('🎤 AITutorSpeechMixin - Inicializando reconhecimento de voz');
+    print(
+        '🎤 NutritionAssistantSpeechMixin - Inicializando reconhecimento de voz');
 
     try {
       // Para dispositivos Android, verificar permissão antes de inicializar
@@ -55,7 +58,7 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
         final status = await Permission.microphone.status;
         if (status.isDenied) {
           print(
-              '🎤 AITutorSpeechMixin - Permissão de microfone não concedida ainda');
+              '🎤 NutritionAssistantSpeechMixin - Permissão de microfone não concedida ainda');
         }
       }
 
@@ -67,14 +70,14 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
 
       if (!available) {
         print(
-            '❌ AITutorSpeechMixin - O reconhecimento de voz não está disponível neste dispositivo');
+            '❌ NutritionAssistantSpeechMixin - O reconhecimento de voz não está disponível neste dispositivo');
       } else {
         print(
-            '✅ AITutorSpeechMixin - Reconhecimento de voz inicializado com sucesso');
+            '✅ NutritionAssistantSpeechMixin - Reconhecimento de voz inicializado com sucesso');
       }
     } catch (e) {
       print(
-          '❌ AITutorSpeechMixin - Erro ao inicializar o reconhecimento de voz: $e');
+          '❌ NutritionAssistantSpeechMixin - Erro ao inicializar o reconhecimento de voz: $e');
     }
   }
 
@@ -90,28 +93,33 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
           _isListening &&
           !_isBusyRecovering &&
           !_forceStop) {
-        print('🎤 AITutorSpeechMixin - Status "done" detectado, reiniciando escuta...');
+        print(
+            '🎤 NutritionAssistantSpeechMixin - Status "done" detectado, reiniciando escuta...');
 
         // Marcar como em recuperação para evitar múltiplos reinícios
         _isBusyRecovering = true;
 
         // Aguardar os recursos do OS serem liberados antes de reiniciar
-        Future.delayed(Duration(milliseconds: 300), () async {
+        Future.delayed(_speechRestartDelay, () async {
           if (mounted && !_forceStop) {
             try {
               // Reiniciar o reconhecimento preservando o texto atual
               await _speechToText.listen(
                 onResult: _onSpeechResult,
                 localeId: 'pt_BR',
-                listenMode: stt.ListenMode.dictation,
-                pauseFor: Duration(seconds: 30),
-                cancelOnError: false,
-                partialResults: true,
-                listenFor: Duration(minutes: 5),
+                pauseFor: _speechPauseTimeout,
+                listenFor: _speechListenTimeout,
+                listenOptions: stt.SpeechListenOptions(
+                  listenMode: stt.ListenMode.dictation,
+                  cancelOnError: false,
+                  partialResults: true,
+                ),
               );
-              print('🎤 AITutorSpeechMixin - Escuta reiniciada com sucesso');
+              print(
+                  '🎤 NutritionAssistantSpeechMixin - Escuta reiniciada com sucesso');
             } catch (e) {
-              print('❌ AITutorSpeechMixin - Erro ao reiniciar escuta: $e');
+              print(
+                  '❌ NutritionAssistantSpeechMixin - Erro ao reiniciar escuta: $e');
               if (mounted) {
                 setState(() {
                   _isListening = false;
@@ -152,7 +160,7 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
         // Se tivermos muitos erros de não reconhecimento consecutivos, forçar parada
         if (_noMatchCount >= 2) {
           print(
-              '🎤 AITutorSpeechMixin - Muitos erros de no_match, parando reconhecimento');
+              '🎤 NutritionAssistantSpeechMixin - Muitos erros de no_match, parando reconhecimento');
           _forceStop = true;
           stopListening();
           return;
@@ -167,7 +175,7 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
           !_forceStop) {
         // Forçar parada em caso de erro busy - não tentar recuperar
         print(
-            '🎤 AITutorSpeechMixin - Erro busy detectado, parando reconhecimento');
+            '🎤 NutritionAssistantSpeechMixin - Erro busy detectado, parando reconhecimento');
         _forceStop = true;
         stopListening();
       }
@@ -188,9 +196,9 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
 
       // Configurar timer para auto-parar depois de um tempo mesmo se não detectar fala
       // e mostrar o botão de enviar
-      _autoStopTimer = Timer(Duration(minutes: 5), () {
+      _autoStopTimer = Timer(_speechListenTimeout, () {
         if (_isListening) {
-          print('🎤 AITutorSpeechMixin - Auto-stop após timeout');
+          print('🎤 NutritionAssistantSpeechMixin - Auto-stop após timeout');
           if (mounted) {
             setState(() {
               _isListening = false;
@@ -199,7 +207,7 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
           }
           _speechToText.stop();
           print(
-              '🎤 AITutorSpeechMixin - Reconhecimento parado. Botão de enviar visível.');
+              '🎤 NutritionAssistantSpeechMixin - Reconhecimento parado. Botão de enviar visível.');
         }
       });
 
@@ -213,9 +221,10 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
       if (!preserveCurrentText) {
         if (mounted) {
           setState(() {
+            _committedRecognizedText = '';
+            _activeRecognizedSegment = '';
             _recognizedText = '';
             messageController.clear();
-            _retryCount = 0;
           });
         }
       } else {
@@ -223,7 +232,9 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
         final currentText = messageController.text;
         if (mounted) {
           setState(() {
-            _recognizedText = currentText;
+            _committedRecognizedText = _preprocessRecognizedText(currentText);
+            _activeRecognizedSegment = '';
+            _recognizedText = _committedRecognizedText;
           });
         }
       }
@@ -274,30 +285,35 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
         await _speechToText.listen(
           onResult: _onSpeechResult,
           localeId: 'pt_BR',
-          listenMode: stt.ListenMode.dictation,
-          pauseFor: Duration(seconds: 30), // Aumentado para aguardar mais antes de parar
-          cancelOnError: false,
-          partialResults: true,
-          listenFor: Duration(minutes: 5), // Aumentado para permitir ditados mais longos
+          pauseFor: _speechPauseTimeout,
+          listenFor: _speechListenTimeout,
+          listenOptions: stt.SpeechListenOptions(
+            listenMode: stt.ListenMode.dictation,
+            cancelOnError: false,
+            partialResults: true,
+          ),
         );
       } else {
         await _speechToText.listen(
           onResult: _onSpeechResult,
           localeId: 'pt_BR',
-          listenMode: stt.ListenMode.dictation,
-          pauseFor: Duration(seconds: 3),
-          cancelOnError: false,
-          partialResults: true,
+          pauseFor: _speechPauseTimeout,
+          listenFor: _speechListenTimeout,
+          listenOptions: stt.SpeechListenOptions(
+            listenMode: stt.ListenMode.dictation,
+            cancelOnError: false,
+            partialResults: true,
+          ),
         );
       }
 
-      print('🎤 AITutorSpeechMixin - Iniciou a escuta de voz' +
+      print('🎤 NutritionAssistantSpeechMixin - Iniciou a escuta de voz' +
           (kIsWeb ? ' na web' : ' no ${Platform.operatingSystem}') +
           (preserveCurrentText ? ' (preservando texto anterior)' : '') +
           (lowLatencyMode ? ' (modo baixa latência)' : ''));
     } catch (e) {
       print(
-          '❌ AITutorSpeechMixin - Erro ao iniciar o reconhecimento de voz: $e');
+          '❌ NutritionAssistantSpeechMixin - Erro ao iniciar o reconhecimento de voz: $e');
       UIUtils.showSimpleToast(
           context, 'Erro ao iniciar o reconhecimento de voz');
       if (mounted) {
@@ -320,6 +336,10 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
 
       if (mounted) {
         setState(() {
+          _committedRecognizedText =
+              _preprocessRecognizedText(messageController.text);
+          _activeRecognizedSegment = '';
+          _recognizedText = _committedRecognizedText;
           _isListening = false;
           _forceStop = true;
         });
@@ -331,9 +351,10 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
         keepScreenOn(false);
       }
 
-      print('🎤 AITutorSpeechMixin - Reconhecimento de voz parado');
+      print('🎤 NutritionAssistantSpeechMixin - Reconhecimento de voz parado');
     } catch (e) {
-      print('❌ AITutorSpeechMixin - Erro ao parar o reconhecimento: $e');
+      print(
+          '❌ NutritionAssistantSpeechMixin - Erro ao parar o reconhecimento: $e');
       if (mounted) {
         setState(() {
           _isListening = false;
@@ -347,46 +368,81 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
     // Resetar contador de erros no_match quando houver um resultado bem-sucedido
     _noMatchCount = 0;
 
+    final recognizedWords = _preprocessRecognizedText(result.recognizedWords);
+
     if (result.finalResult) {
-      // Resultado final do reconhecimento
       if (mounted) {
         setState(() {
-          _speechConfidence = result.confidence;
-          _recognizedText = result.recognizedWords;
-
-          // Atualizar o texto do campo
-          messageController.text = _recognizedText;
-
-          // Se detectarmos texto válido e significativo, atualizamos a UI
-          if (_validateSpeechResult(_recognizedText)) {
-            _isListening = false;
-            _forceStop = true;
-          }
+          _committedRecognizedText =
+              _mergeRecognizedText(_committedRecognizedText, recognizedWords);
+          _activeRecognizedSegment = '';
+          _updateRecognizedText(_committedRecognizedText);
         });
       }
     } else {
-      // Resultados intermediários
       if (mounted) {
         setState(() {
-          _recognizedText = result.recognizedWords;
-          messageController.text = _recognizedText;
+          _activeRecognizedSegment = recognizedWords;
+          _updateRecognizedText(
+            _mergeRecognizedText(
+              _committedRecognizedText,
+              _activeRecognizedSegment,
+            ),
+          );
         });
       }
     }
   }
 
-  // Método para validar se o resultado do reconhecimento de voz é útil
-  bool _validateSpeechResult(String text) {
-    // Verificar se o texto reconhecido tem conteúdo significativo
-    final trimmedText = text.trim();
+  void _updateRecognizedText(String text) {
+    final processedText = _preprocessRecognizedText(text);
+    _recognizedText = processedText;
+    messageController.value = messageController.value.copyWith(
+      text: processedText,
+      selection: TextSelection.collapsed(offset: processedText.length),
+      composing: TextRange.empty,
+    );
+  }
 
-    // Se o texto tiver mais de 5 caracteres, ou contiver alguma palavra significativa,
-    // consideramos que é um resultado válido
-    return trimmedText.length > 5 ||
-        trimmedText.contains(' ') || // Pelo menos duas palavras
-        trimmedText.toLowerCase().contains('sim') ||
-        trimmedText.toLowerCase().contains('não') ||
-        trimmedText.toLowerCase().contains('ok');
+  String _mergeRecognizedText(String baseText, String newText) {
+    final normalizedBase = _preprocessRecognizedText(baseText);
+    final normalizedNew = _preprocessRecognizedText(newText);
+
+    if (normalizedBase.isEmpty) {
+      return normalizedNew;
+    }
+
+    if (normalizedNew.isEmpty) {
+      return normalizedBase;
+    }
+
+    if (normalizedBase == normalizedNew) {
+      return normalizedBase;
+    }
+
+    if (normalizedNew.startsWith(normalizedBase)) {
+      return normalizedNew;
+    }
+
+    if (normalizedBase.endsWith(normalizedNew)) {
+      return normalizedBase;
+    }
+
+    final lowerBase = normalizedBase.toLowerCase();
+    final lowerNew = normalizedNew.toLowerCase();
+    final maxOverlap =
+        lowerBase.length < lowerNew.length ? lowerBase.length : lowerNew.length;
+
+    for (var overlap = maxOverlap; overlap > 0; overlap--) {
+      if (lowerBase.substring(lowerBase.length - overlap) ==
+          lowerNew.substring(0, overlap)) {
+        return _preprocessRecognizedText(
+          normalizedBase + normalizedNew.substring(overlap),
+        );
+      }
+    }
+
+    return _preprocessRecognizedText('$normalizedBase $normalizedNew');
   }
 
   // Método para pré-processar o texto reconhecido, otimizando performance no Android
@@ -428,16 +484,16 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
         // Limpar flags
         _isListening = false;
         _isBusyRecovering = false;
-        _retryCount = 0;
 
         // Importante: Não limpar o texto reconhecido aqui
 
         // Esperar um breve momento para liberar recursos
         await Future.delayed(Duration(milliseconds: 300));
 
-        print('📢 AITutorSpeechMixin - Recursos de áudio liberados');
+        print('📢 NutritionAssistantSpeechMixin - Recursos de áudio liberados');
       } catch (e) {
-        print('⚠️ AITutorSpeechMixin - Erro ao liberar recursos: $e');
+        print(
+            '⚠️ NutritionAssistantSpeechMixin - Erro ao liberar recursos: $e');
       }
     }
   }
@@ -450,7 +506,7 @@ mixin AITutorSpeechMixin on State<AITutorScreen> {
         _speechToText.stop();
       } catch (e) {
         print(
-            '❌ AITutorSpeechMixin - Erro ao parar reconhecimento no dispose: $e');
+            '❌ NutritionAssistantSpeechMixin - Erro ao parar reconhecimento no dispose: $e');
       }
     }
   }

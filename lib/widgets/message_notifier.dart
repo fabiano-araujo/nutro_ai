@@ -5,11 +5,15 @@ import 'package:flutter/material.dart';
 /// e notificar os widgets interessados sobre mudanças no estado
 class MessageNotifier extends ChangeNotifier {
   String _message = '';
+  String _displayMessage = '';
   bool _isStreaming = true;
   bool _isError = false;
 
   /// Obtém o conteúdo atual da mensagem
   String get message => _message;
+
+  /// Obtém o conteúdo que deve ser exibido na UI.
+  String get displayMessage => _displayMessage;
 
   /// Verifica se a mensagem está em modo streaming
   bool get isStreaming => _isStreaming;
@@ -26,11 +30,16 @@ class MessageNotifier extends ChangeNotifier {
   }
 
   /// Atualiza o conteúdo da mensagem e notifica ouvintes
-  void updateMessage(String newContent) {
-    if (newContent.isNotEmpty) {
-      _message = newContent;
-      notifyListeners();
+  void updateMessage(String newContent, {String? displayContent}) {
+    final nextDisplay = displayContent ?? newContent;
+
+    if (_message == newContent && _displayMessage == nextDisplay) {
+      return;
     }
+
+    _message = newContent;
+    _displayMessage = nextDisplay;
+    notifyListeners();
   }
 
   /// Define o estado de streaming da mensagem
@@ -44,8 +53,10 @@ class MessageNotifier extends ChangeNotifier {
     _isError = error;
     if (errorMessage != null && errorMessage.isNotEmpty) {
       _message = errorMessage;
+      _displayMessage = errorMessage;
     } else if (error && _message.isEmpty) {
       _message = "Ocorreu um erro ao processar sua solicitação.";
+      _displayMessage = _message;
     }
     notifyListeners();
   }

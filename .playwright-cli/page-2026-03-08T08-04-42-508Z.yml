@@ -1,0 +1,25 @@
+- generic [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - button [active] [ref=e23]
+              - heading "Entrar com Email" [level=2] [ref=e24]
+            - group:
+              - img [ref=e25]
+              - generic [ref=e26]:
+                - generic: Entre com seu Email
+              - generic [ref=e27]:
+                - generic: Acesse sua conta para continuar
+              - generic:
+                - textbox "Email" [ref=e29]
+                - generic [ref=e30]:
+                  - textbox "Senha" [ref=e31]
+                  - button [ref=e32]
+                - button "Esqueceu a senha?" [ref=e33]
+                - button "Entrar" [ref=e34]
+                - generic [ref=e35]:
+                  - generic: Ainda não tem uma conta?
+                - button "Cadastre-se" [ref=e36]

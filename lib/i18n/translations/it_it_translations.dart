@@ -107,7 +107,7 @@ final Map<String, String> itITTranslations = {
   // Strumenti
   'document_summary': 'Riassunto documento',
   'text_enhancement': 'Miglioramento testo',
-  'ai_tutor': 'Tutor con IA',
+  'ai_tutor': 'Assistente Nutrizionale',
   'document_scan': 'Scansiona documento',
   'camera_scan': 'Scansiona',
   'upload_file': 'Carica file',
@@ -268,12 +268,14 @@ final Map<String, String> itITTranslations = {
   'chemistry_hint': 'Scatta una foto di un problema di chimica',
   'history_hint': 'Scatta una foto di una domanda di storia',
   'ai_macros': 'Macro IA',
-  'ai_macros_hint': 'Il cibo deve essere ben illuminato e all\'interno dell\'inquadratura',
+  'ai_macros_hint':
+      'Il cibo deve essere ben illuminato e all\'interno dell\'inquadratura',
   'barcode': 'Codice a Barre',
   'barcode_hint': 'Scansiona il codice a barre del prodotto',
 
   // Messaggio di benvenuto nella scheda
-  'welcome_message_card': 'Ciao! Sono Nutro AI, il tuo assistente di nutrizione',
+  'welcome_message_card':
+      'Ciao! Sono Nutro AI, il tuo assistente di nutrizione',
   'welcome_description':
       'Assistente intelligente per migliorare il tuo apprendimento 📚👩‍🎓',
   'start_conversation': 'Inizia conversazione',
@@ -300,7 +302,8 @@ final Map<String, String> itITTranslations = {
   'plan': 'Piano',
 
   // Schermata del tutor AI
-  'ai_tutor_title': 'Assistente di Studio',
+  'ai_tutor_title': 'Assistente Nutrizionale',
+  'ai_tutor_chat_title': 'Assistente Nutrizionale',
   'ask_anything': 'Cosa hai mangiato o fatto come esercizio?',
 
   // Schermata di abbonamento
@@ -424,14 +427,16 @@ final Map<String, String> itITTranslations = {
   'no_conversations': 'Nessuna conversazione ancora',
   'days_ago': 'giorni fa',
   'delete_conversation': 'Elimina conversazione',
-  'delete_conversation_confirm': 'Sei sicuro di voler eliminare la conversazione "{title}"?',
+  'delete_conversation_confirm':
+      'Sei sicuro di voler eliminare la conversazione "{title}"?',
   'free_chat': 'Chat Libera',
 
   // Modifica alimenti
   'edit_food': 'Modifica Alimento',
   'food_name': 'Nome Alimento',
   'amount': 'Quantità',
-  'edit_amount_helper': 'Modificare la quantità ricalcola i macro automaticamente',
+  'edit_amount_helper':
+      'Modificare la quantità ricalcola i macro automaticamente',
   'edit_food_info': 'Modificare il nome cerca nuovi valori nutrizionali via IA',
   'edit_all_foods': 'Modifica tutti gli alimenti',
   'edit_all_foods_desc': 'Modifica nome e quantità di tutti gli elementi',
@@ -445,8 +450,10 @@ final Map<String, String> itITTranslations = {
   'weekly_diet': 'Dieta Settimanale',
   'daily_diet': 'Dieta Giornaliera',
   'replace_all_meals': 'Sostituisci Tutti i Pasti',
-  'replace_all_meals_weekly_confirm': 'Vuoi generare un nuovo piano dietetico settimanale?',
-  'replace_all_meals_daily_confirm': 'Vuoi generare un nuovo piano dietetico per questo giorno?',
+  'replace_all_meals_weekly_confirm':
+      'Vuoi generare un nuovo piano dietetico settimanale?',
+  'replace_all_meals_daily_confirm':
+      'Vuoi generare un nuovo piano dietetico per questo giorno?',
   'yes_generate_new': 'Sì, Genera Nuovo',
   'no_diet_plan_for_day': 'Nessun piano dietetico per questo giorno',
   'generate_diet_plan': 'Genera Piano Dietetico',
@@ -459,9 +466,11 @@ final Map<String, String> itITTranslations = {
   'streak_freeze_active': 'Freeze Attivo',
   'best_streak': 'Migliore',
   'freezes': 'Protezioni',
-  'streak_in_danger': 'La tua serie è in pericolo! Registra qualcosa oggi per non perderla.',
+  'streak_in_danger':
+      'La tua serie è in pericolo! Registra qualcosa oggi per non perderla.',
   'activate_freeze': 'Proteggi la mia serie',
   'activate_freeze_title': 'Proteggere la serie?',
-  'activate_freeze_description': 'La protezione congela la tua serie per 24 ore, anche se non registri nulla. Hai {count} protezione(i) disponibile(i).',
+  'activate_freeze_description':
+      'La protezione congela la tua serie per 24 ore, anche se non registri nulla. Hai {count} protezione(i) disponibile(i).',
   'activate': 'Attiva',
 };

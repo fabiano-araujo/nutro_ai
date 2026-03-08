@@ -25,8 +25,8 @@ import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../providers/meal_types_provider.dart';
 
-/// Controller para gerenciar o estado e a lógica do AI Tutor
-class AITutorController with ChangeNotifier {
+/// Controller para gerenciar o estado e a lógica do Assistente de Nutrição
+class NutritionAssistantController with ChangeNotifier {
   // Serviços
   final AIService _aiService = AIService();
   final StorageService _storageService = StorageService();
@@ -59,7 +59,7 @@ class AITutorController with ChangeNotifier {
   int _androidUpdateCounter = 0;
 
   // Referências aos mixins
-  final AITutorSpeechMixinRef speechMixin;
+  final NutritionAssistantSpeechMixinRef speechMixin;
   final TextToSpeechMixinRef ttsRef;
 
   // Contador de interações bem-sucedidas
@@ -88,7 +88,7 @@ class AITutorController with ChangeNotifier {
   int? get currentlySpeakingMessageIndex => _currentlySpeakingMessageIndex;
   DateTime get selectedDate => _selectedDate;
 
-  AITutorController({
+  NutritionAssistantController({
     required this.speechMixin,
     required this.ttsRef,
     String? conversationId,
@@ -105,7 +105,7 @@ class AITutorController with ChangeNotifier {
     }
 
     print(
-        '🤖 AITutorController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}, selectedDate: ${_formatDateKey(_selectedDate)}');
+        '🤖 NutritionAssistantController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}, selectedDate: ${_formatDateKey(_selectedDate)}');
     if (initialMessages != null && initialMessages.isNotEmpty) {
       // Prioridade máxima: se mensagens iniciais são fornecidas, usá-las.
       _messages = initialMessages;
@@ -188,7 +188,7 @@ class AITutorController with ChangeNotifier {
           '📊 ==============================================================================\n');
 
       print(
-          '✅ AITutorController: Inicializado com ${initialMessages.length} mensagens fornecidas via initialMessages.');
+          '✅ NutritionAssistantController: Inicializado com ${initialMessages.length} mensagens fornecidas via initialMessages.');
       // Se estamos usando initialMessages, geralmente não queremos carregar uma conversationId separadamente,
       // a menos que seja um caso de uso específico para mesclar/continuar.
       // Por agora, se initialMessages é provido, ele é a fonte da verdade para o estado inicial.
@@ -198,24 +198,25 @@ class AITutorController with ChangeNotifier {
         print(
             '   ➡️ conversationId ($conversationId) também foi fornecido e será mantido.');
       }
-      // Não chamar notifyListeners() aqui; a AITutorScreen o fará após a configuração completa se necessário.
+      // Não chamar notifyListeners() aqui; a NutritionAssistantScreen o fará após a configuração completa se necessário.
     } else if (conversationId != null) {
       // Se não há initialMessages, mas há um conversationId, carregar a conversa.
       print(
-          '📂 AITutorController: Carregando conversa por ID: $conversationId');
+          '📂 NutritionAssistantController: Carregando conversa por ID: $conversationId');
       _loadConversation(conversationId);
       _currentConversationId = conversationId;
     } else if (showWelcomeMessage) {
       // Nenhuma mensagem inicial e nenhum ID de conversa, e showWelcomeMessage é true.
       // Esta é a única condição em que a mensagem de boas-vindas deve ser adicionada.
-      print('👋 AITutorController: Adicionando mensagem de boas-vindas.');
+      print(
+          '👋 NutritionAssistantController: Adicionando mensagem de boas-vindas.');
       _addWelcomeMessage(); // _addWelcomeMessage já chama notifyListeners
     } else {
       print(
-          '🤷 AITutorController: Nenhuma mensagem inicial, nenhum ID de conversa, e showWelcomeMessage é false.');
+          '🤷 NutritionAssistantController: Nenhuma mensagem inicial, nenhum ID de conversa, e showWelcomeMessage é false.');
       // Carregar mensagens da data inicial (se houver)
       print(
-          '📅 AITutorController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
+          '📅 NutritionAssistantController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
       _loadMessagesForDate(_selectedDate);
       // notifyListeners será chamado por _loadMessagesForDate após o carregamento
     }
@@ -225,8 +226,7 @@ class AITutorController with ChangeNotifier {
   void _addWelcomeMessage() {
     _messages.add({
       'isUser': false,
-      'message':
-          'Olá! Sou seu assistente de nutrição. O que você comeu hoje?',
+      'message': 'Olá! Sou seu assistente de nutrição. O que você comeu hoje?',
       'timestamp': DateTime.now(),
     });
     notifyListeners();
@@ -268,14 +268,14 @@ class AITutorController with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('⚠️ AITutorController - Erro ao obter tradução: $e');
+      print('⚠️ NutritionAssistantController - Erro ao obter tradução: $e');
     }
   }
 
   /// Carrega uma conversa pelo ID
   Future<void> _loadConversation(String conversationId) async {
     print(
-        '📂 AITutorController - Iniciando carregamento da conversa ID: $conversationId');
+        '📂 NutritionAssistantController - Iniciando carregamento da conversa ID: $conversationId');
     _isLoading = true;
     _messages = []; // Limpar mensagens antigas enquanto carrega
     notifyListeners();
@@ -291,16 +291,17 @@ class AITutorController with ChangeNotifier {
         _isLoading = false;
         notifyListeners();
         print(
-            '✅ AITutorController - Conversa carregada com sucesso via Helper');
+            '✅ NutritionAssistantController - Conversa carregada com sucesso via Helper');
       } else {
         print(
-            '⚠️ AITutorController - Conversa não encontrada ou erro no Helper, mostrando mensagem padrão');
+            '⚠️ NutritionAssistantController - Conversa não encontrada ou erro no Helper, mostrando mensagem padrão');
         _addWelcomeMessage();
         _isLoading = false;
         notifyListeners();
       }
     } catch (e) {
-      print('❌ AITutorController - Erro inesperado ao carregar conversa: $e');
+      print(
+          '❌ NutritionAssistantController - Erro inesperado ao carregar conversa: $e');
       _addWelcomeMessage();
       _isLoading = false;
       notifyListeners();
@@ -548,7 +549,7 @@ class AITutorController with ChangeNotifier {
       String message, BuildContext context) async {
     if (_messageNotifier == null || _streamingMessageIndex == null) {
       print(
-          '❌ AITutorController - _messageNotifier ou _streamingMessageIndex nulo antes de processar texto.');
+          '❌ NutritionAssistantController - _messageNotifier ou _streamingMessageIndex nulo antes de processar texto.');
       _isLoading = false;
       notifyListeners();
       return;
@@ -576,7 +577,7 @@ class AITutorController with ChangeNotifier {
       // Registrar tempo
       final prepDuration = DateTime.now().difference(startPrepTime);
       print(
-          '⏱️ AITutorController - Tempo de preparação do contexto: ${prepDuration.inMilliseconds}ms');
+          '⏱️ NutritionAssistantController - Tempo de preparação do contexto: ${prepDuration.inMilliseconds}ms');
 
       // Montar o prompt com contexto da conversa e mensagem do usuário
       // O system prompt de nutrição agora vem da API através do agentType='nutrition'
@@ -624,22 +625,25 @@ class AITutorController with ChangeNotifier {
       if (authService.isAuthenticated && authService.currentUser != null) {
         userId = authService.currentUser!.id.toString();
         print(
-            '👤 AITutorController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
+            '👤 NutritionAssistantController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
       } else {
         print(
-            '⚠️ AITutorController - Nenhum usuário autenticado, usando ID vazio');
+            '⚠️ NutritionAssistantController - Nenhum usuário autenticado, usando ID vazio');
       }
 
       // Obter tipos de refeição do usuário para classificação pela IA
       List<Map<String, String>>? mealTypesForAI;
       try {
-        final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+        final mealTypesProvider =
+            Provider.of<MealTypesProvider>(context, listen: false);
         mealTypesForAI = mealTypesProvider.mealTypes
             .map((mt) => {'id': mt.id, 'name': mt.name})
             .toList();
-        print('🍽️ AITutorController - Tipos de refeição: $mealTypesForAI');
+        print(
+            '🍽️ NutritionAssistantController - Tipos de refeição: $mealTypesForAI');
       } catch (e) {
-        print('⚠️ AITutorController - Não foi possível obter tipos de refeição: $e');
+        print(
+            '⚠️ NutritionAssistantController - Não foi possível obter tipos de refeição: $e');
       }
 
       // Obter o stream da IA
@@ -659,7 +663,7 @@ class AITutorController with ChangeNotifier {
       if (rawInitialPromptJson != null) {
         toolDataForHistory = rawInitialPromptJson;
         print(
-            '📝 AITutorController: Passando toolDataJson (rawInitialPromptJson) para histórico (mensagem de texto)');
+            '📝 NutritionAssistantController: Passando toolDataJson (rawInitialPromptJson) para histórico (mensagem de texto)');
       }
 
       _aiStreamSubscription = AIInteractionHelper.handleAIStream(
@@ -699,7 +703,7 @@ class AITutorController with ChangeNotifier {
       );
     } catch (e) {
       print(
-          '❌ AITutorController - Exceção ao preparar/iniciar stream de texto: $e');
+          '❌ NutritionAssistantController - Exceção ao preparar/iniciar stream de texto: $e');
       if (_messageNotifier != null) {
         // Mensagem de erro genérica para o usuário
         _messageNotifier!.setError(true,
@@ -715,7 +719,7 @@ class AITutorController with ChangeNotifier {
       Uint8List imageBytes, String prompt, BuildContext context) async {
     if (_messageNotifier == null || _streamingMessageIndex == null) {
       print(
-          '❌ AITutorController - _messageNotifier ou _streamingMessageIndex nulo antes de processar imagem.');
+          '❌ NutritionAssistantController - _messageNotifier ou _streamingMessageIndex nulo antes de processar imagem.');
       _isLoading = false;
       _isProcessingMedia = false;
       notifyListeners();
@@ -737,10 +741,10 @@ class AITutorController with ChangeNotifier {
       if (authService.isAuthenticated && authService.currentUser != null) {
         userId = authService.currentUser!.id.toString();
         print(
-            '👤 AITutorController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
+            '👤 NutritionAssistantController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
       } else {
         print(
-            '⚠️ AITutorController - Nenhum usuário autenticado, usando ID vazio');
+            '⚠️ NutritionAssistantController - Nenhum usuário autenticado, usando ID vazio');
       }
 
       // Para imagens, usar modelo específico e agent free-image
@@ -768,7 +772,7 @@ class AITutorController with ChangeNotifier {
       if (rawInitialPromptJson != null) {
         toolDataForHistory = rawInitialPromptJson;
         print(
-            '📝 AITutorController: Passando toolDataJson (rawInitialPromptJson) para histórico (imagem)');
+            '📝 NutritionAssistantController: Passando toolDataJson (rawInitialPromptJson) para histórico (imagem)');
       }
 
       _aiStreamSubscription = AIInteractionHelper.handleAIStream(
@@ -811,7 +815,7 @@ class AITutorController with ChangeNotifier {
       );
     } catch (e) {
       print(
-          '❌ AITutorController - Exceção ao preparar/iniciar stream de imagem: $e');
+          '❌ NutritionAssistantController - Exceção ao preparar/iniciar stream de imagem: $e');
       if (_messageNotifier != null) {
         // Mensagem de erro genérica para o usuário
         _messageNotifier!.setError(true,
@@ -943,22 +947,24 @@ class AITutorController with ChangeNotifier {
 
   /// Interrompe a geração de resposta da IA em andamento
   Future<void> stopGeneration() async {
-    print('\n🚫 [AITutorStop] INICIANDO PROCESSO DE INTERRUPÇÃO:');
+    print('\n🚫 [NutritionAssistantStop] INICIANDO PROCESSO DE INTERRUPÇÃO:');
     print('----------------------------------------');
 
     if (_aiStreamSubscription == null) {
-      print('❌ [AITutorStop] Nenhuma geração em andamento para interromper');
+      print(
+          '❌ [NutritionAssistantStop] Nenhuma geração em andamento para interromper');
       return;
     }
 
-    print('✅ [AITutorStop] Stream de geração ativa encontrada');
-    print('[AITutorStop] ID da conexão armazenada: $_activeConnectionId');
+    print('✅ [NutritionAssistantStop] Stream de geração ativa encontrada');
     print(
-        '[AITutorStop] _activeConnectionId is null? ${_activeConnectionId == null}');
+        '[NutritionAssistantStop] ID da conexão armazenada: $_activeConnectionId');
     print(
-        '[AITutorStop] _activeConnectionId está vazio? ${_activeConnectionId?.isEmpty}');
+        '[NutritionAssistantStop] _activeConnectionId is null? ${_activeConnectionId == null}');
     print(
-        '[AITutorStop] Tipo de _activeConnectionId: ${_activeConnectionId?.runtimeType}');
+        '[NutritionAssistantStop] _activeConnectionId está vazio? ${_activeConnectionId?.isEmpty}');
+    print(
+        '[NutritionAssistantStop] Tipo de _activeConnectionId: ${_activeConnectionId?.runtimeType}');
 
     // Tentar interromper no servidor primeiro, se tivermos o ID da conexão
     if (_activeConnectionId != null && _activeConnectionId!.isNotEmpty) {
@@ -970,19 +976,21 @@ class AITutorController with ChangeNotifier {
               Provider.of<AuthService>(_lastContext!, listen: false);
           if (authService.isAuthenticated && authService.currentUser != null) {
             userId = authService.currentUser!.id.toString();
-            print('[AITutorStop] Usando ID de usuário autenticado: $userId');
+            print(
+                '[NutritionAssistantStop] Usando ID de usuário autenticado: $userId');
           } else {
-            print('[AITutorStop] Nenhum usuário autenticado encontrado');
+            print(
+                '[NutritionAssistantStop] Nenhum usuário autenticado encontrado');
           }
         } else {
           print(
-              '[AITutorStop] Sem contexto disponível para obter usuário autenticado');
+              '[NutritionAssistantStop] Sem contexto disponível para obter usuário autenticado');
         }
 
         print(
-            '[AITutorStop] Enviando requisição para parar geração no servidor:');
-        print('[AITutorStop] ID da conexão: $_activeConnectionId');
-        print('[AITutorStop] ID do usuário: $userId');
+            '[NutritionAssistantStop] Enviando requisição para parar geração no servidor:');
+        print('[NutritionAssistantStop] ID da conexão: $_activeConnectionId');
+        print('[NutritionAssistantStop] ID do usuário: $userId');
 
         // Tentar interromper no servidor
         final bool servidorInterrompido = await _aiService
@@ -990,20 +998,21 @@ class AITutorController with ChangeNotifier {
 
         if (servidorInterrompido) {
           print(
-              '🎉 [AITutorStop] Geração interrompida no servidor com sucesso!');
+              '🎉 [NutritionAssistantStop] Geração interrompida no servidor com sucesso!');
         } else {
           print(
-              '⚠️ [AITutorStop] O servidor não confirmou a interrupção da geração');
+              '⚠️ [NutritionAssistantStop] O servidor não confirmou a interrupção da geração');
         }
       } catch (e) {
-        print('⚠️ [AITutorStop] Erro ao interromper no servidor: $e');
+        print(
+            '⚠️ [NutritionAssistantStop] Erro ao interromper no servidor: $e');
       }
     } else {
       print(
-          '⚠️ [AITutorStop] Sem ID de conexão disponível para parar geração no servidor');
+          '⚠️ [NutritionAssistantStop] Sem ID de conexão disponível para parar geração no servidor');
       // ATENÇÃO: Este é o problema principal - _activeConnectionId não está sendo definido
       print(
-          '[AITutorStop] Tentando forçar a interrupção mesmo sem ID de conexão');
+          '[NutritionAssistantStop] Tentando forçar a interrupção mesmo sem ID de conexão');
 
       try {
         // Obter ID do usuário logado, se disponível
@@ -1013,31 +1022,37 @@ class AITutorController with ChangeNotifier {
               Provider.of<AuthService>(_lastContext!, listen: false);
           if (authService.isAuthenticated && authService.currentUser != null) {
             userId = authService.currentUser!.id.toString();
-            print('[AITutorStop] Usando ID de usuário autenticado: $userId');
+            print(
+                '[NutritionAssistantStop] Usando ID de usuário autenticado: $userId');
           } else {
-            print('[AITutorStop] Nenhum usuário autenticado encontrado');
+            print(
+                '[NutritionAssistantStop] Nenhum usuário autenticado encontrado');
           }
         } else {
           print(
-              '[AITutorStop] Sem contexto disponível para obter usuário autenticado');
+              '[NutritionAssistantStop] Sem contexto disponível para obter usuário autenticado');
         }
 
         // Tentar com uma requisição genérica como último recurso
         final bool resultado = await _aiService
             .stopGenerationOnServer('conexao_indefinida', userId: userId);
-        print('[AITutorStop] Tentativa de forçar interrupção: $resultado');
+        print(
+            '[NutritionAssistantStop] Tentativa de forçar interrupção: $resultado');
       } catch (e) {
-        print('[AITutorStop] Erro na tentativa de forçar interrupção: $e');
+        print(
+            '[NutritionAssistantStop] Erro na tentativa de forçar interrupção: $e');
       }
     }
 
     // Cancelar a stream subscription localmente, independentemente do resultado no servidor
-    print('[AITutorStop] Cancelando stream subscription local');
+    print('[NutritionAssistantStop] Cancelando stream subscription local');
     try {
       await _aiStreamSubscription?.cancel();
-      print('✅ [AITutorStop] Stream subscription cancelada com sucesso');
+      print(
+          '✅ [NutritionAssistantStop] Stream subscription cancelada com sucesso');
     } catch (e) {
-      print('❌ [AITutorStop] Erro ao cancelar stream subscription: $e');
+      print(
+          '❌ [NutritionAssistantStop] Erro ao cancelar stream subscription: $e');
     }
 
     _aiStreamSubscription = null;
@@ -1048,15 +1063,16 @@ class AITutorController with ChangeNotifier {
 
     // Se tiver uma mensagem em streaming, indicar que foi interrompida
     if (_streamingMessageIndex != null && _messageNotifier != null) {
-      print('[AITutorStop] Atualizando mensagem para indicar interrupção');
+      print(
+          '[NutritionAssistantStop] Atualizando mensagem para indicar interrupção');
       // Não adicionar texto de interrupção à mensagem
       _messageNotifier?.setStreaming(false);
       _streamingMessageIndex = null;
       _messageNotifier = null;
-      print('✅ [AITutorStop] Mensagem atualizada com sucesso');
+      print('✅ [NutritionAssistantStop] Mensagem atualizada com sucesso');
     }
 
-    print('✅ [AITutorStop] Processo de interrupção concluído');
+    print('✅ [NutritionAssistantStop] Processo de interrupção concluído');
     print('----------------------------------------\n');
 
     notifyListeners();
@@ -1290,18 +1306,22 @@ class AITutorController with ChangeNotifier {
       // Obter tipos de refeição do usuário
       List<Map<String, String>>? mealTypesForAI;
       try {
-        final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+        final mealTypesProvider =
+            Provider.of<MealTypesProvider>(context, listen: false);
         mealTypesForAI = mealTypesProvider.mealTypes
             .map((mt) => {'id': mt.id, 'name': mt.name})
             .toList();
       } catch (e) {
-        print('⚠️ AITutorController (processSilently) - Não foi possível obter tipos de refeição: $e');
+        print(
+            '⚠️ NutritionAssistantController (processSilently) - Não foi possível obter tipos de refeição: $e');
       }
 
       // Obter stream da IA para texto
       try {
         final stream = _aiService.getAnswerStream(prompt,
-            languageCode: languageCode, quality: quality, mealTypes: mealTypesForAI);
+            languageCode: languageCode,
+            quality: quality,
+            mealTypes: mealTypesForAI);
 
         // Usar o helper para lidar com o stream
         String? toolDataForHistory;
@@ -1309,7 +1329,7 @@ class AITutorController with ChangeNotifier {
         if (rawInitialPromptJson != null) {
           toolDataForHistory = rawInitialPromptJson;
           print(
-              '📝 AITutorController (processSilently): Passando toolDataJson (rawInitialPromptJson) para histórico (texto)');
+              '📝 NutritionAssistantController (processSilently): Passando toolDataJson (rawInitialPromptJson) para histórico (texto)');
         }
 
         _aiStreamSubscription = AIInteractionHelper.handleAIStream(
@@ -1357,7 +1377,7 @@ class AITutorController with ChangeNotifier {
         }
       } catch (e) {
         print(
-            '❌ AITutorController - Erro ao processar texto silenciosamente: $e');
+            '❌ NutritionAssistantController - Erro ao processar texto silenciosamente: $e');
         if (_messageNotifier != null) {
           _messageNotifier!.setError(true,
               'Erro ao processar sua solicitação. Por favor, tente novamente.');
@@ -1606,7 +1626,7 @@ class AITutorController with ChangeNotifier {
       });
       notifyListeners();
       print(
-          '💬 AITutorController: Resposta histórica da ferramenta adicionada às mensagens.');
+          '💬 NutritionAssistantController: Resposta histórica da ferramenta adicionada às mensagens.');
     } else if (_messages.first['isUser'] == false &&
         _messages.first['message'] == null &&
         _messages.first['notifier'] != null) {
@@ -1620,7 +1640,7 @@ class AITutorController with ChangeNotifier {
       };
       notifyListeners();
       print(
-          '💬 AITutorController: Resposta histórica da ferramenta substituiu notifier vazio.');
+          '💬 NutritionAssistantController: Resposta histórica da ferramenta substituiu notifier vazio.');
     }
   }
 
@@ -1649,7 +1669,8 @@ class AITutorController with ChangeNotifier {
 
     notifyListeners();
     _saveMessagesForCurrentDate();
-    print('🗑️ AITutorController - Par de mensagens deletado no índice $messageIndex');
+    print(
+        '🗑️ NutritionAssistantController - Par de mensagens deletado no índice $messageIndex');
   }
 
   /// Formata a data para usar como chave de armazenamento (yyyy-MM-dd)
@@ -1660,7 +1681,7 @@ class AITutorController with ChangeNotifier {
   /// Muda a data selecionada e carrega as mensagens dessa data
   Future<void> changeSelectedDate(DateTime newDate) async {
     print(
-        '📅 AITutorController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
+        '📅 NutritionAssistantController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
 
     // Salvar mensagens da data atual antes de mudar
     await _saveMessagesForCurrentDate();
@@ -1678,7 +1699,7 @@ class AITutorController with ChangeNotifier {
   Future<void> _saveMessagesForCurrentDate() async {
     if (_messages.isEmpty) {
       print(
-          '💾 AITutorController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
+          '💾 NutritionAssistantController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
       return;
     }
 
@@ -1720,10 +1741,10 @@ class AITutorController with ChangeNotifier {
 
       await _storageService.saveData(storageKey, {'messages': messagesData});
       print(
-          '✅ AITutorController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
+          '✅ NutritionAssistantController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
     } catch (e) {
       print(
-          '❌ AITutorController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
+          '❌ NutritionAssistantController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
     }
   }
 
@@ -1737,7 +1758,7 @@ class AITutorController with ChangeNotifier {
 
       if (data == null || data.isEmpty) {
         print(
-            '📭 AITutorController - Nenhuma mensagem encontrada para data $dateKey');
+            '📭 NutritionAssistantController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
         notifyListeners();
         return;
@@ -1764,19 +1785,19 @@ class AITutorController with ChangeNotifier {
       }).toList();
 
       print(
-          '✅ AITutorController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
+          '✅ NutritionAssistantController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
       notifyListeners();
     } catch (e) {
       print(
-          '❌ AITutorController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
+          '❌ NutritionAssistantController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
       _messages = [];
       notifyListeners();
     }
   }
 }
 
-/// Interface para acessar os métodos necessários do AITutorSpeechMixin
-abstract class AITutorSpeechMixinRef {
+/// Interface para acessar os métodos necessários do NutritionAssistantSpeechMixin
+abstract class NutritionAssistantSpeechMixinRef {
   bool get isListening;
   Future<void> releaseAudioResources();
   void stopListening();

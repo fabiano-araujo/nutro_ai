@@ -109,7 +109,7 @@ final Map<String, String> frFRTranslations = {
   // Outils
   'document_summary': 'Résumé de document',
   'text_enhancement': 'Amélioration de texte',
-  'ai_tutor': 'Tuteur avec IA',
+  'ai_tutor': 'Assistant Nutritionnel',
   'document_scan': 'Numériser un document',
   'camera_scan': 'Numériser',
   'upload_file': 'Télécharger un fichier',
@@ -187,7 +187,8 @@ final Map<String, String> frFRTranslations = {
   'restart': 'Redémarrer',
   'reset_conversation_tooltip': 'Réinitialiser la conversation',
   'start_question': 'Qu\'avez-vous mangé aujourd\'hui ?',
-  'start_question_subtitle': 'Je calcule les calories et les nutriments pour vous.',
+  'start_question_subtitle':
+      'Je calcule les calories et les nutriments pour vous.',
   'you': 'Vous',
   'thinking': 'Réflexion...',
   'copy_response': 'Copier la réponse',
@@ -275,7 +276,8 @@ final Map<String, String> frFRTranslations = {
   'barcode_hint': 'Scannez le code-barres du produit',
 
   // Message de bienvenue dans la carte
-  'welcome_message_card': 'Bonjour ! Je suis Nutro AI, votre assistant nutritionnel',
+  'welcome_message_card':
+      'Bonjour ! Je suis Nutro AI, votre assistant nutritionnel',
   'welcome_description':
       'Assistant intelligent pour améliorer votre apprentissage 📚👩‍🎓',
   'start_conversation': 'Démarrer la conversation',
@@ -302,7 +304,8 @@ final Map<String, String> frFRTranslations = {
   'plan': 'Plan',
 
   // Écran de tuteur IA
-  'ai_tutor_title': 'Assistant d\'Études',
+  'ai_tutor_title': 'Assistant Nutritionnel',
+  'ai_tutor_chat_title': 'Assistant Nutritionnel',
   'ask_anything': 'Qu\'avez-vous mangé ou fait comme exercice ?',
 
   // Écran d'abonnement
@@ -426,15 +429,18 @@ final Map<String, String> frFRTranslations = {
   'no_conversations': 'Aucune conversation pour le moment',
   'days_ago': 'jours passés',
   'delete_conversation': 'Supprimer la conversation',
-  'delete_conversation_confirm': 'Êtes-vous sûr de vouloir supprimer la conversation "{title}"?',
+  'delete_conversation_confirm':
+      'Êtes-vous sûr de vouloir supprimer la conversation "{title}"?',
   'free_chat': 'Chat Libre',
 
   // Édition des aliments
   'edit_food': 'Modifier l\'Aliment',
   'food_name': 'Nom de l\'Aliment',
   'amount': 'Quantité',
-  'edit_amount_helper': 'Modifier la quantité recalcule les macros automatiquement',
-  'edit_food_info': 'Modifier le nom recherche de nouvelles valeurs nutritionnelles via IA',
+  'edit_amount_helper':
+      'Modifier la quantité recalcule les macros automatiquement',
+  'edit_food_info':
+      'Modifier le nom recherche de nouvelles valeurs nutritionnelles via IA',
   'edit_all_foods': 'Modifier tous les aliments',
   'edit_all_foods_desc': 'Modifier le nom et la quantité de tous les éléments',
   'add_food': 'Ajouter un aliment',
@@ -447,8 +453,10 @@ final Map<String, String> frFRTranslations = {
   'weekly_diet': 'Régime Hebdomadaire',
   'daily_diet': 'Régime Quotidien',
   'replace_all_meals': 'Remplacer Tous les Repas',
-  'replace_all_meals_weekly_confirm': 'Voulez-vous générer un nouveau plan de régime hebdomadaire?',
-  'replace_all_meals_daily_confirm': 'Voulez-vous générer un nouveau plan de régime pour ce jour?',
+  'replace_all_meals_weekly_confirm':
+      'Voulez-vous générer un nouveau plan de régime hebdomadaire?',
+  'replace_all_meals_daily_confirm':
+      'Voulez-vous générer un nouveau plan de régime pour ce jour?',
   'yes_generate_new': 'Oui, Générer Nouveau',
   'no_diet_plan_for_day': 'Aucun plan de régime pour ce jour',
   'generate_diet_plan': 'Générer un Plan de Régime',
@@ -461,9 +469,11 @@ final Map<String, String> frFRTranslations = {
   'streak_freeze_active': 'Freeze Actif',
   'best_streak': 'Meilleur',
   'freezes': 'Protections',
-  'streak_in_danger': 'Votre série est en danger! Enregistrez quelque chose aujourd\'hui pour ne pas la perdre.',
+  'streak_in_danger':
+      'Votre série est en danger! Enregistrez quelque chose aujourd\'hui pour ne pas la perdre.',
   'activate_freeze': 'Protéger ma série',
   'activate_freeze_title': 'Protéger la série?',
-  'activate_freeze_description': 'La protection gèle votre série pendant 24 heures, même si vous ne connectez rien. Vous avez {count} protection(s) disponible(s).',
+  'activate_freeze_description':
+      'La protection gèle votre série pendant 24 heures, même si vous ne connectez rien. Vous avez {count} protection(s) disponible(s).',
   'activate': 'Activer',
 };

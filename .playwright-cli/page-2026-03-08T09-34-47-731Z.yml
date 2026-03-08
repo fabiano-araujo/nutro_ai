@@ -1,0 +1,33 @@
+- generic [ref=e7] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button [ref=e37]
+            - generic [ref=e38]:
+              - generic: Social
+            - generic [ref=e39]:
+              - generic: Feed, desafios e amigos em um lugar so
+            - tablist:
+              - tab "Feed" [ref=e41]
+              - tab "Desafios" [ref=e42]
+              - tab "Amigos" [active] [selected] [ref=e43]
+            - generic:
+              - generic:
+                - tabpanel:
+                  - generic:
+                    - group:
+                      - textbox "Buscar usuarios..." [ref=e60]
+                      - generic [ref=e61]:
+                        - generic: Amigos
+                      - generic [ref=e62]:
+                        - generic: "0"
+                      - generic [ref=e63]:
+                        - generic: Nenhum amigo ainda
+                      - generic [ref=e64]:
+                        - generic: Use a busca acima para encontrar amigos!
+            - button "Início Guia 1 de 4" [ref=e33]
+            - button "Minha Dieta Guia 2 de 4" [ref=e34]
+            - button "Social Guia 3 de 4" [ref=e35]
+            - button "Perfil Guia 4 de 4" [ref=e36]

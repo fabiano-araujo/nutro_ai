@@ -324,6 +324,7 @@ class ChallengeService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({}),
       );
 
       return response.statusCode == 200;
@@ -345,6 +346,7 @@ class ChallengeService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({}),
       );
 
       return response.statusCode == 200;

@@ -1,0 +1,26 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - button "Menu" [active] [ref=e37]
+              - heading "Perfil" [level=2] [ref=e38]
+            - generic:
+              - group:
+                - generic [ref=e39]:
+                  - generic: Developer IMC 24.2 · Peso normal
+                - group "Dias Consecutivos 🔥 0 Registro 💪 0 Proteína 🎯 0 Meta 🏆 0 Melhor ❄️ 1/1 Proteções":
+                  - button "❄️ Proteger minha sequência" [ref=e41]
+                - generic:
+                  - button "Objetivo Emagrecer devagar" [ref=e43]
+                  - button "Meta Diária 2256 kcal" [ref=e44]
+                - generic [ref=e46]:
+                  - generic: 0 Sequência - Média
+            - generic [ref=e48]:
+              - generic: Login realizado com sucesso!
+            - button "Início Guia 1 de 4" [ref=e49]
+            - button "Minha Dieta Guia 2 de 4" [ref=e50]
+            - button "Social Guia 3 de 4" [ref=e51]
+            - button "Perfil Guia 4 de 4" [ref=e52]

@@ -171,8 +171,8 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
     }
   }
 
-  // Navegar para a tela AI Tutor com as informações do vídeo
-  void _navigateToAITutor() {
+  // Navegar para a tela NutritionAssistantScreen com as informações do vídeo
+  void _navigateToNutritionAssistant() {
     if (_videoInfo != null && _transcript.isNotEmpty) {
       // Criar um prompt mais simples e direto que será processado pela AI
       final String directPrompt =
@@ -191,7 +191,7 @@ Por favor, forneça:
 2. Um resumo detalhado do conteúdo
 3. Uma avaliação da complexidade e profundidade do material''';
 
-      // Criar objeto que o AI Tutor possa processar para mostrar o card
+      // Criar objeto que a NutritionAssistantScreen possa processar para mostrar o card
       Map<String, dynamic> toolData = {
         'userInput': _videoInfo!['title'],
         'fullPrompt':
@@ -211,11 +211,12 @@ Por favor, forneça:
       // Converter para JSON
       final String jsonData = jsonEncode(toolData);
 
-      // Navegar para a tela do AI Tutor com o prompt e metadados
+      // Navegar para a tela do Assistente de Nutrição com o prompt e metadados
       Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => AITutorScreen(initialPrompt: jsonData),
+            builder: (context) =>
+                NutritionAssistantScreen(initialPrompt: jsonData),
           ));
     }
   }
@@ -344,13 +345,18 @@ Por favor, forneça:
                                     width: double.infinity,
                                     height: 200,
                                     color: Colors.grey[300],
-                                    child: Center(child: Icon(Icons.video_library, size: 48, color: Colors.grey)),
+                                    child: Center(
+                                        child: Icon(Icons.video_library,
+                                            size: 48, color: Colors.grey)),
                                   ),
-                                  errorWidget: (context, url, error) => Container(
+                                  errorWidget: (context, url, error) =>
+                                      Container(
                                     width: double.infinity,
                                     height: 200,
                                     color: Colors.grey[300],
-                                    child: Center(child: Icon(Icons.error, size: 48, color: Colors.grey)),
+                                    child: Center(
+                                        child: Icon(Icons.error,
+                                            size: 48, color: Colors.grey)),
                                   ),
                                 ),
                               ),
@@ -506,13 +512,13 @@ Por favor, forneça:
                     ),
                   ],
 
-                  // Botão para ver resumo no AI Tutor (visível apenas quando a transcrição estiver pronta)
+                  // Botão para ver resumo no Assistente de Nutrição (visível apenas quando a transcrição estiver pronta)
                   if (_isTranscriptReady) ...[
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _navigateToAITutor,
+                        onPressed: _navigateToNutritionAssistant,
                         icon: const Icon(Icons.auto_awesome),
                         label: Text(
                             context.tr.translate('see_summary_in_ai_tutor')),

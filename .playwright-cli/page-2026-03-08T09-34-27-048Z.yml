@@ -1,0 +1,26 @@
+- generic [ref=e7] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button [ref=e37]
+            - generic [ref=e38]:
+              - generic: Social
+            - generic [ref=e39]:
+              - generic: Feed, desafios e amigos em um lugar so
+            - tablist:
+              - tab "Feed" [active] [selected] [ref=e41]
+              - tab "Desafios" [ref=e42]
+              - tab "Amigos" [ref=e43]
+            - generic:
+              - generic:
+                - tabpanel:
+                  - generic:
+                    - group:
+                      - generic [ref=e58]:
+                        - generic: Seu feed esta vazio Adicione amigos para ver atividades, streaks e desafios por aqui.
+            - button "Início Guia 1 de 4" [ref=e33]
+            - button "Minha Dieta Guia 2 de 4" [ref=e34]
+            - button "Social Guia 3 de 4" [ref=e35]
+            - button "Perfil Guia 4 de 4" [ref=e36]

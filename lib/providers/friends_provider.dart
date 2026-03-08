@@ -161,7 +161,7 @@ class FriendsProvider extends ChangeNotifier {
       friendshipId: friendshipId,
     );
     if (success) {
-      await loadFriends();
+      await loadAll();
     }
     return success;
   }

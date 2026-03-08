@@ -19,7 +19,7 @@ This file guides coding agents working in this repository.
   - Initializes Firebase, notifications, ads, auth restore, providers, theme, and i18n.
 - Main navigation: `lib/screens/main_navigation.dart`
   - Uses `IndexedStack` with 4 tabs:
-    - `AITutorScreen`
+    - `NutritionAssistantScreen`
     - `PersonalizedDietScreen`
     - `SocialHubScreen`
     - `ProfileTabWrapper` (Profile/Login by auth state)
@@ -90,7 +90,7 @@ npx prisma studio
 
 ### AI chat and streaming
 
-- `lib/screens/ai_tutor_screen.dart`
+- `lib/screens/ai_tutor_screen.dart` (`NutritionAssistantScreen`)
 - `lib/controllers/ai_tutor_controller.dart`
 - `lib/services/ai_service.dart`
 - `lib/widgets/streaming_response_display.dart`

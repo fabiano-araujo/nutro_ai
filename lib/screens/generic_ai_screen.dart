@@ -175,11 +175,11 @@ class _GenericAIScreenState extends State<GenericAIScreen>
     // Construir o prompt antes de navegar
     final prompt = _buildPrompt();
 
-    // Navegue para a tela AITutorScreen e passe o prompt
+    // Navegue para a tela NutritionAssistantScreen e passe o prompt
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => AITutorScreen(initialPrompt: prompt),
+        builder: (context) => NutritionAssistantScreen(initialPrompt: prompt),
       ),
     );
   }

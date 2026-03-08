@@ -51,7 +51,8 @@ final Map<String, String> deDETranslations = {
   'register_button': 'Registrieren',
   'already_have_account': 'Haben Sie bereits ein Konto?',
   'registration_success': 'Registrierung erfolgreich!',
-  'registration_failed': 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.',
+  'registration_failed':
+      'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.',
   'server_connection_error':
       'Fehler beim Verbinden mit dem Server. Bitte versuchen Sie es später erneut.',
 
@@ -155,7 +156,7 @@ final Map<String, String> deDETranslations = {
   // Werkzeuge
   'document_summary': 'Dokumentzusammenfassung',
   'text_enhancement': 'Textverbesserung',
-  'ai_tutor': 'KI-Tutor',
+  'ai_tutor': 'Ernährungsassistent',
   'document_scan': 'Dokument scannen',
   'camera_scan': 'Scannen',
   'upload_file': 'Datei hochladen',
@@ -233,7 +234,8 @@ final Map<String, String> deDETranslations = {
   'restart': 'Neu starten',
   'reset_conversation_tooltip': 'Gespräch zurücksetzen',
   'start_question': 'Was hast du heute gegessen?',
-  'start_question_subtitle': 'Ich berechne die Kalorien und Nährstoffe für dich.',
+  'start_question_subtitle':
+      'Ich berechne die Kalorien und Nährstoffe für dich.',
   'you': 'Du',
   'thinking': 'Denke nach...',
   'copy_response': 'Antwort kopieren',
@@ -349,7 +351,8 @@ final Map<String, String> deDETranslations = {
   'plan': 'Plan',
 
   // KI-Tutor-Bildschirm
-  'ai_tutor_title': 'Studienassistent',
+  'ai_tutor_title': 'Ernährungsassistent',
+  'ai_tutor_chat_title': 'Ernährungsassistent',
   'ask_anything': 'Was hast du gegessen oder trainiert?',
 
   // Abonnement-Bildschirm
@@ -426,14 +429,16 @@ final Map<String, String> deDETranslations = {
   'no_conversations': 'Noch keine Gespräche',
   'days_ago': 'Tagen',
   'delete_conversation': 'Gespräch löschen',
-  'delete_conversation_confirm': 'Sind Sie sicher, dass Sie das Gespräch "{title}" löschen möchten?',
+  'delete_conversation_confirm':
+      'Sind Sie sicher, dass Sie das Gespräch "{title}" löschen möchten?',
   'free_chat': 'Freier Chat',
 
   // Lebensmittel bearbeiten
   'edit_food': 'Lebensmittel bearbeiten',
   'food_name': 'Lebensmittelname',
   'amount': 'Menge',
-  'edit_amount_helper': 'Das Ändern der Menge berechnet die Makros automatisch neu',
+  'edit_amount_helper':
+      'Das Ändern der Menge berechnet die Makros automatisch neu',
   'edit_food_info': 'Das Ändern des Namens sucht neue Nährwerte über KI',
   'edit_all_foods': 'Alle Lebensmittel bearbeiten',
   'edit_all_foods_desc': 'Name und Menge aller Elemente bearbeiten',
@@ -447,8 +452,10 @@ final Map<String, String> deDETranslations = {
   'weekly_diet': 'Wöchentliche Diät',
   'daily_diet': 'Tägliche Diät',
   'replace_all_meals': 'Alle Mahlzeiten ersetzen',
-  'replace_all_meals_weekly_confirm': 'Möchten Sie einen neuen wöchentlichen Diätplan erstellen?',
-  'replace_all_meals_daily_confirm': 'Möchten Sie einen neuen Diätplan für diesen Tag erstellen?',
+  'replace_all_meals_weekly_confirm':
+      'Möchten Sie einen neuen wöchentlichen Diätplan erstellen?',
+  'replace_all_meals_daily_confirm':
+      'Möchten Sie einen neuen Diätplan für diesen Tag erstellen?',
   'yes_generate_new': 'Ja, Neu erstellen',
   'no_diet_plan_for_day': 'Kein Diätplan für diesen Tag',
   'generate_diet_plan': 'Diätplan erstellen',
@@ -461,9 +468,11 @@ final Map<String, String> deDETranslations = {
   'streak_freeze_active': 'Freeze Aktiv',
   'best_streak': 'Beste',
   'freezes': 'Schutz',
-  'streak_in_danger': 'Ihre Serie ist in Gefahr! Protokollieren Sie heute etwas, um sie nicht zu verlieren.',
+  'streak_in_danger':
+      'Ihre Serie ist in Gefahr! Protokollieren Sie heute etwas, um sie nicht zu verlieren.',
   'activate_freeze': 'Meine Serie schützen',
   'activate_freeze_title': 'Serie schützen?',
-  'activate_freeze_description': 'Der Schutz friert Ihre Serie für 24 Stunden ein, auch wenn Sie nichts protokollieren. Sie haben {count} Schutz(e) verfügbar.',
+  'activate_freeze_description':
+      'Der Schutz friert Ihre Serie für 24 Stunden ein, auch wenn Sie nichts protokollieren. Sie haben {count} Schutz(e) verfügbar.',
   'activate': 'Aktivieren',
 };

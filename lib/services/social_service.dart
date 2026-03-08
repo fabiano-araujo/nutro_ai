@@ -321,6 +321,7 @@ class SocialService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({}),
       );
 
       print('[SocialService] Accept response: ${response.statusCode} - ${response.body}');
@@ -413,6 +414,7 @@ class SocialService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({}),
       );
 
       return response.statusCode == 200;
@@ -493,6 +495,7 @@ class SocialService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({}),
       );
 
       return response.statusCode == 200;

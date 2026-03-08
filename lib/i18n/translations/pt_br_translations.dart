@@ -33,7 +33,8 @@ final Map<String, String> ptBRTranslations = {
   'login_to_access_profile': 'Entre para acessar seu perfil',
   'login_description':
       'Entre para ver seu histórico, favoritos e configurações personalizadas.',
-  'login_required_for_diet': 'É necessário estar logado para gerar dietas personalizadas',
+  'login_required_for_diet':
+      'É necessário estar logado para gerar dietas personalizadas',
   'sign_in': 'Entrar',
   'sign_out': 'Sair da Conta',
   'logout': 'Sair',
@@ -1098,7 +1099,8 @@ final Map<String, String> ptBRTranslations = {
   'edit_food': 'Editar Alimento',
   'food_name': 'Nome do Alimento',
   'amount': 'Quantidade',
-  'edit_amount_helper': 'Alterar a quantidade recalcula os macros automaticamente',
+  'edit_amount_helper':
+      'Alterar a quantidade recalcula os macros automaticamente',
   'edit_food_info': 'Alterar o nome busca novos valores nutricionais via IA',
   'edit_all_foods': 'Editar todos os alimentos',
   'edit_all_foods_desc': 'Edite nome e quantidade de todos os itens',
@@ -1110,12 +1112,14 @@ final Map<String, String> ptBRTranslations = {
   // Chaves adicionais faltantes
   'ai_tool': 'Ferramenta IA',
   'ai_tutor_chat_title': 'Chat com IA',
-  'camera_error_description': 'Não foi possível acessar a câmera. Verifique as permissões.',
+  'camera_error_description':
+      'Não foi possível acessar a câmera. Verifique as permissões.',
   'camera_error_message': 'Erro na câmera',
   'camera_initializing': 'Inicializando câmera...',
   'camera_stuck': 'Câmera travada',
   'camera_timeout': 'Tempo esgotado',
-  'camera_timeout_description': 'A câmera demorou muito para responder. Tente novamente.',
+  'camera_timeout_description':
+      'A câmera demorou muito para responder. Tente novamente.',
   'camera_wait_message': 'Aguarde enquanto a câmera é preparada',
   'configure_meals': 'Configurar refeições',
   'configure_meals_description': 'Personalize suas refeições diárias',
@@ -1141,39 +1145,57 @@ final Map<String, String> ptBRTranslations = {
   'weekly_diet': 'Dieta Semanal',
   'daily_diet': 'Dieta Diária',
   'replace_all_meals': 'Substituir Todas as Refeições',
-  'replace_all_meals_weekly_confirm': 'Deseja gerar um novo plano de dieta semanal?',
-  'replace_all_meals_daily_confirm': 'Deseja gerar um novo plano de dieta para este dia?',
+  'replace_all_meals_weekly_confirm':
+      'Deseja gerar um novo plano de dieta semanal?',
+  'replace_all_meals_daily_confirm':
+      'Deseja gerar um novo plano de dieta para este dia?',
   'yes_generate_new': 'Sim, Gerar Novo',
   'no_diet_plan_for_day': 'Nenhum plano de dieta para este dia',
   'generate_diet_plan': 'Gerar Plano de Dieta',
   'choose_diet_type': 'Escolha o Tipo de Dieta',
-  'choose_diet_type_description': 'Selecione como deseja organizar sua alimentação',
-  'weekly_diet_description': 'Organize suas refeições para a semana toda de forma manual',
+  'choose_diet_type_description':
+      'Selecione como deseja organizar sua alimentação',
+  'weekly_diet_description':
+      'Organize suas refeições para a semana toda de forma manual',
   'daily_diet_ai': 'Dieta Diária com IA',
-  'daily_diet_ai_description': 'Gere automaticamente um plano de dieta personalizado com inteligência artificial',
+  'daily_diet_ai_description':
+      'Gere automaticamente um plano de dieta personalizado com inteligência artificial',
   'premium_feature': 'Recurso Premium',
-  'daily_diet_premium_description': 'A geração automática de dietas com IA é um recurso exclusivo para assinantes Premium. Faça upgrade para ter acesso a dietas personalizadas geradas automaticamente!',
+  'daily_diet_premium_description':
+      'A geração automática de dietas com IA é um recurso exclusivo para assinantes Premium. Faça upgrade para ter acesso a dietas personalizadas geradas automaticamente!',
   'upgrade_to_pro': 'Fazer Upgrade',
   'replace_all': 'Substituir',
   'weekly_diet_active': 'Sua dieta semanal está ativa',
   'daily_diet_active': 'Sua dieta diária está ativa',
   'change_diet_type': 'Trocar Tipo de Dieta',
-  'change_diet_type_confirm': 'Tem certeza que deseja trocar o tipo de dieta? Isso irá apagar a dieta atual.',
+  'change_diet_type_confirm':
+      'Tem certeza que deseja trocar o tipo de dieta? Isso irá apagar a dieta atual.',
   'yes_change': 'Sim, Trocar',
   'no_meals_yet': 'Nenhuma refeição ainda',
-  'add_meals_description': 'Use o botão + para adicionar alimentos às suas refeições',
+  'add_meals_description':
+      'Use o botão + para adicionar alimentos às suas refeições',
   'no_weekly_diet': 'Sua semana sem plano alimentar',
-  'no_weekly_diet_description': 'Nossa nutricionista virtual vai criar um cardápio semanal completo, balanceado e personalizado para seus objetivos',
+  'no_weekly_diet_description':
+      'Nossa nutricionista virtual vai criar um cardápio semanal completo, balanceado e personalizado para seus objetivos',
   'no_daily_diet': 'Seu dia sem plano alimentar',
-  'no_daily_diet_description': 'Nossa nutricionista virtual vai criar um cardápio diário completo, balanceado e personalizado para seus objetivos',
+  'no_daily_diet_description':
+      'Nossa nutricionista virtual vai criar um cardápio diário completo, balanceado e personalizado para seus objetivos',
   'generating_diet_plan': 'Sua nutricionista está preparando seu cardápio...',
   'generating_meals': 'Preparando refeições...',
   'create_weekly_diet': 'Criar Dieta Semanal',
   'generate_diet_ai': 'Criar meu Cardápio',
-  'daily_diet_premium_required': 'Dieta diária disponível apenas para assinantes',
+  'daily_diet_premium_required':
+      'Dieta diária disponível apenas para assinantes',
   'daily_diet_premium_title': 'Recurso Premium',
-  'daily_diet_premium_description': 'O cardápio diário personalizado é exclusivo para assinantes. Com ele você pode ter uma dieta diferente a cada dia!',
+  'daily_diet_premium_description':
+      'O cardápio diário personalizado é exclusivo para assinantes. Com ele você pode ter uma dieta diferente a cada dia!',
   'weekly_diet_free': 'A dieta semanal é gratuita',
+  'repeat_diet_other_days': 'Repetir em outros dias',
+  'repeat_diet_select_days':
+      'Selecione os próximos dias em que deseja copiar este cardápio. Dietas já existentes serão substituídas.',
+  'repeat_diet_replace_existing': 'Substitui a dieta já salva nesse dia',
+  'repeat_diet_apply': 'Repetir dieta',
+  'repeat_diet_success': 'Dieta repetida em {count} dia(s)',
 
   // Statistics Screen
   'stats_7_days': '7 dias',
@@ -1183,19 +1205,23 @@ final Map<String, String> ptBRTranslations = {
   'stats_days_logged': 'Dias registrados',
   'stats_on_target': 'Na meta',
   'stats_goal_adherence': 'Aderência à Meta',
-  'stats_goal_adherence_desc': 'Quantos dias você ficou dentro da meta de calorias',
+  'stats_goal_adherence_desc':
+      'Quantos dias você ficou dentro da meta de calorias',
   'stats_on_target_days': 'Na meta',
   'stats_below_goal': 'Abaixo da meta',
   'stats_above_goal': 'Acima da meta',
   'stats_days': 'dias',
   'stats_calories_history': 'Histórico de Calorias',
-  'stats_calories_history_desc': 'Suas calorias consumidas comparadas à meta diária',
+  'stats_calories_history_desc':
+      'Suas calorias consumidas comparadas à meta diária',
   'stats_consumed': 'Consumido',
   'stats_goal': 'Meta',
   'stats_weekly_consistency': 'Consistência Semanal',
-  'stats_weekly_consistency_desc': 'Em quais dias você registra suas refeições com mais frequência',
+  'stats_weekly_consistency_desc':
+      'Em quais dias você registra suas refeições com mais frequência',
   'stats_macros_average': 'Média de Macros',
-  'stats_macros_average_desc': 'Sua média de macronutrientes no período selecionado',
+  'stats_macros_average_desc':
+      'Sua média de macronutrientes no período selecionado',
   'stats_no_data': 'Registre suas refeições para ver os dados',
   'day_sun_short': 'Dom',
   'day_mon_short': 'Seg',
@@ -1213,9 +1239,11 @@ final Map<String, String> ptBRTranslations = {
   'streak_freeze_active': 'Freeze Ativo',
   'best_streak': 'Melhor',
   'freezes': 'Proteções',
-  'streak_in_danger': 'Seu progresso está em perigo! Registre algo hoje para não perder.',
+  'streak_in_danger':
+      'Seu progresso está em perigo! Registre algo hoje para não perder.',
   'activate_freeze': 'Proteger minha sequência',
   'activate_freeze_title': 'Proteger sequência?',
-  'activate_freeze_description': 'A proteção congela sua sequência por 24 horas, mesmo que você não registre nada. Você tem {count} proteção(ões) disponível(is).',
+  'activate_freeze_description':
+      'A proteção congela sua sequência por 24 horas, mesmo que você não registre nada. Você tem {count} proteção(ões) disponível(is).',
   'activate': 'Ativar',
 };

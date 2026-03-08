@@ -13,7 +13,7 @@ Nutro AI is a Flutter-based educational mobile application with a Node.js/Fastif
 - **Navigation**: `lib/screens/main_navigation.dart` - Bottom navigation with 4 tabs using IndexedStack:
   - Tools (ToolsScreen)
   - Camera Scan (CameraScanScreen)
-  - AI Tutor (AITutorScreen)
+- AI Tutor (NutritionAssistantScreen)
   - Profile/Login (conditional based on auth state)
 - **State Management**: Provider pattern for global state (credits, auth, essays, purchases)
 - **AI Service**: `lib/services/ai_service.dart` - Centralized service for all AI interactions via streaming SSE responses. All methods accept `userId` parameter for credit tracking
@@ -185,7 +185,7 @@ These are sent to backend and mapped in `ai-models.config.ts`.
 
 2. **Subscription Cleanup**: Server automatically cleans expired pending subscriptions on startup and every 6 hours (see `index.ts:38-53`)
 
-3. **Navigation with Ads**: `MainNavigation` tracks tab changes to show interstitial ads when leaving AI Tutor screen via `AITutorScreen.handleTabExit()`
+3. **Navigation with Ads**: `MainNavigation` tracks tab changes to show interstitial ads when leaving AI Tutor screen via `NutritionAssistantScreen.handleTabExit()`
 
 4. **IndexedStack Usage**: All screens remain in memory for fast tab switching, but causes lifecycle issues requiring manual handling (see `main_navigation.dart:51-68`)
 

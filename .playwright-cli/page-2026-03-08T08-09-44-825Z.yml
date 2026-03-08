@@ -1,0 +1,18 @@
+- generic [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - button [ref=e71]
+              - heading "Social" [level=2] [ref=e72]
+              - tablist:
+                - tab "Feed" [selected] [ref=e73]
+                - tab "Desafios" [ref=e74]
+                - tab "Amigos" [ref=e75]
+            - tabpanel "Seu feed esta vazio Adicione amigos para ver suas atividades aqui!" [ref=e76]
+            - button "Início Guia 1 de 4" [ref=e67]
+            - button "Minha Dieta Guia 2 de 4" [ref=e68]
+            - button "Social Guia 3 de 4" [active] [ref=e69]
+            - button "Perfil Guia 4 de 4" [ref=e70]

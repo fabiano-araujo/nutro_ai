@@ -1,0 +1,37 @@
+- generic [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - button [ref=e53]
+              - heading "Social" [level=2] [ref=e54]
+              - tablist:
+                - tab "Feed" [ref=e55]
+                - tab "Desafios" [ref=e56]
+                - tab "Amigos" [selected] [ref=e57]
+            - generic:
+              - generic:
+                - tabpanel:
+                  - generic:
+                    - group:
+                      - generic [ref=e59]:
+                        - textbox "Buscar usuarios..." [active] [ref=e60]: fabiano.araujo2056@gmail.com
+                        - button [ref=e65]
+                      - generic [ref=e66]:
+                        - generic: Resultados da busca
+                      - group "F Fabiano Araujo @Fabiano":
+                        - button "Adicionar" [ref=e67]
+                      - generic [ref=e68]:
+                        - generic: Amigos
+                      - generic [ref=e69]:
+                        - generic: "0"
+                      - generic [ref=e70]:
+                        - generic: Nenhum amigo ainda
+                      - generic [ref=e71]:
+                        - generic: Use a busca acima para encontrar amigos!
+            - button "Início Guia 1 de 4" [ref=e49]
+            - button "Minha Dieta Guia 2 de 4" [ref=e50]
+            - button "Social Guia 3 de 4" [ref=e51]
+            - button "Perfil Guia 4 de 4" [ref=e52]

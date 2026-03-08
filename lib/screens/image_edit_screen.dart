@@ -174,8 +174,8 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
           Uint8List.fromList(img.encodeJpg(croppedImage, quality: 90));
 
       if (mounted) {
-        // Enviar diretamente para o AI Tutor
-        _sendToAITutor(processedImage);
+        // Enviar diretamente para o Assistente de Nutrição
+        _sendToNutritionAssistant(processedImage);
       }
     } catch (e, stacktrace) {
       print('[PROCESS] Erro: $e\n$stacktrace');
@@ -190,9 +190,9 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
     }
   }
 
-  // Novo método para enviar para AITutorScreen
-  void _sendToAITutor(Uint8List processedImage) async {
-    print('[PROCESS] Navegando para AITutorScreen');
+  // Novo método para enviar para NutritionAssistantScreen
+  void _sendToNutritionAssistant(Uint8List processedImage) async {
+    print('[PROCESS] Navegando para NutritionAssistantScreen');
 
     // Converter a imagem para base64 para incluir no JSON
     final String base64Image = base64Encode(processedImage);
@@ -243,11 +243,11 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
     // Converter para JSON
     final String jsonData = jsonEncode(toolData);
 
-    // Navegar para o AI Tutor com os dados
+    // Navegar para o Assistente de Nutrição com os dados
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => AITutorScreen(initialPrompt: jsonData),
+        builder: (context) => NutritionAssistantScreen(initialPrompt: jsonData),
       ),
     );
   }

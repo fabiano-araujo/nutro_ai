@@ -76,6 +76,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   // Track if user has configured goals
   bool _hasConfiguredGoals = false;
+  late final Future<void> _loadFuture;
 
   // Getters
   String get sex => _sex;
@@ -96,14 +97,19 @@ class NutritionGoalsProvider extends ChangeNotifier {
   bool get hasConfiguredGoals => _hasConfiguredGoals;
 
   // Calculated goals
-  int get caloriesGoal => _useCalculatedGoals ? _calculateCalories() : _manualCaloriesGoal;
-  int get proteinGoal => _useCalculatedGoals ? _calculateProtein() : _manualProteinGoal;
-  int get carbsGoal => _useCalculatedGoals ? _calculateCarbs() : _manualCarbsGoal;
+  int get caloriesGoal =>
+      _useCalculatedGoals ? _calculateCalories() : _manualCaloriesGoal;
+  int get proteinGoal =>
+      _useCalculatedGoals ? _calculateProtein() : _manualProteinGoal;
+  int get carbsGoal =>
+      _useCalculatedGoals ? _calculateCarbs() : _manualCarbsGoal;
   int get fatGoal => _useCalculatedGoals ? _calculateFat() : _manualFatGoal;
 
   NutritionGoalsProvider() {
-    _loadFromPreferences();
+    _loadFuture = _loadFromPreferences();
   }
+
+  Future<void> ensureLoaded() => _loadFuture;
 
   // Load saved preferences
   Future<void> _loadFromPreferences() async {
@@ -148,10 +154,10 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
       final weightUnitIndex = prefs.getInt('nutrition_weightUnit') ?? 0;
       _weightUnit = WeightUnit.values[weightUnitIndex];
-
-      notifyListeners();
     } catch (e) {
       print('Error loading nutrition goals: $e');
+    } finally {
+      notifyListeners();
     }
   }
 
@@ -527,7 +533,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
     }
   }
 
-  String getActivityLevelDescription(ActivityLevel level, BuildContext context) {
+  String getActivityLevelDescription(
+      ActivityLevel level, BuildContext context) {
     switch (level) {
       case ActivityLevel.sedentary:
         return context.tr.translate('activity_sedentary_desc');
@@ -598,7 +605,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
       case DietType.highProtein:
         return context.tr.translate('diet_high_protein_desc');
       case DietType.custom:
-        return context.tr.translate('diet_custom_desc')
+        return context.tr
+            .translate('diet_custom_desc')
             .replaceAll('{carbs}', '$_carbsPercentage')
             .replaceAll('{protein}', '$_proteinPercentage')
             .replaceAll('{fat}', '$_fatPercentage');
@@ -607,7 +615,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   /// Limpa todas as metas nutricionais (usado no logout)
   Future<void> clearAllData() async {
-    print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - Iniciando limpeza...');
+    print(
+        '[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - Iniciando limpeza...');
 
     // Resetar para valores padrão
     _sex = 'male';
@@ -634,14 +643,18 @@ class NutritionGoalsProvider extends ChangeNotifier {
     // Limpar do SharedPreferences
     try {
       final prefs = await SharedPreferences.getInstance();
-      final keysToRemove = prefs.getKeys().where((key) => key.startsWith('nutrition_')).toList();
-      print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - Removendo ${keysToRemove.length} chaves: $keysToRemove');
+      final keysToRemove =
+          prefs.getKeys().where((key) => key.startsWith('nutrition_')).toList();
+      print(
+          '[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - Removendo ${keysToRemove.length} chaves: $keysToRemove');
       for (final key in keysToRemove) {
         await prefs.remove(key);
       }
-      print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - ✅ Todas as metas nutricionais foram limpas');
+      print(
+          '[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - ✅ Todas as metas nutricionais foram limpas');
     } catch (e) {
-      print('[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - ❌ ERRO: $e');
+      print(
+          '[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - ❌ ERRO: $e');
     }
 
     notifyListeners();

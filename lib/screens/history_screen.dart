@@ -473,7 +473,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
       case 'tutor':
         iconData = Icons.school_outlined;
         iconColor = colorScheme.primaryContainer;
-        typeLabel = 'Tutor';
+        typeLabel = context.tr.translate('ai_tutor');
         break;
       case 'conversation':
         iconData = Icons.chat_bubble_outline;
@@ -546,13 +546,13 @@ class _HistoryWidgetState extends State<HistoryWidget>
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // Navegar diretamente para AITutorScreen independente do tipo
+          // Navegar diretamente para NutritionAssistantScreen independente do tipo
           if (item.type == 'tutor' || item.type == 'conversation') {
             // Para tutor e conversation, usar o ID da conversa
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => AITutorScreen(
+                builder: (context) => NutritionAssistantScreen(
                   conversationId: item.id,
                 ),
               ),
@@ -654,7 +654,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AITutorScreen(
+                  builder: (context) => NutritionAssistantScreen(
                     conversationId:
                         conversationIdFromToolData, // Usar o conversationId se disponível
                     initialPrompt:
@@ -692,7 +692,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AITutorScreen(
+                  builder: (context) => NutritionAssistantScreen(
                     initialPrompt: fallbackJsonData,
                   ),
                 ),
@@ -813,7 +813,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
       case 'tutor':
         actionButtonText = 'Continuar conversa';
         actionIcon = Icons.school_outlined;
-        typeLabel = 'Tutor IA';
+        typeLabel = context.tr.translate('ai_tutor');
         typeColor = colorScheme.primaryContainer;
         break;
       case 'conversation':
@@ -1022,14 +1022,15 @@ class _HistoryWidgetState extends State<HistoryWidget>
                             // Fechar o modal e navegar para a ferramenta
                             Navigator.pop(context);
 
-                            // Sempre navegar para AITutorScreen
+                            // Sempre navegar para NutritionAssistantScreen
                             if (item.type == 'tutor' ||
                                 item.type == 'conversation') {
                               // Para tutor e conversation, usar o ID da conversa
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => AITutorScreen(
+                                  builder: (context) =>
+                                      NutritionAssistantScreen(
                                     conversationId: item.id,
                                   ),
                                 ),
@@ -1120,7 +1121,8 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => AITutorScreen(
+                                    builder: (context) =>
+                                        NutritionAssistantScreen(
                                       conversationId:
                                           conversationIdFromToolData, // Usar o conversationId se disponível
                                       initialPrompt:
@@ -1158,7 +1160,8 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => AITutorScreen(
+                                    builder: (context) =>
+                                        NutritionAssistantScreen(
                                       initialPrompt: fallbackJsonData,
                                     ),
                                   ),

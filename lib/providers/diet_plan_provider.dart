@@ -148,7 +148,8 @@ class DietPlanProvider extends ChangeNotifier {
         }
 
         await _saveToPreferences();
-        print('✅ DietPlanProvider: ${plansData.length} dietas carregadas do servidor');
+        print(
+            '✅ DietPlanProvider: ${plansData.length} dietas carregadas do servidor');
       }
     } catch (e) {
       print('❌ DietPlanProvider: Erro ao carregar do servidor: $e');
@@ -158,46 +159,48 @@ class DietPlanProvider extends ChangeNotifier {
   /// Converte dados do servidor para DietPlan
   DietPlan _parseDietPlanFromServer(Map<String, dynamic> data) {
     final meals = (data['meals'] as List<dynamic>?)?.map((mealData) {
-      final foods = (mealData['foods'] as List<dynamic>?)?.map((foodData) {
-        return PlannedFood(
-          name: foodData['name'] ?? '',
-          emoji: foodData['emoji'] ?? '🍽️',
-          amount: (foodData['amount'] is String)
-              ? double.tryParse(foodData['amount']) ?? 100
-              : (foodData['amount'] as num?)?.toDouble() ?? 100,
-          unit: foodData['unit'] ?? 'g',
-          calories: (foodData['calories'] as num?)?.toInt() ?? 0,
-          protein: (foodData['protein'] is String)
-              ? double.tryParse(foodData['protein']) ?? 0
-              : (foodData['protein'] as num?)?.toDouble() ?? 0,
-          carbs: (foodData['carbs'] is String)
-              ? double.tryParse(foodData['carbs']) ?? 0
-              : (foodData['carbs'] as num?)?.toDouble() ?? 0,
-          fat: (foodData['fat'] is String)
-              ? double.tryParse(foodData['fat']) ?? 0
-              : (foodData['fat'] as num?)?.toDouble() ?? 0,
-        );
-      }).toList() ?? [];
+          final foods = (mealData['foods'] as List<dynamic>?)?.map((foodData) {
+                return PlannedFood(
+                  name: foodData['name'] ?? '',
+                  emoji: foodData['emoji'] ?? '🍽️',
+                  amount: (foodData['amount'] is String)
+                      ? double.tryParse(foodData['amount']) ?? 100
+                      : (foodData['amount'] as num?)?.toDouble() ?? 100,
+                  unit: foodData['unit'] ?? 'g',
+                  calories: (foodData['calories'] as num?)?.toInt() ?? 0,
+                  protein: (foodData['protein'] is String)
+                      ? double.tryParse(foodData['protein']) ?? 0
+                      : (foodData['protein'] as num?)?.toDouble() ?? 0,
+                  carbs: (foodData['carbs'] is String)
+                      ? double.tryParse(foodData['carbs']) ?? 0
+                      : (foodData['carbs'] as num?)?.toDouble() ?? 0,
+                  fat: (foodData['fat'] is String)
+                      ? double.tryParse(foodData['fat']) ?? 0
+                      : (foodData['fat'] as num?)?.toDouble() ?? 0,
+                );
+              }).toList() ??
+              [];
 
-      return PlannedMeal(
-        type: mealData['type'] ?? '',
-        time: mealData['time'] ?? '',
-        name: mealData['name'] ?? '',
-        foods: foods,
-        mealTotals: DailyNutrition(
-          calories: (mealData['calories'] as num?)?.toInt() ?? 0,
-          protein: (mealData['protein'] is String)
-              ? double.tryParse(mealData['protein']) ?? 0
-              : (mealData['protein'] as num?)?.toDouble() ?? 0,
-          carbs: (mealData['carbs'] is String)
-              ? double.tryParse(mealData['carbs']) ?? 0
-              : (mealData['carbs'] as num?)?.toDouble() ?? 0,
-          fat: (mealData['fat'] is String)
-              ? double.tryParse(mealData['fat']) ?? 0
-              : (mealData['fat'] as num?)?.toDouble() ?? 0,
-        ),
-      );
-    }).toList() ?? [];
+          return PlannedMeal(
+            type: mealData['type'] ?? '',
+            time: mealData['time'] ?? '',
+            name: mealData['name'] ?? '',
+            foods: foods,
+            mealTotals: DailyNutrition(
+              calories: (mealData['calories'] as num?)?.toInt() ?? 0,
+              protein: (mealData['protein'] is String)
+                  ? double.tryParse(mealData['protein']) ?? 0
+                  : (mealData['protein'] as num?)?.toDouble() ?? 0,
+              carbs: (mealData['carbs'] is String)
+                  ? double.tryParse(mealData['carbs']) ?? 0
+                  : (mealData['carbs'] as num?)?.toDouble() ?? 0,
+              fat: (mealData['fat'] is String)
+                  ? double.tryParse(mealData['fat']) ?? 0
+                  : (mealData['fat'] as num?)?.toDouble() ?? 0,
+            ),
+          );
+        }).toList() ??
+        [];
 
     return DietPlan(
       date: data['dateKey'] ?? '',
@@ -229,7 +232,8 @@ class DietPlanProvider extends ChangeNotifier {
 
       final body = {
         'dateKey': dateKey,
-        'dietMode': _preferences.dietMode == DietMode.weekly ? 'weekly' : 'daily',
+        'dietMode':
+            _preferences.dietMode == DietMode.weekly ? 'weekly' : 'daily',
         'totalCalories': plan.totalNutrition.calories,
         'totalProtein': plan.totalNutrition.protein,
         'totalCarbs': plan.totalNutrition.carbs,
@@ -279,12 +283,13 @@ class DietPlanProvider extends ChangeNotifier {
       } else if (response.statusCode == 403) {
         final data = jsonDecode(response.body);
         if (data['code'] == 'PREMIUM_REQUIRED') {
-          _error = 'Dieta semanal disponível apenas para usuários premium';
+          _error = 'daily_diet_premium_required';
           _isPremium = false;
           notifyListeners();
         }
       } else {
-        print('❌ DietPlanProvider: Erro ao salvar no servidor: ${response.statusCode}');
+        print(
+            '❌ DietPlanProvider: Erro ao salvar no servidor: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ DietPlanProvider: Erro ao salvar no servidor: $e');
@@ -352,7 +357,8 @@ class DietPlanProvider extends ChangeNotifier {
 
     _isLoading = true;
     _error = null;
-    _expectedMealsCount = mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
+    _expectedMealsCount =
+        mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
     _parsedMealIndices.clear(); // Reset parsed meals tracker
     _partialDietPlan = DietPlan(
       date: _formatDate(date),
@@ -368,7 +374,8 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       // Build the prompt for AI
-      final prompt = _buildDietPlanPrompt(nutritionGoals, languageCode, mealTypes);
+      final prompt =
+          _buildDietPlanPrompt(nutritionGoals, languageCode, mealTypes);
 
       print('🍽️ Gerando plano de dieta para ${_formatDate(date)}');
       print('📊 Refeições: $_expectedMealsCount');
@@ -396,7 +403,8 @@ class DietPlanProvider extends ChangeNotifier {
         'userId': userId,
         'agentType': 'diet',
         'language': languageCode,
-        'mealTypes': mealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
+        'mealTypes':
+            mealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
       };
 
       request.bodyBytes = utf8.encode(jsonEncode(requestBody));
@@ -441,11 +449,13 @@ class DietPlanProvider extends ChangeNotifier {
             print('📦 Diet NDJSON - Linha #$chunkCount: $jsonData');
 
             // Handle different event types
-            if (jsonData.containsKey('status') && jsonData.containsKey('connectionId')) {
+            if (jsonData.containsKey('status') &&
+                jsonData.containsKey('connectionId')) {
               // Connection established event
               connectionId = jsonData['connectionId'];
               print('🔑 Diet - Connection ID: $connectionId');
-            } else if (jsonData.containsKey('text') && jsonData['text'] != null) {
+            } else if (jsonData.containsKey('text') &&
+                jsonData['text'] != null) {
               // Text chunk event
               final text = jsonData['text'];
               responseBuffer.write(text);
@@ -453,7 +463,8 @@ class DietPlanProvider extends ChangeNotifier {
 
               // Try to detect and parse complete meals incrementally
               _tryParseIncrementalMeals(responseBuffer.toString());
-            } else if (jsonData.containsKey('done') && jsonData['done'] == true) {
+            } else if (jsonData.containsKey('done') &&
+                jsonData['done'] == true) {
               // Stream completed
               print('✅ Diet - Stream concluído');
             } else if (jsonData.containsKey('error')) {
@@ -467,7 +478,8 @@ class DietPlanProvider extends ChangeNotifier {
         }
       }
 
-      print('✓ Diet - Stream NDJSON finalizado! Chunks: $chunkCount, ConnectionId: $connectionId');
+      print(
+          '✓ Diet - Stream NDJSON finalizado! Chunks: $chunkCount, ConnectionId: $connectionId');
       final response = responseBuffer.toString();
 
       print('📥 Resposta completa da IA (${response.length} chars):');
@@ -504,7 +516,9 @@ class DietPlanProvider extends ChangeNotifier {
       print('✓ Data atualizada para: ${_formatDate(date)}');
 
       // Store the diet plan (using weekly key if in weekly mode)
-      final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
+      final dateKey = _preferences.dietMode == DietMode.weekly
+          ? _weeklyKey
+          : _formatDate(date);
       _dietPlans[dateKey] = updatedPlan;
 
       _isLoading = false;
@@ -538,16 +552,19 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       // Try to extract the meals array from partial JSON
-      final mealsMatch = RegExp(r'"meals"\s*:\s*\[(.*)', dotAll: true).firstMatch(partialJson);
+      final mealsMatch =
+          RegExp(r'"meals"\s*:\s*\[(.*)', dotAll: true).firstMatch(partialJson);
       if (mealsMatch == null) return;
 
       final mealsContent = mealsMatch.group(1)!;
 
       // Find complete meal objects (those with closing })
-      final mealPattern = RegExp(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', dotAll: true);
+      final mealPattern =
+          RegExp(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', dotAll: true);
       final mealMatches = mealPattern.allMatches(mealsContent).toList();
 
-      print('🍽️ Detectadas ${mealMatches.length} refeições completas no JSON parcial');
+      print(
+          '🍽️ Detectadas ${mealMatches.length} refeições completas no JSON parcial');
 
       for (var i = 0; i < mealMatches.length; i++) {
         // Skip if already parsed
@@ -561,16 +578,18 @@ class DietPlanProvider extends ChangeNotifier {
           if (mealData.containsKey('type') &&
               mealData.containsKey('foods') &&
               mealData.containsKey('mealTotals')) {
-
             final meal = PlannedMeal.fromJson(mealData);
 
             // Add to partial diet plan if not already there
             if (_partialDietPlan!.meals.length <= i) {
-              final updatedMeals = List<PlannedMeal>.from(_partialDietPlan!.meals)..add(meal);
-              _partialDietPlan = _partialDietPlan!.copyWith(meals: updatedMeals);
+              final updatedMeals =
+                  List<PlannedMeal>.from(_partialDietPlan!.meals)..add(meal);
+              _partialDietPlan =
+                  _partialDietPlan!.copyWith(meals: updatedMeals);
               _parsedMealIndices.add(i);
 
-              print('✅ Refeição #${i + 1} adicionada: ${meal.name} (${meal.type})');
+              print(
+                  '✅ Refeição #${i + 1} adicionada: ${meal.name} (${meal.type})');
               notifyListeners(); // Update UI immediately
             }
           }
@@ -606,7 +625,8 @@ class DietPlanProvider extends ChangeNotifier {
   }
 
   // Build prompt for AI diet generation
-  String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals, String languageCode, List<MealTypeConfig> mealTypes) {
+  String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals,
+      String languageCode, List<MealTypeConfig> mealTypes) {
     // Nutrition goals from provider (already calculated)
     final calories = nutritionGoals.caloriesGoal;
     final protein = nutritionGoals.proteinGoal;
@@ -617,11 +637,14 @@ class DietPlanProvider extends ChangeNotifier {
     final country = _getCountryFromLanguage(languageCode);
 
     // Build meals list from user's configured meal types
-    final mealsCount = mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
+    final mealsCount =
+        mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
 
     // Build explicit meal mapping for the prompt
     final mealMappings = mealTypes.isNotEmpty
-        ? mealTypes.map((m) => '{"type": "${m.id}", "name": "${m.name}"}').join(', ')
+        ? mealTypes
+            .map((m) => '{"type": "${m.id}", "name": "${m.name}"}')
+            .join(', ')
         : '{"type": "breakfast", "name": "Café da Manhã"}, {"type": "lunch", "name": "Almoço"}, {"type": "dinner", "name": "Jantar"}';
 
     return '''
@@ -669,7 +692,9 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
       return;
     }
 
-    final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
+    final dateKey = _preferences.dietMode == DietMode.weekly
+        ? _weeklyKey
+        : _formatDate(date);
     final currentPlan = _dietPlans[dateKey];
 
     if (currentPlan == null) {
@@ -712,7 +737,8 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
         'userId': userId,
         'agentType': 'diet',
         'language': languageCode,
-        'mealTypes': mealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
+        'mealTypes':
+            mealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
       };
 
       request.bodyBytes = utf8.encode(jsonEncode(requestBody));
@@ -752,13 +778,16 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
             final jsonData = jsonDecode(jsonLine);
             chunkCount++;
 
-            if (jsonData.containsKey('status') && jsonData.containsKey('connectionId')) {
+            if (jsonData.containsKey('status') &&
+                jsonData.containsKey('connectionId')) {
               connectionId = jsonData['connectionId'];
               print('🔑 Replace - Connection ID: $connectionId');
-            } else if (jsonData.containsKey('text') && jsonData['text'] != null) {
+            } else if (jsonData.containsKey('text') &&
+                jsonData['text'] != null) {
               final text = jsonData['text'];
               responseBuffer.write(text);
-            } else if (jsonData.containsKey('done') && jsonData['done'] == true) {
+            } else if (jsonData.containsKey('done') &&
+                jsonData['done'] == true) {
               print('✅ Replace - Stream concluído');
             } else if (jsonData.containsKey('error')) {
               throw Exception(jsonData['error']);
@@ -861,7 +890,74 @@ IMPORTANTE:
     String languageCode = 'pt_BR',
   }) async {
     // Simply generate a new diet plan for this date
-    await generateDietPlan(date, nutritionGoals, mealTypes: mealTypes, userId: userId, languageCode: languageCode);
+    await generateDietPlan(date, nutritionGoals,
+        mealTypes: mealTypes, userId: userId, languageCode: languageCode);
+  }
+
+  /// Duplica uma dieta diária existente para outras datas
+  Future<int> repeatDietPlanToDates(
+    DateTime sourceDate,
+    List<DateTime> targetDates,
+  ) async {
+    if (_preferences.dietMode != DietMode.daily) {
+      _error = 'A repetição está disponível apenas para dietas diárias';
+      notifyListeners();
+      return 0;
+    }
+
+    if (!_isPremium) {
+      _error = 'daily_diet_premium_required';
+      notifyListeners();
+      return 0;
+    }
+
+    final sourceKey = _formatDate(sourceDate);
+    final sourcePlan = _dietPlans[sourceKey];
+
+    if (sourcePlan == null) {
+      _error = 'Nenhum plano de dieta encontrado para esta data';
+      notifyListeners();
+      return 0;
+    }
+
+    final copiedPlans = <String, DietPlan>{};
+
+    for (final targetDate in targetDates) {
+      final targetKey = _formatDate(targetDate);
+      if (targetKey == sourceKey || copiedPlans.containsKey(targetKey)) {
+        continue;
+      }
+
+      copiedPlans[targetKey] = sourcePlan.copyWith(date: targetKey);
+    }
+
+    if (copiedPlans.isEmpty) {
+      _error = null;
+      notifyListeners();
+      return 0;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _dietPlans.addAll(copiedPlans);
+      await _saveToPreferences();
+
+      for (final entry in copiedPlans.entries) {
+        await _saveToServer(entry.key, entry.value);
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return copiedPlans.length;
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Erro ao repetir plano de dieta: $e';
+      notifyListeners();
+      return 0;
+    }
   }
 
   // Calculate total nutrition from meals
@@ -888,7 +984,9 @@ IMPORTANTE:
 
   // Delete diet plan for a date (or weekly plan if in weekly mode)
   Future<void> deleteDietPlan(DateTime date) async {
-    final dateKey = _preferences.dietMode == DietMode.weekly ? _weeklyKey : _formatDate(date);
+    final dateKey = _preferences.dietMode == DietMode.weekly
+        ? _weeklyKey
+        : _formatDate(date);
     _dietPlans.remove(dateKey);
     _saveToPreferences();
 
@@ -913,7 +1011,8 @@ IMPORTANTE:
     final mealsToCreate = mealTypes.isNotEmpty
         ? mealTypes
         : [
-            MealTypeConfig(id: 'breakfast', name: 'Café da Manhã', emoji: '🍳', order: 0),
+            MealTypeConfig(
+                id: 'breakfast', name: 'Café da Manhã', emoji: '🍳', order: 0),
             MealTypeConfig(id: 'lunch', name: 'Almoço', emoji: '🍽️', order: 1),
             MealTypeConfig(id: 'dinner', name: 'Jantar', emoji: '🍝', order: 2),
           ];
@@ -966,13 +1065,15 @@ IMPORTANTE:
     }
 
     notifyListeners();
-    print('✅ DietPlanProvider: Dieta semanal vazia criada com ${emptyMeals.length} refeições');
+    print(
+        '✅ DietPlanProvider: Dieta semanal vazia criada com ${emptyMeals.length} refeições');
   }
 
   /// Limpa todos os dados de dieta (usado no logout)
   Future<void> clearAll() async {
     print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Iniciando limpeza...');
-    print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Dietas antes: ${_dietPlans.length}');
+    print(
+        '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Dietas antes: ${_dietPlans.length}');
 
     _dietPlans.clear();
     _preferences = DietPreferences();
@@ -991,18 +1092,22 @@ IMPORTANTE:
       final prefs = await SharedPreferences.getInstance();
       final removedPrefs = await prefs.remove('diet_preferences');
       final removedPlans = await prefs.remove('diet_plans');
-      print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - SharedPreferences: prefs=$removedPrefs, plans=$removedPlans');
+      print(
+          '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - SharedPreferences: prefs=$removedPrefs, plans=$removedPlans');
 
       // Verificar se foi removido
       final checkPrefs = prefs.getString('diet_preferences');
       final checkPlans = prefs.getString('diet_plans');
-      print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Verificação: prefs=${checkPrefs == null ? "NULL (OK)" : "TEM DADOS!"}, plans=${checkPlans == null ? "NULL (OK)" : "TEM DADOS!"}');
+      print(
+          '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - Verificação: prefs=${checkPrefs == null ? "NULL (OK)" : "TEM DADOS!"}, plans=${checkPlans == null ? "NULL (OK)" : "TEM DADOS!"}');
     } catch (e) {
-      print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - ❌ ERRO ao limpar SharedPreferences: $e');
+      print(
+          '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - ❌ ERRO ao limpar SharedPreferences: $e');
     }
 
     notifyListeners();
-    print('[🔄 AUTH_DATA] DietPlanProvider.clearAll() - ✅ Todos os dados de dieta foram limpos');
+    print(
+        '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - ✅ Todos os dados de dieta foram limpos');
   }
 
   // Load from SharedPreferences
@@ -1039,7 +1144,8 @@ IMPORTANTE:
       final prefs = await SharedPreferences.getInstance();
 
       // Save preferences
-      await prefs.setString('diet_preferences', jsonEncode(_preferences.toJson()));
+      await prefs.setString(
+          'diet_preferences', jsonEncode(_preferences.toJson()));
 
       // Save diet plans
       final plansMap = <String, dynamic>{};

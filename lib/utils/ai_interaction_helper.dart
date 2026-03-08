@@ -45,7 +45,7 @@ class AIInteractionHelper {
     required StorageService storageService,
     required String? currentConversationId,
     required String studyItemType, // 'tutor' ou 'image_analysis'
-    // Callbacks para atualizar o estado da AITutorScreen
+    // Callbacks para atualizar o estado da NutritionAssistantScreen
     required Function(bool) setLoading,
     required Function(String?) setConversationId,
     required Function(int?) setStreamingIndex,
@@ -53,13 +53,23 @@ class AIInteractionHelper {
     // Novo callback para rastrear o ID da conexão
     Function(String?)? setConnectionId,
     String? toolDataJson, // NOVO PARÂMETRO
-    bool autoRegisterFoods = true, // Se true, adiciona alimentos ao diário automaticamente
-    VoidCallback? onStreamComplete, // Callback chamado quando o stream termina (para salvar mensagens)
+    bool autoRegisterFoods =
+        true, // Se true, adiciona alimentos ao diário automaticamente
+    VoidCallback?
+        onStreamComplete, // Callback chamado quando o stream termina (para salvar mensagens)
   }) {
     int receivedChunks = 0;
     String acumuladoAtual = '';
     StreamSubscription? subscription;
     String? activeConnectionId;
+
+    String buildDisplayContent(String rawContent) {
+      if (!autoRegisterFoods) {
+        return rawContent;
+      }
+
+      return FoodJsonParser.removeJsonCandidateFromMessage(rawContent);
+    }
 
     subscription = aiStream.listen(
       (chunk) {
@@ -153,7 +163,10 @@ class AIInteractionHelper {
                 acumuladoAtual += textContent;
 
                 // Atualizar notificador
-                messageNotifier.updateMessage(acumuladoAtual);
+                messageNotifier.updateMessage(
+                  acumuladoAtual,
+                  displayContent: buildDisplayContent(acumuladoAtual),
+                );
 
                 // Log a cada 5 chunks para não sobrecarregar o console
                 if (receivedChunks % 5 == 0) {
@@ -179,13 +192,19 @@ class AIInteractionHelper {
             }
 
             // Atualizar apenas o notificador
-            messageNotifier.updateMessage(acumuladoAtual);
+            messageNotifier.updateMessage(
+              acumuladoAtual,
+              displayContent: buildDisplayContent(acumuladoAtual),
+            );
           }
         } catch (e) {
           // Em caso de erro, tratamos como um chunk normal
           print('[ID_CONEXAO] Erro ao processar chunk: $e');
           acumuladoAtual += chunk;
-          messageNotifier.updateMessage(acumuladoAtual);
+          messageNotifier.updateMessage(
+            acumuladoAtual,
+            displayContent: buildDisplayContent(acumuladoAtual),
+          );
         }
       },
       onDone: () async {
@@ -202,7 +221,7 @@ class AIInteractionHelper {
         // Marcar que não está mais em streaming
         messageNotifier.setStreaming(false);
 
-        // Atualizar o estado na AITutorScreen via callbacks
+        // Atualizar o estado na NutritionAssistantScreen via callbacks
         setLoading(false);
         if (studyItemType == 'image_analysis') {
           setProcessingMedia(false);
@@ -326,7 +345,7 @@ class AIInteractionHelper {
 
             String title = (context.mounted
                 ? AppLocalizations.of(context).translate('ai_tutor_chat_title')
-                : 'AI Tutor Chat');
+                : 'Nutrition Assistant');
             if (studyItemType == 'image_analysis') {
               try {
                 if (context.mounted) {
@@ -346,7 +365,7 @@ class AIInteractionHelper {
             if (title.isEmpty) {
               title = studyItemType == 'image_analysis'
                   ? 'Image Analysis'
-                  : 'AI Tutor Chat';
+                  : 'Nutrition Assistant';
             }
 
             studyItem = StudyItem(
@@ -395,7 +414,7 @@ class AIInteractionHelper {
         messageNotifier.setError(true,
             'Desculpe, ocorreu um erro durante a comunicação. Por favor, tente novamente.');
 
-        // Atualizar o estado na AITutorScreen via callbacks
+        // Atualizar o estado na NutritionAssistantScreen via callbacks
         setLoading(false);
         if (studyItemType == 'image_analysis') {
           setProcessingMedia(false);

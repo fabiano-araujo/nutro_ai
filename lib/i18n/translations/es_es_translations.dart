@@ -157,7 +157,7 @@ final Map<String, String> esESTranslations = {
   // Herramientas
   'document_summary': 'Resumen de documento',
   'text_enhancement': 'Mejora de texto',
-  'ai_tutor': 'Tutor con IA',
+  'ai_tutor': 'Asistente de Nutrición',
   'document_scan': 'Escanear documento',
   'camera_scan': 'Escanear',
   'upload_file': 'Subir archivo',
@@ -234,7 +234,8 @@ final Map<String, String> esESTranslations = {
   'restart': 'Reiniciar',
   'reset_conversation_tooltip': 'Reiniciar conversación',
   'start_question': '¿Qué comiste hoy?',
-  'start_question_subtitle': 'Yo calculo las calorías y los nutrientes para ti.',
+  'start_question_subtitle':
+      'Yo calculo las calorías y los nutrientes para ti.',
   'you': 'Tú',
   'thinking': 'Pensando...',
   'copy_response': 'Copiar respuesta',
@@ -453,7 +454,8 @@ final Map<String, String> esESTranslations = {
   'chemistry_hint': 'Toma una foto de un problema de química',
   'history_hint': 'Toma una foto de una pregunta de historia',
   'ai_macros': 'Macros con IA',
-  'ai_macros_hint': 'Los alimentos deben estar bien iluminados y dentro del encuadre',
+  'ai_macros_hint':
+      'Los alimentos deben estar bien iluminados y dentro del encuadre',
   'barcode': 'Código de Barras',
   'barcode_hint': 'Escanea el código de barras del producto',
 
@@ -485,7 +487,8 @@ final Map<String, String> esESTranslations = {
   'plan': 'Plan',
 
   // Pantalla de AI Tutor
-  'ai_tutor_title': 'Asistente de Estudios',
+  'ai_tutor_title': 'Asistente de Nutrición',
+  'ai_tutor_chat_title': 'Asistente de Nutrición',
   'ask_anything': '¿Qué comiste o ejercitaste?',
 
   // Pantalla de Suscripción
@@ -602,15 +605,18 @@ final Map<String, String> esESTranslations = {
   'no_conversations': 'No hay conversaciones aún',
   'days_ago': 'días atrás',
   'delete_conversation': 'Eliminar conversación',
-  'delete_conversation_confirm': '¿Estás seguro de que quieres eliminar la conversación "{title}"?',
+  'delete_conversation_confirm':
+      '¿Estás seguro de que quieres eliminar la conversación "{title}"?',
   'free_chat': 'Chat Libre',
 
   // Edición de alimentos
   'edit_food': 'Editar Alimento',
   'food_name': 'Nombre del Alimento',
   'amount': 'Cantidad',
-  'edit_amount_helper': 'Cambiar la cantidad recalcula los macros automáticamente',
-  'edit_food_info': 'Cambiar el nombre busca nuevos valores nutricionales via IA',
+  'edit_amount_helper':
+      'Cambiar la cantidad recalcula los macros automáticamente',
+  'edit_food_info':
+      'Cambiar el nombre busca nuevos valores nutricionales via IA',
   'edit_all_foods': 'Editar todos los alimentos',
   'edit_all_foods_desc': 'Editar nombre y cantidad de todos los ítems',
   'add_food': 'Agregar alimento',
@@ -623,8 +629,10 @@ final Map<String, String> esESTranslations = {
   'weekly_diet': 'Dieta Semanal',
   'daily_diet': 'Dieta Diaria',
   'replace_all_meals': 'Reemplazar Todas las Comidas',
-  'replace_all_meals_weekly_confirm': '¿Deseas generar un nuevo plan de dieta semanal?',
-  'replace_all_meals_daily_confirm': '¿Deseas generar un nuevo plan de dieta para este día?',
+  'replace_all_meals_weekly_confirm':
+      '¿Deseas generar un nuevo plan de dieta semanal?',
+  'replace_all_meals_daily_confirm':
+      '¿Deseas generar un nuevo plan de dieta para este día?',
   'yes_generate_new': 'Sí, Generar Nuevo',
   'no_diet_plan_for_day': 'No hay plan de dieta para este día',
   'generate_diet_plan': 'Generar Plan de Dieta',
@@ -637,9 +645,11 @@ final Map<String, String> esESTranslations = {
   'streak_freeze_active': 'Freeze Activo',
   'best_streak': 'Mejor',
   'freezes': 'Protecciones',
-  'streak_in_danger': '¡Tu racha está en peligro! Registra algo hoy para no perderla.',
+  'streak_in_danger':
+      '¡Tu racha está en peligro! Registra algo hoy para no perderla.',
   'activate_freeze': 'Proteger mi racha',
   'activate_freeze_title': '¿Proteger racha?',
-  'activate_freeze_description': 'La protección congela tu racha por 24 horas, aunque no registres nada. Tienes {count} protección(es) disponible(s).',
+  'activate_freeze_description':
+      'La protección congela tu racha por 24 horas, aunque no registres nada. Tienes {count} protección(es) disponible(s).',
   'activate': 'Activar',
 };

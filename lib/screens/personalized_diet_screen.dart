@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import '../providers/diet_plan_provider.dart';
@@ -46,9 +47,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   // Generate diet plan for selected date
   Future<void> _generateDietPlan() async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
-    final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final nutritionGoals =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
-    final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+    final mealTypesProvider =
+        Provider.of<MealTypesProvider>(context, listen: false);
 
     // Check if user is authenticated - open login screen automatically
     if (!authService.isAuthenticated || authService.currentUser == null) {
@@ -74,6 +77,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       return;
     }
 
+    await nutritionGoals.ensureLoaded();
+
     // Check if nutrition goals are configured
     if (!nutritionGoals.hasConfiguredGoals) {
       await Navigator.push(
@@ -90,15 +95,18 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
     // Get device locale
     final locale = Localizations.localeOf(context);
-    final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
+    final languageCode =
+        '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
 
     // Get userId from authenticated user
     final userId = authService.currentUser?.id.toString() ?? '';
 
     // Get meal types from provider
     final mealTypes = mealTypesProvider.mealTypes;
-    print('🍽️ PersonalizedDietScreen: Gerando dieta com ${mealTypes.length} refeições');
-    print('🍽️ PersonalizedDietScreen: Tipos: ${mealTypes.map((m) => m.name).join(', ')}');
+    print(
+        '🍽️ PersonalizedDietScreen: Gerando dieta com ${mealTypes.length} refeições');
+    print(
+        '🍽️ PersonalizedDietScreen: Tipos: ${mealTypes.map((m) => m.name).join(', ')}');
 
     // Generate diet plan
     await dietProvider.generateDietPlan(
@@ -125,7 +133,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   void _showPremiumRequiredDialog() {
     final l10n = AppLocalizations.of(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final buttonColor = isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final buttonColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
 
     showDialog(
       context: context,
@@ -162,7 +171,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const SubscriptionScreen()),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -181,9 +191,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   // Replace a single meal
   Future<void> _replaceMeal(String mealType) async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
-    final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final nutritionGoals =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
-    final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+    final mealTypesProvider =
+        Provider.of<MealTypesProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context);
 
     if (!authService.isAuthenticated || authService.currentUser == null) {
@@ -200,11 +212,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       );
     }
 
+    await nutritionGoals.ensureLoaded();
+
     // Ensure meal types are loaded
     await mealTypesProvider.ensureLoaded();
 
     final locale = Localizations.localeOf(context);
-    final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
+    final languageCode =
+        '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
     final userId = authService.currentUser?.id.toString() ?? '';
 
     await dietProvider.replaceMeal(
@@ -250,15 +265,20 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
 
     if (confirmed == true) {
-      final nutritionGoals = Provider.of<NutritionGoalsProvider>(context, listen: false);
+      final nutritionGoals =
+          Provider.of<NutritionGoalsProvider>(context, listen: false);
       final authService = Provider.of<AuthService>(context, listen: false);
-      final mealTypesProvider = Provider.of<MealTypesProvider>(context, listen: false);
+      final mealTypesProvider =
+          Provider.of<MealTypesProvider>(context, listen: false);
+
+      await nutritionGoals.ensureLoaded();
 
       // Ensure meal types are loaded
       await mealTypesProvider.ensureLoaded();
 
       final locale = Localizations.localeOf(context);
-      final languageCode = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
+      final languageCode =
+          '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
       final userId = authService.currentUser?.id.toString() ?? '';
 
       await dietProvider.replaceAllMeals(
@@ -275,6 +295,163 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         );
       }
     }
+  }
+
+  Future<void> _repeatDietToOtherDays() async {
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final l10n = AppLocalizations.of(context);
+
+    if (!authService.isAuthenticated || authService.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.translate('login_required_for_diet'))),
+      );
+      return;
+    }
+
+    if (!dietProvider.isAuthenticated) {
+      await dietProvider.setAuth(
+        authService.token ?? '',
+        authService.currentUser!.id,
+      );
+    }
+
+    final selectedDates = await _showRepeatDietDialog(dietProvider);
+    if (!mounted || selectedDates == null || selectedDates.isEmpty) {
+      return;
+    }
+
+    final copiedCount = await dietProvider.repeatDietPlanToDates(
+      dietProvider.selectedDate,
+      selectedDates,
+    );
+
+    if (!mounted) return;
+
+    if (dietProvider.error != null) {
+      if (dietProvider.error == 'daily_diet_premium_required') {
+        _showPremiumRequiredDialog();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(dietProvider.error!)),
+        );
+      }
+      return;
+    }
+
+    if (copiedCount > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n
+                .translate('repeat_diet_success')
+                .replaceAll('{count}', copiedCount.toString()),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<List<DateTime>?> _showRepeatDietDialog(
+    DietPlanProvider dietProvider,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final baseDate = DateUtils.dateOnly(dietProvider.selectedDate);
+    final candidateDates = List.generate(
+      14,
+      (index) => baseDate.add(Duration(days: index + 1)),
+    );
+    final selectedKeys = <String>{};
+
+    return showDialog<List<DateTime>>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(l10n.translate('repeat_diet_other_days')),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.translate('repeat_diet_select_days')),
+                    const SizedBox(height: 12),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 360),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: candidateDates.map((date) {
+                            final dateKey = _formatDateKey(date);
+                            final hasExistingPlan =
+                                dietProvider.hasDietPlanForDate(date);
+
+                            return CheckboxListTile(
+                              value: selectedKeys.contains(dateKey),
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(_formatRepeatDateLabel(date)),
+                              subtitle: hasExistingPlan
+                                  ? Text(
+                                      l10n.translate(
+                                        'repeat_diet_replace_existing',
+                                      ),
+                                    )
+                                  : null,
+                              onChanged: (selected) {
+                                setDialogState(() {
+                                  if (selected == true) {
+                                    selectedKeys.add(dateKey);
+                                  } else {
+                                    selectedKeys.remove(dateKey);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(l10n.translate('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: selectedKeys.isEmpty
+                      ? null
+                      : () => Navigator.pop(
+                            dialogContext,
+                            candidateDates
+                                .where(
+                                  (date) => selectedKeys
+                                      .contains(_formatDateKey(date)),
+                                )
+                                .toList(),
+                          ),
+                  child: Text(l10n.translate('repeat_diet_apply')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _formatRepeatDateLabel(DateTime date) {
+    final localeName = Localizations.localeOf(context).toString();
+    final formatted = DateFormat('EEE, dd/MM', localeName).format(date);
+    return toBeginningOfSentenceCase(formatted) ?? formatted;
   }
 
   String _getMealEmoji(String mealType) {
@@ -317,7 +494,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      backgroundColor:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       body: SafeArea(
         child: Consumer<DietPlanProvider>(
           builder: (context, dietProvider, _) {
@@ -346,7 +524,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
                 // Conteúdo principal
                 Expanded(
-                  child: _buildContent(isDarkMode, l10n, dietProvider, isLoading),
+                  child:
+                      _buildContent(isDarkMode, l10n, dietProvider, isLoading),
                 ),
               ],
             );
@@ -356,10 +535,13 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildDietModeSelector(DietPlanProvider dietProvider, bool isDarkMode) {
+  Widget _buildDietModeSelector(
+      DietPlanProvider dietProvider, bool isDarkMode) {
     final isWeekly = dietProvider.dietMode == DietMode.weekly;
-    final selectedColor = isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-    final unselectedBorderColor = isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
+    final selectedColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final unselectedBorderColor =
+        isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final l10n = AppLocalizations.of(context);
 
@@ -383,7 +565,9 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           labelStyle: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: isWeekly ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
+            color: isWeekly
+                ? Colors.white
+                : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
           ),
           showCheckmark: false,
           shape: RoundedRectangleBorder(
@@ -413,7 +597,9 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           labelStyle: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: !isWeekly ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
+            color: !isWeekly
+                ? Colors.white
+                : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
           ),
           showCheckmark: false,
           shape: RoundedRectangleBorder(
@@ -429,7 +615,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildContent(bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider, bool isLoading) {
+  Widget _buildContent(bool isDarkMode, AppLocalizations l10n,
+      DietPlanProvider dietProvider, bool isLoading) {
     // Carregamento incremental
     if (isLoading && dietProvider.partialDietPlan != null) {
       return _buildLoadingWithPartialPlan(isDarkMode, l10n, dietProvider);
@@ -464,7 +651,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildLoadingWithPartialPlan(bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider) {
+  Widget _buildLoadingWithPartialPlan(
+      bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider) {
     final partialPlan = dietProvider.partialDietPlan!;
     final loadedMealsCount = partialPlan.meals.length;
     final expectedMealsCount = dietProvider.expectedMealsCount;
@@ -521,11 +709,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildEmptyState(bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider) {
-    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
-    final secondaryTextColor = isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+  Widget _buildEmptyState(
+      bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider) {
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryTextColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
-    final buttonColor = isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final buttonColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -619,10 +811,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildDietContent(bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider, DietPlan dietPlan) {
-    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
-    final secondaryTextColor = isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+  Widget _buildDietContent(bool isDarkMode, AppLocalizations l10n,
+      DietPlanProvider dietProvider, DietPlan dietPlan) {
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryTextColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
 
     return SingleChildScrollView(
       controller: _scrollController,
@@ -635,38 +831,60 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           const SizedBox(height: 24),
 
           // Título da seção de refeições
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n.translate('meals'),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-              if (dietPlan.meals.isNotEmpty)
-                TextButton.icon(
-                  onPressed: _replaceAllMeals,
-                  icon: Icon(Icons.refresh, size: 18, color: AppTheme.primaryColor),
-                  label: Text(
-                    l10n.translate('replace_all'),
-                    style: TextStyle(color: AppTheme.primaryColor),
-                  ),
-                ),
-            ],
+          Text(
+            l10n.translate('meals'),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
           ),
+          if (dietPlan.meals.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  if (!isWeeklyMode)
+                    TextButton.icon(
+                      onPressed: _repeatDietToOtherDays,
+                      icon: Icon(
+                        Icons.repeat,
+                        size: 18,
+                        color: AppTheme.primaryColor,
+                      ),
+                      label: Text(
+                        l10n.translate('repeat_diet_other_days'),
+                        style: TextStyle(color: AppTheme.primaryColor),
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: _replaceAllMeals,
+                    icon: Icon(Icons.refresh,
+                        size: 18, color: AppTheme.primaryColor),
+                    label: Text(
+                      l10n.translate('replace_all'),
+                      style: TextStyle(color: AppTheme.primaryColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
 
           // Lista de refeições
           if (dietPlan.meals.isEmpty)
-            _buildEmptyMealsCard(isDarkMode, l10n, cardColor, textColor, secondaryTextColor)
+            _buildEmptyMealsCard(
+                isDarkMode, l10n, cardColor, textColor, secondaryTextColor)
           else
             ...dietPlan.meals.map((meal) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildMealCardStyled(meal, isDarkMode, cardColor, textColor, secondaryTextColor),
-            )),
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildMealCardStyled(meal, isDarkMode, cardColor,
+                      textColor, secondaryTextColor),
+                )),
 
           const SizedBox(height: 80), // Espaço para o FAB
         ],
@@ -773,7 +991,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildEmptyMealsCard(bool isDarkMode, AppLocalizations l10n, Color cardColor, Color textColor, Color secondaryTextColor) {
+  Widget _buildEmptyMealsCard(bool isDarkMode, AppLocalizations l10n,
+      Color cardColor, Color textColor, Color secondaryTextColor) {
     return Material(
       color: cardColor,
       borderRadius: BorderRadius.circular(16),
@@ -784,7 +1003,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+            color:
+                isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
           ),
         ),
         child: Column(
@@ -818,7 +1038,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildMealCardStyled(PlannedMeal meal, bool isDarkMode, Color cardColor, Color textColor, Color secondaryTextColor) {
+  Widget _buildMealCardStyled(PlannedMeal meal, bool isDarkMode,
+      Color cardColor, Color textColor, Color secondaryTextColor) {
     final hasFoods = meal.foods.isNotEmpty;
     final isExpanded = _expandedMeals.contains(meal.type);
 
@@ -828,21 +1049,24 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       elevation: 2,
       shadowColor: Colors.black.withOpacity(0.1),
       child: InkWell(
-        onTap: hasFoods ? () {
-          setState(() {
-            if (isExpanded) {
-              _expandedMeals.remove(meal.type);
-            } else {
-              _expandedMeals.add(meal.type);
-            }
-          });
-        } : null,
+        onTap: hasFoods
+            ? () {
+                setState(() {
+                  if (isExpanded) {
+                    _expandedMeals.remove(meal.type);
+                  } else {
+                    _expandedMeals.add(meal.type);
+                  }
+                });
+              }
+            : null,
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+              color:
+                  isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
             ),
           ),
           child: Column(
@@ -913,8 +1137,13 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
               ),
               AnimatedCrossFade(
                 firstChild: const SizedBox.shrink(),
-                secondChild: hasFoods ? _buildExpandedFoodList(meal, isDarkMode, textColor, secondaryTextColor) : const SizedBox.shrink(),
-                crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                secondChild: hasFoods
+                    ? _buildExpandedFoodList(
+                        meal, isDarkMode, textColor, secondaryTextColor)
+                    : const SizedBox.shrink(),
+                crossFadeState: isExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
                 duration: const Duration(milliseconds: 200),
               ),
             ],
@@ -924,7 +1153,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildExpandedFoodList(PlannedMeal meal, bool isDarkMode, Color textColor, Color secondaryTextColor) {
+  Widget _buildExpandedFoodList(PlannedMeal meal, bool isDarkMode,
+      Color textColor, Color secondaryTextColor) {
     return Column(
       children: [
         Container(
@@ -943,7 +1173,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Column(
-            children: meal.foods.map((food) => _buildFoodItemStyled(food, isDarkMode, textColor, secondaryTextColor)).toList(),
+            children: meal.foods
+                .map((food) => _buildFoodItemStyled(
+                    food, isDarkMode, textColor, secondaryTextColor))
+                .toList(),
           ),
         ),
         Padding(
@@ -1000,7 +1233,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  Widget _buildFoodItemStyled(PlannedFood food, bool isDarkMode, Color textColor, Color secondaryTextColor) {
+  Widget _buildFoodItemStyled(PlannedFood food, bool isDarkMode,
+      Color textColor, Color secondaryTextColor) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1008,7 +1242,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => FoodPage(food: _convertPlannedFoodToFood(food)),
+              builder: (context) =>
+                  FoodPage(food: _convertPlannedFoodToFood(food)),
             ),
           );
         },
@@ -1068,7 +1303,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
   Widget _buildMealCard(PlannedMeal meal, bool isDarkMode) {
     final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final secondaryTextColor = isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final secondaryTextColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1101,7 +1337,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             fontWeight: FontWeight.w600,
             fontSize: 16,
             letterSpacing: -0.2,
-            color: (isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor).withOpacity(0.85),
+            color: (isDarkMode
+                    ? AppTheme.darkTextColor
+                    : AppTheme.textPrimaryColor)
+                .withOpacity(0.85),
           ),
         ),
         subtitle: Padding(
@@ -1150,7 +1389,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                       gradient: LinearGradient(
                         colors: [
                           Colors.transparent,
-                          (isDarkMode ? Colors.white : Colors.black).withOpacity(0.05),
+                          (isDarkMode ? Colors.white : Colors.black)
+                              .withOpacity(0.05),
                           Colors.transparent,
                         ],
                       ),
@@ -1215,8 +1455,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   }
 
   Widget _buildFoodItem(PlannedFood food, bool isDarkMode) {
-    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
-    final secondaryTextColor = isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryTextColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     return Material(
       color: Colors.transparent,
@@ -1225,7 +1467,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => FoodPage(food: _convertPlannedFoodToFood(food)),
+              builder: (context) =>
+                  FoodPage(food: _convertPlannedFoodToFood(food)),
             ),
           );
         },
@@ -1299,5 +1542,4 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       ),
     );
   }
-
 }

@@ -47,24 +47,25 @@ import 'login_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import '../utils/food_json_parser.dart';
 
-// Singleton para gerenciar o estado da tela AITutor em toda a aplicação
+// Singleton para gerenciar o estado da tela NutritionAssistant em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
 // com IndexedStack, que não chama deactivate() quando mudamos de aba.
-class AITutorManager {
-  static final AITutorManager _instance = AITutorManager._internal();
-  AITutorScreenState? activeState;
+class NutritionAssistantManager {
+  static final NutritionAssistantManager _instance =
+      NutritionAssistantManager._internal();
+  NutritionAssistantScreenState? activeState;
 
-  factory AITutorManager() {
+  factory NutritionAssistantManager() {
     return _instance;
   }
 
-  AITutorManager._internal();
+  NutritionAssistantManager._internal();
 
-  void register(AITutorScreenState state) {
+  void register(NutritionAssistantScreenState state) {
     activeState = state;
   }
 
-  void unregister(AITutorScreenState state) {
+  void unregister(NutritionAssistantScreenState state) {
     if (activeState == state) {
       activeState = null;
     }
@@ -78,9 +79,9 @@ class AITutorManager {
 }
 
 // Singleton global para facilitar acesso de qualquer lugar do app
-final aiTutorManager = AITutorManager();
+final nutritionAssistantManager = NutritionAssistantManager();
 
-class AITutorScreen extends StatefulWidget {
+class NutritionAssistantScreen extends StatefulWidget {
   final String? conversationId; // ID da conversa a ser carregada
   final String?
       initialPrompt; // Prompt inicial a ser processado (pode ser JSON de ferramenta)
@@ -91,7 +92,7 @@ class AITutorScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
   final String? toolType;
 
-  const AITutorScreen({
+  const NutritionAssistantScreen({
     Key? key,
     this.conversationId,
     this.initialPrompt,
@@ -103,22 +104,23 @@ class AITutorScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  AITutorScreenState createState() => AITutorScreenState();
+  NutritionAssistantScreenState createState() =>
+      NutritionAssistantScreenState();
 
   // Método que permite chamar a lógica de deactivate externamente
   static void handleTabExit() {
-    aiTutorManager.handleTabExit();
+    nutritionAssistantManager.handleTabExit();
   }
 }
 
-class AITutorScreenState extends State<AITutorScreen>
+class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     with
         TickerProviderStateMixin,
-        AITutorSpeechMixin,
+        NutritionAssistantSpeechMixin,
         TextToSpeechMixin,
         WidgetsBindingObserver {
   // Controller que gerenciará o estado e lógica (será inicializado no initState)
-  late AITutorController _controller;
+  late NutritionAssistantController _controller;
 
   // Serviços - Agora gerenciados pelo Controller
   // final AIService _aiService = AIService();
@@ -134,7 +136,8 @@ class AITutorScreenState extends State<AITutorScreen>
 
   // Controle de visibilidade do header (calendário + nutrition card)
   // Usa offset gradual para efeito suave como o AppBar nativo
-  double _headerOffset = 0.0; // 0 = totalmente visível, negativo = parcialmente escondido
+  double _headerOffset =
+      0.0; // 0 = totalmente visível, negativo = parcialmente escondido
   double _lastScrollPosition = 0.0;
   final GlobalKey _lastAiMessageKey =
       GlobalKey(); // Key para rastrear a última mensagem da IA
@@ -213,7 +216,7 @@ class AITutorScreenState extends State<AITutorScreen>
     }
   }
 
-  // Implementação dos getters e métodos requeridos pelo AITutorSpeechMixin
+  // Implementação dos getters e métodos requeridos pelo NutritionAssistantSpeechMixin
   @override
   TextEditingController get messageController => _messageController;
 
@@ -240,7 +243,7 @@ class AITutorScreenState extends State<AITutorScreen>
   @override
   void initState() {
     super.initState();
-    print('🚀 AITutorScreen - initState chamado');
+    print('🚀 NutritionAssistantScreen - initState chamado');
     print('   - conversationId: ${widget.conversationId}');
     print('   - isFreeChat: ${widget.isFreeChat}');
     print('   - freeChatId: ${widget.freeChatId}');
@@ -249,7 +252,7 @@ class AITutorScreenState extends State<AITutorScreen>
     print(
         '   - initialToolResponse (Resposta da IA para ferramenta): ${widget.initialToolResponse?.substring(0, math.min(100, widget.initialToolResponse?.length ?? 0))}...');
 
-    aiTutorManager.register(this);
+    nutritionAssistantManager.register(this);
     _animationController = AnimationController(
       duration: Duration(milliseconds: 1000),
       vsync: this,
@@ -286,7 +289,7 @@ class AITutorScreenState extends State<AITutorScreen>
                   .replaceAll(' ', '_') ??
               'chat';
           print(
-              '📱 AITutorScreen: Detectado JSON de ferramenta. ToolType: $toolType');
+              '📱 NutritionAssistantScreen: Detectado JSON de ferramenta. ToolType: $toolType');
 
           // Tentar obter conversationId do toolData
           if (_toolData!.containsKey('conversationId') &&
@@ -354,7 +357,7 @@ class AITutorScreenState extends State<AITutorScreen>
               if (extractedMessages != null && extractedMessages.isNotEmpty) {
                 messagesFromToolData = extractedMessages;
                 print(
-                    '✅ AITutorScreen: Extraídas ${extractedMessages.length} mensagens do histórico da ferramenta');
+                    '✅ NutritionAssistantScreen: Extraídas ${extractedMessages.length} mensagens do histórico da ferramenta');
 
                 // Verificar formato das mensagens
                 if (extractedMessages.length > 0) {
@@ -363,17 +366,17 @@ class AITutorScreenState extends State<AITutorScreen>
                 }
               } else {
                 print(
-                    '⚠️ AITutorScreen: Nenhuma mensagem válida extraída do histórico da ferramenta');
+                    '⚠️ NutritionAssistantScreen: Nenhuma mensagem válida extraída do histórico da ferramenta');
               }
             } catch (e) {
               print(
-                  '❌ AITutorScreen: Erro ao processar histórico da ferramenta: $e');
+                  '❌ NutritionAssistantScreen: Erro ao processar histórico da ferramenta: $e');
             }
           }
         }
       } catch (e) {
         print(
-            '⚠️ AITutorScreen: Erro ao decodificar initialPrompt como JSON: $e');
+            '⚠️ NutritionAssistantScreen: Erro ao decodificar initialPrompt como JSON: $e');
         isFromTool = false;
       }
     }
@@ -388,7 +391,7 @@ class AITutorScreenState extends State<AITutorScreen>
     final selectedDate = mealsProvider.selectedDate;
 
     // Inicializar o controller com as opções corretas
-    _controller = AITutorController(
+    _controller = NutritionAssistantController(
       speechMixin: _speechMixinRef,
       ttsRef: _ttsMixinRef,
       toolType: toolType,
@@ -412,7 +415,7 @@ class AITutorScreenState extends State<AITutorScreen>
         // Nova interação de ferramenta (initialToolResponse é nulo/vazio, mas temos o prompt da ferramenta).
         // E não estamos carregando conversa completa.
         print(
-            '⚙️ AITutorScreen: Nova interação de ferramenta. Processando prompt silenciosamente.');
+            '⚙️ NutritionAssistantScreen: Nova interação de ferramenta. Processando prompt silenciosamente.');
         String promptToUse = _toolData!['fullPrompt'] ?? widget.initialPrompt!;
         Uint8List? cameraBytes;
         if (_toolData!['sourceType'] == 'camera' &&
@@ -431,7 +434,8 @@ class AITutorScreenState extends State<AITutorScreen>
           widget.initialPrompt!.isNotEmpty) {
         // Não é de ferramenta (ou caso de ferramenta não coberto), mas temos um prompt inicial.
         // E não estamos carregando uma conversa completa.
-        print('💬 AITutorScreen: Novo prompt de chat. Enviando mensagem.');
+        print(
+            '💬 NutritionAssistantScreen: Novo prompt de chat. Enviando mensagem.');
         Future.delayed(Duration(milliseconds: 100), () {
           _messageController.text = widget.initialPrompt!;
           _handleSendMessage();
@@ -441,7 +445,7 @@ class AITutorScreenState extends State<AITutorScreen>
       // A mensagem de boas-vindas só é adicionada pelo controller se showWelcomeMessage for true.
     } else {
       print(
-          '📱 AITutorScreen: Controller inicializado com histórico ou initialToolResponse. Nenhuma ação de prompt adicional.');
+          '📱 NutritionAssistantScreen: Controller inicializado com histórico ou initialToolResponse. Nenhuma ação de prompt adicional.');
       // Rolar até a última resposta da IA ao carregar uma conversa existente
       Future.delayed(Duration(milliseconds: 500), () {
         _scrollToLastAiResponse();
@@ -463,7 +467,7 @@ class AITutorScreenState extends State<AITutorScreen>
     // Determinar o toolType baseado no parâmetro widget.toolType
     final effectiveToolType = widget.toolType ?? 'free_chat';
     print(
-        '💬 AITutorScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
+        '💬 NutritionAssistantScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
 
     final freeChatProvider =
         Provider.of<FreeChatProvider>(context, listen: false);
@@ -474,16 +478,16 @@ class AITutorScreenState extends State<AITutorScreen>
       _currentFreeChatId = widget.freeChatId;
       initialMessages = freeChatProvider.getMessages(widget.freeChatId!);
       print(
-          '📂 AITutorScreen: Carregando conversa livre existente: ${widget.freeChatId}');
+          '📂 NutritionAssistantScreen: Carregando conversa livre existente: ${widget.freeChatId}');
     } else {
       // Criar nova conversa
       _currentFreeChatId = freeChatProvider.createConversation();
       print(
-          '📝 AITutorScreen: Nova conversa livre criada: $_currentFreeChatId');
+          '📝 NutritionAssistantScreen: Nova conversa livre criada: $_currentFreeChatId');
     }
 
     // Inicializar controller para conversa livre
-    _controller = AITutorController(
+    _controller = NutritionAssistantController(
       speechMixin: _speechMixinRef,
       ttsRef: _ttsMixinRef,
       toolType: effectiveToolType,
@@ -534,13 +538,13 @@ class AITutorScreenState extends State<AITutorScreen>
 
   @override
   void dispose() {
-    print('🧹 AITutorScreen - dispose chamado');
+    print('🧹 NutritionAssistantScreen - dispose chamado');
 
     // Remover observer
     WidgetsBinding.instance.removeObserver(this);
 
     // Remover registro no singleton manager
-    aiTutorManager.unregister(this);
+    nutritionAssistantManager.unregister(this);
 
     // Garantir que a tela pode desligar quando o componente for destruído
     if (!kIsWeb && Platform.isAndroid) {
@@ -571,7 +575,7 @@ class AITutorScreenState extends State<AITutorScreen>
   void deactivate() {
     // Este método é chamado quando a tela é removida da árvore de widgets
     // mas pode ser adicionada novamente, como quando muda de abas
-    print('AITutorScreen - deactivate chamado');
+    print('NutritionAssistantScreen - deactivate chamado');
 
     // Verificar se o usuário enviou pelo menos 2 mensagens
     if (_userMessageCount >= 2 &&
@@ -978,64 +982,64 @@ class AITutorScreenState extends State<AITutorScreen>
                 ),
               // Ler em voz alta - apenas para mensagens da IA
               if (!isUser)
-              ListTile(
-                leading: Icon(
-                    isSpeaking ? Icons.stop : Icons.volume_up_outlined,
-                    color: Theme.of(context).textTheme.bodyMedium?.color),
-                title: Text('Ler em voz alta',
-                    style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge?.color)),
-                onTap: () {
-                  Navigator.pop(context);
+                ListTile(
+                  leading: Icon(
+                      isSpeaking ? Icons.stop : Icons.volume_up_outlined,
+                      color: Theme.of(context).textTheme.bodyMedium?.color),
+                  title: Text('Ler em voz alta',
+                      style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyLarge?.color)),
+                  onTap: () {
+                    Navigator.pop(context);
 
-                  try {
-                    // Encontrar índice da mensagem no array de mensagens
-                    int messageIndex = -1;
-                    final messages = _controller.messages;
-                    for (int i = 0; i < messages.length; i++) {
-                      if ((messages[i].containsKey('message') &&
-                              messages[i]['message'] == message) ||
-                          (messages[i].containsKey('notifier') &&
-                              messages[i]['notifier'].message == message)) {
-                        messageIndex = i;
-                        break;
+                    try {
+                      // Encontrar índice da mensagem no array de mensagens
+                      int messageIndex = -1;
+                      final messages = _controller.messages;
+                      for (int i = 0; i < messages.length; i++) {
+                        if ((messages[i].containsKey('message') &&
+                                messages[i]['message'] == message) ||
+                            (messages[i].containsKey('notifier') &&
+                                messages[i]['notifier'].message == message)) {
+                          messageIndex = i;
+                          break;
+                        }
                       }
-                    }
 
-                    if (messageIndex >= 0) {
-                      _controller.handleVoiceButtonPressed(
-                          messageIndex, context);
-                    } else {
-                      // Se não encontrar a mensagem específica, lê o texto atual
-                      if (isSpeaking) {
-                        stopSpeech();
+                      if (messageIndex >= 0) {
+                        _controller.handleVoiceButtonPressed(
+                            messageIndex, context);
                       } else {
-                        speak(message).catchError((error) {
-                          print('Erro ao iniciar leitura: $error');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Não foi possível ler o texto. Verifique as permissões do aplicativo.'),
-                              backgroundColor: Colors.red,
-                              duration: Duration(seconds: 3),
-                            ),
-                          );
-                        });
+                        // Se não encontrar a mensagem específica, lê o texto atual
+                        if (isSpeaking) {
+                          stopSpeech();
+                        } else {
+                          speak(message).catchError((error) {
+                            print('Erro ao iniciar leitura: $error');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Não foi possível ler o texto. Verifique as permissões do aplicativo.'),
+                                backgroundColor: Colors.red,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          });
+                        }
                       }
+                    } catch (e) {
+                      print('Erro ao iniciar leitura de voz: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'Função de leitura não disponível no momento.'),
+                          backgroundColor: Colors.red,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
                     }
-                  } catch (e) {
-                    print('Erro ao iniciar leitura de voz: $e');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            'Função de leitura não disponível no momento.'),
-                        backgroundColor: Colors.red,
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                },
-              ),
+                  },
+                ),
               // Gerar resposta novamente - apenas para mensagens da IA
               if (!isUser)
                 ListTile(
@@ -1149,7 +1153,7 @@ class AITutorScreenState extends State<AITutorScreen>
               !isLoading) {
             _hasScrolledToInitialMessages = true;
             print(
-                '📱 AITutorScreen: Mensagens carregadas, fazendo scroll inicial');
+                '📱 NutritionAssistantScreen: Mensagens carregadas, fazendo scroll inicial');
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollToLastAiResponse();
             });
@@ -1166,645 +1170,670 @@ class AITutorScreenState extends State<AITutorScreen>
             child: Scaffold(
               backgroundColor: currentScaffoldBackgroundColor,
               body: SafeArea(
-              child: Column(
-                children: [
-                  // AppBar sempre fixo (não se move com o scroll)
-                  Consumer<DailyMealsProvider>(
-                    builder: (context, mealsProvider, child) {
-                      return WeeklyCalendar(
-                        selectedDate: mealsProvider.selectedDate,
-                        showAppBar: true, // Mostrar apenas o AppBar
-                        showCalendar: false, // Sem o calendário semanal
-                        isFreeChat: widget.isFreeChat, // Modo conversa livre
-                        onOpenDrawer: widget.onOpenDrawer,
-                        onDaySelected: widget.isFreeChat
-                            ? null
-                            : (date) async {
-                                print('Data selecionada: $date');
-
-                                // Limpar sugestões ao mudar de dia
-                                _clearSuggestions();
-
-                                // Mostrar o header ao clicar em um dia
-                                _showHeader();
-
-                                mealsProvider.setSelectedDate(date);
-                                await _controller.changeSelectedDate(date);
-
-                                // Scroll instantâneo para a última resposta da IA
-                                _scrollToLastAiResponse();
-                              },
-                        onSearchPressed: widget.isFreeChat
-                            ? null
-                            : () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const FoodSearchScreen(),
-                                  ),
-                                );
-                              },
-                      );
-                    },
-                  ),
-
-                  // Calendário semanal + Nutrition card com comportamento de toolbar Android
-                  // Usa Transform.translate para movimento gradual suave
-                  // Não mostrar no modo conversa livre
-                  if (!widget.isFreeChat)
+                child: Column(
+                  children: [
+                    // AppBar sempre fixo (não se move com o scroll)
                     Consumer<DailyMealsProvider>(
                       builder: (context, mealsProvider, child) {
-                        // Calcular altura baseado se tem refeições
-                        final bool hasMeals = mealsProvider.todayMeals.isNotEmpty;
-                        final double maxHeight = hasMeals ? 175.0 : 75.0;
-                        // Altura visível = maxHeight + offset (offset é negativo)
-                        final double visibleHeight =
-                            (maxHeight + _headerOffset).clamp(0.0, maxHeight);
+                        return WeeklyCalendar(
+                          selectedDate: mealsProvider.selectedDate,
+                          showAppBar: true, // Mostrar apenas o AppBar
+                          showCalendar: false, // Sem o calendário semanal
+                          isFreeChat: widget.isFreeChat, // Modo conversa livre
+                          onOpenDrawer: widget.onOpenDrawer,
+                          onDaySelected: widget.isFreeChat
+                              ? null
+                              : (date) async {
+                                  print('Data selecionada: $date');
 
-                        return SizedBox(
-                          height: visibleHeight,
-                          child: ClipRect(
-                            child: OverflowBox(
-                              maxHeight: maxHeight,
-                              alignment: Alignment.topCenter,
-                              child: Transform.translate(
-                                offset: Offset(0, _headerOffset),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Calendário semanal (apenas os dias da semana)
-                                    WeeklyCalendar(
-                                      selectedDate: mealsProvider.selectedDate,
-                                      showAppBar: false,
-                                      showCalendar: true,
-                                      onDaySelected: (date) async {
-                                        print('Data selecionada: $date');
-                                        _clearSuggestions();
-                                        _showHeader();
-                                        mealsProvider.setSelectedDate(date);
-                                        await _controller.changeSelectedDate(date);
-                                        _scrollToLastAiResponse();
-                                      },
-                                      onSearchPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const FoodSearchScreen(),
-                                          ),
-                                        );
-                                      },
+                                  // Limpar sugestões ao mudar de dia
+                                  _clearSuggestions();
+
+                                  // Mostrar o header ao clicar em um dia
+                                  _showHeader();
+
+                                  mealsProvider.setSelectedDate(date);
+                                  await _controller.changeSelectedDate(date);
+
+                                  // Scroll instantâneo para a última resposta da IA
+                                  _scrollToLastAiResponse();
+                                },
+                          onSearchPressed: widget.isFreeChat
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const FoodSearchScreen(),
                                     ),
-
-                                    // Nutrition card
-                                    if (hasMeals)
-                                      Consumer2<NutritionGoalsProvider,
-                                          DailyMealsProvider>(
-                                        builder: (context, nutritionProvider,
-                                            mealsProvider, child) {
-                                          return NutritionCard(
-                                            caloriesConsumed:
-                                                mealsProvider.totalCalories,
-                                            caloriesGoal:
-                                                nutritionProvider.caloriesGoal,
-                                            proteinConsumed: mealsProvider
-                                                .totalProtein
-                                                .toInt(),
-                                            proteinGoal:
-                                                nutritionProvider.proteinGoal,
-                                            carbsConsumed:
-                                                mealsProvider.totalCarbs.toInt(),
-                                            carbsGoal: nutritionProvider.carbsGoal,
-                                            fatsConsumed:
-                                                mealsProvider.totalFat.toInt(),
-                                            fatsGoal: nutritionProvider.fatGoal,
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const DailyMealsScreen(),
-                                                ),
-                                              );
-                                            },
-                                          );
-                                        },
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                                  );
+                                },
                         );
                       },
                     ),
 
-                  // Lista de mensagens
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        // ListView (só renderiza quando há mensagens)
-                        if (messages.isNotEmpty)
-                          ListView.builder(
-                            controller: _scrollController,
-                            padding: EdgeInsets.all(16),
-                            // Adicionar +1 para o card de ferramentas quando existir
-                            itemCount: messages.length +
-                                (_toolData != null ? 1 : 0) +
-                                (messages.isNotEmpty && !messages.last['isUser']
-                                    ? 1
-                                    : 0),
-                            itemBuilder: (context, index) {
-                              // Mostrar o card de ferramentas como primeiro item
-                              if (_toolData != null && index == 0) {
-                                return _buildToolCard(isDarkMode);
-                              }
+                    // Calendário semanal + Nutrition card com comportamento de toolbar Android
+                    // Usa Transform.translate para movimento gradual suave
+                    // Não mostrar no modo conversa livre
+                    if (!widget.isFreeChat)
+                      Consumer<DailyMealsProvider>(
+                        builder: (context, mealsProvider, child) {
+                          // Calcular altura baseado se tem refeições
+                          final bool hasMeals =
+                              mealsProvider.todayMeals.isNotEmpty;
+                          final double maxHeight = hasMeals ? 175.0 : 75.0;
+                          // Altura visível = maxHeight + offset (offset é negativo)
+                          final double visibleHeight =
+                              (maxHeight + _headerOffset).clamp(0.0, maxHeight);
 
-                              // Ajustar índice para compensar o card de ferramentas
-                              final adjustedIndex =
-                                  _toolData != null ? index - 1 : index;
-
-                              if (adjustedIndex < messages.length) {
-                                // Verificar se é a última mensagem da IA
-                                final isAiMessage =
-                                    messages[adjustedIndex]['isUser'] == false;
-                                int lastAiMessageIndex = -1;
-                                for (int i = messages.length - 1; i >= 0; i--) {
-                                  if (messages[i]['isUser'] == false) {
-                                    lastAiMessageIndex = i;
-                                    break;
-                                  }
-                                }
-                                final isLastAiMessage = isAiMessage &&
-                                    adjustedIndex == lastAiMessageIndex;
-
-                                final messageBubble = _buildMessageBubble(
-                                  messageData: messages[adjustedIndex]
-                                          .containsKey('notifier')
-                                      ? messages[adjustedIndex]['notifier']
-                                      : messages[adjustedIndex],
-                                  isUser: messages[adjustedIndex]['isUser'],
-                                  timestamp: messages[adjustedIndex]
-                                      ['timestamp'],
-                                  isDarkMode: isDarkMode,
-                                  index: adjustedIndex,
-                                  currentlySpeakingMessageIndex:
-                                      currentlySpeakingMessageIndex,
-                                );
-
-                                // Se for a última mensagem da IA, adicionar a key para rastreamento
-                                if (isLastAiMessage) {
-                                  return Container(
-                                    key: _lastAiMessageKey,
-                                    child: messageBubble,
-                                  );
-                                }
-
-                                return messageBubble;
-                              } else {
-                                // Exibir botões de ação após a última mensagem da IA
-                                return _buildActionButtons(
-                                    currentlySpeakingMessageIndex);
-                              }
-                            },
-                          ),
-
-                        // Sugestões sobreposta (ocupam todo o espaço disponível)
-                        if (messages.isEmpty && _suggestions.isNotEmpty)
-                          Positioned.fill(
-                            child: Container(
-                              color: currentScaffoldBackgroundColor,
-                              child: SingleChildScrollView(
-                                padding: EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: _suggestions.map((suggestion) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        _messageController.text = suggestion;
-                                        _clearSuggestions();
-                                        _handleSendMessage();
-                                      },
-                                      child: Container(
-                                        margin: EdgeInsets.only(bottom: 12),
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 14),
-                                        decoration: BoxDecoration(
-                                          color: isDarkMode
-                                              ? Color(0xFF2C2C2C)
-                                              : Color(0xFFF5F5F5),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          suggestion,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: isDarkMode
-                                                ? Colors.white
-                                                    .withValues(alpha: 0.9)
-                                                : Color(0xFF333333),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                        // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens e não há sugestões)
-                        if (messages.isEmpty && _suggestions.isEmpty)
-                          Positioned.fill(
-                            child: Container(
-                              color: currentScaffoldBackgroundColor,
-                              child: Align(
-                                alignment: Alignment(-1.0,
-                                    -0.3), // À esquerda e mais próximo do topo
-                                child: SingleChildScrollView(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 16),
+                          return SizedBox(
+                            height: visibleHeight,
+                            child: ClipRect(
+                              child: OverflowBox(
+                                maxHeight: maxHeight,
+                                alignment: Alignment.topCenter,
+                                child: Transform.translate(
+                                  offset: Offset(0, _headerOffset),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
                                     children: [
-                                      // Saudação baseada no horário
-                                      Text(
-                                        _getTimeBasedGreeting(context),
-                                        style: TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppTheme.getSoftTextColor(isDarkMode),
-                                          height: 1.3,
-                                        ),
-                                      ),
-                                      SizedBox(height: 24),
-                                      // Grid de ações 2x2
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _buildActionCard(
-                                              icon: Icons.restaurant_menu,
-                                              title: 'Registrar',
-                                              subtitle: 'Adicionar refeição',
-                                              isDarkMode: isDarkMode,
-                                              isPrimary: true,
-                                              onTap: () {
-                                                _showSuggestionsForAction('registrar_refeicao');
-                                              },
+                                      // Calendário semanal (apenas os dias da semana)
+                                      WeeklyCalendar(
+                                        selectedDate:
+                                            mealsProvider.selectedDate,
+                                        showAppBar: false,
+                                        showCalendar: true,
+                                        onDaySelected: (date) async {
+                                          print('Data selecionada: $date');
+                                          _clearSuggestions();
+                                          _showHeader();
+                                          mealsProvider.setSelectedDate(date);
+                                          await _controller
+                                              .changeSelectedDate(date);
+                                          _scrollToLastAiResponse();
+                                        },
+                                        onSearchPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const FoodSearchScreen(),
                                             ),
-                                          ),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: _buildActionCard(
-                                              icon: Icons.camera_alt,
-                                              title: 'Foto',
-                                              subtitle: 'Analisar com IA',
-                                              isDarkMode: isDarkMode,
+                                          );
+                                        },
+                                      ),
+
+                                      // Nutrition card
+                                      if (hasMeals)
+                                        Consumer2<NutritionGoalsProvider,
+                                            DailyMealsProvider>(
+                                          builder: (context, nutritionProvider,
+                                              mealsProvider, child) {
+                                            return NutritionCard(
+                                              caloriesConsumed:
+                                                  mealsProvider.totalCalories,
+                                              caloriesGoal: nutritionProvider
+                                                  .caloriesGoal,
+                                              proteinConsumed: mealsProvider
+                                                  .totalProtein
+                                                  .toInt(),
+                                              proteinGoal:
+                                                  nutritionProvider.proteinGoal,
+                                              carbsConsumed: mealsProvider
+                                                  .totalCarbs
+                                                  .toInt(),
+                                              carbsGoal:
+                                                  nutritionProvider.carbsGoal,
+                                              fatsConsumed: mealsProvider
+                                                  .totalFat
+                                                  .toInt(),
+                                              fatsGoal:
+                                                  nutritionProvider.fatGoal,
                                               onTap: () {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
-                                                    builder: (context) => CameraScanScreen(),
+                                                    builder: (context) =>
+                                                        const DailyMealsScreen(),
                                                   ),
                                                 );
                                               },
+                                            );
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                    // Lista de mensagens
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          // ListView (só renderiza quando há mensagens)
+                          if (messages.isNotEmpty)
+                            ListView.builder(
+                              controller: _scrollController,
+                              padding: EdgeInsets.all(16),
+                              // Adicionar +1 para o card de ferramentas quando existir
+                              itemCount: messages.length +
+                                  (_toolData != null ? 1 : 0) +
+                                  (messages.isNotEmpty &&
+                                          !messages.last['isUser']
+                                      ? 1
+                                      : 0),
+                              itemBuilder: (context, index) {
+                                // Mostrar o card de ferramentas como primeiro item
+                                if (_toolData != null && index == 0) {
+                                  return _buildToolCard(isDarkMode);
+                                }
+
+                                // Ajustar índice para compensar o card de ferramentas
+                                final adjustedIndex =
+                                    _toolData != null ? index - 1 : index;
+
+                                if (adjustedIndex < messages.length) {
+                                  // Verificar se é a última mensagem da IA
+                                  final isAiMessage = messages[adjustedIndex]
+                                          ['isUser'] ==
+                                      false;
+                                  int lastAiMessageIndex = -1;
+                                  for (int i = messages.length - 1;
+                                      i >= 0;
+                                      i--) {
+                                    if (messages[i]['isUser'] == false) {
+                                      lastAiMessageIndex = i;
+                                      break;
+                                    }
+                                  }
+                                  final isLastAiMessage = isAiMessage &&
+                                      adjustedIndex == lastAiMessageIndex;
+
+                                  final messageBubble = _buildMessageBubble(
+                                    messageData: messages[adjustedIndex]
+                                            .containsKey('notifier')
+                                        ? messages[adjustedIndex]['notifier']
+                                        : messages[adjustedIndex],
+                                    isUser: messages[adjustedIndex]['isUser'],
+                                    timestamp: messages[adjustedIndex]
+                                        ['timestamp'],
+                                    isDarkMode: isDarkMode,
+                                    index: adjustedIndex,
+                                    currentlySpeakingMessageIndex:
+                                        currentlySpeakingMessageIndex,
+                                  );
+
+                                  // Se for a última mensagem da IA, adicionar a key para rastreamento
+                                  if (isLastAiMessage) {
+                                    return Container(
+                                      key: _lastAiMessageKey,
+                                      child: messageBubble,
+                                    );
+                                  }
+
+                                  return messageBubble;
+                                } else {
+                                  // Exibir botões de ação após a última mensagem da IA
+                                  return _buildActionButtons(
+                                      currentlySpeakingMessageIndex);
+                                }
+                              },
+                            ),
+
+                          // Sugestões sobreposta (ocupam todo o espaço disponível)
+                          if (messages.isEmpty && _suggestions.isNotEmpty)
+                            Positioned.fill(
+                              child: Container(
+                                color: currentScaffoldBackgroundColor,
+                                child: SingleChildScrollView(
+                                  padding: EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: _suggestions.map((suggestion) {
+                                      return GestureDetector(
+                                        onTap: () {
+                                          _messageController.text = suggestion;
+                                          _clearSuggestions();
+                                          _handleSendMessage();
+                                        },
+                                        child: Container(
+                                          margin: EdgeInsets.only(bottom: 12),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 14),
+                                          decoration: BoxDecoration(
+                                            color: isDarkMode
+                                                ? Color(0xFF2C2C2C)
+                                                : Color(0xFFF5F5F5),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            suggestion,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                      .withValues(alpha: 0.9)
+                                                  : Color(0xFF333333),
                                             ),
                                           ),
-                                        ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens e não há sugestões)
+                          if (messages.isEmpty && _suggestions.isEmpty)
+                            Positioned.fill(
+                              child: Container(
+                                color: currentScaffoldBackgroundColor,
+                                child: Align(
+                                  alignment: Alignment(-1.0,
+                                      -0.3), // À esquerda e mais próximo do topo
+                                  child: SingleChildScrollView(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Saudação baseada no horário
+                                        Text(
+                                          _getTimeBasedGreeting(context),
+                                          style: TextStyle(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.getSoftTextColor(
+                                                isDarkMode),
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                        SizedBox(height: 24),
+                                        // Grid de ações 2x2
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildActionCard(
+                                                icon: Icons.restaurant_menu,
+                                                title: 'Registrar',
+                                                subtitle: 'Adicionar refeição',
+                                                isDarkMode: isDarkMode,
+                                                isPrimary: true,
+                                                onTap: () {
+                                                  _showSuggestionsForAction(
+                                                      'registrar_refeicao');
+                                                },
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              child: _buildActionCard(
+                                                icon: Icons.camera_alt,
+                                                title: 'Foto',
+                                                subtitle: 'Analisar com IA',
+                                                isDarkMode: isDarkMode,
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          CameraScanScreen(),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 12),
+                                        // Segunda linha do grid
+                                        Consumer<NutritionGoalsProvider>(
+                                          builder: (context, nutritionProvider,
+                                              child) {
+                                            if (!nutritionProvider
+                                                .hasConfiguredGoals) {
+                                              // Usuário não configurou metas
+                                              return Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _buildActionCard(
+                                                      icon:
+                                                          Icons.person_outline,
+                                                      title: 'Perfil',
+                                                      subtitle:
+                                                          'Configurar dados',
+                                                      isDarkMode: isDarkMode,
+                                                      onTap: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) =>
+                                                                const NutritionGoalsWizardScreen(),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: _buildActionCard(
+                                                      icon: Icons.flag_outlined,
+                                                      title: 'Metas',
+                                                      subtitle:
+                                                          'Definir objetivos',
+                                                      isDarkMode: isDarkMode,
+                                                      onTap: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) =>
+                                                                const NutritionGoalsWizardScreen(),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            } else {
+                                              // Usuário já configurou
+                                              return Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _buildActionCard(
+                                                      icon: Icons
+                                                          .lightbulb_outline,
+                                                      title: 'Sugestões',
+                                                      subtitle:
+                                                          'Ideias de refeição',
+                                                      isDarkMode: isDarkMode,
+                                                      onTap: () {
+                                                        _showSuggestionsForAction(
+                                                            'sugestoes_refeicoes');
+                                                      },
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: _buildActionCard(
+                                                      icon: Icons.help_outline,
+                                                      title: 'Perguntar',
+                                                      subtitle:
+                                                          'Dúvidas nutrição',
+                                                      isDarkMode: isDarkMode,
+                                                      onTap: () {
+                                                        _showSuggestionsForAction(
+                                                            'perguntar_nutricao');
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Área de input
+                    Container(
+                      decoration: BoxDecoration(
+                        color: currentScaffoldBackgroundColor,
+                      ),
+                      padding: EdgeInsets.only(
+                          left: 16, right: 16, bottom: 6, top: 8),
+                      child: Column(
+                        children: [
+                          // Exibir miniatura da imagem selecionada
+                          if (hasSelectedImage && selectedImageBytes != null)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                  left: 16, right: 16, bottom: 8),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode
+                                        ? Color(0xFF303030)
+                                        : AppTheme.surfaceColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  width: 80,
+                                  height: 80,
+                                  child: Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.memory(
+                                          selectedImageBytes,
+                                          height: 80,
+                                          width: 80,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
-                                      SizedBox(height: 12),
-                                      // Segunda linha do grid
-                                      Consumer<NutritionGoalsProvider>(
-                                        builder: (context, nutritionProvider, child) {
-                                          if (!nutritionProvider.hasConfiguredGoals) {
-                                            // Usuário não configurou metas
-                                            return Row(
-                                              children: [
-                                                Expanded(
-                                                  child: _buildActionCard(
-                                                    icon: Icons.person_outline,
-                                                    title: 'Perfil',
-                                                    subtitle: 'Configurar dados',
-                                                    isDarkMode: isDarkMode,
-                                                    onTap: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (context) =>
-                                                              const NutritionGoalsWizardScreen(),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                ),
-                                                SizedBox(width: 12),
-                                                Expanded(
-                                                  child: _buildActionCard(
-                                                    icon: Icons.flag_outlined,
-                                                    title: 'Metas',
-                                                    subtitle: 'Definir objetivos',
-                                                    isDarkMode: isDarkMode,
-                                                    onTap: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (context) =>
-                                                              const NutritionGoalsWizardScreen(),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          } else {
-                                            // Usuário já configurou
-                                            return Row(
-                                              children: [
-                                                Expanded(
-                                                  child: _buildActionCard(
-                                                    icon: Icons.lightbulb_outline,
-                                                    title: 'Sugestões',
-                                                    subtitle: 'Ideias de refeição',
-                                                    isDarkMode: isDarkMode,
-                                                    onTap: () {
-                                                      _showSuggestionsForAction('sugestoes_refeicoes');
-                                                    },
-                                                  ),
-                                                ),
-                                                SizedBox(width: 12),
-                                                Expanded(
-                                                  child: _buildActionCard(
-                                                    icon: Icons.help_outline,
-                                                    title: 'Perguntar',
-                                                    subtitle: 'Dúvidas nutrição',
-                                                    isDarkMode: isDarkMode,
-                                                    onTap: () {
-                                                      _showSuggestionsForAction('perguntar_nutricao');
-                                                    },
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          }
-                                        },
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            _controller.clearSelectedImage();
+                                          },
+                                          child: Container(
+                                            padding: EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: isDarkMode
+                                                  ? Colors.black
+                                                      .withOpacity(0.6)
+                                                  : AppTheme.surfaceColor,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.close,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : AppTheme.textPrimaryColor,
+                                              size: 18,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Área de input
-                  Container(
-                    decoration: BoxDecoration(
-                      color: currentScaffoldBackgroundColor,
-                    ),
-                    padding:
-                        EdgeInsets.only(left: 16, right: 16, bottom: 6, top: 8),
-                    child: Column(
-                      children: [
-                        // Exibir miniatura da imagem selecionada
-                        if (hasSelectedImage && selectedImageBytes != null)
-                          Padding(
-                            padding:
-                                EdgeInsets.only(left: 16, right: 16, bottom: 8),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: isDarkMode
-                                      ? Color(0xFF303030)
-                                      : AppTheme.surfaceColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                width: 80,
-                                height: 80,
-                                child: Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.memory(
-                                        selectedImageBytes,
-                                        height: 80,
-                                        width: 80,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          _controller.clearSelectedImage();
-                                        },
-                                        child: Container(
-                                          padding: EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: isDarkMode
-                                                ? Colors.black.withOpacity(0.6)
-                                                : AppTheme.surfaceColor,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.close,
-                                            color: isDarkMode
-                                                ? Colors.white
-                                                : AppTheme.textPrimaryColor,
-                                            size: 18,
-                                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? Color(0xFF303030)
+                                  : AppTheme
+                                      .surfaceColor, // Cor de fundo escuro para o input
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
+                            child: Row(
+                              children: [
+                                // Botão de galeria/foto
+                                IconButton(
+                                  icon: Icon(Icons.camera_alt,
+                                      color: isDarkMode
+                                          ? Colors.grey[400]
+                                          : AppTheme.textSecondaryColor),
+                                  onPressed: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      backgroundColor: Theme.of(context)
+                                          .scaffoldBackgroundColor,
+                                      builder: (context) => SafeArea(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            ListTile(
+                                              leading: Icon(Icons.photo_library,
+                                                  color: isDarkMode
+                                                      ? Colors.white70
+                                                      : AppTheme
+                                                          .textSecondaryColor),
+                                              title: Text('Galeria',
+                                                  style: TextStyle(
+                                                      color: isDarkMode
+                                                          ? Colors.white
+                                                          : AppTheme
+                                                              .textPrimaryColor)),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                _handleImageSelection(
+                                                    ImageSource.gallery);
+                                              },
+                                            ),
+                                            ListTile(
+                                              leading: Icon(Icons.camera_alt,
+                                                  color: isDarkMode
+                                                      ? Colors.white70
+                                                      : AppTheme
+                                                          .textSecondaryColor),
+                                              title: Text('Câmera',
+                                                  style: TextStyle(
+                                                      color: isDarkMode
+                                                          ? Colors.white
+                                                          : AppTheme
+                                                              .textPrimaryColor)),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                _handleImageSelection(
+                                                    ImageSource.camera);
+                                              },
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: isDarkMode
-                                ? Color(0xFF303030)
-                                : AppTheme
-                                    .surfaceColor, // Cor de fundo escuro para o input
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Row(
-                            children: [
-                              // Botão de galeria/foto
-                              IconButton(
-                                icon: Icon(Icons.camera_alt,
-                                    color: isDarkMode
-                                        ? Colors.grey[400]
-                                        : AppTheme.textSecondaryColor),
-                                onPressed: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    backgroundColor: Theme.of(context)
-                                        .scaffoldBackgroundColor,
-                                    builder: (context) => SafeArea(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          ListTile(
-                                            leading: Icon(Icons.photo_library,
-                                                color: isDarkMode
-                                                    ? Colors.white70
-                                                    : AppTheme
-                                                        .textSecondaryColor),
-                                            title: Text('Galeria',
-                                                style: TextStyle(
-                                                    color: isDarkMode
-                                                        ? Colors.white
-                                                        : AppTheme
-                                                            .textPrimaryColor)),
-                                            onTap: () {
-                                              Navigator.pop(context);
-                                              _handleImageSelection(
-                                                  ImageSource.gallery);
-                                            },
-                                          ),
-                                          ListTile(
-                                            leading: Icon(Icons.camera_alt,
-                                                color: isDarkMode
-                                                    ? Colors.white70
-                                                    : AppTheme
-                                                        .textSecondaryColor),
-                                            title: Text('Câmera',
-                                                style: TextStyle(
-                                                    color: isDarkMode
-                                                        ? Colors.white
-                                                        : AppTheme
-                                                            .textPrimaryColor)),
-                                            onTap: () {
-                                              Navigator.pop(context);
-                                              _handleImageSelection(
-                                                  ImageSource.camera);
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                                splashRadius: 20,
-                              ),
-
-                              // Campo de texto
-                              Expanded(
-                                child: TextField(
-                                  controller: _messageController,
-                                  focusNode: _inputFocusNode,
-                                  decoration: InputDecoration(
-                                    hintText:
-                                        context.tr.translate('ask_anything'),
-                                    hintStyle: TextStyle(
-                                      fontSize: 15,
-                                      color: isListening
-                                          ? Colors.red
-                                          : isDarkMode
-                                              ? Colors.grey[500]
-                                              : AppTheme.textSecondaryColor,
-                                    ),
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 0),
-                                    focusedBorder: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    errorBorder: InputBorder.none,
-                                    disabledBorder: InputBorder.none,
-                                    fillColor: isListening
-                                        ? Color(
-                                            0xFF3B2E2E) // Tom avermelhado quando gravando
-                                        : isDarkMode
-                                            ? Color(0xFF303030)
-                                            : AppTheme.surfaceColor,
-                                    filled: true,
-                                  ),
-                                  style: TextStyle(
-                                      color: isDarkMode
-                                          ? Colors.white
-                                          : AppTheme.textPrimaryColor),
-                                  textCapitalization:
-                                      TextCapitalization.sentences,
-                                  maxLines: null,
-                                  onChanged: (text) {
-                                    if (_suggestions.isNotEmpty) {
-                                      _clearSuggestions();
-                                    }
-                                    setState(() {});
+                                    );
                                   },
-                                  enabled:
-                                      true, // Sempre habilitado, mesmo durante o carregamento
-                                  cursorColor: isDarkMode
-                                      ? Colors.grey[400]
-                                      : AppTheme.textPrimaryColor,
+                                  splashRadius: 20,
                                 ),
-                              ),
 
-                              // Botão de microfone ou enviar
-                              IconButton(
-                                icon: isListening
-                                    ? Icon(
-                                        Icons.stop_circle,
-                                        color: Colors.red,
-                                        size: 28,
-                                      )
-                                    : Icon(
-                                        isLoading
-                                            ? Icons.stop_circle
-                                            : _messageController.text
-                                                        .trim()
-                                                        .isEmpty &&
-                                                    !hasSelectedImage
-                                                ? Icons.mic
-                                                : Icons.send,
-                                        color: isLoading
+                                // Campo de texto
+                                Expanded(
+                                  child: TextField(
+                                    controller: _messageController,
+                                    focusNode: _inputFocusNode,
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          context.tr.translate('ask_anything'),
+                                      hintStyle: TextStyle(
+                                        fontSize: 15,
+                                        color: isListening
                                             ? Colors.red
                                             : isDarkMode
-                                                ? Colors.grey[400]
+                                                ? Colors.grey[500]
                                                 : AppTheme.textSecondaryColor,
                                       ),
-                                onPressed: () {
-                                  if (isLoading) {
-                                    // Se estiver carregando, interromper a geração
-                                    _controller.stopGeneration();
-                                  } else if (isListening) {
-                                    stopListening();
-                                    // Forçar atualização da UI após parar
-                                    setState(() {});
-                                  } else if (_messageController.text
-                                          .trim()
-                                          .isEmpty &&
-                                      !hasSelectedImage) {
-                                    startListening();
-                                  } else {
-                                    _handleSendMessage();
-                                  }
-                                },
-                                splashRadius: 20,
-                              ),
-                            ],
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          vertical: 10, horizontal: 0),
+                                      focusedBorder: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      errorBorder: InputBorder.none,
+                                      disabledBorder: InputBorder.none,
+                                      fillColor: isListening
+                                          ? Color(
+                                              0xFF3B2E2E) // Tom avermelhado quando gravando
+                                          : isDarkMode
+                                              ? Color(0xFF303030)
+                                              : AppTheme.surfaceColor,
+                                      filled: true,
+                                    ),
+                                    style: TextStyle(
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : AppTheme.textPrimaryColor),
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    maxLines: null,
+                                    onChanged: (text) {
+                                      if (_suggestions.isNotEmpty) {
+                                        _clearSuggestions();
+                                      }
+                                      setState(() {});
+                                    },
+                                    enabled:
+                                        true, // Sempre habilitado, mesmo durante o carregamento
+                                    cursorColor: isDarkMode
+                                        ? Colors.grey[400]
+                                        : AppTheme.textPrimaryColor,
+                                  ),
+                                ),
+
+                                // Botão de microfone ou enviar
+                                IconButton(
+                                  icon: isListening
+                                      ? Icon(
+                                          Icons.stop_circle,
+                                          color: Colors.red,
+                                          size: 28,
+                                        )
+                                      : Icon(
+                                          isLoading
+                                              ? Icons.stop_circle
+                                              : _messageController.text
+                                                          .trim()
+                                                          .isEmpty &&
+                                                      !hasSelectedImage
+                                                  ? Icons.mic
+                                                  : Icons.send,
+                                          color: isLoading
+                                              ? Colors.red
+                                              : isDarkMode
+                                                  ? Colors.grey[400]
+                                                  : AppTheme.textSecondaryColor,
+                                        ),
+                                  onPressed: () {
+                                    if (isLoading) {
+                                      // Se estiver carregando, interromper a geração
+                                      _controller.stopGeneration();
+                                    } else if (isListening) {
+                                      stopListening();
+                                      // Forçar atualização da UI após parar
+                                      setState(() {});
+                                    } else if (_messageController.text
+                                            .trim()
+                                            .isEmpty &&
+                                        !hasSelectedImage) {
+                                      startListening();
+                                    } else {
+                                      _handleSendMessage();
+                                    }
+                                  },
+                                  splashRadius: 20,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
           );
         });
   }
@@ -1860,12 +1889,11 @@ class AITutorScreenState extends State<AITutorScreen>
           builder: (context, notifier, _) {
             final hasJsonInNotifier =
                 FoodJsonParser.containsFoodJson(notifier.message);
-            final cleanMessage = hasJsonInNotifier
-                ? FoodJsonParser.removeJsonFromMessage(notifier.message)
-                : notifier.message;
+            final cleanMessage = notifier.displayMessage;
 
             // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
-            final bool showMessageBubble = cleanMessage.trim().isNotEmpty || notifier.isStreaming;
+            final bool showMessageBubble =
+                cleanMessage.trim().isNotEmpty || notifier.isStreaming;
 
             return Column(
               mainAxisAlignment: MainAxisAlignment.start,
@@ -1906,7 +1934,8 @@ class AITutorScreenState extends State<AITutorScreen>
     } else {
       // Se não for notificador, usamos a forma tradicional
       // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
-      final bool showMessageBubble = displayMessage.trim().isNotEmpty || isStreaming;
+      final bool showMessageBubble =
+          displayMessage.trim().isNotEmpty || isStreaming;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2023,7 +2052,8 @@ class AITutorScreenState extends State<AITutorScreen>
   void _carregarAnuncioIntersticial() {
     // Não carregar anúncios na web
     if (kIsWeb) {
-      print("AITutorScreen: Pulando carregamento de anúncios na versão web");
+      print(
+          "NutritionAssistantScreen: Pulando carregamento de anúncios na versão web");
       return;
     }
 
@@ -2047,7 +2077,8 @@ class AITutorScreenState extends State<AITutorScreen>
   // Método público que pode ser chamado de fora para simular o comportamento do deactivate
   // Este método contém a mesma lógica que o método deactivate() original
   void handleTabChanged() {
-    print('AITutorScreen - handleTabChanged chamado ao trocar de aba');
+    print(
+        'NutritionAssistantScreen - handleTabChanged chamado ao trocar de aba');
 
     // Não mostrar anúncios na web
     if (kIsWeb) {
@@ -2178,7 +2209,8 @@ class AITutorScreenState extends State<AITutorScreen>
                       height: 180,
                       width: 180,
                       color: Colors.grey[300],
-                      child: Center(child: Icon(Icons.image, color: Colors.grey)),
+                      child:
+                          Center(child: Icon(Icons.image, color: Colors.grey)),
                     ),
                     errorWidget: (context, url, error) => Container(
                       height: 180,
@@ -2334,22 +2366,22 @@ class AITutorScreenState extends State<AITutorScreen>
     final hour = DateTime.now().hour;
     if (hour >= 5 && hour < 10) {
       return AppLocalizations.of(context).translate('greeting_breakfast') ??
-             'Bom dia! Já tomou café?';
+          'Bom dia! Já tomou café?';
     } else if (hour >= 10 && hour < 12) {
       return AppLocalizations.of(context).translate('greeting_morning_snack') ??
-             'Hora do lanche da manhã?';
+          'Hora do lanche da manhã?';
     } else if (hour >= 12 && hour < 14) {
       return AppLocalizations.of(context).translate('greeting_lunch') ??
-             'Hora do almoço!';
+          'Hora do almoço!';
     } else if (hour >= 14 && hour < 18) {
       return AppLocalizations.of(context).translate('greeting_afternoon') ??
-             'Boa tarde! Como posso ajudar?';
+          'Boa tarde! Como posso ajudar?';
     } else if (hour >= 18 && hour < 21) {
       return AppLocalizations.of(context).translate('greeting_dinner') ??
-             'Hora do jantar!';
+          'Hora do jantar!';
     } else {
       return AppLocalizations.of(context).translate('greeting_night') ??
-             'Boa noite!';
+          'Boa noite!';
     }
   }
 
@@ -2439,12 +2471,11 @@ class AITutorScreenState extends State<AITutorScreen>
       ),
     );
   }
-
 }
 
-// Implementação de AITutorSpeechMixinRef que delega para o mixin
-class _SpeechMixinRefImpl implements AITutorSpeechMixinRef {
-  final AITutorSpeechMixin _mixin;
+// Implementação de NutritionAssistantSpeechMixinRef que delega para o mixin
+class _SpeechMixinRefImpl implements NutritionAssistantSpeechMixinRef {
+  final NutritionAssistantSpeechMixin _mixin;
 
   _SpeechMixinRefImpl(this._mixin);
 
