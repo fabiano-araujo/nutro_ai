@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/friends_provider.dart';
 import '../services/social_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/diet_style_message_state.dart';
 
 class FriendsScreen extends StatefulWidget {
   final bool isEmbedded;
@@ -15,6 +16,7 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   List<SearchedUser> _searchResults = [];
   bool _showPendingRequests = true;
   bool _showSentRequests = false;
@@ -22,6 +24,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -49,6 +52,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     return Consumer<FriendsProvider>(
       builder: (context, friendsProvider, child) {
+        final hasAnyData = _searchResults.isNotEmpty ||
+            friendsProvider.hasPendingRequests ||
+            friendsProvider.hasSentRequests ||
+            friendsProvider.duoStreaks.isNotEmpty ||
+            friendsProvider.friends.isNotEmpty;
+        final showLoadingState = friendsProvider.isLoading && !hasAnyData;
+        final showErrorState = friendsProvider.error != null && !hasAnyData;
+
         return RefreshIndicator(
           onRefresh: friendsProvider.refresh,
           color: primaryColor,
@@ -60,9 +71,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isDarkMode
-                          ? AppTheme.darkCardColor
-                          : Colors.white,
+                      color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isDarkMode
@@ -71,8 +80,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(
-                              alpha: isDarkMode ? 0.14 : 0.04),
+                          color: Colors.black
+                              .withValues(alpha: isDarkMode ? 0.14 : 0.04),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -80,6 +89,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     child: TextField(
                       controller: _searchController,
+                      focusNode: _searchFocusNode,
                       decoration: InputDecoration(
                         hintText: 'Buscar usuarios...',
                         hintStyle: TextStyle(
@@ -119,176 +129,205 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 ),
               ),
 
-              // Search results
-              if (_searchResults.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: _SearchResultsSection(
-                    results: _searchResults,
-                    onSendRequest: (userId) async {
-                      final success =
-                          await friendsProvider.sendFriendRequest(userId);
-                      if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Pedido enviado!')),
+              if (showLoadingState)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (showErrorState)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: DietStyleMessageState(
+                    title: 'Nao foi possivel carregar seus amigos',
+                    message:
+                        'Verifique sua conexao e tente novamente para buscar sua rede social.',
+                    fallbackIcon: Icons.cloud_off_rounded,
+                    primaryActionLabel: 'Tentar novamente',
+                    primaryActionIcon: Icons.refresh_rounded,
+                    onPrimaryAction: friendsProvider.refresh,
+                    topSpacing: 24,
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                  ),
+                )
+              else ...[
+                // Search results
+                if (_searchResults.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: _SearchResultsSection(
+                      results: _searchResults,
+                      onSendRequest: (userId) async {
+                        final success =
+                            await friendsProvider.sendFriendRequest(userId);
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Pedido enviado!')),
+                          );
+                          _searchUsers(_searchController.text);
+                        }
+                      },
+                    ),
+                  ),
+
+                // Pending requests toggle
+                if (friendsProvider.hasPendingRequests)
+                  SliverToBoxAdapter(
+                    child: _CollapsibleSection(
+                      icon: Icons.person_add_rounded,
+                      iconColor: const Color(0xFFFF9800),
+                      title:
+                          '${friendsProvider.receivedRequests.length} pedido${friendsProvider.receivedRequests.length > 1 ? 's' : ''} de amizade',
+                      isExpanded: _showPendingRequests,
+                      onToggle: () => setState(
+                          () => _showPendingRequests = !_showPendingRequests),
+                      badgeCount: friendsProvider.receivedRequests.length,
+                    ),
+                  ),
+
+                // Pending requests list
+                if (_showPendingRequests &&
+                    friendsProvider.receivedRequests.isNotEmpty)
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final request = friendsProvider.receivedRequests[index];
+                        return _PendingRequestCard(
+                          request: request,
+                          onAccept: () async {
+                            final success =
+                                await friendsProvider.acceptRequest(request.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(success
+                                      ? 'Pedido aceito! ${request.user.name} agora e seu amigo.'
+                                      : 'Erro ao aceitar pedido'),
+                                  backgroundColor:
+                                      success ? Colors.green : Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          onReject: () async {
+                            final success =
+                                await friendsProvider.rejectRequest(request.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(success
+                                      ? 'Pedido rejeitado'
+                                      : 'Erro ao rejeitar pedido'),
+                                ),
+                              );
+                            }
+                          },
                         );
-                        _searchUsers(_searchController.text);
-                      }
-                    },
+                      },
+                      childCount: friendsProvider.receivedRequests.length,
+                    ),
                   ),
-                ),
 
-              // Pending requests toggle
-              if (friendsProvider.hasPendingRequests)
-                SliverToBoxAdapter(
-                  child: _CollapsibleSection(
-                    icon: Icons.person_add_rounded,
-                    iconColor: const Color(0xFFFF9800),
-                    title:
-                        '${friendsProvider.receivedRequests.length} pedido${friendsProvider.receivedRequests.length > 1 ? 's' : ''} de amizade',
-                    isExpanded: _showPendingRequests,
-                    onToggle: () => setState(
-                        () => _showPendingRequests = !_showPendingRequests),
-                    badgeCount: friendsProvider.receivedRequests.length,
+                // Sent requests toggle
+                if (friendsProvider.hasSentRequests)
+                  SliverToBoxAdapter(
+                    child: _CollapsibleSection(
+                      icon: Icons.send_rounded,
+                      iconColor: const Color(0xFF2196F3),
+                      title:
+                          '${friendsProvider.sentRequests.length} pedido${friendsProvider.sentRequests.length > 1 ? 's' : ''} enviado${friendsProvider.sentRequests.length > 1 ? 's' : ''}',
+                      isExpanded: _showSentRequests,
+                      onToggle: () => setState(
+                          () => _showSentRequests = !_showSentRequests),
+                    ),
                   ),
-                ),
 
-              // Pending requests list
-              if (_showPendingRequests &&
-                  friendsProvider.receivedRequests.isNotEmpty)
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final request = friendsProvider.receivedRequests[index];
-                      return _PendingRequestCard(
-                        request: request,
-                        onAccept: () async {
-                          final success =
-                              await friendsProvider.acceptRequest(request.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(success
-                                    ? 'Pedido aceito! ${request.user.name} agora e seu amigo.'
-                                    : 'Erro ao aceitar pedido'),
-                                backgroundColor:
-                                    success ? Colors.green : Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                        onReject: () async {
-                          final success =
-                              await friendsProvider.rejectRequest(request.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(success
-                                    ? 'Pedido rejeitado'
-                                    : 'Erro ao rejeitar pedido'),
-                              ),
-                            );
-                          }
-                        },
-                      );
-                    },
-                    childCount: friendsProvider.receivedRequests.length,
+                // Sent requests list
+                if (_showSentRequests &&
+                    friendsProvider.sentRequests.isNotEmpty)
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final request = friendsProvider.sentRequests[index];
+                        return _SentRequestCard(
+                          request: request,
+                          onCancel: () async {
+                            final success = await friendsProvider
+                                .cancelSentRequest(request.id);
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Pedido cancelado')),
+                              );
+                            }
+                          },
+                        );
+                      },
+                      childCount: friendsProvider.sentRequests.length,
+                    ),
                   ),
-                ),
 
-              // Sent requests toggle
-              if (friendsProvider.hasSentRequests)
-                SliverToBoxAdapter(
-                  child: _CollapsibleSection(
-                    icon: Icons.send_rounded,
-                    iconColor: const Color(0xFF2196F3),
-                    title:
-                        '${friendsProvider.sentRequests.length} pedido${friendsProvider.sentRequests.length > 1 ? 's' : ''} enviado${friendsProvider.sentRequests.length > 1 ? 's' : ''}',
-                    isExpanded: _showSentRequests,
-                    onToggle: () =>
-                        setState(() => _showSentRequests = !_showSentRequests),
+                // Duo streaks section
+                if (friendsProvider.duoStreaks.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: _SectionHeader(
+                      title: 'Duo Streaks',
+                      icon: Icons.local_fire_department_rounded,
+                      iconColor: const Color(0xFFFF5722),
+                    ),
                   ),
-                ),
-
-              // Sent requests list
-              if (_showSentRequests && friendsProvider.sentRequests.isNotEmpty)
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final request = friendsProvider.sentRequests[index];
-                      return _SentRequestCard(
-                        request: request,
-                        onCancel: () async {
-                          final success = await friendsProvider
-                              .cancelSentRequest(request.id);
-                          if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Pedido cancelado')),
-                            );
-                          }
-                        },
-                      );
-                    },
-                    childCount: friendsProvider.sentRequests.length,
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final duo = friendsProvider.duoStreaks[index];
+                        return _DuoStreakCard(
+                          duoStreak: duo,
+                          onCheckIn: () =>
+                              friendsProvider.duoCheckIn(duo.friendshipId),
+                        );
+                      },
+                      childCount: friendsProvider.duoStreaks.length,
+                    ),
                   ),
-                ),
+                ],
 
-              // Duo streaks section
-              if (friendsProvider.duoStreaks.isNotEmpty) ...[
+                // Friends list
                 SliverToBoxAdapter(
                   child: _SectionHeader(
-                    title: 'Duo Streaks',
-                    icon: Icons.local_fire_department_rounded,
-                    iconColor: const Color(0xFFFF5722),
+                    title: 'Amigos',
+                    icon: Icons.people_rounded,
+                    count: friendsProvider.friends.length,
                   ),
                 ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final duo = friendsProvider.duoStreaks[index];
-                      return _DuoStreakCard(
-                        duoStreak: duo,
-                        onCheckIn: () =>
-                            friendsProvider.duoCheckIn(duo.friendshipId),
-                      );
-                    },
-                    childCount: friendsProvider.duoStreaks.length,
+
+                if (friendsProvider.friends.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _EmptyFriendsState(
+                      onSearchTap: () => _searchFocusNode.requestFocus(),
+                    ),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final friendData = friendsProvider.friends[index];
+                        return _FriendCard(
+                          friendData: friendData,
+                          onPing: () => _showPingDialog(
+                              context, friendData, friendsProvider),
+                          onRemove: () => _confirmRemoveFriend(
+                              context, friendData, friendsProvider),
+                        );
+                      },
+                      childCount: friendsProvider.friends.length,
+                    ),
                   ),
+
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 80),
                 ),
               ],
-
-              // Friends list
-              SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Amigos',
-                  icon: Icons.people_rounded,
-                  count: friendsProvider.friends.length,
-                ),
-              ),
-
-              if (friendsProvider.friends.isEmpty)
-                SliverToBoxAdapter(
-                  child: _EmptyFriendsState(),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final friendData = friendsProvider.friends[index];
-                      return _FriendCard(
-                        friendData: friendData,
-                        onPing: () => _showPingDialog(
-                            context, friendData, friendsProvider),
-                        onRemove: () => _confirmRemoveFriend(
-                            context, friendData, friendsProvider),
-                      );
-                    },
-                    childCount: friendsProvider.friends.length,
-                  ),
-                ),
-
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 80),
-              ),
             ],
           ),
         );
@@ -405,8 +444,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child:
-                const Text('Remover', style: TextStyle(color: Colors.white)),
+            child: const Text('Remover', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -512,22 +550,21 @@ class _CollapsibleSection extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Material(
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        elevation: 1,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.06),
         child: InkWell(
           onTap: onToggle,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: iconColor.withValues(alpha: 0.2),
-              ),
-            ),
             child: Row(
               children: [
                 Container(
@@ -546,9 +583,8 @@ class _CollapsibleSection extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: isDarkMode
-                          ? Colors.white
-                          : AppTheme.textPrimaryColor,
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                     ),
                   ),
                 ),
@@ -586,54 +622,49 @@ class _SearchResultsSection extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.06),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDarkMode
-                  ? AppTheme.darkBorderColor
-                  : AppTheme.dividerColor,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.search_rounded,
-                        size: 14,
-                        color: isDarkMode
-                            ? Colors.white38
-                            : AppTheme.textSecondaryColor),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Resultados da busca',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3,
-                        color: isDarkMode
-                            ? Colors.white38
-                            : AppTheme.textSecondaryColor,
-                      ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+              child: Row(
+                children: [
+                  Icon(Icons.search_rounded,
+                      size: 14,
+                      color: isDarkMode
+                          ? Colors.white38
+                          : AppTheme.textSecondaryColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Resultados da busca',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                      color: isDarkMode
+                          ? Colors.white38
+                          : AppTheme.textSecondaryColor,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              ...results.map((user) => _SearchResultTile(
-                    user: user,
-                    onSendRequest: onSendRequest,
-                  )),
-              const SizedBox(height: 4),
-            ],
-          ),
+            ),
+            ...results.map((user) => _SearchResultTile(
+                  user: user,
+                  onSendRequest: onSendRequest,
+                )),
+            const SizedBox(height: 4),
+          ],
         ),
       ),
     );
@@ -660,9 +691,8 @@ class _SearchResultTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: isDarkMode
-              ? AppTheme.darkComponentColor
-              : AppTheme.surfaceColor,
+          color:
+              isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -688,7 +718,8 @@ class _SearchResultTile extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                     ),
                   ),
                   if (user.username != null)
@@ -833,21 +864,18 @@ class _PendingRequestCardState extends State<_PendingRequestCard> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        elevation: 1,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.04),
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDarkMode
-                  ? AppTheme.darkBorderColor
-                  : AppTheme.dividerColor,
-            ),
-          ),
           child: Row(
             children: [
               CircleAvatar(
@@ -960,8 +988,7 @@ class _ActionCircleButton extends StatelessWidget {
           border:
               filled ? null : Border.all(color: color.withValues(alpha: 0.3)),
         ),
-        child: Icon(icon,
-            color: filled ? Colors.white : color, size: 20),
+        child: Icon(icon, color: filled ? Colors.white : color, size: 20),
       ),
     );
   }
@@ -983,21 +1010,18 @@ class _SentRequestCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        elevation: 1,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.04),
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDarkMode
-                  ? AppTheme.darkBorderColor
-                  : AppTheme.dividerColor,
-            ),
-          ),
           child: Row(
             children: [
               CircleAvatar(
@@ -1050,8 +1074,7 @@ class _SentRequestCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(
-                        color: Colors.red.withValues(alpha: 0.3)),
+                    side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
                   ),
                 ),
                 child: const Text('Cancelar',
@@ -1092,19 +1115,18 @@ class _DuoStreakCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.24 : 0.06),
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: streakColor.withValues(alpha: 0.15),
-            ),
-          ),
           child: Row(
             children: [
               // Avatar com borda de fogo
@@ -1215,8 +1237,7 @@ class _DuoStreakCard extends StatelessWidget {
                       onPressed: onCheckIn,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: streakColor,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
                         minimumSize: const Size(0, 30),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -1258,9 +1279,7 @@ class _CheckInDot extends StatelessWidget {
           width: 22,
           height: 22,
           decoration: BoxDecoration(
-            color: checked
-                ? color.withValues(alpha: 0.15)
-                : Colors.transparent,
+            color: checked ? color.withValues(alpha: 0.15) : Colors.transparent,
             shape: BoxShape.circle,
             border: Border.all(
               color: color.withValues(alpha: checked ? 0.6 : 0.3),
@@ -1307,21 +1326,18 @@ class _FriendCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1.5,
+        shadowColor: isDarkMode
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        elevation: 1,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.04),
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDarkMode
-                  ? AppTheme.darkBorderColor
-                  : AppTheme.dividerColor,
-            ),
-          ),
           child: Row(
             children: [
               CircleAvatar(
@@ -1359,17 +1375,14 @@ class _FriendCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF5722)
-                              .withValues(alpha: 0.1),
+                          color: const Color(0xFFFF5722).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                                Icons.local_fire_department_rounded,
-                                color: Color(0xFFFF5722),
-                                size: 13),
+                            const Icon(Icons.local_fire_department_rounded,
+                                color: Color(0xFFFF5722), size: 13),
                             const SizedBox(width: 3),
                             Text(
                               '$currentStreak dias',
@@ -1429,8 +1442,7 @@ class _FriendCard extends StatelessWidget {
                         Icon(Icons.person_remove_rounded,
                             size: 18, color: Colors.red),
                         SizedBox(width: 10),
-                        Text('Remover',
-                            style: TextStyle(color: Colors.red)),
+                        Text('Remover', style: TextStyle(color: Colors.red)),
                       ],
                     ),
                   ),
@@ -1446,82 +1458,23 @@ class _FriendCard extends StatelessWidget {
 
 // ==================== EMPTY FRIENDS STATE ====================
 class _EmptyFriendsState extends StatelessWidget {
+  final VoidCallback onSearchTap;
+
+  const _EmptyFriendsState({
+    required this.onSearchTap,
+  });
+
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isDarkMode
-                ? AppTheme.darkBorderColor
-                : AppTheme.dividerColor,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color:
-                  Colors.black.withValues(alpha: isDarkMode ? 0.18 : 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    primaryColor.withValues(alpha: 0.15),
-                    primaryColor.withValues(alpha: 0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: primaryColor.withValues(alpha: 0.15),
-                ),
-              ),
-              child: Icon(
-                Icons.people_outline_rounded,
-                size: 36,
-                color: primaryColor,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Nenhum amigo ainda',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Use a busca acima para encontrar amigos!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: isDarkMode
-                    ? Colors.white.withValues(alpha: 0.5)
-                    : AppTheme.textSecondaryColor,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return DietStyleMessageState(
+      title: 'Nenhum amigo ainda',
+      message: 'Use a busca acima para encontrar usuarios e montar sua rede.',
+      fallbackIcon: Icons.people_outline_rounded,
+      primaryActionLabel: 'Buscar amigos',
+      primaryActionIcon: Icons.search_rounded,
+      onPrimaryAction: onSearchTap,
+      topSpacing: 16,
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
     );
   }
 }

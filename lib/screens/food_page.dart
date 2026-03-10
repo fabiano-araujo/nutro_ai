@@ -11,6 +11,8 @@ import '../models/FoodRegion.dart';
 import '../models/Portion.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/food_history_provider.dart';
+import '../services/auth_service.dart';
+import '../services/favorite_food_service.dart';
 import '../theme/app_theme.dart';
 import '../helpers/webview_helper.dart';
 import '../widgets/macro_nutrient_row.dart';
@@ -943,11 +945,41 @@ class _FoodPageState extends State<FoodPage> {
 
                       return IconButton(
                         icon: Icon(
-                          isFavorited ? Icons.star : Icons.star_outline,
-                          color: isFavorited ? AppTheme.primaryColor : textColor,
+                          isFavorited ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorited ? Colors.red : textColor,
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           historyProvider.toggleFavorite(currentFood);
+
+                          // Sincroniza com o servidor
+                          final token = Provider.of<AuthService>(context, listen: false).token;
+                          if (token == null || token.isEmpty) return;
+                          final svc = FavoriteFoodService(token: token);
+
+                          if (!isFavorited) {
+                            // Estava desfavoritado → agora favoritando
+                            final nutrient = currentFood.nutrients?.isNotEmpty == true
+                                ? currentFood.nutrients!.first
+                                : null;
+                            await svc.addFavorite(FavoriteFood(
+                              id: 0,
+                              name: currentFood.name,
+                              emoji: currentFood.emoji,
+                              calories: currentFood.calories,
+                              protein: currentFood.protein,
+                              carbs: currentFood.carbs,
+                              fat: currentFood.fat,
+                              fiber: nutrient?.dietaryFiber ?? 0,
+                              baseAmount: nutrient?.servingSize ?? 100,
+                              baseUnit: nutrient?.servingUnit ?? 'g',
+                            ));
+                          } else {
+                            // Estava favoritado → desfavoritando
+                            final results = await svc.searchFavorites(currentFood.name);
+                            if (results.isNotEmpty) {
+                              await svc.deleteFavorite(results.first.id);
+                            }
+                          }
                         },
                       );
                     },

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/meal_model.dart';
+import '../models/Nutrient.dart';
 import '../utils/food_json_parser.dart';
 import '../providers/daily_meals_provider.dart';
 import '../utils/ai_interaction_helper.dart';
+import '../services/auth_service.dart';
+import '../services/favorite_food_service.dart';
 import 'meal_card.dart';
 
 /// Widget que exibe alimentos parseados do JSON da IA
@@ -156,9 +159,92 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     if (mounted) {
       setState(() {
         _isAdded = true;
-        // Atualizar _meal com o ID correto
         _meal = mealToAdd;
       });
+    }
+
+    // Fire-and-forget: salva nos recentes e aplica macros dos favoritos
+    _processWithFavorites(mealToAdd);
+  }
+
+  /// Envia os alimentos para o servidor, salva nos recentes e, se houver
+  /// match com favoritos, atualiza os macros da refeição já adicionada.
+  Future<void> _processWithFavorites(Meal meal) async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.token;
+      if (token == null || token.isEmpty) return;
+
+      // Monta payload para o endpoint /favorites/process-ai
+      final foods = meal.foods.map((food) {
+        final nutrient = food.nutrients?.isNotEmpty == true
+            ? food.nutrients!.first
+            : null;
+        return {
+          'name': food.name,
+          'emoji': food.emoji,
+          'portion': food.amount,
+          'amount': nutrient?.servingSize ?? 100.0,
+          'unit': nutrient?.servingUnit ?? 'g',
+          'macros': {
+            'calories': food.calories,
+            'protein': food.protein,
+            'carbohydrate': food.carbs,
+            'fat': food.fat,
+            'fiber': nutrient?.dietaryFiber ?? 0,
+          },
+        };
+      }).toList();
+
+      final service = FavoriteFoodService(token: token);
+      final processed = await service.processAiResponse(foods);
+      if (processed == null || !mounted) return;
+
+      // Verifica se algum alimento teve macros substituídos pelos favoritos
+      final hasMatch = processed.any((f) => f['fromFavorite'] == true);
+      if (!hasMatch) return;
+
+      // Reconstrói a lista de Food com os macros atualizados
+      final updatedFoods = List.generate(meal.foods.length, (i) {
+        if (i >= processed.length) return meal.foods[i];
+        final p = processed[i];
+        if (p['fromFavorite'] != true) return meal.foods[i];
+
+        final macros = p['macros'] as Map<String, dynamic>;
+        final original = meal.foods[i];
+        final originalNutrient = original.nutrients?.isNotEmpty == true
+            ? original.nutrients!.first
+            : null;
+
+        final updatedNutrient = Nutrient(
+          idFood: originalNutrient?.idFood ?? 0,
+          servingSize: originalNutrient?.servingSize ?? 100.0,
+          servingUnit: originalNutrient?.servingUnit ?? 'g',
+          calories: (macros['calories'] as num?)?.toDouble(),
+          protein: (macros['protein'] as num?)?.toDouble(),
+          carbohydrate: (macros['carbohydrate'] as num?)?.toDouble(),
+          fat: (macros['fat'] as num?)?.toDouble(),
+          dietaryFiber: (macros['fiber'] as num?)?.toDouble(),
+        );
+
+        return original.copyWith(nutrients: [updatedNutrient]);
+      });
+
+      final updatedMeal = meal.copyWith(foods: updatedFoods);
+
+      if (!mounted) return;
+      final mealsProvider =
+          Provider.of<DailyMealsProvider>(context, listen: false);
+      mealsProvider.updateMeal(updatedMeal);
+
+      if (mounted) {
+        setState(() {
+          _meal = updatedMeal;
+        });
+      }
+    } catch (e) {
+      // Silencioso — não bloqueia o usuário se o post-processing falhar
+      debugPrint('[FoodJsonDisplay] Erro no processamento de favoritos: $e');
     }
   }
 

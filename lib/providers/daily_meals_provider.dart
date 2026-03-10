@@ -388,6 +388,21 @@ class DailyMealsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Substitui uma refeição existente (mesmo id) mantendo posição na lista
+  void updateMeal(Meal updatedMeal) {
+    final dateKey = _formatDate(_selectedDate);
+    final meals = _mealsByDate[dateKey];
+    if (meals == null) return;
+
+    final index = meals.indexWhere((m) => m.id == updatedMeal.id);
+    if (index == -1) return;
+
+    meals[index] = updatedMeal;
+    _saveToPreferences();
+    _scheduleSync();
+    notifyListeners();
+  }
+
   /// Remove uma refeição completa pelo ID
   void deleteMeal(String mealId) {
     final dateKey = _formatDate(_selectedDate);

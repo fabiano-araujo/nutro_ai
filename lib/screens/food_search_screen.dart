@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../models/food_model.dart';
 import '../models/Nutrient.dart';
 import '../models/FoodRegion.dart';
+import '../models/Portion.dart';
 import '../models/meal_model.dart';
 import 'food_page.dart';
 import '../i18n/app_localizations_extension.dart';
@@ -13,6 +16,7 @@ import '../helpers/scraper_helper.dart';
 import '../helpers/webview_helper.dart';
 import '../providers/food_history_provider.dart';
 import '../providers/daily_meals_provider.dart';
+import '../util/app_constants.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   final MealType? selectedMealType;
@@ -31,8 +35,11 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   MealType? _selectedMealType;
 
   bool _isSearching = false;
-  List<Map<String, dynamic>> _searchResults = [];
+  List<Food> _apiResults = [];
+  List<Map<String, dynamic>> _webResults = [];
   bool _isLoading = false;
+  bool _isLoadingApi = false;
+  bool _isLoadingWeb = false;
 
   @override
   void initState() {
@@ -55,13 +62,101 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     setState(() {
       _isLoading = true;
       _isSearching = true;
+      _apiResults = [];
+      _webResults = [];
+      _isLoadingApi = true;
+      _isLoadingWeb = !kIsWeb; // Only load web on mobile
     });
 
-    final url =
-        'https://mobile.fatsecret.com.br/calorias-nutrição/search?q=${Uri.encodeComponent(query)}';
+    // Search API
+    _searchApi(query);
 
-    // Carrega a URL
-    await _scraperHelper.loadUrl(url);
+    // On mobile, also search via WebView
+    if (!kIsWeb) {
+      final url =
+          'https://mobile.fatsecret.com.br/calorias-nutrição/search?q=${Uri.encodeComponent(query)}';
+      await _scraperHelper.loadUrl(url);
+    }
+  }
+
+  Future<void> _searchApi(String query) async {
+    try {
+      final uri = Uri.parse(
+          '${AppConstants.DIET_API_BASE_URL}/food/search?q=${Uri.encodeComponent(query)}&region=BR&language=pt&limit=${kIsWeb ? 20 : 3}&index=0');
+
+      print('Searching API: $uri');
+      final response = await http.get(uri);
+      print('API response status: ${response.statusCode}');
+      print('API response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        print('Parsed ${data.length} items from API');
+        final List<Food> foods = data.map((item) => _convertApiResultToFood(item)).toList();
+
+        setState(() {
+          _apiResults = foods;
+          _isLoadingApi = false;
+          _isLoading = kIsWeb ? false : _isLoadingWeb;
+        });
+      } else {
+        setState(() {
+          _isLoadingApi = false;
+          _isLoading = kIsWeb ? false : _isLoadingWeb;
+        });
+      }
+    } catch (e) {
+      print('Error searching API: $e');
+      setState(() {
+        _isLoadingApi = false;
+        _isLoading = kIsWeb ? false : _isLoadingWeb;
+      });
+    }
+  }
+
+  Food _convertApiResultToFood(Map<String, dynamic> data) {
+    final foodData = data['food'] as Map<String, dynamic>?;
+    final portions = data['portion'] as List<dynamic>? ?? [];
+    final nutrientList = foodData?['nutrient'] as List<dynamic>? ?? [];
+    final nutrientData = nutrientList.isNotEmpty ? nutrientList.first as Map<String, dynamic>? : null;
+
+    final calories = nutrientData != null ? (double.tryParse(nutrientData['calories']?.toString() ?? '0') ?? 0.0) : 0.0;
+    final protein = nutrientData != null ? (double.tryParse(nutrientData['protein']?.toString() ?? '0') ?? 0.0) : 0.0;
+    final carbs = nutrientData != null ? (double.tryParse(nutrientData['carbohydrate']?.toString() ?? '0') ?? 0.0) : 0.0;
+    final fat = nutrientData != null ? (double.tryParse(nutrientData['fat']?.toString() ?? '0') ?? 0.0) : 0.0;
+
+    return Food(
+      id: foodData?['id'],
+      name: data['translation'] ?? foodData?['name'] ?? 'Unknown',
+      brand: foodData?['brand'],
+      photo: foodData?['photo'],
+      idFatsecret: foodData?['id_fatsecret'],
+      emoji: '🍽️',
+      nutrients: [
+        Nutrient(
+          idFood: foodData?['id'] ?? 0,
+          servingSize: 100.0,
+          servingUnit: 'g',
+          calories: calories,
+          protein: protein,
+          carbohydrate: carbs,
+          fat: fat,
+        ),
+      ],
+      foodRegions: [
+        FoodRegion(
+          regionCode: 'BR',
+          languageCode: 'pt',
+          idFood: foodData?['id'] ?? 0,
+          translation: data['translation'] ?? foodData?['name'] ?? 'Unknown',
+          portions: portions.map((p) => Portion(
+            idFoodRegion: 0,
+            description: p['description'] ?? '',
+            proportion: double.tryParse(p['proportion']?.toString() ?? '1') ?? 1.0,
+          )).toList(),
+        ),
+      ],
+    );
   }
 
   Future<void> _extractFoodData() async {
@@ -79,23 +174,26 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
               }
             }
 
-            print('Found ${results.length} foods');
+            print('Found ${results.length} foods from web');
             setState(() {
-              _searchResults = results;
-              _isLoading = false;
+              _webResults = results;
+              _isLoadingWeb = false;
+              _isLoading = _isLoadingApi;
             });
           } catch (e) {
             print('Error parsing JSON: $e');
             setState(() {
-              _searchResults = [];
-              _isLoading = false;
+              _webResults = [];
+              _isLoadingWeb = false;
+              _isLoading = _isLoadingApi;
             });
           }
         } else {
           print('No data received from scraper');
           setState(() {
-            _searchResults = [];
-            _isLoading = false;
+            _webResults = [];
+            _isLoadingWeb = false;
+            _isLoading = _isLoadingApi;
           });
         }
       },
@@ -371,7 +469,12 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
   Widget _buildSearchResults(bool isDarkMode, Color textColor,
       Color secondaryTextColor, Color cardColor) {
-    if (_isLoading) {
+    final bool hasApiResults = _apiResults.isNotEmpty;
+    final bool hasWebResults = _webResults.isNotEmpty;
+    final bool isStillLoading = _isLoading || _isLoadingApi || _isLoadingWeb;
+
+    // If everything is loading and no results yet
+    if (isStillLoading && !hasApiResults && !hasWebResults) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -392,7 +495,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       );
     }
 
-    if (_searchResults.isEmpty) {
+    // No results found
+    if (!hasApiResults && !hasWebResults && !isStillLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -415,14 +519,151 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       );
     }
 
-    return ListView.builder(
+    // Build list with sections
+    return ListView(
       padding: EdgeInsets.zero,
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final item = _searchResults[index];
-        return _buildFoodResultCard(
-            item, isDarkMode, textColor, secondaryTextColor, cardColor);
+      children: [
+        // API Results section
+        if (hasApiResults) ...[
+          _buildSectionHeader(
+            'Resultados do banco de dados',
+            Icons.storage,
+            isDarkMode,
+            textColor,
+          ),
+          ..._apiResults.map((food) => _buildApiFoodCard(
+                food,
+                isDarkMode,
+                textColor,
+                secondaryTextColor,
+                cardColor,
+              )),
+        ],
+
+        // Still loading API
+        if (_isLoadingApi && !hasApiResults)
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Buscando no banco de dados...',
+                    style: TextStyle(color: secondaryTextColor, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Web Results section (only on mobile)
+        if (!kIsWeb && hasWebResults) ...[
+          _buildSectionHeader(
+            'Resultados da Internet',
+            Icons.public,
+            isDarkMode,
+            textColor,
+          ),
+          ..._webResults.map((item) => _buildFoodResultCard(
+                item,
+                isDarkMode,
+                textColor,
+                secondaryTextColor,
+                cardColor,
+              )),
+        ],
+
+        // Still loading web results (only on mobile)
+        if (!kIsWeb && _isLoadingWeb && !hasWebResults)
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Buscando na internet...',
+                    style: TextStyle(color: secondaryTextColor, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(
+      String title, IconData icon, bool isDarkMode, Color textColor) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.primaryColor),
+          SizedBox(width: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApiFoodCard(
+    Food food,
+    bool isDarkMode,
+    Color textColor,
+    Color secondaryTextColor,
+    Color cardColor,
+  ) {
+    final servingInfo = food.nutrients?.isNotEmpty == true
+        ? '${food.nutrients!.first.servingSize.toStringAsFixed(0)}${food.nutrients!.first.servingUnit}'
+        : '100g';
+    final subtitle = '${food.calories.toStringAsFixed(0)} kcal • $servingInfo';
+
+    return _FoodListItem(
+      emoji: food.emoji,
+      name: food.name,
+      subtitle: subtitle,
+      isDarkMode: isDarkMode,
+      textColor: textColor,
+      secondaryTextColor: secondaryTextColor,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FoodPage(
+              food: food,
+              selectedMealType: _selectedMealType,
+            ),
+          ),
+        );
       },
+      onAdd: () => _quickAddFood(food),
     );
   }
 
@@ -440,6 +681,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     Color secondaryTextColor,
     Color cardColor,
   ) {
+    final food = _convertToFood(item);
     return _FoodListItem(
       emoji: '🍽️',
       name: item['nome'] ?? 'Unknown',
@@ -448,7 +690,6 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       textColor: textColor,
       secondaryTextColor: secondaryTextColor,
       onTap: () {
-        final food = _convertToFood(item);
         final foodUrl = item['link'] != null
             ? 'https://mobile.fatsecret.com.br${item['link']}'
             : null;
@@ -464,6 +705,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           ),
         );
       },
+      onAdd: () => _quickAddFood(food),
     );
   }
 
@@ -511,7 +753,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.star_outline,
+              Icons.favorite_border,
               size: 64,
               color: secondaryTextColor.withValues(alpha: 0.5),
             ),
@@ -601,6 +843,89 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           ),
         );
       },
+      onAdd: () => _quickAddFood(food),
+    );
+  }
+
+  void _quickAddFood(Food food) {
+    if (_selectedMealType == null) {
+      _showMealTypeSelector(food);
+      return;
+    }
+    _addFoodToMeal(food, _selectedMealType!);
+  }
+
+  void _addFoodToMeal(Food food, MealType mealType) {
+    // Add to meal
+    Provider.of<DailyMealsProvider>(context, listen: false)
+        .addFoodToMeal(mealType, food);
+
+    // Add to history (recents and frequency)
+    final historyProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
+    historyProvider.addToRecents(food);
+    historyProvider.incrementFrequency(food);
+
+    // Get meal name
+    final option = DailyMealsProvider.getMealTypeOption(mealType);
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${food.name} adicionado ao ${option.name}'),
+        duration: Duration(seconds: 2),
+        backgroundColor: AppTheme.primaryColor,
+      ),
+    );
+  }
+
+  void _showMealTypeSelector(Food food) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Selecione a refeição',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+              SizedBox(height: 16),
+              ...MealType.values.map((mealType) {
+                final option = DailyMealsProvider.getMealTypeOption(mealType);
+                return ListTile(
+                  leading: Text(option.emoji, style: TextStyle(fontSize: 24)),
+                  title: Text(
+                    option.name,
+                    style: TextStyle(color: textColor),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _addFoodToMeal(food, mealType);
+                  },
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -613,6 +938,7 @@ class _FoodListItem extends StatelessWidget {
   final Color textColor;
   final Color secondaryTextColor;
   final VoidCallback onTap;
+  final VoidCallback? onAdd;
 
   const _FoodListItem({
     Key? key,
@@ -623,6 +949,7 @@ class _FoodListItem extends StatelessWidget {
     required this.textColor,
     required this.secondaryTextColor,
     required this.onTap,
+    this.onAdd,
   }) : super(key: key);
 
   @override
@@ -683,10 +1010,17 @@ class _FoodListItem extends StatelessWidget {
               ),
 
               // Add button
-              Icon(
-                Icons.add_circle_outline,
-                color: AppTheme.primaryColor,
-                size: 28,
+              GestureDetector(
+                onTap: onAdd,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.add_circle,
+                    color: AppTheme.primaryColor,
+                    size: 28,
+                  ),
+                ),
               ),
             ],
           ),

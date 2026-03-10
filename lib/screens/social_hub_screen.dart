@@ -7,6 +7,7 @@ import '../services/feed_service.dart';
 import '../services/challenge_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/standard_page_header.dart';
+import '../widgets/diet_style_message_state.dart';
 
 import 'friends_screen.dart';
 import 'challenge_detail_screen.dart';
@@ -42,11 +43,13 @@ class SocialHubScreen extends StatefulWidget {
 class _SocialHubScreenState extends State<SocialHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final List<String> _tabLabels = const ['Feed', 'Desafios', 'Amigos'];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChanged);
 
     socialTabController.tabChangeCallback = (index) {
       if (mounted && index >= 0 && index < 3) {
@@ -55,9 +58,16 @@ class _SocialHubScreenState extends State<SocialHubScreen>
     };
   }
 
+  void _handleTabChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     socialTabController.tabChangeCallback = null;
+    _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -65,8 +75,6 @@ class _SocialHubScreenState extends State<SocialHubScreen>
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
 
     return Scaffold(
       backgroundColor:
@@ -78,92 +86,23 @@ class _SocialHubScreenState extends State<SocialHubScreen>
               title: 'Social',
               onOpenDrawer: widget.onOpenDrawer,
             ),
-            // Tab bar elegante
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode
-                      ? AppTheme.darkCardColor
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDarkMode
-                        ? AppTheme.darkBorderColor
-                        : AppTheme.dividerColor,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDarkMode ? 0.18 : 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(4),
-                child: TabBar(
-                  controller: _tabController,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: primaryColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryColor.withValues(alpha: 0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+              child: Row(
+                children: List.generate(_tabLabels.length, (index) {
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: index == _tabLabels.length - 1 ? 0 : 3,
                       ),
-                    ],
-                  ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: isDarkMode
-                      ? const Color(0xFFAEB7CE)
-                      : AppTheme.textSecondaryColor,
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
-                  tabs: const [
-                    Tab(
-                      height: 44,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.dynamic_feed_rounded, size: 18),
-                          SizedBox(width: 6),
-                          Text('Feed'),
-                        ],
+                      child: _SocialModeChip(
+                        label: _tabLabels[index],
+                        isSelected: _tabController.index == index,
+                        onTap: () => _tabController.animateTo(index),
                       ),
                     ),
-                    Tab(
-                      height: 44,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.emoji_events_rounded, size: 18),
-                          SizedBox(width: 6),
-                          Text('Desafios'),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      height: 44,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people_rounded, size: 18),
-                          SizedBox(width: 6),
-                          Text('Amigos'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                }),
               ),
             ),
             Expanded(
@@ -183,109 +122,6 @@ class _SocialHubScreenState extends State<SocialHubScreen>
   }
 }
 
-// ==================== EMPTY STATE ====================
-class _SocialEmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? message;
-  final Color? iconColor;
-  final List<Widget> actions;
-
-  const _SocialEmptyState({
-    required this.icon,
-    required this.title,
-    this.message,
-    this.iconColor,
-    this.actions = const [],
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-    final color = iconColor ?? primaryColor;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDarkMode
-                  ? AppTheme.darkBorderColor
-                  : AppTheme.dividerColor,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDarkMode ? 0.18 : 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      color.withValues(alpha: 0.15),
-                      color.withValues(alpha: 0.06),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.15),
-                  ),
-                ),
-                child: Icon(icon, size: 36, color: color),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                ),
-              ),
-              if (message != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  message!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: isDarkMode
-                        ? Colors.white.withValues(alpha: 0.6)
-                        : AppTheme.textSecondaryColor,
-                  ),
-                ),
-              ],
-              if (actions.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                ...actions,
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ==================== FEED TAB ====================
 class _FeedTab extends StatelessWidget {
   @override
@@ -294,6 +130,28 @@ class _FeedTab extends StatelessWidget {
       builder: (context, feedProvider, child) {
         if (feedProvider.isLoading && feedProvider.activities.isEmpty) {
           return const Center(child: CircularProgressIndicator());
+        }
+
+        if (feedProvider.error != null && feedProvider.activities.isEmpty) {
+          return RefreshIndicator(
+            onRefresh: feedProvider.refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              children: [
+                DietStyleMessageState(
+                  title: 'Nao foi possivel carregar o feed',
+                  message:
+                      'Verifique sua conexao e tente novamente para buscar as atividades sociais.',
+                  fallbackIcon: Icons.cloud_off_rounded,
+                  primaryActionLabel: 'Tentar novamente',
+                  primaryActionIcon: Icons.refresh_rounded,
+                  onPrimaryAction: feedProvider.refresh,
+                  topSpacing: 56,
+                ),
+              ],
+            ),
+          );
         }
 
         if (feedProvider.isEmpty) {
@@ -344,15 +202,17 @@ class _EmptyFeedState extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
-      children: const [
-        SizedBox(height: 72),
-        _SocialEmptyState(
-          icon: Icons.dynamic_feed_rounded,
+      padding: EdgeInsets.zero,
+      children: [
+        DietStyleMessageState(
           title: 'Seu feed esta vazio',
           message:
-              'Adicione amigos para ver atividades, streaks e desafios por aqui.',
-          iconColor: Color(0xFF7EC8E3),
+              'Adicione amigos para acompanhar atividades, streaks e desafios por aqui.',
+          fallbackIcon: Icons.dynamic_feed_rounded,
+          primaryActionLabel: 'Encontrar amigos',
+          primaryActionIcon: Icons.people_alt_rounded,
+          onPrimaryAction: () => socialTabController.changeTab(2),
+          topSpacing: 56,
         ),
       ],
     );
@@ -374,144 +234,79 @@ class _FeedActivityCard extends StatelessWidget {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final typeInfo = _getTypeInfo();
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: cardColor,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1.5,
+      shadowColor: isDarkMode
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.24 : 0.08),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDarkMode
-                  ? AppTheme.darkBorderColor
-                  : AppTheme.dividerColor,
-            ),
-          ),
-          child: Column(
+      ),
+      color: cardColor,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header com informacoes do usuario
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Row(
-                  children: [
-                    // Avatar com borda colorida
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: typeInfo.color.withValues(alpha: 0.4),
-                          width: 2,
-                        ),
+              // Header
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor:
+                        Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                    child: Text(
+                      activity.user.name.isNotEmpty
+                          ? activity.user.name[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundColor: typeInfo.color.withValues(alpha: 0.12),
-                        child: Text(
-                          activity.user.name.isNotEmpty
-                              ? activity.user.name[0].toUpperCase()
-                              : '?',
-                          style: TextStyle(
-                            color: typeInfo.color,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            activity.user.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: isDarkMode
-                                  ? Colors.white
-                                  : AppTheme.textPrimaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _formatTime(activity.createdAt),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDarkMode
-                                  ? Colors.white.withValues(alpha: 0.45)
-                                  : AppTheme.textSecondaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Badge do tipo
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: typeInfo.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: typeInfo.color.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(typeInfo.icon,
-                              color: typeInfo.color, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            typeInfo.label,
-                            style: TextStyle(
-                              color: typeInfo.color,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Conteudo da atividade
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? AppTheme.darkComponentColor
-                        : AppTheme.surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: typeInfo.color.withValues(alpha: 0.1),
                     ),
                   ),
-                  child: _buildActivityContent(context, isDarkMode, typeInfo),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activity.user.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: isDarkMode
+                                ? Colors.white
+                                : AppTheme.textPrimaryColor,
+                          ),
+                        ),
+                        Text(
+                          _formatTime(activity.createdAt),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.4)
+                                : AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(typeInfo.icon, color: typeInfo.color, size: 20),
+                ],
               ),
-
-              // Barra de reacoes
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: _buildReactionsBar(context, isDarkMode),
-              ),
+              const SizedBox(height: 10),
+              // Mensagem
+              _buildActivityContent(context, isDarkMode, typeInfo),
+              const SizedBox(height: 10),
+              // Reacoes
+              _buildReactionsBar(context, isDarkMode),
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   _ActivityTypeInfo _getTypeInfo() {
@@ -519,46 +314,25 @@ class _FeedActivityCard extends StatelessWidget {
     switch (activityType) {
       case 'CHECKIN_PROTEIN':
         return _ActivityTypeInfo(
-          icon: Icons.fitness_center_rounded,
-          color: const Color(0xFFFF9800),
-          label: 'Proteina',
-        );
+            Icons.fitness_center_rounded, const Color(0xFFFF9800));
       case 'CHECKIN_GOAL':
         return _ActivityTypeInfo(
-          icon: Icons.flag_rounded,
-          color: const Color(0xFF4CAF50),
-          label: 'Meta',
-        );
+            Icons.flag_rounded, const Color(0xFF4CAF50));
       case 'CHECKIN_OVER':
         return _ActivityTypeInfo(
-          icon: Icons.check_circle_rounded,
-          color: const Color(0xFF2196F3),
-          label: 'Registro',
-        );
+            Icons.check_circle_rounded, const Color(0xFF2196F3));
       case 'STREAK_MILESTONE':
         return _ActivityTypeInfo(
-          icon: Icons.local_fire_department_rounded,
-          color: const Color(0xFFFF5722),
-          label: 'Streak',
-        );
+            Icons.local_fire_department_rounded, const Color(0xFFFF5722));
       case 'FRIEND_STREAK':
         return _ActivityTypeInfo(
-          icon: Icons.favorite_rounded,
-          color: const Color(0xFFE91E63),
-          label: 'Duo',
-        );
+            Icons.favorite_rounded, const Color(0xFFE91E63));
       case 'CHALLENGE_JOIN':
         return _ActivityTypeInfo(
-          icon: Icons.emoji_events_rounded,
-          color: const Color(0xFFFFC107),
-          label: 'Desafio',
-        );
+            Icons.emoji_events_rounded, const Color(0xFFFFC107));
       default:
         return _ActivityTypeInfo(
-          icon: Icons.check_circle_rounded,
-          color: const Color(0xFF2196F3),
-          label: 'Atividade',
-        );
+            Icons.check_circle_rounded, const Color(0xFF2196F3));
     }
   }
 
@@ -615,26 +389,18 @@ class _FeedActivityCard extends StatelessWidget {
         Text(
           message,
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: isDarkMode ? Colors.white : Colors.black87,
+            fontSize: 14,
+            color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
           ),
         ),
         if (detail != null) ...[
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: typeInfo.color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              detail,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: typeInfo.color,
-              ),
+          const SizedBox(height: 4),
+          Text(
+            detail,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: typeInfo.color,
             ),
           ),
         ],
@@ -644,60 +410,56 @@ class _FeedActivityCard extends StatelessWidget {
 
   Widget _buildReactionsBar(BuildContext context, bool isDarkMode) {
     final emojis = ['👏', '🔥', '💪', '😅'];
+    final primaryColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Row(
       children: emojis.map((emoji) {
         final count = activity.reactionCounts[emoji] ?? 0;
         final hasReacted = activity.hasReacted(emoji);
-        final primaryColor = isDarkMode
-            ? AppTheme.primaryColorDarkMode
-            : AppTheme.primaryColor;
 
-        return InkWell(
-          onTap: () => onReact(emoji),
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: hasReacted
-                  ? primaryColor.withValues(alpha: 0.14)
-                  : (isDarkMode
-                      ? AppTheme.darkComponentColor
-                      : AppTheme.surfaceColor),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
+        return Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: InkWell(
+            onTap: () => onReact(emoji),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
                 color: hasReacted
-                    ? primaryColor.withValues(alpha: 0.3)
-                    : (isDarkMode
-                        ? AppTheme.darkBorderColor
-                        : AppTheme.dividerColor),
-                width: hasReacted ? 1.5 : 1,
+                    ? primaryColor.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: hasReacted
+                      ? primaryColor.withValues(alpha: 0.25)
+                      : (isDarkMode
+                          ? AppTheme.darkBorderColor
+                          : AppTheme.dividerColor),
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 16)),
-                if (count > 0) ...[
-                  const SizedBox(width: 5),
-                  Text(
-                    count.toString(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: hasReacted
-                          ? primaryColor
-                          : (isDarkMode
-                              ? Colors.white.withValues(alpha: 0.6)
-                              : AppTheme.textSecondaryColor),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 14)),
+                  if (count > 0) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      count.toString(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: hasReacted
+                            ? primaryColor
+                            : (isDarkMode
+                                ? Colors.white.withValues(alpha: 0.5)
+                                : AppTheme.textSecondaryColor),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );
@@ -728,13 +490,8 @@ class _FeedActivityCard extends StatelessWidget {
 class _ActivityTypeInfo {
   final IconData icon;
   final Color color;
-  final String label;
 
-  const _ActivityTypeInfo({
-    required this.icon,
-    required this.color,
-    required this.label,
-  });
+  const _ActivityTypeInfo(this.icon, this.color);
 }
 
 // ==================== CHALLENGES TAB ====================
@@ -754,54 +511,25 @@ class _ChallengesTabState extends State<_ChallengesTab> {
       builder: (context, challengesProvider, child) {
         return Column(
           children: [
-            // Toggle elegante
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: isDarkMode
-                      ? AppTheme.darkCardColor
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isDarkMode
-                        ? AppTheme.darkBorderColor
-                        : AppTheme.dividerColor,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  _TextTab(
+                    label: 'Meus Desafios',
+                    isSelected: !_showPublic,
+                    onTap: () => setState(() => _showPublic = false),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black
-                          .withValues(alpha: isDarkMode ? 0.14 : 0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _SegmentButton(
-                        label: 'Meus Desafios',
-                        icon: Icons.star_rounded,
-                        isSelected: !_showPublic,
-                        onTap: () => setState(() => _showPublic = false),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: _SegmentButton(
-                        label: 'Publicos',
-                        icon: Icons.public_rounded,
-                        isSelected: _showPublic,
-                        onTap: () {
-                          setState(() => _showPublic = true);
-                          challengesProvider.loadPublicChallenges();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                  const SizedBox(width: 20),
+                  _TextTab(
+                    label: 'Publicos',
+                    isSelected: _showPublic,
+                    onTap: () {
+                      setState(() => _showPublic = true);
+                      challengesProvider.loadPublicChallenges();
+                    },
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -818,6 +546,25 @@ class _ChallengesTabState extends State<_ChallengesTab> {
   }
 
   Widget _buildMyChallenges(ChallengesProvider provider, bool isDarkMode) {
+    if (provider.error != null && provider.myChallenges.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          DietStyleMessageState(
+            title: 'Nao foi possivel carregar os desafios',
+            message:
+                'Verifique sua conexao e tente novamente para ver seus desafios.',
+            fallbackIcon: Icons.cloud_off_rounded,
+            primaryActionLabel: 'Tentar novamente',
+            primaryActionIcon: Icons.refresh_rounded,
+            onPrimaryAction: provider.refresh,
+            topSpacing: 48,
+          ),
+        ],
+      );
+    }
+
     if (provider.myChallenges.isEmpty) {
       return _EmptyChallengesState(
         onCreateChallenge: () => _showCreateChallengeDialog(context),
@@ -849,18 +596,35 @@ class _ChallengesTabState extends State<_ChallengesTab> {
   }
 
   Widget _buildPublicChallenges(ChallengesProvider provider, bool isDarkMode) {
+    if (provider.error != null && provider.publicChallenges.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          DietStyleMessageState(
+            title: 'Nao foi possivel carregar os desafios',
+            message: 'Tente atualizar novamente para buscar desafios publicos.',
+            fallbackIcon: Icons.cloud_off_rounded,
+            primaryActionLabel: 'Tentar novamente',
+            primaryActionIcon: Icons.refresh_rounded,
+            onPrimaryAction: provider.loadPublicChallenges,
+            topSpacing: 48,
+          ),
+        ],
+      );
+    }
+
     if (provider.publicChallenges.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        padding: EdgeInsets.zero,
         children: const [
-          SizedBox(height: 72),
-          _SocialEmptyState(
-            icon: Icons.emoji_events_rounded,
+          DietStyleMessageState(
             title: 'Nenhum desafio publico',
             message:
                 'Quando outros usuarios abrirem desafios, eles vao aparecer aqui.',
-            iconColor: Color(0xFFFFC107),
+            fallbackIcon: Icons.emoji_events_rounded,
+            topSpacing: 48,
           ),
         ],
       );
@@ -892,8 +656,7 @@ class _ChallengesTabState extends State<_ChallengesTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor:
-            isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -938,8 +701,7 @@ class _ChallengesTabState extends State<_ChallengesTab> {
                       value: 'LOGGING_STREAK',
                       child: Text('Streak de Registro')),
                   DropdownMenuItem(
-                      value: 'PROTEIN_TARGET',
-                      child: Text('Meta de Proteina')),
+                      value: 'PROTEIN_TARGET', child: Text('Meta de Proteina')),
                   DropdownMenuItem(
                       value: 'CALORIE_DEFICIT',
                       child: Text('Deficit Calorico')),
@@ -989,8 +751,7 @@ class _ChallengesTabState extends State<_ChallengesTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor:
-            isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -1000,8 +761,7 @@ class _ChallengesTabState extends State<_ChallengesTab> {
                 color: primaryColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child:
-                  Icon(Icons.qr_code_rounded, color: primaryColor, size: 20),
+              child: Icon(Icons.qr_code_rounded, color: primaryColor, size: 20),
             ),
             const SizedBox(width: 12),
             const Text('Entrar com Codigo'),
@@ -1061,51 +821,22 @@ class _EmptyChallengesState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      padding: EdgeInsets.zero,
       children: [
-        const SizedBox(height: 72),
-        _SocialEmptyState(
-          icon: Icons.emoji_events_rounded,
+        DietStyleMessageState(
           title: 'Nenhum desafio ativo',
           message:
               'Crie um desafio proprio ou entre por codigo para competir com amigos.',
-          iconColor: const Color(0xFFFFC107),
-          actions: [
-            ElevatedButton.icon(
-              onPressed: onCreateChallenge,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
-              ),
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: const Text('Criar Desafio',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, color: Colors.white)),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: onJoinByCode,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                side: BorderSide(color: primaryColor, width: 1.5),
-              ),
-              icon: Icon(Icons.qr_code_rounded, color: primaryColor),
-              label: Text('Entrar com Codigo',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, color: primaryColor)),
-            ),
-          ],
+          fallbackIcon: Icons.emoji_events_rounded,
+          primaryActionLabel: 'Criar desafio',
+          primaryActionIcon: Icons.add_rounded,
+          onPrimaryAction: onCreateChallenge,
+          secondaryActionLabel: 'Entrar com codigo',
+          secondaryActionIcon: Icons.qr_code_rounded,
+          onSecondaryAction: onJoinByCode,
+          topSpacing: 48,
         ),
       ],
     );
@@ -1125,38 +856,18 @@ class _ChallengeCard extends StatelessWidget {
     this.onJoin,
   });
 
-  _ChallengeTypeInfo get _typeInfo {
+  IconData get _typeIcon {
     switch (challenge.type.toUpperCase()) {
       case 'LOGGING_STREAK':
-        return _ChallengeTypeInfo(
-          icon: Icons.local_fire_department_rounded,
-          color: const Color(0xFFFF5722),
-          emoji: '🔥',
-        );
+        return Icons.local_fire_department_rounded;
       case 'PROTEIN_TARGET':
-        return _ChallengeTypeInfo(
-          icon: Icons.fitness_center_rounded,
-          color: const Color(0xFF9575CD),
-          emoji: '💪',
-        );
+        return Icons.fitness_center_rounded;
       case 'CALORIE_DEFICIT':
-        return _ChallengeTypeInfo(
-          icon: Icons.trending_down_rounded,
-          color: const Color(0xFF4CAF50),
-          emoji: '🎯',
-        );
+        return Icons.trending_down_rounded;
       case 'FIBER_TARGET':
-        return _ChallengeTypeInfo(
-          icon: Icons.eco_rounded,
-          color: const Color(0xFF66BB6A),
-          emoji: '🌿',
-        );
+        return Icons.eco_rounded;
       default:
-        return _ChallengeTypeInfo(
-          icon: Icons.emoji_events_rounded,
-          color: const Color(0xFFFFC107),
-          emoji: '🏆',
-        );
+        return Icons.emoji_events_rounded;
     }
   }
 
@@ -1164,166 +875,115 @@ class _ChallengeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final daysLeft = challenge.endDate.difference(DateTime.now()).inDays;
-    final safeDaysLeft = daysLeft < 0 ? 0 : daysLeft;
-    final typeInfo = _typeInfo;
     final primaryColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-
+    final daysLeft = challenge.endDate.difference(DateTime.now()).inDays;
+    final safeDaysLeft = daysLeft < 0 ? 0 : daysLeft;
     final daysColor = safeDaysLeft > 3
         ? const Color(0xFF4CAF50)
-        : (safeDaysLeft > 0 ? const Color(0xFFFF9800) : const Color(0xFFE53935));
+        : (safeDaysLeft > 0
+            ? const Color(0xFFFF9800)
+            : const Color(0xFFE53935));
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: cardColor,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1.5,
+      shadowColor: isDarkMode
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: isDarkMode ? 0.24 : 0.08),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDarkMode
-                    ? AppTheme.darkBorderColor
-                    : AppTheme.dividerColor,
-              ),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
+      ),
+      color: cardColor,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    // Icone do tipo com emoji
-                    Container(
-                      width: 48,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: typeInfo.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: typeInfo.color.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Text(typeInfo.emoji,
-                          style: const TextStyle(fontSize: 22)),
-                    ),
-                    const SizedBox(width: 14),
+                    Icon(_typeIcon, color: primaryColor, size: 22),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            challenge.name,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: isDarkMode
-                                  ? Colors.white
-                                  : AppTheme.textPrimaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(Icons.people_rounded,
-                                  size: 14,
-                                  color: isDarkMode
-                                      ? Colors.white.withValues(alpha: 0.45)
-                                      : AppTheme.textSecondaryColor),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${challenge.participantCount}/${challenge.maxParticipants} participantes',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDarkMode
-                                      ? Colors.white.withValues(alpha: 0.45)
-                                      : AppTheme.textSecondaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Badge de dias restantes
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: daysColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: daysColor.withValues(alpha: 0.25),
+                      child: Text(
+                        challenge.name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isDarkMode
+                              ? Colors.white
+                              : AppTheme.textPrimaryColor,
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.schedule_rounded,
-                              size: 13, color: daysColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$safeDaysLeft d',
-                            style: TextStyle(
-                              color: daysColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
+                    ),
+                    Text(
+                      '$safeDaysLeft d',
+                      style: TextStyle(
+                        color: daysColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                if (challenge.description != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isDarkMode
-                          ? AppTheme.darkComponentColor
-                          : AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      challenge.description!,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      '${challenge.participantCount}/${challenge.maxParticipants} participantes',
                       style: TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
+                        fontSize: 12,
                         color: isDarkMode
-                            ? Colors.white.withValues(alpha: 0.65)
+                            ? Colors.white.withValues(alpha: 0.45)
                             : AppTheme.textSecondaryColor,
                       ),
                     ),
-                  ),
-                ],
+                    if (challenge.description != null) ...[
+                      Text(
+                        '  ·  ',
+                        style: TextStyle(
+                          color: isDarkMode
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : AppTheme.dividerColor,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          challenge.description!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.45)
+                                : AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 if (showJoinButton && onJoin != null) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
                       onPressed: onJoin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         elevation: 0,
                       ),
-                      icon: const Icon(Icons.login_rounded,
-                          size: 18, color: Colors.white),
-                      label: const Text('Entrar no Desafio',
+                      child: const Text('Entrar',
                           style: TextStyle(
                               fontWeight: FontWeight.w600,
+                              fontSize: 13,
                               color: Colors.white)),
                     ),
                   ),
@@ -1332,32 +992,17 @@ class _ChallengeCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 
-class _ChallengeTypeInfo {
-  final IconData icon;
-  final Color color;
-  final String emoji;
-
-  const _ChallengeTypeInfo({
-    required this.icon,
-    required this.color,
-    required this.emoji,
-  });
-}
-
-class _SegmentButton extends StatelessWidget {
+class _TextTab extends StatelessWidget {
   final String label;
-  final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _SegmentButton({
+  const _TextTab({
     required this.label,
-    required this.icon,
     required this.isSelected,
     required this.onTap,
   });
@@ -1370,51 +1015,86 @@ class _SegmentButton extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected
-                  ? Colors.white
-                  : (isDarkMode
-                      ? const Color(0xFFAEB7CE)
-                      : AppTheme.textSecondaryColor),
-            ),
-            const SizedBox(width: 6),
-            Text(
+      borderRadius: BorderRadius.circular(4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            child: Text(
               label,
               style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
-                    ? Colors.white
+                    ? (isDarkMode ? Colors.white : AppTheme.textPrimaryColor)
                     : (isDarkMode
-                        ? const Color(0xFFAEB7CE)
+                        ? Colors.white.withValues(alpha: 0.45)
                         : AppTheme.textSecondaryColor),
               ),
             ),
-          ],
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 2,
+            width: isSelected ? 24 : 0,
+            decoration: BoxDecoration(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SocialModeChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SocialModeChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final unselectedBorderColor =
+        isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
+    return ChoiceChip(
+      label: Text(
+        label,
+        textAlign: TextAlign.center,
+        overflow: TextOverflow.ellipsis,
+      ),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      selectedColor: primaryColor,
+      backgroundColor: cardColor,
+      labelStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: isSelected
+            ? Colors.white
+            : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
+      ),
+      showCheckmark: false,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? primaryColor : unselectedBorderColor,
+          width: 1,
         ),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
     );
   }
 }

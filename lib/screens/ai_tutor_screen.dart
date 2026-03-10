@@ -46,6 +46,7 @@ import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import '../utils/food_json_parser.dart';
+import '../widgets/recent_foods_sheet.dart';
 
 // Singleton para gerenciar o estado da tela NutritionAssistant em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -916,6 +917,37 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
   }
 
+  // Abre o bottom sheet de recentes/favoritos/refeições
+  void _openRecentFoodsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => RecentFoodsSheet(
+        onFoodSelected: (food) {
+          // Insere o nome do alimento no campo de texto com quantidade padrão
+          final text = food.name;
+          _messageController.text = text;
+          _messageController.selection = TextSelection.fromPosition(
+            TextPosition(offset: text.length),
+          );
+          setState(() {});
+        },
+        onMealSelected: (meal) {
+          // Monta texto com todos os alimentos da refeição
+          final foodTexts = meal.foods
+              .map((f) => '${f.amount.toStringAsFixed(0)}${f.unit} ${f.name}')
+              .join(', ');
+          _messageController.text = foodTexts;
+          _messageController.selection = TextSelection.fromPosition(
+            TextPosition(offset: foodTexts.length),
+          );
+          setState(() {});
+        },
+      ),
+    );
+  }
+
   // Método para mostrar o menu de opções ao fazer long press
   void _showMessageOptions(String message, bool isUser) {
     final appLocalizations = AppLocalizations.of(context);
@@ -1728,6 +1760,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                     );
                                   },
                                   splashRadius: 20,
+                                ),
+
+                                // Botão de recentes/favoritos
+                                IconButton(
+                                  icon: Icon(Icons.history,
+                                      color: isDarkMode
+                                          ? Colors.grey[400]
+                                          : AppTheme.textSecondaryColor),
+                                  onPressed: () => _openRecentFoodsSheet(),
+                                  splashRadius: 20,
+                                  tooltip: 'Recentes e Favoritos',
                                 ),
 
                                 // Campo de texto
