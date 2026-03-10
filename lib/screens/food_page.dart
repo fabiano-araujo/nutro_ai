@@ -38,6 +38,7 @@ class FoodPage extends StatefulWidget {
 class _FoodPageState extends State<FoodPage> {
   late TextEditingController _servingSizeController;
   late double _currentServingSize;
+  double _singlePortionSize = 100.0; // Grams for 1 unit of the selected portion
   String? _selectedPortionDescription;
   String? _currentServingUnit; // Store current unit
   late MealType _selectedMealType; // Current selected meal type
@@ -67,8 +68,9 @@ class _FoodPageState extends State<FoodPage> {
       final parsedSize = parsed['size'] as double;
       final parsedUnit = parsed['unit'] as String;
 
-      // Calculate actual serving size using proportion
-      final actualServingSize = baseServingSize * firstPortion.proportion;
+      // Calculate the size for 1 unit of this portion
+      // actualServingSize is for parsedSize units, so divide to get single unit size
+      final singleUnitSize = parsedSize > 0 ? (baseServingSize * firstPortion.proportion) / parsedSize : baseServingSize * firstPortion.proportion;
 
       print('===== INIT FIRST PORTION =====');
       print('Description: ${firstPortion.description}');
@@ -76,16 +78,19 @@ class _FoodPageState extends State<FoodPage> {
       print('Parsed unit (display): $parsedUnit');
       print('Proportion: ${firstPortion.proportion}');
       print('Base serving: $baseServingSize');
-      print('Actual serving size (for macros): $actualServingSize');
+      print('Single unit size: $singleUnitSize');
+      print('Actual serving size (for macros): ${singleUnitSize * parsedSize}');
       print('==============================');
 
-      _currentServingSize = actualServingSize;
+      _singlePortionSize = singleUnitSize;
+      _currentServingSize = singleUnitSize * parsedSize;
       _currentServingUnit = parsedUnit;
       _servingSizeController = TextEditingController(
         text: parsedSize.toInt().toString(),
       );
     } else {
-      // No portions, use base values
+      // No portions, use base values (unit is grams, so 1g = 1g)
+      _singlePortionSize = 1.0; // Each unit in the field represents 1g
       _currentServingSize = baseServingSize;
       _servingSizeController = TextEditingController(
         text: baseServingSize.toInt().toString(),
@@ -282,8 +287,10 @@ class _FoodPageState extends State<FoodPage> {
             final parsedSize = parsed['size'] as double;
             final parsedUnit = parsed['unit'] as String;
 
-            // Calculate actual serving size using proportion
-            final actualServingSize = baseServingSize * firstPortion.proportion;
+            // Calculate the size for 1 unit of this portion
+            final singleUnitSize = parsedSize > 0
+                ? (baseServingSize * firstPortion.proportion) / parsedSize
+                : baseServingSize * firstPortion.proportion;
 
             print('===== LOADED FIRST PORTION =====');
             print('Description: ${firstPortion.description}');
@@ -291,14 +298,17 @@ class _FoodPageState extends State<FoodPage> {
             print('Parsed unit (display): $parsedUnit');
             print('Proportion: ${firstPortion.proportion}');
             print('Base serving: $baseServingSize');
-            print('Actual serving size (for macros): $actualServingSize');
+            print('Single unit size: $singleUnitSize');
+            print('Actual serving size (for macros): ${singleUnitSize * parsedSize}');
             print('================================');
 
-            _currentServingSize = actualServingSize;
+            _singlePortionSize = singleUnitSize;
+            _currentServingSize = singleUnitSize * parsedSize;
             _currentServingUnit = parsedUnit;
             _servingSizeController.text = parsedSize.toInt().toString();
           } else {
-            // No portions, use base values
+            // No portions, use base values (unit is grams, so 1g = 1g)
+            _singlePortionSize = 1.0;
             _currentServingSize = baseServingSize;
             _servingSizeController.text = baseServingSize.toInt().toString();
           }
@@ -453,7 +463,8 @@ class _FoodPageState extends State<FoodPage> {
     final newValue = double.tryParse(value);
     if (newValue != null && newValue > 0) {
       setState(() {
-        _currentServingSize = newValue;
+        // Multiply the entered quantity by the single portion size
+        _currentServingSize = newValue * _singlePortionSize;
       });
     }
   }
@@ -728,9 +739,10 @@ class _FoodPageState extends State<FoodPage> {
                       final parsedSize = parsed['size'] as double;
                       final parsedUnit = parsed['unit'] as String;
 
-                      // Calculate actual serving size using proportion (for macro calculations)
-                      // The proportion is relative to baseServingSize (usually 100g)
-                      final actualServingSize = baseServingSize * portion.proportion;
+                      // Calculate the size for 1 unit of this portion
+                      final singleUnitSize = parsedSize > 0
+                          ? (baseServingSize * portion.proportion) / parsedSize
+                          : baseServingSize * portion.proportion;
 
                       print('===== PORTION SELECTED =====');
                       print('Description: ${portion.description}');
@@ -738,10 +750,12 @@ class _FoodPageState extends State<FoodPage> {
                       print('Parsed unit (display): $parsedUnit');
                       print('Proportion: ${portion.proportion}');
                       print('Base serving: $baseServingSize');
-                      print('Actual serving size (for macros): $actualServingSize');
+                      print('Single unit size: $singleUnitSize');
+                      print('Actual serving size (for macros): ${singleUnitSize * parsedSize}');
                       print('============================');
 
-                      _currentServingSize = actualServingSize;
+                      _singlePortionSize = singleUnitSize;
+                      _currentServingSize = singleUnitSize * parsedSize;
                       _currentServingUnit = parsedUnit;
                       _selectedPortionDescription = portion.description;
                       _servingSizeController.text = parsedSize.toStringAsFixed(0);

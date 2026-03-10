@@ -93,7 +93,7 @@ class _SocialHubScreenState extends State<SocialHubScreen>
                   return Expanded(
                     child: Padding(
                       padding: EdgeInsets.only(
-                        right: index == _tabLabels.length - 1 ? 0 : 3,
+                        right: index == _tabLabels.length - 1 ? 0 : 8,
                       ),
                       child: _SocialModeChip(
                         label: _tabLabels[index],
@@ -1069,32 +1069,35 @@ class _SocialModeChip extends StatelessWidget {
         isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
-    return ChoiceChip(
-      label: Text(
-        label,
-        textAlign: TextAlign.center,
-        overflow: TextOverflow.ellipsis,
-      ),
-      selected: isSelected,
-      onSelected: (_) => onTap(),
-      selectedColor: primaryColor,
-      backgroundColor: cardColor,
-      labelStyle: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: isSelected
-            ? Colors.white
-            : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
-      ),
-      showCheckmark: false,
-      shape: RoundedRectangleBorder(
+    return Material(
+      color: isSelected ? primaryColor : cardColor,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: isSelected ? primaryColor : unselectedBorderColor,
-          width: 1,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? primaryColor : unselectedBorderColor,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isSelected
+                  ? Colors.white
+                  : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
+            ),
+          ),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
     );
   }
 }

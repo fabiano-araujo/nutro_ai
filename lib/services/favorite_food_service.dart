@@ -264,6 +264,24 @@ class FavoriteFoodService {
   // RECENTES
   // ============================================
 
+  Future<List<FavoriteFood>> getFrequents({int limit = 30}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/favorites/frequents?limit=$limit'),
+        headers: _headers,
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data['data'] as List<dynamic>? ?? [];
+        return list.map((j) => FavoriteFood.fromJson(j)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('[FavoriteFoodService] Erro ao buscar frequentes: $e');
+      return [];
+    }
+  }
+
   Future<List<FavoriteFood>> getRecents({int limit = 30}) async {
     try {
       final response = await http.get(

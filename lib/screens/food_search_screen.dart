@@ -17,6 +17,8 @@ import '../helpers/webview_helper.dart';
 import '../providers/food_history_provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../util/app_constants.dart';
+import '../services/auth_service.dart';
+import '../services/favorite_food_service.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   final MealType? selectedMealType;
@@ -41,11 +43,37 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   bool _isLoadingApi = false;
   bool _isLoadingWeb = false;
 
+  List<FavoriteFood> _serverRecents = [];
+  bool _loadingServerRecents = true;
+  List<FavoriteFood> _serverFrequents = [];
+  bool _loadingServerFrequents = true;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _selectedMealType = widget.selectedMealType;
+    _loadServerData();
+  }
+
+  Future<void> _loadServerData() async {
+    try {
+      final token = Provider.of<AuthService>(context, listen: false).token;
+      if (token == null || token.isEmpty) {
+        if (mounted) setState(() { _loadingServerRecents = false; _loadingServerFrequents = false; });
+        return;
+      }
+      final svc = FavoriteFoodService(token: token);
+      final results = await Future.wait([svc.getRecents(limit: 30), svc.getFrequents(limit: 30)]);
+      if (mounted) setState(() {
+        _serverRecents = results[0];
+        _loadingServerRecents = false;
+        _serverFrequents = results[1];
+        _loadingServerFrequents = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() { _loadingServerRecents = false; _loadingServerFrequents = false; });
+    }
   }
 
   @override
@@ -81,8 +109,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
   Future<void> _searchApi(String query) async {
     try {
+      // Get device locale
+      final locale = Localizations.localeOf(context);
+      final languageCode = locale.languageCode; // e.g., "pt", "en", "es"
+      final regionCode = locale.countryCode ?? languageCode.toUpperCase(); // e.g., "BR", "US"
+
       final uri = Uri.parse(
-          '${AppConstants.DIET_API_BASE_URL}/food/search?q=${Uri.encodeComponent(query)}&region=BR&language=pt&limit=${kIsWeb ? 20 : 3}&index=0');
+          '${AppConstants.DIET_API_BASE_URL}/food/search?q=${Uri.encodeComponent(query)}&region=$regionCode&language=&limit=${kIsWeb ? 20 : 3}&index=0');
 
       print('Searching API: $uri');
       final response = await http.get(uri);
@@ -115,6 +148,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   }
 
   Food _convertApiResultToFood(Map<String, dynamic> data) {
+    final locale = Localizations.localeOf(context);
+    final languageCode = locale.languageCode;
+    final regionCode = locale.countryCode ?? languageCode.toUpperCase();
+
     final foodData = data['food'] as Map<String, dynamic>?;
     final portions = data['portion'] as List<dynamic>? ?? [];
     final nutrientList = foodData?['nutrient'] as List<dynamic>? ?? [];
@@ -145,8 +182,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       ],
       foodRegions: [
         FoodRegion(
-          regionCode: 'BR',
-          languageCode: 'pt',
+          regionCode: regionCode,
+          languageCode: languageCode,
           idFood: foodData?['id'] ?? 0,
           translation: data['translation'] ?? foodData?['name'] ?? 'Unknown',
           portions: portions.map((p) => Portion(
@@ -435,14 +472,12 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                               return TabBarView(
                                 controller: _tabController,
                                 children: [
-                                  _buildFrequentList(
-                                      historyProvider.frequents,
+                                  _buildServerFrequentList(
                                       isDarkMode,
                                       textColor,
                                       secondaryTextColor,
                                       cardColor),
-                                  _buildRecentList(
-                                      historyProvider.recents,
+                                  _buildServerRecentList(
                                       isDarkMode,
                                       textColor,
                                       secondaryTextColor,
@@ -709,38 +744,49 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     );
   }
 
-  Widget _buildRecentList(List<Food> recentFoods, bool isDarkMode,
-      Color textColor, Color secondaryTextColor, Color cardColor) {
-    if (recentFoods.isEmpty) {
+  Widget _buildServerRecentList(bool isDarkMode, Color textColor,
+      Color secondaryTextColor, Color cardColor) {
+    if (_loadingServerRecents) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_serverRecents.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.history,
-              size: 64,
-              color: secondaryTextColor.withValues(alpha: 0.5),
-            ),
-            SizedBox(height: 16),
+            Icon(Icons.history, size: 64,
+                color: secondaryTextColor.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
             Text(
               context.tr.translate('no_recent_searches'),
-              style: TextStyle(
-                color: secondaryTextColor,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: secondaryTextColor, fontSize: 16),
             ),
           ],
         ),
       );
     }
-
     return ListView.builder(
       padding: EdgeInsets.zero,
-      itemCount: recentFoods.length,
+      itemCount: _serverRecents.length,
       itemBuilder: (context, index) {
-        final food = recentFoods[index];
-        return _buildFoodCard(
-            food, isDarkMode, textColor, secondaryTextColor, cardColor);
+        final recent = _serverRecents[index];
+        final food = Food(
+          name: recent.name,
+          emoji: recent.emoji ?? '🍽️',
+          nutrients: [
+            Nutrient(
+              idFood: 0,
+              servingSize: recent.baseAmount,
+              servingUnit: recent.baseUnit,
+              calories: recent.calories.toDouble(),
+              protein: recent.protein,
+              carbohydrate: recent.carbs,
+              fat: recent.fat,
+            ),
+          ],
+          foodRegions: [],
+        );
+        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
@@ -781,38 +827,49 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     );
   }
 
-  Widget _buildFrequentList(List<Food> frequentFoods, bool isDarkMode,
-      Color textColor, Color secondaryTextColor, Color cardColor) {
-    if (frequentFoods.isEmpty) {
+  Widget _buildServerFrequentList(bool isDarkMode, Color textColor,
+      Color secondaryTextColor, Color cardColor) {
+    if (_loadingServerFrequents) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_serverFrequents.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.trending_up,
-              size: 64,
-              color: secondaryTextColor.withValues(alpha: 0.5),
-            ),
-            SizedBox(height: 16),
+            Icon(Icons.trending_up, size: 64,
+                color: secondaryTextColor.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
             Text(
               'Nenhum alimento frequente',
-              style: TextStyle(
-                color: secondaryTextColor,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: secondaryTextColor, fontSize: 16),
             ),
           ],
         ),
       );
     }
-
     return ListView.builder(
       padding: EdgeInsets.zero,
-      itemCount: frequentFoods.length,
+      itemCount: _serverFrequents.length,
       itemBuilder: (context, index) {
-        final food = frequentFoods[index];
-        return _buildFoodCard(
-            food, isDarkMode, textColor, secondaryTextColor, cardColor);
+        final recent = _serverFrequents[index];
+        final food = Food(
+          name: recent.name,
+          emoji: recent.emoji ?? '🍽️',
+          nutrients: [
+            Nutrient(
+              idFood: 0,
+              servingSize: recent.baseAmount,
+              servingUnit: recent.baseUnit,
+              calories: recent.calories.toDouble(),
+              protein: recent.protein,
+              carbohydrate: recent.carbs,
+              fat: recent.fat,
+            ),
+          ],
+          foodRegions: [],
+        );
+        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
