@@ -234,6 +234,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   @override
   int get androidUpdateCounter => 0; // Não precisamos mais desta variável
 
+
   // Classes para adaptação dos mixins
   late final _speechMixinRef = _SpeechMixinRefImpl(this);
   late final _ttsMixinRef = _TTSMixinRefImpl(this);
@@ -1836,24 +1837,30 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                       : Icon(
                                           isLoading
                                               ? Icons.stop_circle
-                                              : _messageController.text
-                                                          .trim()
-                                                          .isEmpty &&
-                                                      !hasSelectedImage
-                                                  ? Icons.mic
-                                                  : Icons.send,
+                                              : isTranscribingAudio
+                                                  ? Icons.hourglass_top
+                                                  : _messageController.text
+                                                              .trim()
+                                                              .isEmpty &&
+                                                          !hasSelectedImage
+                                                      ? Icons.mic
+                                                      : Icons.send,
                                           color: isLoading
                                               ? Colors.red
-                                              : isDarkMode
-                                                  ? Colors.grey[400]
-                                                  : AppTheme.textSecondaryColor,
+                                              : isTranscribingAudio
+                                                  ? Colors.orange
+                                                  : isDarkMode
+                                                      ? Colors.grey[400]
+                                                      : AppTheme.textSecondaryColor,
                                         ),
-                                  onPressed: () {
+                                  onPressed: () async {
                                     if (isLoading) {
                                       // Se estiver carregando, interromper a geração
                                       _controller.stopGeneration();
+                                    } else if (isTranscribingAudio) {
+                                      return;
                                     } else if (isListening) {
-                                      stopListening();
+                                      await stopListening();
                                       // Forçar atualização da UI após parar
                                       setState(() {});
                                     } else if (_messageController.text
@@ -2529,7 +2536,7 @@ class _SpeechMixinRefImpl implements NutritionAssistantSpeechMixinRef {
   Future<void> releaseAudioResources() => _mixin.releaseAudioResources();
 
   @override
-  void stopListening() => _mixin.stopListening();
+  Future<void> stopListening() => _mixin.stopListening();
 }
 
 // Implementação de TextToSpeechMixinRef que delega para o mixin
@@ -2547,3 +2554,6 @@ class _TTSMixinRefImpl implements TextToSpeechMixinRef {
   @override
   void stopSpeech() => _mixin.stopSpeech();
 }
+
+
+

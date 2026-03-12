@@ -519,47 +519,28 @@ class AIService {
     }
   }
 
-  // Process audio and transcribe it
+  // Process audio and transcribe it on the server
   Future<String> processAudio(Uint8List audioBytes,
-      {bool translateToPt = true, String languageCode = 'pt_BR'}) async {
+      {String mimeType = 'audio/m4a', String languageCode = 'pt_BR'}) async {
     try {
       final audioBase64 = base64Encode(audioBytes);
-
-      // URL específica para a API de transcrição de áudio
-      final transcriptionUrl = 'https://api.openai.com/v1/audio/transcriptions';
-
-      // Preparar o form data com o arquivo de áudio
-      var request = http.MultipartRequest('POST', Uri.parse(transcriptionUrl));
-      request.headers['Authorization'] = 'Bearer $_apiKey';
-
-      // Adicionar o arquivo de áudio como campo de formulário
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          audioBytes,
-          filename: 'audio.mp3',
-        ),
+      final endpoint = '${AppConstants.API_BASE_URL}/ai/transcribe-audio';
+      final response = await _httpClient.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: jsonEncode({
+          'audioBase64': audioBase64,
+          'mimeType': mimeType,
+          'language': languageCode,
+        }),
       );
-
-      // Definir o modelo e outras configurações
-      request.fields['model'] = 'whisper-1';
-      request.fields['response_format'] = 'json';
-
-      // Extrair o código de idioma da string completa (por exemplo, pt_BR -> pt)
-      final targetLanguage = languageCode.split('_')[0];
-
-      // Se deve traduzir para o idioma especificado
-      if (translateToPt) {
-        request.fields['language'] = targetLanguage;
-      }
-
-      print('🎙️ Enviando áudio para transcrição');
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
-        final transcription = jsonResponse['text'];
+        final transcription =
+            jsonResponse['data']?['text'] ?? jsonResponse['text'] ?? '';
         print('✅ Transcrição concluída com sucesso: $transcription');
         return transcription;
       } else {
@@ -1720,3 +1701,4 @@ $transcript
     }
   }
 }
+

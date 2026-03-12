@@ -47,3 +47,8 @@ app.*.map.json
 # Windows reserved device names
 nul
 **/nul
+
+# Codex / MCP runtime artifacts
+/output/
+/output/mcp-client/
+/output/playwright/

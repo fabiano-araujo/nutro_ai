@@ -749,10 +749,10 @@ class NutritionAssistantController with ChangeNotifier {
 
       // Para imagens, usar modelo específico e agent free-image
       String quality =
-          'google/gemma-3-27b-it'; // Modelo específico para análise de imagem
+          'google/gemini-2.5-flash-lite-preview-09-2025'; // Modelo específico para análise de imagem e quantidade dos alimentos
       String agentType =
           'free-image'; // Agent especializado em análise de imagem
-      String provider = 'Hyperbolic'; // Provider para análise de imagem
+      String provider = ''; // Deixar o OpenRouter escolher o provider compatível
 
       print(
           '📸 Usando modelo $quality com agent $agentType via provider $provider para análise de imagem');
@@ -1800,7 +1800,7 @@ class NutritionAssistantController with ChangeNotifier {
 abstract class NutritionAssistantSpeechMixinRef {
   bool get isListening;
   Future<void> releaseAudioResources();
-  void stopListening();
+  Future<void> stopListening();
 }
 
 /// Interface para acessar os métodos necessários do TextToSpeechMixin
@@ -1809,3 +1809,5 @@ abstract class TextToSpeechMixinRef {
   Future<void> speak(String text);
   void stopSpeech();
 }
+
+

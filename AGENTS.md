@@ -31,6 +31,7 @@ This file guides coding agents working in this repository.
 - Server entry: `dieta_api/src/index.ts` (Fastify app, CORS, optional HTTPS in production).
 - Route registry: `dieta_api/src/routes/index.ts`.
 - AI endpoints: `dieta_api/src/routes/ai.routes.ts`.
+  - Includes `POST /ai/transcribe-audio` for chat audio transcription on the server.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.
@@ -48,6 +49,7 @@ This file guides coding agents working in this repository.
 4. `MainNavigation` uses `IndexedStack`; screens stay alive and lifecycle-sensitive logic relies on this behavior.
 5. Localization is mandatory for user-facing text (`lib/i18n/`, `LanguageController`).
 6. Model aliases/quality labels are resolved server-side in AI controller/config; keep client and server naming aligned when changing model options.
+7. Chat voice input now records raw audio client-side and sends it to `POST /ai/transcribe-audio`; the server transcribes with `google/gemini-2.5-flash-lite-preview-09-2025`.
 
 ## 4) Main Commands
 
@@ -98,6 +100,7 @@ npx prisma studio
 - `lib/utils/conversation_helper.dart`
 - `dieta_api/src/controllers/ai.controller.ts`
 - `dieta_api/src/routes/ai.routes.ts`
+- `lib/services/chat_audio_recorder.dart`
 
 ### Auth and credits
 
@@ -142,3 +145,4 @@ Update this document whenever any of the following changes:
 - model alias/quality conventions
 - startup/build/test commands
 - main navigation tabs or provider bootstrap in `lib/main.dart`
+
