@@ -142,14 +142,26 @@ final Map<String, String> frFRTranslations = {
       'Enregistrement de vos informations de profil...',
   'agent_loading_update_goal_preferences':
       'Enregistrement de vos preferences nutritionnelles...',
+  'agent_loading_macro_status':
+      'Consultation de votre configuration actuelle des macronutriments...',
+  'agent_loading_update_macros_percentage':
+      'Mise a jour de vos macronutriments en pourcentage...',
+  'agent_loading_update_macros_grams':
+      'Mise a jour de vos macronutriments en grammes...',
+  'agent_loading_update_macros_per_kg':
+      'Mise a jour de vos macronutriments en g/kg...',
   'agent_loading_generic': 'Consultation de vos donnees dans l\'app...',
   'agent_command_limit_reached':
       'Je n\'ai pas pu terminer l\'action interne. Reessayez.',
   'chat_action_login': 'Se connecter',
   'chat_action_configure_goals_ui': 'Configurer dans l\'app',
   'chat_action_continue_goals_chat': 'Continuer dans le chat',
+  'chat_action_edit_macros_ui': 'Modifier les macros dans l\'app',
+  'chat_action_continue_macros_chat': 'Ajuster les macros dans le chat',
   'chat_goal_setup_chat_prompt':
       'Je veux configurer mes objectifs nutritionnels dans le chat. Utilise les commandes de l\'app si besoin, pose une seule question a la fois et commence par mon age, ma taille, mon poids et mon genre.',
+  'chat_macro_edit_chat_prompt':
+      'Je veux ajuster mes macronutriments ici. Verifie mes macros actuels et guide-moi entre pourcentage, g/kg ou grammes.',
   'error_occurred': 'Une erreur s\'est produite',
   'try_again': 'Réessayer',
   'no_results': 'Aucun résultat trouvé',
@@ -499,4 +511,30 @@ final Map<String, String> frFRTranslations = {
   'activate_freeze_description':
       'La protection gèle votre série pendant 24 heures, même si vous ne connectez rien. Vous avez {count} protection(s) disponible(s).',
   'activate': 'Activer',
+  'macro_editor_subtitle':
+      'Choisissez le format le plus intuitif pour ajuster vos macros.',
+  'macro_mode_percentage': '%',
+  'macro_mode_percentage_hint': 'Le plus courant au quotidien',
+  'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_hint': 'Ideal pour les proteines et la performance',
+  'macro_mode_grams': 'g',
+  'macro_mode_grams_hint': 'Controle total en grammes',
+  'macro_editor_percentage_error': 'La somme des pourcentages doit faire 100%.',
+  'macro_editor_positive_error':
+      'Entrez des valeurs positives pour les glucides, proteines et lipides.',
+  'macro_editor_saved': 'Macronutriments mis a jour avec succes!',
+  'macro_editor_current_target': 'Objectif actuel',
+  'macro_editor_goal_mode_label': 'Mode actuel',
+  'macro_editor_goal_mode_calculated': 'Calcule',
+  'macro_editor_goal_mode_manual': 'Manuel',
+  'macro_editor_new_target': 'Nouvel objectif',
+  'macro_editor_difference': 'Difference',
+  'macro_editor_presets_title': 'Raccourcis rapides',
+  'macro_editor_most_used': 'Les plus utilises',
+  'macro_editor_fill_remaining_carbs':
+      'Completer les calories restantes avec des glucides',
+  'macro_editor_total_percentage': 'Total des pourcentages',
+  'macro_editor_fix_total': 'Ramener a 100%',
+  'macro_editor_switches_manual_mode':
+      'En enregistrant en g ou g/kg, l\'app passera en objectifs manuels avec ce nouveau total calorique.',
 };

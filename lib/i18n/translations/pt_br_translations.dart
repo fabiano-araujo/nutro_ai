@@ -182,18 +182,31 @@ final Map<String, String> ptBRTranslations = {
   'agent_loading_weight_status': 'Buscando seus dados de peso e progresso...',
   'agent_loading_recalculate_goals': 'Recalculando suas metas nutricionais...',
   'agent_loading_generate_diet': 'Gerando sua nova dieta...',
-  'agent_loading_goal_setup_status': 'Verificando o que falta nas suas metas...',
+  'agent_loading_goal_setup_status':
+      'Verificando o que falta nas suas metas...',
   'agent_loading_update_goal_profile': 'Salvando seus dados de perfil...',
   'agent_loading_update_goal_preferences':
       'Salvando suas preferências nutricionais...',
+  'agent_loading_macro_status':
+      'Buscando sua configuração atual de macronutrientes...',
+  'agent_loading_update_macros_percentage':
+      'Atualizando seus macronutrientes por porcentagem...',
+  'agent_loading_update_macros_grams':
+      'Atualizando seus macronutrientes em gramas...',
+  'agent_loading_update_macros_per_kg':
+      'Atualizando seus macronutrientes em g/kg...',
   'agent_loading_generic': 'Consultando seus dados no app...',
   'agent_command_limit_reached':
       'Nao consegui concluir a acao interna. Tente novamente.',
   'chat_action_login': 'Fazer login',
   'chat_action_configure_goals_ui': 'Configurar na interface',
   'chat_action_continue_goals_chat': 'Continuar no chat',
+  'chat_action_edit_macros_ui': 'Editar macros na interface',
+  'chat_action_continue_macros_chat': 'Ajustar macros no chat',
   'chat_goal_setup_chat_prompt':
       'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faca uma pergunta por vez e comece pela idade, altura, peso e genero.',
+  'chat_macro_edit_chat_prompt':
+      'Quero ajustar meus macronutrientes por aqui. Veja meus macros atuais e me conduza pelo melhor formato entre porcentagem, g/kg ou gramas.',
   'error_occurred': 'Ocorreu um erro',
   'try_again': 'Tentar novamente',
   'no_results': 'Nenhum resultado encontrado',
@@ -986,6 +999,33 @@ final Map<String, String> ptBRTranslations = {
   'carbohydrates': 'Carboidratos',
   'diet_type': 'Tipo de Dieta',
   'edit_macronutrients': 'Editar Macronutrientes',
+  'macro_editor_subtitle':
+      'Escolha o formato mais intuitivo para ajustar seus macros.',
+  'macro_mode_percentage': '%',
+  'macro_mode_percentage_hint': 'Mais usado no dia a dia',
+  'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_hint': 'Bom para proteína e performance',
+  'macro_mode_grams': 'g',
+  'macro_mode_grams_hint': 'Controle total em gramas',
+  'macro_editor_percentage_error':
+      'A soma dos percentuais precisa fechar em 100%.',
+  'macro_editor_positive_error':
+      'Informe valores positivos para carboidratos, proteína e gorduras.',
+  'macro_editor_saved': 'Macronutrientes atualizados com sucesso!',
+  'macro_editor_current_target': 'Meta atual',
+  'macro_editor_goal_mode_label': 'Modo atual',
+  'macro_editor_goal_mode_calculated': 'Calculado',
+  'macro_editor_goal_mode_manual': 'Manual',
+  'macro_editor_new_target': 'Nova meta',
+  'macro_editor_difference': 'Diferença',
+  'macro_editor_presets_title': 'Atalhos rápidos',
+  'macro_editor_most_used': 'Mais usados',
+  'macro_editor_fill_remaining_carbs':
+      'Completar calorias restantes com carboidratos',
+  'macro_editor_total_percentage': 'Total dos percentuais',
+  'macro_editor_fix_total': 'Fechar 100%',
+  'macro_editor_switches_manual_mode':
+      'Ao salvar em g ou g/kg, o app passa a usar metas manuais com esse novo total calórico.',
   'adjust_percentages_or_grams': 'Ajuste as porcentagens ou valores em gramas',
   'configuration': 'Configuração',
   'personal_information': 'Informações Pessoais',

@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart' as record;
 
+import '../utils/blob_url_helper.dart' as blob_url_helper;
+
 class RecordedAudioData {
   const RecordedAudioData({
     required this.bytes,
@@ -25,27 +27,16 @@ class ChatAudioRecorder {
   String _fileExtension = 'wav';
 
   Future<void> init() async {
-    if (kIsWeb) {
-      return;
-    }
-
-    final hasPermission = await _ensureRecorder().hasPermission();
-    if (!hasPermission) {
-      throw Exception('Microphone permission not granted');
-    }
+    _ensureRecorder();
   }
 
-  Future<bool> hasPermission() async {
-    if (kIsWeb) {
-      return false;
-    }
-
-    return _ensureRecorder().hasPermission();
+  Future<bool> hasPermission({bool request = true}) async {
+    return _ensureRecorder().hasPermission(request: request);
   }
 
   Stream<double> amplitudeStream(
       {Duration interval = const Duration(milliseconds: 120)}) {
-    if (kIsWeb || _audioRecorder == null) {
+    if (_audioRecorder == null) {
       return const Stream<double>.empty();
     }
 
@@ -59,10 +50,6 @@ class ChatAudioRecorder {
   }
 
   Future<void> startRecording() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Audio recording is not supported on web');
-    }
-
     await _disposeRecorder();
     final recorder = _ensureRecorder();
 
@@ -71,11 +58,15 @@ class ChatAudioRecorder {
       throw Exception('Microphone permission not granted');
     }
 
-    final dir = await getTemporaryDirectory();
     _fileExtension = 'wav';
     _mimeType = 'audio/wav';
-    _recordedFilePath =
-        '${dir.path}/chat_audio_${DateTime.now().millisecondsSinceEpoch}.$_fileExtension';
+    if (kIsWeb) {
+      _recordedFilePath = null;
+    } else {
+      final dir = await getTemporaryDirectory();
+      _recordedFilePath =
+          '${dir.path}/chat_audio_${DateTime.now().millisecondsSinceEpoch}.$_fileExtension';
+    }
 
     await recorder.start(
       const record.RecordConfig(
@@ -83,15 +74,11 @@ class ChatAudioRecorder {
         sampleRate: 16000,
         numChannels: 1,
       ),
-      path: _recordedFilePath!,
+      path: _recordedFilePath ?? '',
     );
   }
 
   Future<RecordedAudioData?> stopRecording() async {
-    if (kIsWeb) {
-      return null;
-    }
-
     final recorder = _audioRecorder;
     final activePath = _recordedFilePath;
     final returnedPath = await recorder?.stop();
@@ -103,13 +90,23 @@ class ChatAudioRecorder {
       return null;
     }
 
-    final file = File(resolvedPath);
-    if (!await file.exists()) {
-      return null;
+    Uint8List bytes;
+    if (kIsWeb) {
+      try {
+        bytes = await blob_url_helper.readObjectUrlBytes(resolvedPath);
+      } finally {
+        blob_url_helper.revokeObjectUrl(resolvedPath);
+      }
+    } else {
+      final file = File(resolvedPath);
+      if (!await file.exists()) {
+        return null;
+      }
+
+      bytes = await file.readAsBytes();
+      await _deleteFileIfExists(resolvedPath);
     }
 
-    final bytes = await file.readAsBytes();
-    await _deleteFileIfExists(resolvedPath);
     _recordedFilePath = null;
 
     return RecordedAudioData(
@@ -120,10 +117,6 @@ class ChatAudioRecorder {
   }
 
   Future<void> cancelRecording() async {
-    if (kIsWeb) {
-      return;
-    }
-
     final activePath = _recordedFilePath;
     final recorder = _audioRecorder;
 
@@ -132,15 +125,13 @@ class ChatAudioRecorder {
     }
 
     await _disposeRecorder();
-    await _deleteFileIfExists(activePath);
+    if (!kIsWeb) {
+      await _deleteFileIfExists(activePath);
+    }
     _recordedFilePath = null;
   }
 
   Future<void> dispose() async {
-    if (kIsWeb) {
-      return;
-    }
-
     await _disposeRecorder();
   }
 

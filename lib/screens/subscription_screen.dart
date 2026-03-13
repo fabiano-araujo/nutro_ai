@@ -1,596 +1,166 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:nutro_ai/models/subscription_plan.dart';
-import 'package:nutro_ai/services/purchase_service.dart';
-import 'package:nutro_ai/theme/app_theme.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:nutro_ai/i18n/app_localizations_extension.dart';
+import 'package:nutro_ai/models/subscription_plan.dart';
+import 'package:nutro_ai/services/purchase_service.dart';
+import 'package:provider/provider.dart';
 
 class SubscriptionScreen extends StatefulWidget {
-  const SubscriptionScreen({Key? key}) : super(key: key);
+  const SubscriptionScreen({super.key});
 
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
-class _SubscriptionScreenState extends State<SubscriptionScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final List<SubscriptionPlan> _plans = SubscriptionPlan.getPlans();
-  int _selectedPlanIndex =
-      1; // Padrão para o plano mensal que geralmente é o mais popular
+  int _selectedPlanIndex = 1;
   bool _isLoading = false;
   bool _hasError = false;
-  String _errorMessage = "";
-  late PageController _pageController;
-
-  // Lista de benefícios comuns a todos os planos
+  String _errorMessage = '';
   late List<String> _commonBenefits;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(
-        length: _plans.length, vsync: this, initialIndex: _selectedPlanIndex);
-    _tabController.addListener(() {
-      setState(() {
-        _selectedPlanIndex = _tabController.index;
-      });
-    });
-    _pageController = PageController(
-      initialPage: _selectedPlanIndex,
-      viewportFraction: 0.5,
-    );
-  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Verifica se há planos disponíveis
-    if (_plans.isEmpty) {
-      setState(() {
-        _hasError = true;
-        _errorMessage = context.tr.translate('error_loading_plans');
-      });
-    }
-
-    // Inicializa a lista de benefícios comuns com as chaves de tradução
     _commonBenefits = [
-      context.tr.translate('no_ads') ?? 'Sem anúncios',
-      context.tr.translate('all_premium_features') ??
-          'Acesso a todos os recursos premium',
-      context.tr.translate('advanced_content_generation') ??
-          'Geração de conteúdo avançado',
-      context.tr.translate('multiple_languages') ??
-          'Suporte a múltiplos idiomas',
-      context.tr.translate('export_formats') ?? 'Exportação em vários formatos'
+      context.tr.translate('no_ads'),
+      context.tr.translate('all_premium_features'),
+      context.tr.translate('advanced_content_generation'),
+      context.tr.translate('multiple_languages'),
+      context.tr.translate('export_formats'),
     ];
 
-    // Verifica se os produtos estão disponíveis no PurchaseService
-    final purchaseService =
-        Provider.of<PurchaseService>(context, listen: false);
-    if (!purchaseService.isLoading && purchaseService.products.isEmpty) {
-      setState(() {
-        _hasError = true;
-        // Tratar o caso específico de não encontrar planos
-        if (purchaseService.errorMessage
-                ?.contains('Não foi possível encontrar os planos') ??
-            false) {
-          _errorMessage = context.tr.translate('error_loading_plans');
-        } else {
-          _errorMessage = purchaseService.errorMessage ??
-              context.tr.translate('error_loading_plans');
-        }
-      });
+    if (_plans.isEmpty && !_hasError) {
+      _hasError = true;
+      _errorMessage = context.tr.translate('error_loading_plans');
     }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _pageController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final purchaseService = Provider.of<PurchaseService>(context);
+    final purchaseService = context.watch<PurchaseService>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final theme = Theme.of(context);
 
-    // Mostra a tela de erro se _hasError for true
     if (_hasError) {
-      return _buildErrorScreen(context, isDarkMode, theme);
+      return _buildErrorScreen(
+        context,
+        isDarkMode,
+        _errorMessage.isNotEmpty
+            ? _errorMessage
+            : (purchaseService.errorMessage ??
+                context.tr.translate('error_loading_plans')),
+      );
     }
 
-    // Se não carregou produtos da loja, mostra erro
-    if (!purchaseService.isLoading && purchaseService.products.isEmpty) {
-      return _buildErrorScreen(context, isDarkMode, theme);
+    if (purchaseService.isLoading && purchaseService.products.isEmpty) {
+      return _buildLoadingScreen(context, isDarkMode);
     }
+
+    if (!purchaseService.isLoading && purchaseService.products.isEmpty) {
+      return _buildErrorScreen(
+        context,
+        isDarkMode,
+        purchaseService.errorMessage ??
+            context.tr.translate('error_loading_plans'),
+      );
+    }
+
+    final selectedPlan = _plans[_selectedPlanIndex];
+    final selectedProduct = _findProduct(
+      purchaseService.products,
+      selectedPlan.id,
+    );
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // Fundo gradiente adaptado ao tema
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDarkMode
-                    ? [
-                        AppTheme.darkCardColor,
-                        AppTheme.darkBackgroundColor,
-                      ]
-                    : [
-                        Color(0xFFF0F8FF), // Alice Blue - cor clara e suave
-                        Color(0xFFE6F0F8), // Azul muito claro
-                      ],
-              ),
-            ),
-          ),
-
-          // Efeito de partículas / bolhas
-          Positioned.fill(
-            child: CustomPaint(
-              painter: BubblePainter(isDarkMode: isDarkMode),
-            ),
-          ),
-
-          // Efeito de blur para o conteúdo principal
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                color:
-                    (isDarkMode ? Colors.black : Colors.white).withOpacity(0.1),
-              ),
-            ),
-          ),
-
-          // Conteúdo principal com ScrollView
+          _PaywallBackground(isDarkMode: isDarkMode),
           SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 10),
-
-                  // Título e subtítulo
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: _buildTopBar(context, purchaseService, isDarkMode),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 220),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            IconButton(
-                              icon: Icon(Icons.arrow_back,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87),
-                              onPressed: () => Navigator.pop(context),
+                            _buildHeroCard(
+                              context,
+                              isDarkMode,
+                              selectedPlan,
+                              selectedProduct,
                             ),
-                            const SizedBox(width: 10),
-                            Text(
-                              context.tr.translate('premium_plans'),
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                color:
-                                    isDarkMode ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            const SizedBox(height: 22),
+                            ...List.generate(_plans.length, (index) {
+                              final plan = _plans[index];
+                              final product = _findProduct(
+                                purchaseService.products,
+                                plan.id,
+                              );
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: _PlanOptionCard(
+                                  plan: plan,
+                                  actualPrice: product?.price ?? plan.price,
+                                  isDarkMode: isDarkMode,
+                                  isSelected: index == _selectedPlanIndex,
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedPlanIndex = index;
+                                    });
+                                  },
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 8),
+                            _buildIncludedCard(
+                              context,
+                              isDarkMode,
+                              _commonBenefits,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Text(
-                              context.tr.translate('unlock_potential'),
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: isDarkMode
-                                    ? AppTheme.darkTextColor
-                                    : AppTheme.textSecondaryColor,
-                              ),
-                            )),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
-
-                  // Cards de planos com visualização parcial do anterior/próximo
-                  SizedBox(
-                    height:
-                        280, // Aumentado para dar mais espaço ao conteúdo do card
-                    child: PageView.builder(
-                      controller: _pageController,
-                      pageSnapping: true,
-                      onPageChanged: (index) {
-                        setState(() {
-                          _selectedPlanIndex = index;
-                          _tabController.animateTo(index);
-                        });
-                      },
-                      itemCount: _plans.length,
-                      itemBuilder: (context, index) {
-                        // Encontre o produto correspondente com segurança
-                        ProductDetails? product;
-                        try {
-                          product = purchaseService.products.firstWhere(
-                            (p) => p.id == _plans[index].id,
-                          );
-                        } catch (e) {
-                          product = null;
-                        }
-
-                        // Se não encontrou o produto, mostra erro
-                        if (product == null) {
-                          return Center(
-                            child: Text(
-                              context.tr.translate('subscription_error'),
-                              style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black,
-                                fontSize: 16,
-                              ),
-                            ),
-                          );
-                        }
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 8.0),
-                          child: PlanCard(
-                            plan: _plans[index],
-                            isSelected: index == _selectedPlanIndex,
-                            onTap: () {
-                              setState(() {
-                                _selectedPlanIndex = index;
-                                _tabController.animateTo(index);
-                              });
-
-                              // Centralizar o item no PageView
-                              _pageController.animateToPage(
-                                index,
-                                duration: Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            },
-                            productDetails: product,
-                            isDarkMode: isDarkMode,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  // Indicadores de página
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(_plans.length, (index) {
-                        final isSelected = index == _selectedPlanIndex;
-
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          height: 8,
-                          width: isSelected ? 24 : 8,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppTheme.primaryColor
-                                : (isDarkMode ? Colors.white : Colors.black)
-                                    .withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-
-                  // Card de benefícios comuns
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? Color(0xFF1E1E2E).withOpacity(0.9)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: AppTheme.primaryColor,
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryColor.withOpacity(0.2),
-                            blurRadius: 10,
-                            spreadRadius: 0,
-                          )
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.tr.translate('whats_included'),
-                            style: TextStyle(
-                              color:
-                                  isDarkMode ? Colors.white70 : Colors.black54,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ..._commonBenefits.map((benefit) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle,
-                                      color: AppTheme.primaryColor,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        benefit,
-                                        style: TextStyle(
-                                          color: isDarkMode
-                                              ? Colors.white
-                                              : Colors.black87,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ))
-                        ],
                       ),
                     ),
                   ),
-
-                  // Botão de assinatura
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 16),
-                    child: ElevatedButton(
-                      onPressed: purchaseService.isLoading || _isLoading
-                          ? null
-                          : () => _subscribe(context, purchaseService),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 1,
-                      ),
-                      child: _isLoading
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                              context.tr.translate('subscribe_now'),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  // Botão de restaurar compras
-                  TextButton(
-                    onPressed: purchaseService.isLoading || _isLoading
-                        ? null
-                        : () async {
-                            setState(() => _isLoading = true);
-                            try {
-                              await purchaseService.restorePurchases();
-                            } catch (e) {
-                              setState(() {
-                                _hasError = true;
-                                _errorMessage =
-                                    context.tr.translate('subscription_error');
-                              });
-                            } finally {
-                              setState(() => _isLoading = false);
-                            }
-                          },
-                    child: Text(
-                      context.tr.translate('restore_purchases'),
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Texto de termos e políticas
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    child: Text(
-                      context.tr.translate('subscription_terms'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDarkMode ? Colors.white54 : Colors.black38,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // Método para construir a tela de erro
-  Widget _buildErrorScreen(
-      BuildContext context, bool isDarkMode, ThemeData theme) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Fundo gradiente adaptado ao tema
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDarkMode
-                    ? [
-                        AppTheme.darkCardColor,
-                        AppTheme.darkBackgroundColor,
-                      ]
-                    : [
-                        Color(0xFFF0F8FF), // Alice Blue - cor clara e suave
-                        Color(0xFFE6F0F8), // Azul muito claro
-                      ],
-              ),
-            ),
-          ),
-
-          // Efeito de partículas / bolhas suavizado
-          Positioned.fill(
-            child: CustomPaint(
-              painter: BubblePainter(isDarkMode: isDarkMode),
-            ),
-          ),
-
-          // Efeito de blur
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                color:
-                    (isDarkMode ? Colors.black : Colors.white).withOpacity(0.1),
-              ),
-            ),
-          ),
-
-          // Conteúdo da tela de erro
-          SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Ícone de erro
-                    Icon(
-                      Icons.error_outline,
-                      size: 80,
-                      color: isDarkMode ? Colors.red[300] : Colors.red[600],
-                    ),
-
-                    SizedBox(height: 24),
-
-                    // Título do erro
-                    Text(
-                      context.tr.translate('oops'),
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-
-                    SizedBox(height: 16),
-
-                    // Mensagem de erro
-                    Text(
-                      _errorMessage.isNotEmpty
-                          ? _errorMessage
-                          : context.tr.translate('error_loading_plans'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-
-                    SizedBox(height: 32),
-
-                    // Botão para tentar novamente
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _hasError = false;
-                          _errorMessage = "";
-                        });
-
-                        // Tenta inicializar novamente
-                        final purchaseService = Provider.of<PurchaseService>(
-                            context,
-                            listen: false);
-                        if (purchaseService.products.isEmpty &&
-                            !purchaseService.isLoading) {
-                          // Se ainda não há produtos, mostra o erro novamente
-                          Future.delayed(Duration(seconds: 1), () {
-                            if (mounted) {
-                              setState(() {
-                                if (purchaseService.products.isEmpty) {
-                                  _hasError = true;
-                                  _errorMessage =
-                                      purchaseService.errorMessage ??
-                                          context.tr
-                                              .translate('subscription_error');
-                                }
-                              });
-                            }
-                          });
-                        }
-                      },
-                      icon: Icon(Icons.refresh),
-                      label: Text(
-                        context.tr.translate('try_again_button'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 16),
-
-                    // Botão de voltar
-                    TextButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.arrow_back),
-                      label: Text(
-                        context.tr.translate('back'),
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor:
-                            isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                  ],
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 20,
+            child: SafeArea(
+              top: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: _buildBottomActionBar(
+                    context,
+                    purchaseService,
+                    isDarkMode,
+                    selectedPlan,
+                    selectedProduct,
+                  ),
                 ),
               ),
             ),
@@ -600,26 +170,620 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     );
   }
 
-  Future<void> _subscribe(
-      BuildContext context, PurchaseService purchaseService) async {
-    final selectedPlan = _plans[_selectedPlanIndex];
+  Widget _buildTopBar(
+    BuildContext context,
+    PurchaseService purchaseService,
+    bool isDarkMode,
+  ) {
+    return Row(
+      children: [
+        _CircleIconButton(
+          icon: Icons.arrow_back_rounded,
+          onTap: () => Navigator.pop(context),
+          isDarkMode: isDarkMode,
+        ),
+        const Spacer(),
+        TextButton.icon(
+          onPressed: purchaseService.isLoading || _isLoading
+              ? null
+              : () => _restorePurchases(context, purchaseService),
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: Text(context.tr.translate('restore_purchases')),
+          style: TextButton.styleFrom(
+            foregroundColor:
+                isDarkMode ? const Color(0xFFFFD8A8) : const Color(0xFF9F4B00),
+            backgroundColor: isDarkMode
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.58),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(
+                color: isDarkMode
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFFFE0C2),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-    // Encontrar o produto correspondente ao plano selecionado com segurança
-    ProductDetails? product;
+  Widget _buildHeroCard(
+    BuildContext context,
+    bool isDarkMode,
+    SubscriptionPlan selectedPlan,
+    ProductDetails? selectedProduct,
+  ) {
+    final price = selectedProduct?.price ?? selectedPlan.price;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? const [
+                  Color(0xFF3A2618),
+                  Color(0xFF251A14),
+                  Color(0xFF181311),
+                ]
+              : const [
+                  Color(0xFFFFE3B5),
+                  Color(0xFFFFB975),
+                  Color(0xFFFF8A65),
+                ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDarkMode ? Colors.black : const Color(0xFFCF5D23))
+                .withValues(alpha: 0.22),
+            blurRadius: 30,
+            offset: const Offset(0, 20),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color:
+                      Colors.white.withValues(alpha: isDarkMode ? 0.08 : 0.22),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.restaurant_menu_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const Spacer(),
+              _PillTag(
+                label: context.tr.translate('premium'),
+                backgroundColor: Colors.white.withValues(alpha: 0.16),
+                foregroundColor: Colors.white,
+                icon: Icons.workspace_premium_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Text(
+            context.tr.translate('premium_plans'),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            context.tr.translate('unlock_potential'),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.86),
+                  height: 1.45,
+                ),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _commonBenefits.take(3).map((benefit) {
+              return _PillTag(
+                label: benefit,
+                backgroundColor:
+                    Colors.white.withValues(alpha: isDarkMode ? 0.07 : 0.18),
+                foregroundColor: Colors.white,
+                icon: Icons.check_circle_rounded,
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: isDarkMode ? 0.06 : 0.18),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        selectedPlan.title,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        price,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (selectedPlan.savePercentage > 0)
+                  _PillTag(
+                    label: context.tr.translate('save_percentage').replaceAll(
+                          '{percentage}',
+                          selectedPlan.savePercentage.toString(),
+                        ),
+                    backgroundColor: Colors.white.withValues(alpha: 0.18),
+                    foregroundColor: Colors.white,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIncludedCard(
+    BuildContext context,
+    bool isDarkMode,
+    List<String> benefits,
+  ) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            color: isDarkMode
+                ? const Color(0xFF1A1714).withValues(alpha: 0.92)
+                : Colors.white.withValues(alpha: 0.82),
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : const Color(0xFFFFDFC3),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 22,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr.translate('whats_included'),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color:
+                          isDarkMode ? Colors.white : const Color(0xFF3B2A1F),
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              ...benefits.map(
+                (benefit) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE1C3),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Color(0xFFAF4F00),
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          benefit,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: isDarkMode
+                                        ? Colors.white.withValues(alpha: 0.85)
+                                        : const Color(0xFF5E4A3D),
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar(
+    BuildContext context,
+    PurchaseService purchaseService,
+    bool isDarkMode,
+    SubscriptionPlan selectedPlan,
+    ProductDetails? selectedProduct,
+  ) {
+    final buttonEnabled =
+        !_isLoading && !purchaseService.isLoading && selectedProduct != null;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            color: isDarkMode
+                ? const Color(0xFF14110F).withValues(alpha: 0.88)
+                : Colors.white.withValues(alpha: 0.88),
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.14),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selectedPlan.title,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : const Color(0xFF2F2117),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          selectedProduct?.price ?? selectedPlan.price,
+                          style:
+                              Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: isDarkMode
+                                        ? const Color(0xFFFFD49E)
+                                        : const Color(0xFF9F4B00),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (selectedPlan.isMostPopular)
+                    _PillTag(
+                      label: context.tr.translate('popular'),
+                      backgroundColor: isDarkMode
+                          ? const Color(0xFF6C3A16)
+                          : const Color(0xFFFFE5C7),
+                      foregroundColor: isDarkMode
+                          ? const Color(0xFFFFD8A8)
+                          : const Color(0xFFAF4F00),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _GradientButton(
+                onTap: buttonEnabled
+                    ? () => _subscribe(context, purchaseService)
+                    : null,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        context.tr.translate('subscribe_now'),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                      ),
+              ),
+              if (selectedProduct == null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  context.tr.translate('subscription_error'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDarkMode
+                            ? Colors.white.withValues(alpha: 0.72)
+                            : const Color(0xFF8B6E5A),
+                      ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Text(
+                context.tr.translate('subscription_terms'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isDarkMode
+                          ? Colors.white.withValues(alpha: 0.62)
+                          : const Color(0xFF8B6E5A),
+                      height: 1.35,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingScreen(BuildContext context, bool isDarkMode) {
+    return _buildStateScaffold(
+      context: context,
+      isDarkMode: isDarkMode,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 54,
+            height: 54,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF8A65)),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            context.tr.translate('premium_plans'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: isDarkMode ? Colors.white : const Color(0xFF2F2117),
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.tr.translate('unlock_potential'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: isDarkMode
+                      ? Colors.white.withValues(alpha: 0.72)
+                      : const Color(0xFF6E5A4D),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen(
+    BuildContext context,
+    bool isDarkMode,
+    String message,
+  ) {
+    return _buildStateScaffold(
+      context: context,
+      isDarkMode: isDarkMode,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? const Color(0xFF5C241C)
+                  : const Color(0xFFFFE1DB),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(
+              Icons.error_outline_rounded,
+              size: 38,
+              color: isDarkMode
+                  ? const Color(0xFFFFB4A2)
+                  : const Color(0xFFB53A1B),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Text(
+            context.tr.translate('oops'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: isDarkMode ? Colors.white : const Color(0xFF2F2117),
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: isDarkMode
+                      ? Colors.white.withValues(alpha: 0.72)
+                      : const Color(0xFF6E5A4D),
+                ),
+          ),
+          const SizedBox(height: 24),
+          _GradientButton(
+            onTap: () {
+              setState(() {
+                _hasError = false;
+                _errorMessage = '';
+              });
+            },
+            child: Text(
+              context.tr.translate('try_again_button'),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_rounded),
+            label: Text(context.tr.translate('back')),
+            style: TextButton.styleFrom(
+              foregroundColor: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.76)
+                  : const Color(0xFF6E5A4D),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStateScaffold({
+    required BuildContext context,
+    required bool isDarkMode,
+    required Widget child,
+  }) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          _PaywallBackground(isDarkMode: isDarkMode),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(32),
+                          color: isDarkMode
+                              ? const Color(0xFF171412).withValues(alpha: 0.9)
+                              : Colors.white.withValues(alpha: 0.86),
+                          border: Border.all(
+                            color: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.04),
+                          ),
+                        ),
+                        child: child,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  ProductDetails? _findProduct(List<ProductDetails> products, String planId) {
+    for (final product in products) {
+      if (product.id == planId) {
+        return product;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _restorePurchases(
+    BuildContext context,
+    PurchaseService purchaseService,
+  ) async {
+    setState(() => _isLoading = true);
+
     try {
-      product = purchaseService.products.firstWhere(
-        (p) => p.id == selectedPlan.id,
-      );
-    } catch (e) {
-      // Se o produto não for encontrado, exibe a tela de erro
+      await purchaseService.restorePurchases();
+      if (purchaseService.errorMessage != null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = purchaseService.errorMessage!;
+        });
+      }
+    } catch (_) {
       setState(() {
         _hasError = true;
-        _errorMessage = context.tr.translate('try_again_later');
+        _errorMessage = context.tr.translate('subscription_error');
       });
-      return;
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
 
-    if (product == null) {
+  Future<void> _subscribe(
+    BuildContext context,
+    PurchaseService purchaseService,
+  ) async {
+    final selectedPlan = _plans[_selectedPlanIndex];
+    final selectedProduct = _findProduct(
+      purchaseService.products,
+      selectedPlan.id,
+    );
+
+    if (selectedProduct == null) {
       setState(() {
         _hasError = true;
         _errorMessage = context.tr.translate('try_again_later');
@@ -630,8 +794,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     setState(() => _isLoading = true);
 
     try {
-      await purchaseService.buySubscription(product);
-      // Verificamos a mensagem de erro após a chamada para exibição
+      await purchaseService.buySubscription(selectedProduct);
       if (purchaseService.errorMessage != null) {
         setState(() {
           _hasError = true;
@@ -641,228 +804,460 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     } catch (e) {
       setState(() {
         _hasError = true;
-        _errorMessage = "${context.tr.translate('subscription_error')}: $e";
+        _errorMessage = '${context.tr.translate('subscription_error')}: $e';
       });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 }
 
-class PlanCard extends StatelessWidget {
-  final SubscriptionPlan plan;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final ProductDetails? productDetails;
-  final bool isDarkMode;
-
-  const PlanCard({
-    Key? key,
+class _PlanOptionCard extends StatelessWidget {
+  const _PlanOptionCard({
     required this.plan,
+    required this.actualPrice,
+    required this.isDarkMode,
     required this.isSelected,
     required this.onTap,
-    required this.isDarkMode,
-    this.productDetails,
-  }) : super(key: key);
+  });
 
-  // Método para suavizar a cor do plano
-  Color _getSofterColor(Color color) {
-    // Criando uma versão mais suave da cor
-    return Color.fromRGBO(
-      color.red,
-      color.green,
-      color.blue,
-      0.25, // Reduzindo a opacidade para suavizar
-    );
-  }
+  final SubscriptionPlan plan;
+  final String actualPrice;
+  final bool isDarkMode;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final actualPrice = productDetails?.price ?? plan.price;
-    final softerColor = _getSofterColor(plan.color);
+    final features =
+        isSelected ? plan.features : plan.features.take(2).toList();
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDarkMode
-              ? Color(0xFF23233A)
-              : Color(0xFFF6F7FB), // cor suave fixa para o fundo
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
             color: isDarkMode
-                ? Color(0xFF444466)
-                : Color(0xFFCED6E0), // cinza escuro suave
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              spreadRadius: 0,
-            )
-          ],
-        ),
-        child: Column(
-          children: [
-            // Badge "Mais Popular"
-            if (plan.isMostPopular)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: softerColor,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(22),
-                    topRight: Radius.circular(22),
-                  ),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: plan.color.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  context.tr.translate('popular'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: plan.color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Ícone e título
-                    Row(
-                      children: [
-                        Icon(
-                          plan.icon,
-                          color: plan.color,
-                          size: 28,
-                        ),
-                        const SizedBox(height: 2),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                plan.title,
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 2,
-                              ),
-                              Text(
-                                plan.description,
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.white.withOpacity(0.7)
-                                      : Colors.black54,
-                                  fontSize: 13,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const Spacer(),
-
-                    // Preço
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          actualPrice,
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            height: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Novo: período abaixo do preço
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2.0, left: 2.0),
-                      child: Text(
-                        plan.period.toLowerCase(),
-                        style: TextStyle(
-                          color: isDarkMode
-                              ? Colors.white.withOpacity(0.7)
-                              : Colors.black54,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-
-                    // Economia
-                    if (plan.savePercentage > 0)
-                      Container(
-                        margin: const EdgeInsets.only(top: 6),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: softerColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          context.tr.translate('save_percentage').replaceAll(
-                              '{percentage}', plan.savePercentage.toString()),
-                          style: TextStyle(
-                            color: plan.color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+                ? const Color(0xFF191613).withValues(alpha: 0.92)
+                : Colors.white.withValues(alpha: 0.84),
+            border: Border.all(
+              color: isSelected
+                  ? plan.color
+                  : (isDarkMode
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFFFE0C2)),
+              width: isSelected ? 2 : 1,
             ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: (isSelected ? plan.color : Colors.black)
+                    .withValues(alpha: isSelected ? 0.18 : 0.05),
+                blurRadius: isSelected ? 26 : 18,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: plan.color.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(plan.icon, color: plan.color, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                plan.title,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : const Color(0xFF2F2117),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            ),
+                            if (plan.isMostPopular)
+                              _PillTag(
+                                label: context.tr.translate('popular'),
+                                backgroundColor:
+                                    plan.color.withValues(alpha: 0.16),
+                                foregroundColor: plan.color,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          plan.description,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: isDarkMode
+                                        ? Colors.white.withValues(alpha: 0.68)
+                                        : const Color(0xFF776153),
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? plan.color : Colors.transparent,
+                      border: Border.all(
+                        color: isSelected
+                            ? plan.color
+                            : (isDarkMode
+                                ? Colors.white.withValues(alpha: 0.18)
+                                : const Color(0xFFD8B89C)),
+                        width: 2,
+                      ),
+                    ),
+                    child: isSelected
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          )
+                        : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    actualPrice,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: isDarkMode
+                              ? Colors.white
+                              : const Color(0xFF2F2117),
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      plan.period.toLowerCase(),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : const Color(0xFF776153),
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              if (plan.savePercentage > 0) ...[
+                const SizedBox(height: 10),
+                _PillTag(
+                  label: context.tr.translate('save_percentage').replaceAll(
+                        '{percentage}',
+                        plan.savePercentage.toString(),
+                      ),
+                  backgroundColor: plan.color.withValues(alpha: 0.12),
+                  foregroundColor: plan.color,
+                  icon: Icons.local_offer_rounded,
+                ),
+              ],
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Column(
+                    children: features.map((feature) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              size: 18,
+                              color: plan.color,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                feature,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: isDarkMode
+                                          ? Colors.white.withValues(alpha: 0.82)
+                                          : const Color(0xFF5E4A3D),
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class BubblePainter extends CustomPainter {
+class _PaywallBackground extends StatelessWidget {
+  const _PaywallBackground({required this.isDarkMode});
+
   final bool isDarkMode;
 
-  BubblePainter({required this.isDarkMode});
-
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = (isDarkMode ? Colors.white : Colors.black).withOpacity(0.1)
-      ..style = PaintingStyle.fill;
-
-    // Desenhar bolhas decorativas
-    canvas.drawCircle(Offset(size.width * 0.1, size.height * 0.1), 50, paint);
-    canvas.drawCircle(Offset(size.width * 0.8, size.height * 0.2), 70, paint);
-    canvas.drawCircle(Offset(size.width * 0.3, size.height * 0.5), 90, paint);
-    canvas.drawCircle(Offset(size.width * 0.7, size.height * 0.7), 60, paint);
-    canvas.drawCircle(Offset(size.width * 0.1, size.height * 0.9), 80, paint);
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDarkMode
+              ? const [
+                  Color(0xFF120F0D),
+                  Color(0xFF1A1512),
+                  Color(0xFF221A15),
+                ]
+              : const [
+                  Color(0xFFFFF7EC),
+                  Color(0xFFFFECD7),
+                  Color(0xFFFFD8BF),
+                ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -80,
+            left: -40,
+            child: _BlurBlob(
+              size: 220,
+              color: isDarkMode
+                  ? const Color(0xFFFF8A65).withValues(alpha: 0.16)
+                  : const Color(0xFFFFA726).withValues(alpha: 0.26),
+            ),
+          ),
+          Positioned(
+            top: 130,
+            right: -50,
+            child: _BlurBlob(
+              size: 200,
+              color: isDarkMode
+                  ? const Color(0xFFFFCC80).withValues(alpha: 0.12)
+                  : const Color(0xFFFF7043).withValues(alpha: 0.18),
+            ),
+          ),
+          Positioned(
+            bottom: -70,
+            left: 20,
+            child: _BlurBlob(
+              size: 240,
+              color: isDarkMode
+                  ? const Color(0xFF66BB6A).withValues(alpha: 0.1)
+                  : const Color(0xFFA5D6A7).withValues(alpha: 0.22),
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class _BlurBlob extends StatelessWidget {
+  const _BlurBlob({
+    required this.size,
+    required this.color,
+  });
+
+  final double size;
+  final Color color;
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+        ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({
+    required this.onTap,
+    required this.child,
+  });
+
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: enabled
+            ? const LinearGradient(
+                colors: [
+                  Color(0xFFFF8A65),
+                  Color(0xFFFF7043),
+                  Color(0xFFF4511E),
+                ],
+              )
+            : LinearGradient(
+                colors: [
+                  Colors.grey.shade400,
+                  Colors.grey.shade500,
+                ],
+              ),
+        boxShadow: enabled
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFF56A34).withValues(alpha: 0.35),
+                  blurRadius: 22,
+                  offset: const Offset(0, 12),
+                ),
+              ]
+            : const [],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
+            height: 58,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PillTag extends StatelessWidget {
+  const _PillTag({
+    required this.label,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    this.icon,
+  });
+
+  final String label;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: foregroundColor),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({
+    required this.icon,
+    required this.onTap,
+    required this.isDarkMode,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isDarkMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isDarkMode
+          ? Colors.white.withValues(alpha: 0.06)
+          : Colors.white.withValues(alpha: 0.58),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(
+            icon,
+            color: isDarkMode ? Colors.white : const Color(0xFF2F2117),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -11,8 +11,10 @@ class DietTypeSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
-    final backgroundColor = isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final backgroundColor =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -45,7 +47,8 @@ class DietTypeSelectionScreen extends StatelessWidget {
                     color: AppTheme.primaryColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Icon(Icons.restaurant_menu, color: AppTheme.primaryColor, size: 32),
+                  child: Icon(Icons.restaurant_menu,
+                      color: AppTheme.primaryColor, size: 32),
                 ),
               ),
               const SizedBox(height: 16),
@@ -66,14 +69,15 @@ class DietTypeSelectionScreen extends StatelessWidget {
               const SizedBox(height: 24),
               ...DietType.values.map((dietType) {
                 final isSelected = provider.dietType == dietType;
-                final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+                final cardColor =
+                    isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: InkWell(
                     onTap: () {
                       if (dietType == DietType.custom) {
                         // Abre o bottom sheet para editar macronutrientes
-                        _showMacroEditBottomSheet(context, provider, theme, isDarkMode, textColor, cardColor);
+                        _showMacroEditBottomSheet(context, provider);
                       } else {
                         provider.updateDietType(dietType);
                         Navigator.pop(context);
@@ -95,7 +99,9 @@ class DietTypeSelectionScreen extends StatelessWidget {
                         border: Border.all(
                           color: isSelected
                               ? AppTheme.primaryColor
-                              : (isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor),
+                              : (isDarkMode
+                                  ? AppTheme.darkBorderColor
+                                  : AppTheme.dividerColor),
                           width: isSelected ? 2 : 1,
                         ),
                       ),
@@ -108,13 +114,18 @@ class DietTypeSelectionScreen extends StatelessWidget {
                                 Text(
                                   provider.getDietTypeName(dietType, context),
                                   style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: isSelected ? AppTheme.primaryColor : textColor,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    color: isSelected
+                                        ? AppTheme.primaryColor
+                                        : textColor,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  provider.getDietTypeDescription(dietType, context),
+                                  provider.getDietTypeDescription(
+                                      dietType, context),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: textColor.withValues(alpha: 0.6),
                                   ),
@@ -145,24 +156,10 @@ class DietTypeSelectionScreen extends StatelessWidget {
   void _showMacroEditBottomSheet(
     BuildContext context,
     NutritionGoalsProvider provider,
-    ThemeData theme,
-    bool isDarkMode,
-    Color textColor,
-    Color cardColor,
   ) {
-    showModalBottomSheet(
+    showMacroEditBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return MacroEditBottomSheet(
-          provider: provider,
-          theme: theme,
-          isDarkMode: isDarkMode,
-          textColor: textColor,
-          cardColor: cardColor,
-        );
-      },
+      provider: provider,
     );
   }
 }

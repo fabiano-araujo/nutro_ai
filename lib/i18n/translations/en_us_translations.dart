@@ -183,14 +183,23 @@ final Map<String, String> enUSTranslations = {
   'agent_loading_update_goal_profile': 'Saving your profile details...',
   'agent_loading_update_goal_preferences':
       'Saving your nutrition preferences...',
+  'agent_loading_macro_status': 'Checking your current macronutrient setup...',
+  'agent_loading_update_macros_percentage':
+      'Updating your macros by percentage...',
+  'agent_loading_update_macros_grams': 'Updating your macros in grams...',
+  'agent_loading_update_macros_per_kg': 'Updating your macros in g/kg...',
   'agent_loading_generic': 'Fetching your in-app data...',
   'agent_command_limit_reached':
       'I could not complete the in-app action. Please try again.',
   'chat_action_login': 'Log in',
   'chat_action_configure_goals_ui': 'Set up in the app',
   'chat_action_continue_goals_chat': 'Continue in chat',
+  'chat_action_edit_macros_ui': 'Edit macros in the app',
+  'chat_action_continue_macros_chat': 'Adjust macros in chat',
   'chat_goal_setup_chat_prompt':
       'I want to set up my nutrition goals through chat. Use the app commands when needed, ask one question at a time, and start with my age, height, weight, and gender.',
+  'chat_macro_edit_chat_prompt':
+      'I want to adjust my macronutrients here. Check my current macros and guide me through the best format between percentage, g/kg, or grams.',
   'error_occurred': 'An error occurred',
   'try_again': 'Try again',
   'no_results': 'No results found',
@@ -802,6 +811,32 @@ final Map<String, String> enUSTranslations = {
   'carbohydrates': 'Carbohydrates',
   'diet_type': 'Diet Type',
   'edit_macronutrients': 'Edit Macronutrients',
+  'macro_editor_subtitle':
+      'Choose the most intuitive format to adjust your macros.',
+  'macro_mode_percentage': '%',
+  'macro_mode_percentage_hint': 'Most common day to day',
+  'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_hint': 'Great for protein and performance',
+  'macro_mode_grams': 'g',
+  'macro_mode_grams_hint': 'Full control in grams',
+  'macro_editor_percentage_error': 'The percentage total must close at 100%.',
+  'macro_editor_positive_error':
+      'Enter positive values for carbohydrates, protein, and fats.',
+  'macro_editor_saved': 'Macronutrients updated successfully!',
+  'macro_editor_current_target': 'Current target',
+  'macro_editor_goal_mode_label': 'Current mode',
+  'macro_editor_goal_mode_calculated': 'Calculated',
+  'macro_editor_goal_mode_manual': 'Manual',
+  'macro_editor_new_target': 'New target',
+  'macro_editor_difference': 'Difference',
+  'macro_editor_presets_title': 'Quick presets',
+  'macro_editor_most_used': 'Most used',
+  'macro_editor_fill_remaining_carbs':
+      'Fill remaining calories with carbohydrates',
+  'macro_editor_total_percentage': 'Percentage total',
+  'macro_editor_fix_total': 'Close to 100%',
+  'macro_editor_switches_manual_mode':
+      'Saving in g or g/kg switches the app to manual goals with this new calorie total.',
   'adjust_percentages_or_grams': 'Adjust percentages or values in grams',
   'configuration': 'Configuration',
   'personal_information': 'Personal Information',

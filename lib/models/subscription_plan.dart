@@ -34,8 +34,8 @@ class SubscriptionPlan {
         description: 'Ideal para experimentar os recursos premium',
         period: 'Semanal',
         price: 'R\$ 9,90',
-        color: Colors.blue,
-        icon: Icons.rocket_launch,
+        color: const Color(0xFFFF8A65),
+        icon: Icons.lunch_dining_rounded,
         features: [
           'Sem anúncios',
           '100 mensagens diárias',
@@ -52,8 +52,8 @@ class SubscriptionPlan {
         description: 'Nossa opção mais popular',
         period: 'Mensal',
         price: 'R\$ 29,90',
-        color: Colors.purple,
-        icon: Icons.star,
+        color: const Color(0xFFFFB74D),
+        icon: Icons.restaurant_menu_rounded,
         features: [
           'Sem anúncios',
           'Mensagens ilimitadas',
@@ -70,8 +70,8 @@ class SubscriptionPlan {
         description: 'Melhor custo-benefício',
         period: 'Anual',
         price: 'R\$ 249,90',
-        color: Colors.amber,
-        icon: Icons.diamond,
+        color: const Color(0xFF66BB6A),
+        icon: Icons.emoji_events_rounded,
         features: [
           'Sem anúncios',
           'Mensagens ilimitadas',

@@ -47,13 +47,13 @@ import 'login_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import '../utils/food_json_parser.dart';
 import '../widgets/recent_foods_sheet.dart';
+import '../widgets/macro_edit_bottom_sheet.dart';
 
 // Singleton para gerenciar o estado da tela NutroChat em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
 // com IndexedStack, que não chama deactivate() quando mudamos de aba.
 class NutroChatManager {
-  static final NutroChatManager _instance =
-      NutroChatManager._internal();
+  static final NutroChatManager _instance = NutroChatManager._internal();
   NutroChatScreenState? activeState;
 
   factory NutroChatManager() {
@@ -105,8 +105,7 @@ class NutroChatScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  NutroChatScreenState createState() =>
-      NutroChatScreenState();
+  NutroChatScreenState createState() => NutroChatScreenState();
 
   // Método que permite chamar a lógica de deactivate externamente
   static void handleTabExit() {
@@ -233,7 +232,6 @@ class NutroChatScreenState extends State<NutroChatScreen>
 
   @override
   int get androidUpdateCounter => 0; // Não precisamos mais desta variável
-
 
   // Classes para adaptação dos mixins
   late final _speechMixinRef = _SpeechMixinRefImpl(this);
@@ -436,8 +434,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
           widget.initialPrompt!.isNotEmpty) {
         // Não é de ferramenta (ou caso de ferramenta não coberto), mas temos um prompt inicial.
         // E não estamos carregando uma conversa completa.
-        print(
-            '💬 NutroChatScreen: Novo prompt de chat. Enviando mensagem.');
+        print('💬 NutroChatScreen: Novo prompt de chat. Enviando mensagem.');
         Future.delayed(Duration(milliseconds: 100), () {
           _messageController.text = widget.initialPrompt!;
           _handleSendMessage();
@@ -905,7 +902,8 @@ class NutroChatScreenState extends State<NutroChatScreen>
     }
 
     // Enviar a mensagem e verificar se foi processada (se tinha créditos suficientes)
-    final hadEnoughCredits = await _chatController.sendMessage(message, context);
+    final hadEnoughCredits =
+        await _chatController.sendMessage(message, context);
 
     // Apenas limpar o campo se a mensagem foi processada com sucesso
     if (hadEnoughCredits) {
@@ -1226,7 +1224,8 @@ class NutroChatScreenState extends State<NutroChatScreen>
                                   _showHeader();
 
                                   mealsProvider.setSelectedDate(date);
-                                  await _chatController.changeSelectedDate(date);
+                                  await _chatController
+                                      .changeSelectedDate(date);
 
                                   // Scroll instantâneo para a última resposta da IA
                                   _scrollToLastAiResponse();
@@ -1666,7 +1665,8 @@ class NutroChatScreenState extends State<NutroChatScreen>
                                         right: 4,
                                         child: GestureDetector(
                                           onTap: () {
-                                            _chatController.clearSelectedImage();
+                                            _chatController
+                                                .clearSelectedImage();
                                           },
                                           child: Container(
                                             padding: EdgeInsets.all(4),
@@ -1919,7 +1919,8 @@ class NutroChatScreenState extends State<NutroChatScreen>
                 Text(
                   _formatRecordingDuration(recordingDuration),
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                    color:
+                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -1969,7 +1970,8 @@ class NutroChatScreenState extends State<NutroChatScreen>
         children: waveformSamples.asMap().entries.map((entry) {
           final index = entry.key;
           final sample = entry.value;
-          final isCenterBar = (index - (waveformSamples.length ~/ 2)).abs() <= 1;
+          final isCenterBar =
+              (index - (waveformSamples.length ~/ 2)).abs() <= 1;
           final barHeight = 8.0 + (sample * 22.0);
 
           return Padding(
@@ -2053,6 +2055,26 @@ class NutroChatScreenState extends State<NutroChatScreen>
     return mentionsGoalSetupContext && asksForProfileField;
   }
 
+  bool _messageSuggestsMacroEditing(String message) {
+    final normalized = message.toLowerCase();
+    final mentionsMacros = normalized.contains('macro') ||
+        normalized.contains('macronutriente') ||
+        normalized.contains('proteína') ||
+        normalized.contains('proteina') ||
+        normalized.contains('carboidrato') ||
+        normalized.contains('gordura') ||
+        normalized.contains('g/kg') ||
+        normalized.contains('gramas');
+    final mentionsEditing = normalized.contains('editar') ||
+        normalized.contains('ajustar') ||
+        normalized.contains('configurar') ||
+        normalized.contains('change') ||
+        normalized.contains('adjust') ||
+        normalized.contains('set');
+
+    return mentionsMacros && mentionsEditing;
+  }
+
   Future<void> _openLoginFromChat() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -2087,6 +2109,31 @@ class NutroChatScreenState extends State<NutroChatScreen>
     await _handleSendMessage();
   }
 
+  Future<void> _openMacroEditorFromChat() async {
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    await goalsProvider.ensureLoaded();
+    await showMacroEditBottomSheet(
+      context: context,
+      provider: goalsProvider,
+    );
+  }
+
+  Future<void> _continueMacroEditingInChat() async {
+    if (_chatController.isLoading) {
+      return;
+    }
+
+    final prompt =
+        AppLocalizations.of(context).translate('chat_macro_edit_chat_prompt');
+    _messageController.text = prompt;
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: prompt.length),
+    );
+    setState(() {});
+    await _handleSendMessage();
+  }
+
   Widget? _buildContextualMessageActions({
     required String message,
     required bool isUser,
@@ -2099,8 +2146,9 @@ class NutroChatScreenState extends State<NutroChatScreen>
     final appLocalizations = AppLocalizations.of(context);
     final shouldShowLogin = _messageSuggestsLoginRequired(message);
     final shouldShowGoalSetup = _messageSuggestsGoalConfiguration(message);
+    final shouldShowMacroEditing = _messageSuggestsMacroEditing(message);
 
-    if (!shouldShowLogin && !shouldShowGoalSetup) {
+    if (!shouldShowLogin && !shouldShowGoalSetup && !shouldShowMacroEditing) {
       return null;
     }
 
@@ -2130,6 +2178,22 @@ class NutroChatScreenState extends State<NutroChatScreen>
               icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
               label: Text(
                 appLocalizations.translate('chat_action_continue_goals_chat'),
+              ),
+            ),
+          if (shouldShowMacroEditing)
+            FilledButton.tonalIcon(
+              onPressed: _openMacroEditorFromChat,
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: Text(
+                appLocalizations.translate('chat_action_edit_macros_ui'),
+              ),
+            ),
+          if (shouldShowMacroEditing)
+            OutlinedButton.icon(
+              onPressed: _continueMacroEditingInChat,
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+              label: Text(
+                appLocalizations.translate('chat_action_continue_macros_chat'),
               ),
             ),
         ],
@@ -2363,8 +2427,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
   void _carregarAnuncioIntersticial() {
     // Não carregar anúncios na web
     if (kIsWeb) {
-      print(
-          "NutroChatScreen: Pulando carregamento de anúncios na versão web");
+      print("NutroChatScreen: Pulando carregamento de anúncios na versão web");
       return;
     }
 
@@ -2388,8 +2451,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
   // Método público que pode ser chamado de fora para simular o comportamento do deactivate
   // Este método contém a mesma lógica que o método deactivate() original
   void handleTabChanged() {
-    print(
-        'NutroChatScreen - handleTabChanged chamado ao trocar de aba');
+    print('NutroChatScreen - handleTabChanged chamado ao trocar de aba');
 
     // Não mostrar anúncios na web
     if (kIsWeb) {
@@ -2815,7 +2877,3 @@ class _TTSMixinRefImpl implements TextToSpeechMixinRef {
   @override
   void stopSpeech() => _mixin.stopSpeech();
 }
-
-
-
-

@@ -95,6 +95,11 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int get fatPercentage => _fatPercentage;
   bool get useCalculatedGoals => _useCalculatedGoals;
   bool get hasConfiguredGoals => _hasConfiguredGoals;
+  Map<String, int> get macroPercentages => {
+        'carbs': _carbsPercentage,
+        'protein': _proteinPercentage,
+        'fat': _fatPercentage,
+      };
 
   // Calculated goals
   int get caloriesGoal =>
@@ -104,6 +109,19 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int get carbsGoal =>
       _useCalculatedGoals ? _calculateCarbs() : _manualCarbsGoal;
   int get fatGoal => _useCalculatedGoals ? _calculateFat() : _manualFatGoal;
+  Map<String, int> get macroGramTargets => {
+        'carbs': carbsGoal,
+        'protein': proteinGoal,
+        'fat': fatGoal,
+      };
+  Map<String, double> get macroPerKgTargets {
+    final safeWeight = _weight > 0 ? _weight : 1.0;
+    return {
+      'carbs': _round1(carbsGoal / safeWeight),
+      'protein': _round1(proteinGoal / safeWeight),
+      'fat': _round1(fatGoal / safeWeight),
+    };
+  }
 
   NutritionGoalsProvider() {
     _loadFuture = _loadFromPreferences();
@@ -118,9 +136,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
       // Prefer an explicit completion flag. Fall back to the old heuristic for
       // users who still only have legacy saved data.
-      _hasConfiguredGoals =
-          prefs.getBool('nutrition_hasConfiguredGoals') ??
-              prefs.containsKey('nutrition_fitnessGoal');
+      _hasConfiguredGoals = prefs.getBool('nutrition_hasConfiguredGoals') ??
+          prefs.containsKey('nutrition_fitnessGoal');
 
       _sex = prefs.getString('nutrition_sex') ?? 'male';
       _age = prefs.getInt('nutrition_age') ?? 30;
@@ -296,6 +313,18 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _fatPercentage = fat;
     _dietType = DietType.custom;
 
+    if (!_useCalculatedGoals) {
+      final grams = calculateMacroGramsFromPercentages(
+        carbsPercentage: carbs.toDouble(),
+        proteinPercentage: protein.toDouble(),
+        fatPercentage: fat.toDouble(),
+        calorieTarget: _manualCaloriesGoal,
+      );
+      _manualCarbsGoal = grams['carbs']!.round();
+      _manualProteinGoal = grams['protein']!.round();
+      _manualFatGoal = grams['fat']!.round();
+    }
+
     _saveToPreferences();
     notifyListeners();
   }
@@ -313,14 +342,158 @@ class NutritionGoalsProvider extends ChangeNotifier {
     int? protein,
     int? carbs,
     int? fat,
+    bool activateManualMode = true,
   }) {
     if (calories != null) _manualCaloriesGoal = calories;
     if (protein != null) _manualProteinGoal = protein;
     if (carbs != null) _manualCarbsGoal = carbs;
     if (fat != null) _manualFatGoal = fat;
 
+    if (activateManualMode) {
+      _useCalculatedGoals = false;
+    }
+
+    final percentages = calculateMacroPercentagesFromGrams(
+      carbsGrams: _manualCarbsGoal.toDouble(),
+      proteinGrams: _manualProteinGoal.toDouble(),
+      fatGrams: _manualFatGoal.toDouble(),
+    );
+    _carbsPercentage = percentages['carbs']!;
+    _proteinPercentage = percentages['protein']!;
+    _fatPercentage = percentages['fat']!;
+    _dietType = DietType.custom;
+
     _saveToPreferences();
     notifyListeners();
+  }
+
+  Map<String, double> calculateMacroGramsFromPercentages({
+    required double carbsPercentage,
+    required double proteinPercentage,
+    required double fatPercentage,
+    int? calorieTarget,
+  }) {
+    final targetCalories = (calorieTarget ?? caloriesGoal).toDouble();
+    return {
+      'carbs': (targetCalories * (carbsPercentage / 100)) / 4,
+      'protein': (targetCalories * (proteinPercentage / 100)) / 4,
+      'fat': (targetCalories * (fatPercentage / 100)) / 9,
+    };
+  }
+
+  Map<String, int> calculateMacroPercentagesFromGrams({
+    required double carbsGrams,
+    required double proteinGrams,
+    required double fatGrams,
+  }) {
+    final carbsCalories = carbsGrams * 4;
+    final proteinCalories = proteinGrams * 4;
+    final fatCalories = fatGrams * 9;
+    final totalCalories = carbsCalories + proteinCalories + fatCalories;
+
+    if (totalCalories <= 0) {
+      return const {
+        'carbs': 0,
+        'protein': 0,
+        'fat': 0,
+      };
+    }
+
+    final carbsPercentage = ((carbsCalories / totalCalories) * 100).round();
+    final proteinPercentage = ((proteinCalories / totalCalories) * 100).round();
+    final fatPercentage = 100 - carbsPercentage - proteinPercentage;
+
+    return {
+      'carbs': carbsPercentage,
+      'protein': proteinPercentage,
+      'fat': fatPercentage,
+    };
+  }
+
+  Map<String, double> calculateMacroGramsFromGramsPerKg({
+    required double carbsPerKg,
+    required double proteinPerKg,
+    required double fatPerKg,
+  }) {
+    return {
+      'carbs': carbsPerKg * _weight,
+      'protein': proteinPerKg * _weight,
+      'fat': fatPerKg * _weight,
+    };
+  }
+
+  Map<String, dynamic> getMacroSnapshot() {
+    final grams = macroGramTargets;
+    final perKg = macroPerKgTargets;
+
+    return {
+      'hasConfiguredGoals': _hasConfiguredGoals,
+      'goalMode': _useCalculatedGoals ? 'calculated' : 'manual',
+      'dietType': _dietType.name,
+      'caloriesGoal': caloriesGoal,
+      'macroCalories':
+          (grams['carbs']! * 4) + (grams['protein']! * 4) + (grams['fat']! * 9),
+      'percentages': macroPercentages,
+      'grams': grams,
+      'gramsPerKg': perKg,
+      'weightKg': _round1(_weight),
+      'availableEditModes': const [
+        'percentage',
+        'grams_per_kg',
+        'grams',
+      ],
+    };
+  }
+
+  void updateMacroTargetsFromPercentages({
+    required double carbsPercentage,
+    required double proteinPercentage,
+    required double fatPercentage,
+  }) {
+    final normalized = _normalizePercentagesToHundred(
+      carbs: carbsPercentage,
+      protein: proteinPercentage,
+      fat: fatPercentage,
+    );
+
+    updateMacroPercentages(
+      carbs: normalized['carbs']!,
+      protein: normalized['protein']!,
+      fat: normalized['fat']!,
+    );
+  }
+
+  void updateMacroTargetsFromGrams({
+    required double carbsGrams,
+    required double proteinGrams,
+    required double fatGrams,
+  }) {
+    updateManualGoals(
+      calories:
+          ((carbsGrams * 4) + (proteinGrams * 4) + (fatGrams * 9)).round(),
+      carbs: carbsGrams.round(),
+      protein: proteinGrams.round(),
+      fat: fatGrams.round(),
+      activateManualMode: true,
+    );
+  }
+
+  void updateMacroTargetsFromGramsPerKg({
+    required double carbsPerKg,
+    required double proteinPerKg,
+    required double fatPerKg,
+  }) {
+    final grams = calculateMacroGramsFromGramsPerKg(
+      carbsPerKg: carbsPerKg,
+      proteinPerKg: proteinPerKg,
+      fatPerKg: fatPerKg,
+    );
+
+    updateMacroTargetsFromGrams(
+      carbsGrams: grams['carbs']!,
+      proteinGrams: grams['protein']!,
+      fatGrams: grams['fat']!,
+    );
   }
 
   // Calculate BMR using selected formula
@@ -662,5 +835,50 @@ class NutritionGoalsProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  double _round1(double value) {
+    return (value * 10).roundToDouble() / 10;
+  }
+
+  Map<String, int> _normalizePercentagesToHundred({
+    required double carbs,
+    required double protein,
+    required double fat,
+  }) {
+    final entries = [
+      {
+        'key': 'carbs',
+        'base': carbs.floor(),
+        'fraction': carbs - carbs.floor(),
+      },
+      {
+        'key': 'protein',
+        'base': protein.floor(),
+        'fraction': protein - protein.floor(),
+      },
+      {
+        'key': 'fat',
+        'base': fat.floor(),
+        'fraction': fat - fat.floor(),
+      },
+    ];
+
+    var remaining = 100 -
+        entries.fold<int>(0, (sum, entry) => sum + (entry['base'] as int));
+    entries.sort(
+        (a, b) => (b['fraction'] as double).compareTo(a['fraction'] as double));
+
+    final resolved = <String, int>{};
+    for (final entry in entries) {
+      final shouldIncrement = remaining > 0;
+      resolved[entry['key'] as String] =
+          (entry['base'] as int) + (shouldIncrement ? 1 : 0);
+      if (shouldIncrement) {
+        remaining--;
+      }
+    }
+
+    return resolved;
   }
 }

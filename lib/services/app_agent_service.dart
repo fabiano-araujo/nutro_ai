@@ -105,10 +105,8 @@ class AppAgentCommand {
   }
 
   static String? _extractCommandJson(String responseContent) {
-    final sanitized = responseContent
-        .replaceAll('```json', '')
-        .replaceAll('```', '')
-        .trim();
+    final sanitized =
+        responseContent.replaceAll('```json', '').replaceAll('```', '').trim();
 
     final candidatePatterns = [
       RegExp(r'\{\s*"app_command"', dotAll: true),
@@ -191,6 +189,20 @@ class AppAgentExecutionResult {
   }
 }
 
+class _ResolvedMacroTargets {
+  const _ResolvedMacroTargets({
+    required this.carbs,
+    required this.protein,
+    required this.fat,
+    this.autoFilledFields = const [],
+  });
+
+  final double carbs;
+  final double protein;
+  final double fat;
+  final List<String> autoFilledFields;
+}
+
 class AppAgentService {
   static const getDailyNutritionStatus = 'get_daily_nutrition_status';
   static const getWeeklyNutritionSummary = 'get_weekly_nutrition_summary';
@@ -200,6 +212,11 @@ class AppAgentService {
   static const getGoalSetupStatus = 'get_goal_setup_status';
   static const updateGoalSetupProfile = 'update_goal_setup_profile';
   static const updateGoalSetupPreferences = 'update_goal_setup_preferences';
+  static const getMacroTargetsStatus = 'get_macro_targets_status';
+  static const updateMacroTargetsPercentage = 'update_macro_targets_percentage';
+  static const updateMacroTargetsGrams = 'update_macro_targets_grams';
+  static const updateMacroTargetsGramsPerKg =
+      'update_macro_targets_grams_per_kg';
 
   static Future<AppAgentExecutionResult> executeCommand(
     AppAgentCommand command,
@@ -222,6 +239,14 @@ class AppAgentService {
         return _updateGoalSetupProfile(command, context);
       case updateGoalSetupPreferences:
         return _updateGoalSetupPreferences(command, context);
+      case getMacroTargetsStatus:
+        return _getMacroTargetsStatus(command, context);
+      case updateMacroTargetsPercentage:
+        return _updateMacroTargetsPercentage(command, context);
+      case updateMacroTargetsGrams:
+        return _updateMacroTargetsGrams(command, context);
+      case updateMacroTargetsGramsPerKg:
+        return _updateMacroTargetsGramsPerKg(command, context);
       default:
         return AppAgentExecutionResult(
           commandName: command.name,
@@ -237,6 +262,10 @@ class AppAgentService {
               getGoalSetupStatus,
               updateGoalSetupProfile,
               updateGoalSetupPreferences,
+              getMacroTargetsStatus,
+              updateMacroTargetsPercentage,
+              updateMacroTargetsGrams,
+              updateMacroTargetsGramsPerKg,
             ],
           },
         );
@@ -262,6 +291,14 @@ class AppAgentService {
         return l10n.translate('agent_loading_update_goal_profile');
       case updateGoalSetupPreferences:
         return l10n.translate('agent_loading_update_goal_preferences');
+      case getMacroTargetsStatus:
+        return l10n.translate('agent_loading_macro_status');
+      case updateMacroTargetsPercentage:
+        return l10n.translate('agent_loading_update_macros_percentage');
+      case updateMacroTargetsGrams:
+        return l10n.translate('agent_loading_update_macros_grams');
+      case updateMacroTargetsGramsPerKg:
+        return l10n.translate('agent_loading_update_macros_per_kg');
       default:
         return l10n.translate('agent_loading_generic');
     }
@@ -302,7 +339,8 @@ Responda no mesmo idioma do pedido original do usuário.
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
     final goalsProvider =
         Provider.of<NutritionGoalsProvider>(context, listen: false);
     await goalsProvider.ensureLoaded();
@@ -323,13 +361,16 @@ Responda no mesmo idioma do pedido original do usuário.
       'hasConfiguredGoals': goalsProvider.hasConfiguredGoals,
       'caloriesGoal': goalsProvider.caloriesGoal,
       'caloriesConsumed': mealsProvider.totalCalories,
-      'caloriesRemaining': goalsProvider.caloriesGoal - mealsProvider.totalCalories,
+      'caloriesRemaining':
+          goalsProvider.caloriesGoal - mealsProvider.totalCalories,
       'proteinGoal': goalsProvider.proteinGoal,
       'proteinConsumed': _round1(mealsProvider.totalProtein),
-      'proteinRemaining': goalsProvider.proteinGoal - _round1(mealsProvider.totalProtein),
+      'proteinRemaining':
+          goalsProvider.proteinGoal - _round1(mealsProvider.totalProtein),
       'carbsGoal': goalsProvider.carbsGoal,
       'carbsConsumed': _round1(mealsProvider.totalCarbs),
-      'carbsRemaining': goalsProvider.carbsGoal - _round1(mealsProvider.totalCarbs),
+      'carbsRemaining':
+          goalsProvider.carbsGoal - _round1(mealsProvider.totalCarbs),
       'fatGoal': goalsProvider.fatGoal,
       'fatConsumed': _round1(mealsProvider.totalFat),
       'fatRemaining': goalsProvider.fatGoal - _round1(mealsProvider.totalFat),
@@ -349,7 +390,8 @@ Responda no mesmo idioma do pedido original do usuário.
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
     final goalsProvider =
         Provider.of<NutritionGoalsProvider>(context, listen: false);
     await goalsProvider.ensureLoaded();
@@ -360,7 +402,8 @@ Responda no mesmo idioma do pedido original do usuário.
     final daysWithinGoal = history
         .where((day) =>
             (day['calories'] as int) > 0 &&
-            ((day['calories'] as int) - goalsProvider.caloriesGoal).abs() <= 150)
+            ((day['calories'] as int) - goalsProvider.caloriesGoal).abs() <=
+                150)
         .length;
 
     final payload = {
@@ -712,6 +755,201 @@ Responda no mesmo idioma do pedido original do usuário.
     );
   }
 
+  static Future<AppAgentExecutionResult> _getMacroTargetsStatus(
+    AppAgentCommand command,
+    BuildContext context,
+  ) async {
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    await goalsProvider.ensureLoaded();
+
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: true,
+      payload: goalsProvider.getMacroSnapshot(),
+    );
+  }
+
+  static Future<AppAgentExecutionResult> _updateMacroTargetsPercentage(
+    AppAgentCommand command,
+    BuildContext context,
+  ) async {
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    await goalsProvider.ensureLoaded();
+
+    final resolved = _resolvePercentageTargets(
+      carbs: _tryParseDouble(
+        command.arguments['carbsPercentage'] ??
+            command.arguments['carbs_percentage'] ??
+            command.arguments['carbs'],
+      ),
+      protein: _tryParseDouble(
+        command.arguments['proteinPercentage'] ??
+            command.arguments['protein_percentage'] ??
+            command.arguments['protein'],
+      ),
+      fat: _tryParseDouble(
+        command.arguments['fatPercentage'] ??
+            command.arguments['fat_percentage'] ??
+            command.arguments['fat'],
+      ),
+    );
+
+    if (resolved == null) {
+      return AppAgentExecutionResult(
+        commandName: command.name,
+        success: false,
+        errorMessage: 'invalid_macro_percentage_arguments',
+        payload: {
+          'acceptedArguments': const [
+            'carbsPercentage',
+            'proteinPercentage',
+            'fatPercentage',
+          ],
+          'rule':
+              'Informe os 3 percentuais ou pelo menos 2 para completar o terceiro automaticamente.',
+        },
+      );
+    }
+
+    goalsProvider.updateMacroTargetsFromPercentages(
+      carbsPercentage: resolved.carbs,
+      proteinPercentage: resolved.protein,
+      fatPercentage: resolved.fat,
+    );
+
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: true,
+      payload: {
+        'updatedByMode': 'percentage',
+        'autoFilledFields': resolved.autoFilledFields,
+        ...goalsProvider.getMacroSnapshot(),
+      },
+    );
+  }
+
+  static Future<AppAgentExecutionResult> _updateMacroTargetsGrams(
+    AppAgentCommand command,
+    BuildContext context,
+  ) async {
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    await goalsProvider.ensureLoaded();
+
+    final resolved = _resolveGramTargets(
+      carbs: _tryParseDouble(
+        command.arguments['carbsGrams'] ??
+            command.arguments['carbs_grams'] ??
+            command.arguments['carbs'],
+      ),
+      protein: _tryParseDouble(
+        command.arguments['proteinGrams'] ??
+            command.arguments['protein_grams'] ??
+            command.arguments['protein'],
+      ),
+      fat: _tryParseDouble(
+        command.arguments['fatGrams'] ??
+            command.arguments['fat_grams'] ??
+            command.arguments['fat'],
+      ),
+      calorieTarget: goalsProvider.caloriesGoal.toDouble(),
+    );
+
+    if (resolved == null) {
+      return AppAgentExecutionResult(
+        commandName: command.name,
+        success: false,
+        errorMessage: 'invalid_macro_gram_arguments',
+        payload: {
+          'acceptedArguments': const [
+            'carbsGrams',
+            'proteinGrams',
+            'fatGrams',
+          ],
+          'rule':
+              'Informe os 3 macros em gramas ou pelo menos 2 para completar o restante com base na meta atual.',
+        },
+      );
+    }
+
+    goalsProvider.updateMacroTargetsFromGrams(
+      carbsGrams: resolved.carbs,
+      proteinGrams: resolved.protein,
+      fatGrams: resolved.fat,
+    );
+
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: true,
+      payload: {
+        'updatedByMode': 'grams',
+        'autoFilledFields': resolved.autoFilledFields,
+        ...goalsProvider.getMacroSnapshot(),
+      },
+    );
+  }
+
+  static Future<AppAgentExecutionResult> _updateMacroTargetsGramsPerKg(
+    AppAgentCommand command,
+    BuildContext context,
+  ) async {
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    await goalsProvider.ensureLoaded();
+
+    final weight = goalsProvider.weight <= 0 ? 1.0 : goalsProvider.weight;
+    final carbsPerKg = _tryParseDouble(
+      command.arguments['carbsPerKg'] ?? command.arguments['carbs_per_kg'],
+    );
+    final proteinPerKg = _tryParseDouble(
+      command.arguments['proteinPerKg'] ?? command.arguments['protein_per_kg'],
+    );
+    final fatPerKg = _tryParseDouble(
+      command.arguments['fatPerKg'] ?? command.arguments['fat_per_kg'],
+    );
+    final resolvedInGrams = _resolveGramTargets(
+      carbs: carbsPerKg == null ? null : carbsPerKg * weight,
+      protein: proteinPerKg == null ? null : proteinPerKg * weight,
+      fat: fatPerKg == null ? null : fatPerKg * weight,
+      calorieTarget: goalsProvider.caloriesGoal.toDouble(),
+    );
+
+    if (resolvedInGrams == null) {
+      return AppAgentExecutionResult(
+        commandName: command.name,
+        success: false,
+        errorMessage: 'invalid_macro_per_kg_arguments',
+        payload: {
+          'acceptedArguments': const [
+            'carbsPerKg',
+            'proteinPerKg',
+            'fatPerKg',
+          ],
+          'rule':
+              'Informe os 3 macros em g/kg ou pelo menos 2 para completar o restante com base na meta atual.',
+        },
+      );
+    }
+
+    goalsProvider.updateMacroTargetsFromGrams(
+      carbsGrams: resolvedInGrams.carbs,
+      proteinGrams: resolvedInGrams.protein,
+      fatGrams: resolvedInGrams.fat,
+    );
+
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: true,
+      payload: {
+        'updatedByMode': 'grams_per_kg',
+        'autoFilledFields': resolvedInGrams.autoFilledFields,
+        ...goalsProvider.getMacroSnapshot(),
+      },
+    );
+  }
+
   static Map<String, dynamic> _serializePlannedMeal(PlannedMeal meal) {
     return {
       'type': meal.type,
@@ -759,7 +997,128 @@ Responda no mesmo idioma do pedido original do usuário.
       'proteinGoal': goalsProvider.proteinGoal,
       'carbsGoal': goalsProvider.carbsGoal,
       'fatGoal': goalsProvider.fatGoal,
+      'macroEditingAvailable': goalsProvider.hasConfiguredGoals,
+      'macroTargets': goalsProvider.getMacroSnapshot(),
     };
+  }
+
+  static _ResolvedMacroTargets? _resolvePercentageTargets({
+    required double? carbs,
+    required double? protein,
+    required double? fat,
+  }) {
+    final provided = {
+      'carbs': carbs,
+      'protein': protein,
+      'fat': fat,
+    }..removeWhere((_, value) => value == null);
+
+    if (provided.length < 2) {
+      return null;
+    }
+
+    final autoFilledFields = <String>[];
+    var resolvedCarbs = carbs;
+    var resolvedProtein = protein;
+    var resolvedFat = fat;
+    final totalProvided =
+        provided.values.fold<double>(0, (sum, value) => sum + value!);
+
+    if (provided.length == 2) {
+      final remaining = 100 - totalProvided;
+      if (remaining <= 0) {
+        return null;
+      }
+
+      if (resolvedCarbs == null) {
+        resolvedCarbs = remaining;
+        autoFilledFields.add('carbs');
+      } else if (resolvedProtein == null) {
+        resolvedProtein = remaining;
+        autoFilledFields.add('protein');
+      } else if (resolvedFat == null) {
+        resolvedFat = remaining;
+        autoFilledFields.add('fat');
+      }
+    }
+
+    if (resolvedCarbs == null ||
+        resolvedProtein == null ||
+        resolvedFat == null) {
+      return null;
+    }
+
+    final total = resolvedCarbs + resolvedProtein + resolvedFat;
+    if ((total - 100).abs() > 0.5) {
+      return null;
+    }
+
+    return _ResolvedMacroTargets(
+      carbs: resolvedCarbs,
+      protein: resolvedProtein,
+      fat: resolvedFat,
+      autoFilledFields: autoFilledFields,
+    );
+  }
+
+  static _ResolvedMacroTargets? _resolveGramTargets({
+    required double? carbs,
+    required double? protein,
+    required double? fat,
+    required double calorieTarget,
+  }) {
+    final provided = {
+      'carbs': carbs,
+      'protein': protein,
+      'fat': fat,
+    }..removeWhere((_, value) => value == null);
+
+    if (provided.length < 2) {
+      return null;
+    }
+
+    final autoFilledFields = <String>[];
+    var resolvedCarbs = carbs;
+    var resolvedProtein = protein;
+    var resolvedFat = fat;
+
+    if (provided.length == 2) {
+      final caloriesFromKnownMacros = (resolvedCarbs ?? 0) * 4 +
+          (resolvedProtein ?? 0) * 4 +
+          (resolvedFat ?? 0) * 9;
+      final remainingCalories = calorieTarget - caloriesFromKnownMacros;
+      if (remainingCalories <= 0) {
+        return null;
+      }
+
+      if (resolvedCarbs == null) {
+        resolvedCarbs = remainingCalories / 4;
+        autoFilledFields.add('carbs');
+      } else if (resolvedProtein == null) {
+        resolvedProtein = remainingCalories / 4;
+        autoFilledFields.add('protein');
+      } else if (resolvedFat == null) {
+        resolvedFat = remainingCalories / 9;
+        autoFilledFields.add('fat');
+      }
+    }
+
+    if (resolvedCarbs == null ||
+        resolvedProtein == null ||
+        resolvedFat == null) {
+      return null;
+    }
+
+    if (resolvedCarbs <= 0 || resolvedProtein <= 0 || resolvedFat <= 0) {
+      return null;
+    }
+
+    return _ResolvedMacroTargets(
+      carbs: resolvedCarbs,
+      protein: resolvedProtein,
+      fat: resolvedFat,
+      autoFilledFields: autoFilledFields,
+    );
   }
 
   static String? _normalizeSex(dynamic value) {

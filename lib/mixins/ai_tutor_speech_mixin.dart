@@ -31,7 +31,8 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
   bool get isTranscribingAudio => _isTranscribingAudio;
   String get recognizedText => _recognizedText;
   Duration get recordingDuration => _recordingDuration;
-  List<double> get waveformSamples => List<double>.unmodifiable(_waveformSamples);
+  List<double> get waveformSamples =>
+      List<double>.unmodifiable(_waveformSamples);
 
   TextEditingController get messageController;
   AnimationController get animationController;
@@ -42,14 +43,8 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
   Future<void> initSpeechRecognition() async {
     print('🎤 NutroChatSpeechMixin - Inicializando captura de áudio');
 
-    if (kIsWeb) {
-      print(
-          '⚠️ NutroChatSpeechMixin - Captura de áudio no servidor desabilitada na web');
-      return;
-    }
-
     try {
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         final status = await Permission.microphone.status;
         if (status.isDenied) {
           print(
@@ -68,12 +63,6 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
 
   void startListening(
       {bool preserveCurrentText = false, bool lowLatencyMode = false}) async {
-    if (kIsWeb) {
-      UIUtils.showSimpleToast(
-          context, 'Gravação de áudio ainda não disponível na web');
-      return;
-    }
-
     try {
       _autoStopTimer?.cancel();
 
@@ -95,16 +84,18 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
         }
       }
 
-      var status = await Permission.microphone.status;
-      if (status.isDenied) {
-        status = await Permission.microphone.request();
+      if (!kIsWeb) {
+        var status = await Permission.microphone.status;
         if (status.isDenied) {
-          UIUtils.showPermissionDialog(context);
+          status = await Permission.microphone.request();
+          if (status.isDenied) {
+            UIUtils.showPermissionDialog(context);
+            return;
+          }
+        } else if (status.isPermanentlyDenied) {
+          UIUtils.showPermissionDialog(context, permanentlyDenied: true);
           return;
         }
-      } else if (status.isPermanentlyDenied) {
-        UIUtils.showPermissionDialog(context, permanentlyDenied: true);
-        return;
       }
 
       final hasPermission = await _audioRecorder.hasPermission();
@@ -137,8 +128,7 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
           (preserveCurrentText ? ' (preservando texto anterior)' : '') +
           (lowLatencyMode ? ' (modo baixa latência)' : ''));
     } catch (e) {
-      print(
-          '❌ NutroChatSpeechMixin - Erro ao iniciar gravação de áudio: $e');
+      print('❌ NutroChatSpeechMixin - Erro ao iniciar gravação de áudio: $e');
       UIUtils.showSimpleToast(context, 'Erro ao iniciar a gravação de áudio');
       keepScreenOn(false);
       if (mounted) {
@@ -181,10 +171,9 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
       }
 
       final locale = Localizations.localeOf(context);
-      final languageCode =
-          locale.toString().replaceAll('-', '_').trim().isEmpty
-              ? 'pt_BR'
-              : locale.toString().replaceAll('-', '_');
+      final languageCode = locale.toString().replaceAll('-', '_').trim().isEmpty
+          ? 'pt_BR'
+          : locale.toString().replaceAll('-', '_');
 
       final transcription = await _aiService.processAudio(
         recordedAudio.bytes,
@@ -350,4 +339,3 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
     return (0.18 + (normalized * 0.82)).clamp(0.18, 1.0);
   }
 }
-

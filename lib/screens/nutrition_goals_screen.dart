@@ -314,13 +314,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                     .translate('edit_macronutrients'),
                 isDarkMode: isDarkMode,
                 textColor: textColor,
-                onTap: () => _showEditMacrosDialog(
-                  context,
-                  provider,
-                  theme,
-                  isDarkMode,
-                  textColor,
-                ),
+                onTap: () => _showEditMacrosDialog(context, provider),
               ),
               _buildActionChip(
                 icon: Icons.auto_awesome,
@@ -868,23 +862,10 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   void _showEditMacrosDialog(
     BuildContext context,
     NutritionGoalsProvider provider,
-    ThemeData theme,
-    bool isDarkMode,
-    Color textColor,
   ) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
-
-    showModalBottomSheet(
+    showMacroEditBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => MacroEditBottomSheet(
-        provider: provider,
-        theme: theme,
-        isDarkMode: isDarkMode,
-        textColor: textColor,
-        cardColor: cardColor,
-      ),
+      provider: provider,
     );
   }
 

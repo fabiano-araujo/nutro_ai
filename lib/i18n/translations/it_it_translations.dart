@@ -136,18 +136,29 @@ final Map<String, String> itITTranslations = {
   'agent_loading_generate_diet': 'Sto generando la tua nuova dieta...',
   'agent_loading_goal_setup_status':
       'Sto controllando cosa manca nella configurazione dei tuoi obiettivi...',
-  'agent_loading_update_goal_profile':
-      'Sto salvando i dati del tuo profilo...',
+  'agent_loading_update_goal_profile': 'Sto salvando i dati del tuo profilo...',
   'agent_loading_update_goal_preferences':
       'Sto salvando le tue preferenze nutrizionali...',
+  'agent_loading_macro_status':
+      'Sto controllando la tua configurazione attuale dei macronutrienti...',
+  'agent_loading_update_macros_percentage':
+      'Sto aggiornando i tuoi macronutrienti in percentuale...',
+  'agent_loading_update_macros_grams':
+      'Sto aggiornando i tuoi macronutrienti in grammi...',
+  'agent_loading_update_macros_per_kg':
+      'Sto aggiornando i tuoi macronutrienti in g/kg...',
   'agent_loading_generic': 'Sto recuperando i tuoi dati nell\'app...',
   'agent_command_limit_reached':
       'Non sono riuscito a completare l\'azione interna. Riprova.',
   'chat_action_login': 'Accedi',
   'chat_action_configure_goals_ui': 'Configura nell\'app',
   'chat_action_continue_goals_chat': 'Continua in chat',
+  'chat_action_edit_macros_ui': 'Modifica i macro nell\'app',
+  'chat_action_continue_macros_chat': 'Regola i macro in chat',
   'chat_goal_setup_chat_prompt':
       'Voglio configurare i miei obiettivi nutrizionali in chat. Usa i comandi dell\'app quando serve, fai una domanda alla volta e inizia da eta, altezza, peso e genere.',
+  'chat_macro_edit_chat_prompt':
+      'Voglio regolare i miei macronutrienti qui. Controlla i miei macro attuali e guidami tra percentuale, g/kg o grammi.',
   'error_occurred': 'Si è verificato un errore',
   'try_again': 'Riprova',
   'no_results': 'Nessun risultato trovato',
@@ -496,4 +507,31 @@ final Map<String, String> itITTranslations = {
   'activate_freeze_description':
       'La protezione congela la tua serie per 24 ore, anche se non registri nulla. Hai {count} protezione(i) disponibile(i).',
   'activate': 'Attiva',
+  'macro_editor_subtitle':
+      'Scegli il formato piu intuitivo per regolare i tuoi macro.',
+  'macro_mode_percentage': '%',
+  'macro_mode_percentage_hint': 'Il piu usato ogni giorno',
+  'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_hint': 'Ottimo per proteine e performance',
+  'macro_mode_grams': 'g',
+  'macro_mode_grams_hint': 'Controllo totale in grammi',
+  'macro_editor_percentage_error':
+      'La somma delle percentuali deve arrivare al 100%.',
+  'macro_editor_positive_error':
+      'Inserisci valori positivi per carboidrati, proteine e grassi.',
+  'macro_editor_saved': 'Macronutrienti aggiornati con successo!',
+  'macro_editor_current_target': 'Obiettivo attuale',
+  'macro_editor_goal_mode_label': 'Modalita attuale',
+  'macro_editor_goal_mode_calculated': 'Calcolato',
+  'macro_editor_goal_mode_manual': 'Manuale',
+  'macro_editor_new_target': 'Nuovo obiettivo',
+  'macro_editor_difference': 'Differenza',
+  'macro_editor_presets_title': 'Preset rapidi',
+  'macro_editor_most_used': 'Piu usati',
+  'macro_editor_fill_remaining_carbs':
+      'Completa le calorie restanti con carboidrati',
+  'macro_editor_total_percentage': 'Totale percentuali',
+  'macro_editor_fix_total': 'Porta a 100%',
+  'macro_editor_switches_manual_mode':
+      'Salvando in g o g/kg, l\'app passera a obiettivi manuali con questo nuovo totale calorico.',
 };

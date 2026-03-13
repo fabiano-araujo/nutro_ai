@@ -174,8 +174,7 @@ final Map<String, String> deDETranslations = {
 
   // Nachrichten
   'loading': 'Wird geladen...',
-  'agent_loading_daily_status':
-      'Dein heutiger Ernahrungsstand wird geladen...',
+  'agent_loading_daily_status': 'Dein heutiger Ernahrungsstand wird geladen...',
   'agent_loading_weekly_status':
       'Deine wochentliche Ernahrungszusammenfassung wird geladen...',
   'agent_loading_weight_status':
@@ -189,14 +188,26 @@ final Map<String, String> deDETranslations = {
       'Deine Profildaten werden gespeichert...',
   'agent_loading_update_goal_preferences':
       'Deine Ernahrungseinstellungen werden gespeichert...',
+  'agent_loading_macro_status':
+      'Deine aktuelle Makroverteilung wird geladen...',
+  'agent_loading_update_macros_percentage':
+      'Deine Makros werden prozentual aktualisiert...',
+  'agent_loading_update_macros_grams':
+      'Deine Makros werden in Gramm aktualisiert...',
+  'agent_loading_update_macros_per_kg':
+      'Deine Makros werden in g/kg aktualisiert...',
   'agent_loading_generic': 'Deine App-Daten werden geladen...',
   'agent_command_limit_reached':
       'Die interne Aktion konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
   'chat_action_login': 'Einloggen',
   'chat_action_configure_goals_ui': 'In der App einrichten',
   'chat_action_continue_goals_chat': 'Im Chat fortfahren',
+  'chat_action_edit_macros_ui': 'Makros in der App bearbeiten',
+  'chat_action_continue_macros_chat': 'Makros im Chat anpassen',
   'chat_goal_setup_chat_prompt':
       'Ich mochte meine Ernahrungsziele im Chat einrichten. Nutze bei Bedarf die App-Befehle, stelle jeweils nur eine Frage und beginne mit Alter, Grosse, Gewicht und Geschlecht.',
+  'chat_macro_edit_chat_prompt':
+      'Ich mochte meine Makronahrstoffe hier anpassen. Prufe meine aktuellen Makros und fuhre mich durch Prozent, g/kg oder Gramm.',
   'error_occurred': 'Ein Fehler ist aufgetreten',
   'try_again': 'Erneut versuchen',
   'no_results': 'Keine Ergebnisse gefunden',
@@ -498,4 +509,30 @@ final Map<String, String> deDETranslations = {
   'activate_freeze_description':
       'Der Schutz friert Ihre Serie für 24 Stunden ein, auch wenn Sie nichts protokollieren. Sie haben {count} Schutz(e) verfügbar.',
   'activate': 'Aktivieren',
+  'macro_editor_subtitle':
+      'Wählen Sie das intuitivste Format, um Ihre Makros anzupassen.',
+  'macro_mode_percentage': '%',
+  'macro_mode_percentage_hint': 'Am häufigsten im Alltag',
+  'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_hint': 'Gut für Protein und Performance',
+  'macro_mode_grams': 'g',
+  'macro_mode_grams_hint': 'Volle Kontrolle in Gramm',
+  'macro_editor_percentage_error': 'Die Summe der Prozente muss 100% ergeben.',
+  'macro_editor_positive_error':
+      'Geben Sie positive Werte für Kohlenhydrate, Protein und Fette ein.',
+  'macro_editor_saved': 'Makronährstoffe erfolgreich aktualisiert!',
+  'macro_editor_current_target': 'Aktuelles Ziel',
+  'macro_editor_goal_mode_label': 'Aktueller Modus',
+  'macro_editor_goal_mode_calculated': 'Berechnet',
+  'macro_editor_goal_mode_manual': 'Manuell',
+  'macro_editor_new_target': 'Neues Ziel',
+  'macro_editor_difference': 'Differenz',
+  'macro_editor_presets_title': 'Schnelle Vorlagen',
+  'macro_editor_most_used': 'Am meisten genutzt',
+  'macro_editor_fill_remaining_carbs':
+      'Verbleibende Kalorien mit Kohlenhydraten auffüllen',
+  'macro_editor_total_percentage': 'Prozent gesamt',
+  'macro_editor_fix_total': 'Auf 100% bringen',
+  'macro_editor_switches_manual_mode':
+      'Beim Speichern in g oder g/kg wechselt die App zu manuellen Zielen mit dieser neuen Kalorienmenge.',
 };

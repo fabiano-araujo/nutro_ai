@@ -175,12 +175,10 @@ final Map<String, String> esESTranslations = {
 
   // Mensajes
   'loading': 'Cargando...',
-  'agent_loading_daily_status':
-      'Consultando tu resumen nutricional de hoy...',
+  'agent_loading_daily_status': 'Consultando tu resumen nutricional de hoy...',
   'agent_loading_weekly_status':
       'Consultando tu resumen nutricional semanal...',
-  'agent_loading_weight_status':
-      'Consultando tus datos de peso y progreso...',
+  'agent_loading_weight_status': 'Consultando tus datos de peso y progreso...',
   'agent_loading_recalculate_goals':
       'Recalculando tus objetivos nutricionales...',
   'agent_loading_generate_diet': 'Generando tu nueva dieta...',
@@ -189,14 +187,26 @@ final Map<String, String> esESTranslations = {
   'agent_loading_update_goal_profile': 'Guardando tus datos de perfil...',
   'agent_loading_update_goal_preferences':
       'Guardando tus preferencias nutricionales...',
+  'agent_loading_macro_status':
+      'Revisando tu configuracion actual de macronutrientes...',
+  'agent_loading_update_macros_percentage':
+      'Actualizando tus macronutrientes por porcentaje...',
+  'agent_loading_update_macros_grams':
+      'Actualizando tus macronutrientes en gramos...',
+  'agent_loading_update_macros_per_kg':
+      'Actualizando tus macronutrientes en g/kg...',
   'agent_loading_generic': 'Consultando tus datos de la app...',
   'agent_command_limit_reached':
       'No pude completar la accion interna. Intentalo de nuevo.',
   'chat_action_login': 'Iniciar sesion',
   'chat_action_configure_goals_ui': 'Configurar en la app',
   'chat_action_continue_goals_chat': 'Continuar en el chat',
+  'chat_action_edit_macros_ui': 'Editar macros en la app',
+  'chat_action_continue_macros_chat': 'Ajustar macros en el chat',
   'chat_goal_setup_chat_prompt':
       'Quiero configurar mis metas nutricionales por el chat. Usa los comandos de la app cuando haga falta, haz una pregunta por vez y empieza por mi edad, altura, peso y genero.',
+  'chat_macro_edit_chat_prompt':
+      'Quiero ajustar mis macronutrientes por aqui. Revisa mis macros actuales y guiame por el mejor formato entre porcentaje, g/kg o gramos.',
   'error_occurred': 'Se ha producido un error',
   'try_again': 'Intentar de nuevo',
   'no_results': 'No se encontraron resultados',
@@ -674,4 +684,31 @@ final Map<String, String> esESTranslations = {
   'activate_freeze_description':
       'La protección congela tu racha por 24 horas, aunque no registres nada. Tienes {count} protección(es) disponible(s).',
   'activate': 'Activar',
+  'macro_editor_subtitle':
+      'Elige el formato mas intuitivo para ajustar tus macros.',
+  'macro_mode_percentage': '%',
+  'macro_mode_percentage_hint': 'Lo mas usado en el dia a dia',
+  'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_hint': 'Ideal para proteina y rendimiento',
+  'macro_mode_grams': 'g',
+  'macro_mode_grams_hint': 'Control total en gramos',
+  'macro_editor_percentage_error':
+      'La suma de los porcentajes debe cerrar en 100%.',
+  'macro_editor_positive_error':
+      'Ingresa valores positivos para carbohidratos, proteina y grasas.',
+  'macro_editor_saved': 'Macronutrientes actualizados con exito!',
+  'macro_editor_current_target': 'Meta actual',
+  'macro_editor_goal_mode_label': 'Modo actual',
+  'macro_editor_goal_mode_calculated': 'Calculado',
+  'macro_editor_goal_mode_manual': 'Manual',
+  'macro_editor_new_target': 'Nueva meta',
+  'macro_editor_difference': 'Diferencia',
+  'macro_editor_presets_title': 'Atajos rapidos',
+  'macro_editor_most_used': 'Mas usados',
+  'macro_editor_fill_remaining_carbs':
+      'Completar las calorias restantes con carbohidratos',
+  'macro_editor_total_percentage': 'Total de porcentajes',
+  'macro_editor_fix_total': 'Cerrar en 100%',
+  'macro_editor_switches_manual_mode':
+      'Al guardar en g o g/kg, la app pasara a usar metas manuales con este nuevo total calorico.',
 };
