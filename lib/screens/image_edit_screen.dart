@@ -190,9 +190,9 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
     }
   }
 
-  // Novo método para enviar para NutritionAssistantScreen
+  // Novo método para enviar para NutroChatScreen
   void _sendToNutritionAssistant(Uint8List processedImage) async {
-    print('[PROCESS] Navegando para NutritionAssistantScreen');
+    print('[PROCESS] Navegando para NutroChatScreen');
 
     // Converter a imagem para base64 para incluir no JSON
     final String base64Image = base64Encode(processedImage);
@@ -247,7 +247,7 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => NutritionAssistantScreen(initialPrompt: jsonData),
+        builder: (context) => NutroChatScreen(initialPrompt: jsonData),
       ),
     );
   }
@@ -695,3 +695,4 @@ class CropOverlayPainter extends CustomPainter {
         borderRadius != oldDelegate.borderRadius;
   }
 }
+

@@ -11,8 +11,13 @@ import 'settings_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
+  final bool popOnSuccess;
 
-  const LoginScreen({Key? key, this.onOpenDrawer}) : super(key: key);
+  const LoginScreen({
+    Key? key,
+    this.onOpenDrawer,
+    this.popOnSuccess = false,
+  }) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -24,6 +29,7 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   bool _isLoading = false;
+  bool _didAutoCloseAfterLogin = false;
 
   @override
   void initState() {
@@ -122,6 +128,19 @@ class _LoginScreenState extends State<LoginScreen>
 
     // Obter o serviço de autenticação para verificar mensagens de erro
     final authService = Provider.of<AuthService>(context, listen: true);
+    final canPop = Navigator.of(context).canPop();
+
+    if (widget.popOnSuccess &&
+        authService.isAuthenticated &&
+        !_didAutoCloseAfterLogin) {
+      _didAutoCloseAfterLogin = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).maybePop();
+      });
+    }
 
     // Usar a mesma cor de fundo do AI Tutor Screen
     final Color currentScaffoldBackgroundColor =
@@ -147,7 +166,18 @@ class _LoginScreenState extends State<LoginScreen>
                 onPressed: widget.onOpenDrawer,
                 tooltip: 'Menu',
               )
-            : null,
+            : canPop
+                ? IconButton(
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: isDarkMode
+                          ? Colors.white
+                          : AppTheme.textPrimaryColor,
+                    ),
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    tooltip: context.tr.translate('back'),
+                  )
+                : null,
         title: Text(context.tr.translate('login_title') ?? 'Login'),
         centerTitle: true,
         scrolledUnderElevation: 0,

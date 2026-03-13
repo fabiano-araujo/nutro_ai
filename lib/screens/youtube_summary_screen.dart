@@ -171,7 +171,7 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
     }
   }
 
-  // Navegar para a tela NutritionAssistantScreen com as informações do vídeo
+  // Navegar para a tela NutroChatScreen com as informações do vídeo
   void _navigateToNutritionAssistant() {
     if (_videoInfo != null && _transcript.isNotEmpty) {
       // Criar um prompt mais simples e direto que será processado pela AI
@@ -191,7 +191,7 @@ Por favor, forneça:
 2. Um resumo detalhado do conteúdo
 3. Uma avaliação da complexidade e profundidade do material''';
 
-      // Criar objeto que a NutritionAssistantScreen possa processar para mostrar o card
+      // Criar objeto que a NutroChatScreen possa processar para mostrar o card
       Map<String, dynamic> toolData = {
         'userInput': _videoInfo!['title'],
         'fullPrompt':
@@ -216,7 +216,7 @@ Por favor, forneça:
           context,
           MaterialPageRoute(
             builder: (context) =>
-                NutritionAssistantScreen(initialPrompt: jsonData),
+                NutroChatScreen(initialPrompt: jsonData),
           ));
     }
   }
@@ -541,3 +541,4 @@ Por favor, forneça:
     );
   }
 }
+

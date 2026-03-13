@@ -173,6 +173,24 @@ final Map<String, String> enUSTranslations = {
 
   // Messages
   'loading': 'Loading...',
+  'agent_loading_daily_status': 'Checking your nutrition status for today...',
+  'agent_loading_weekly_status': 'Checking your weekly nutrition summary...',
+  'agent_loading_weight_status': 'Checking your weight and progress data...',
+  'agent_loading_recalculate_goals': 'Recalculating your nutrition goals...',
+  'agent_loading_generate_diet': 'Generating your new diet plan...',
+  'agent_loading_goal_setup_status':
+      'Checking what is still missing in your goals setup...',
+  'agent_loading_update_goal_profile': 'Saving your profile details...',
+  'agent_loading_update_goal_preferences':
+      'Saving your nutrition preferences...',
+  'agent_loading_generic': 'Fetching your in-app data...',
+  'agent_command_limit_reached':
+      'I could not complete the in-app action. Please try again.',
+  'chat_action_login': 'Log in',
+  'chat_action_configure_goals_ui': 'Set up in the app',
+  'chat_action_continue_goals_chat': 'Continue in chat',
+  'chat_goal_setup_chat_prompt':
+      'I want to set up my nutrition goals through chat. Use the app commands when needed, ask one question at a time, and start with my age, height, weight, and gender.',
   'error_occurred': 'An error occurred',
   'try_again': 'Try again',
   'no_results': 'No results found',

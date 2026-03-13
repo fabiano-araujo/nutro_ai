@@ -469,6 +469,18 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     }
   }
 
+  String _getMealDisplayName(PlannedMeal meal, AppLocalizations l10n) {
+    switch (meal.type) {
+      case 'breakfast':
+      case 'lunch':
+      case 'dinner':
+      case 'snack':
+        return l10n.translate(meal.type);
+      default:
+        return meal.name;
+    }
+  }
+
   Food _convertPlannedFoodToFood(PlannedFood plannedFood) {
     final nutrient = Nutrient(
       idFood: 0,
@@ -1042,6 +1054,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       Color cardColor, Color textColor, Color secondaryTextColor) {
     final hasFoods = meal.foods.isNotEmpty;
     final isExpanded = _expandedMeals.contains(meal.type);
+    final l10n = AppLocalizations.of(context);
 
     return Material(
       color: cardColor,
@@ -1094,7 +1107,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            meal.name,
+                            _getMealDisplayName(meal, l10n),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -1305,6 +1318,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final secondaryTextColor =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final l10n = AppLocalizations.of(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1332,7 +1346,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           ),
         ),
         title: Text(
-          meal.name,
+          _getMealDisplayName(meal, l10n),
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 16,

@@ -546,13 +546,13 @@ class _HistoryWidgetState extends State<HistoryWidget>
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // Navegar diretamente para NutritionAssistantScreen independente do tipo
+          // Navegar diretamente para NutroChatScreen independente do tipo
           if (item.type == 'tutor' || item.type == 'conversation') {
             // Para tutor e conversation, usar o ID da conversa
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => NutritionAssistantScreen(
+                builder: (context) => NutroChatScreen(
                   conversationId: item.id,
                 ),
               ),
@@ -654,7 +654,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NutritionAssistantScreen(
+                  builder: (context) => NutroChatScreen(
                     conversationId:
                         conversationIdFromToolData, // Usar o conversationId se disponível
                     initialPrompt:
@@ -692,7 +692,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NutritionAssistantScreen(
+                  builder: (context) => NutroChatScreen(
                     initialPrompt: fallbackJsonData,
                   ),
                 ),
@@ -1022,7 +1022,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
                             // Fechar o modal e navegar para a ferramenta
                             Navigator.pop(context);
 
-                            // Sempre navegar para NutritionAssistantScreen
+                            // Sempre navegar para NutroChatScreen
                             if (item.type == 'tutor' ||
                                 item.type == 'conversation') {
                               // Para tutor e conversation, usar o ID da conversa
@@ -1030,7 +1030,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      NutritionAssistantScreen(
+                                      NutroChatScreen(
                                     conversationId: item.id,
                                   ),
                                 ),
@@ -1122,7 +1122,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                        NutritionAssistantScreen(
+                                        NutroChatScreen(
                                       conversationId:
                                           conversationIdFromToolData, // Usar o conversationId se disponível
                                       initialPrompt:
@@ -1161,7 +1161,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                        NutritionAssistantScreen(
+                                        NutroChatScreen(
                                       initialPrompt: fallbackJsonData,
                                     ),
                                   ),
@@ -1244,3 +1244,4 @@ class _HistoryWidgetState extends State<HistoryWidget>
     }
   }
 }
+

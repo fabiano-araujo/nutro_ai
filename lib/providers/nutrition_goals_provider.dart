@@ -116,9 +116,11 @@ class NutritionGoalsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Check if user has configured goals (verifica se salvou o objetivo nutricional)
-      // Isso garante que passou por todo o wizard de configuração
-      _hasConfiguredGoals = prefs.containsKey('nutrition_fitnessGoal');
+      // Prefer an explicit completion flag. Fall back to the old heuristic for
+      // users who still only have legacy saved data.
+      _hasConfiguredGoals =
+          prefs.getBool('nutrition_hasConfiguredGoals') ??
+              prefs.containsKey('nutrition_fitnessGoal');
 
       _sex = prefs.getString('nutrition_sex') ?? 'male';
       _age = prefs.getInt('nutrition_age') ?? 30;
@@ -162,9 +164,13 @@ class NutritionGoalsProvider extends ChangeNotifier {
   }
 
   // Save to preferences
-  Future<void> _saveToPreferences() async {
+  Future<void> _saveToPreferences({bool? markConfigured}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      if (markConfigured != null) {
+        _hasConfiguredGoals = markConfigured;
+      }
 
       await prefs.setString('nutrition_sex', _sex);
       await prefs.setInt('nutrition_age', _age);
@@ -194,9 +200,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
       // Save measurement units
       await prefs.setInt('nutrition_heightUnit', _heightUnit.index);
       await prefs.setInt('nutrition_weightUnit', _weightUnit.index);
-
-      // Mark as configured after first save
-      _hasConfiguredGoals = true;
+      await prefs.setBool('nutrition_hasConfiguredGoals', _hasConfiguredGoals);
     } catch (e) {
       print('Error saving nutrition goals: $e');
     }
@@ -230,7 +234,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     if (fitnessGoal != null) _fitnessGoal = fitnessGoal;
     if (formula != null) _formula = formula;
 
-    _saveToPreferences();
+    _saveToPreferences(markConfigured: fitnessGoal != null ? true : null);
     notifyListeners();
   }
 

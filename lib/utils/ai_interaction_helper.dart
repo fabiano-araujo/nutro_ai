@@ -55,6 +55,9 @@ class AIInteractionHelper {
     String? toolDataJson, // NOVO PARÂMETRO
     bool autoRegisterFoods =
         true, // Se true, adiciona alimentos ao diário automaticamente
+    String Function(String rawContent)? displayContentBuilder,
+    Future<bool> Function(String responseContent, MessageNotifier notifier)?
+        interceptFinalResponse,
     VoidCallback?
         onStreamComplete, // Callback chamado quando o stream termina (para salvar mensagens)
   }) {
@@ -64,6 +67,10 @@ class AIInteractionHelper {
     String? activeConnectionId;
 
     String buildDisplayContent(String rawContent) {
+      if (displayContentBuilder != null) {
+        return displayContentBuilder(rawContent);
+      }
+
       if (!autoRegisterFoods) {
         return rawContent;
       }
@@ -214,6 +221,21 @@ class AIInteractionHelper {
         final responseContent = messageNotifier.message;
         print(
             '📊 AIInteractionHelper - Resposta final: ${responseContent.length} caracteres');
+
+        if (interceptFinalResponse != null) {
+          try {
+            final wasIntercepted = await interceptFinalResponse(
+              responseContent,
+              messageNotifier,
+            );
+            if (wasIntercepted) {
+              return;
+            }
+          } catch (e) {
+            print(
+                '❌ AIInteractionHelper - Erro ao interceptar resposta final: $e');
+          }
+        }
 
         // NOTA: A adição de alimentos é feita pelo FoodJsonDisplay quando renderizado
         // Não adicionar aqui para evitar duplicação

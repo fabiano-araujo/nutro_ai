@@ -11,7 +11,7 @@ import '../services/chat_audio_recorder.dart';
 import '../utils/ui_utils.dart';
 
 // Mixin para encapsular a lógica de gravação e transcrição de voz do chat
-mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
+mixin NutroChatSpeechMixin on State<NutroChatScreen> {
   static const Duration _audioCaptureTimeout = Duration(minutes: 5);
 
   final ChatAudioRecorder _audioRecorder = ChatAudioRecorder();
@@ -22,10 +22,16 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
   String _recognizedText = '';
   String _committedRecognizedText = '';
   Timer? _autoStopTimer;
+  Timer? _recordingTicker;
+  StreamSubscription<double>? _amplitudeSubscription;
+  Duration _recordingDuration = Duration.zero;
+  List<double> _waveformSamples = List<double>.filled(18, 0.18);
 
   bool get isListening => _isListening;
   bool get isTranscribingAudio => _isTranscribingAudio;
   String get recognizedText => _recognizedText;
+  Duration get recordingDuration => _recordingDuration;
+  List<double> get waveformSamples => List<double>.unmodifiable(_waveformSamples);
 
   TextEditingController get messageController;
   AnimationController get animationController;
@@ -34,11 +40,11 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
   int get androidUpdateCounter;
 
   Future<void> initSpeechRecognition() async {
-    print('🎤 NutritionAssistantSpeechMixin - Inicializando captura de áudio');
+    print('🎤 NutroChatSpeechMixin - Inicializando captura de áudio');
 
     if (kIsWeb) {
       print(
-          '⚠️ NutritionAssistantSpeechMixin - Captura de áudio no servidor desabilitada na web');
+          '⚠️ NutroChatSpeechMixin - Captura de áudio no servidor desabilitada na web');
       return;
     }
 
@@ -47,16 +53,16 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
         final status = await Permission.microphone.status;
         if (status.isDenied) {
           print(
-              '🎤 NutritionAssistantSpeechMixin - Permissão de microfone ainda não concedida');
+              '🎤 NutroChatSpeechMixin - Permissão de microfone ainda não concedida');
         }
       }
 
       await _audioRecorder.init();
       print(
-          '✅ NutritionAssistantSpeechMixin - Captura de áudio inicializada com sucesso');
+          '✅ NutroChatSpeechMixin - Captura de áudio inicializada com sucesso');
     } catch (e) {
       print(
-          '❌ NutritionAssistantSpeechMixin - Erro ao inicializar captura de áudio: $e');
+          '❌ NutroChatSpeechMixin - Erro ao inicializar captura de áudio: $e');
     }
   }
 
@@ -118,6 +124,7 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
       keepScreenOn(true);
 
       await _audioRecorder.startRecording();
+      _startRecordingVisualizer();
 
       if (mounted) {
         setState(() {
@@ -126,12 +133,12 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
         });
       }
 
-      print('🎤 NutritionAssistantSpeechMixin - Captura de áudio iniciada' +
+      print('🎤 NutroChatSpeechMixin - Captura de áudio iniciada' +
           (preserveCurrentText ? ' (preservando texto anterior)' : '') +
           (lowLatencyMode ? ' (modo baixa latência)' : ''));
     } catch (e) {
       print(
-          '❌ NutritionAssistantSpeechMixin - Erro ao iniciar gravação de áudio: $e');
+          '❌ NutroChatSpeechMixin - Erro ao iniciar gravação de áudio: $e');
       UIUtils.showSimpleToast(context, 'Erro ao iniciar a gravação de áudio');
       keepScreenOn(false);
       if (mounted) {
@@ -145,6 +152,7 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
 
   Future<void> stopListening() async {
     _autoStopTimer?.cancel();
+    _stopRecordingVisualizer();
 
     if (!_isListening) {
       return;
@@ -195,7 +203,7 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
       }
     } catch (e) {
       print(
-          '❌ NutritionAssistantSpeechMixin - Erro ao finalizar gravação/transcrição: $e');
+          '❌ NutroChatSpeechMixin - Erro ao finalizar gravação/transcrição: $e');
       UIUtils.showSimpleToast(context, 'Erro ao transcrever o áudio');
     } finally {
       if (mounted) {
@@ -261,6 +269,7 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
 
   Future<void> releaseAudioResources() async {
     _autoStopTimer?.cancel();
+    _stopRecordingVisualizer();
     keepScreenOn(false);
 
     try {
@@ -275,16 +284,70 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
         });
       }
     } catch (e) {
-      print('⚠️ NutritionAssistantSpeechMixin - Erro ao liberar áudio: $e');
+      print('⚠️ NutroChatSpeechMixin - Erro ao liberar áudio: $e');
     }
   }
 
   void disposeSpeechResources() {
     _autoStopTimer?.cancel();
+    _stopRecordingVisualizer();
     keepScreenOn(false);
     if (_isListening) {
-      _audioRecorder.cancelRecording();
+      unawaited(_audioRecorder.cancelRecording());
     }
-    _audioRecorder.dispose();
+    unawaited(_audioRecorder.dispose());
+  }
+
+  void _startRecordingVisualizer() {
+    _recordingTicker?.cancel();
+    _amplitudeSubscription?.cancel();
+    _recordingDuration = Duration.zero;
+    _waveformSamples = List<double>.filled(18, 0.18);
+
+    _recordingTicker = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      _recordingDuration += const Duration(milliseconds: 100);
+      if (mounted) {
+        setState(() {});
+      }
+    });
+
+    _amplitudeSubscription = _audioRecorder
+        .amplitudeStream(interval: const Duration(milliseconds: 90))
+        .listen(
+      (amplitude) {
+        final normalizedSample = _normalizeAmplitude(amplitude);
+        _waveformSamples = [
+          ..._waveformSamples.skip(1),
+          normalizedSample,
+        ];
+
+        if (mounted) {
+          setState(() {});
+        }
+      },
+      onError: (error) {
+        print(
+            '⚠️ NutroChatSpeechMixin - Erro ao ler amplitude do áudio: $error');
+      },
+    );
+  }
+
+  void _stopRecordingVisualizer() {
+    _recordingTicker?.cancel();
+    _recordingTicker = null;
+    _amplitudeSubscription?.cancel();
+    _amplitudeSubscription = null;
+    _recordingDuration = Duration.zero;
+    _waveformSamples = List<double>.filled(18, 0.18);
+  }
+
+  double _normalizeAmplitude(double amplitude) {
+    const minDb = -45.0;
+    const maxDb = 0.0;
+    final clamped = amplitude.clamp(minDb, maxDb);
+    final normalized = (clamped - minDb) / (maxDb - minDb);
+
+    return (0.18 + (normalized * 0.82)).clamp(0.18, 1.0);
   }
 }
+

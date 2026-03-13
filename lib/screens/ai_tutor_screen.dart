@@ -9,7 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import '../controllers/ai_tutor_controller.dart'; // Novo import para o controller
+import '../controllers/ai_tutor_controller.dart';
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/ad_manager.dart';
@@ -48,25 +48,25 @@ import 'nutrition_goals_wizard_screen.dart';
 import '../utils/food_json_parser.dart';
 import '../widgets/recent_foods_sheet.dart';
 
-// Singleton para gerenciar o estado da tela NutritionAssistant em toda a aplicação
+// Singleton para gerenciar o estado da tela NutroChat em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
 // com IndexedStack, que não chama deactivate() quando mudamos de aba.
-class NutritionAssistantManager {
-  static final NutritionAssistantManager _instance =
-      NutritionAssistantManager._internal();
-  NutritionAssistantScreenState? activeState;
+class NutroChatManager {
+  static final NutroChatManager _instance =
+      NutroChatManager._internal();
+  NutroChatScreenState? activeState;
 
-  factory NutritionAssistantManager() {
+  factory NutroChatManager() {
     return _instance;
   }
 
-  NutritionAssistantManager._internal();
+  NutroChatManager._internal();
 
-  void register(NutritionAssistantScreenState state) {
+  void register(NutroChatScreenState state) {
     activeState = state;
   }
 
-  void unregister(NutritionAssistantScreenState state) {
+  void unregister(NutroChatScreenState state) {
     if (activeState == state) {
       activeState = null;
     }
@@ -80,9 +80,9 @@ class NutritionAssistantManager {
 }
 
 // Singleton global para facilitar acesso de qualquer lugar do app
-final nutritionAssistantManager = NutritionAssistantManager();
+final nutroChatManager = NutroChatManager();
 
-class NutritionAssistantScreen extends StatefulWidget {
+class NutroChatScreen extends StatefulWidget {
   final String? conversationId; // ID da conversa a ser carregada
   final String?
       initialPrompt; // Prompt inicial a ser processado (pode ser JSON de ferramenta)
@@ -93,7 +93,7 @@ class NutritionAssistantScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
   final String? toolType;
 
-  const NutritionAssistantScreen({
+  const NutroChatScreen({
     Key? key,
     this.conversationId,
     this.initialPrompt,
@@ -105,23 +105,23 @@ class NutritionAssistantScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  NutritionAssistantScreenState createState() =>
-      NutritionAssistantScreenState();
+  NutroChatScreenState createState() =>
+      NutroChatScreenState();
 
   // Método que permite chamar a lógica de deactivate externamente
   static void handleTabExit() {
-    nutritionAssistantManager.handleTabExit();
+    nutroChatManager.handleTabExit();
   }
 }
 
-class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
+class NutroChatScreenState extends State<NutroChatScreen>
     with
         TickerProviderStateMixin,
-        NutritionAssistantSpeechMixin,
+        NutroChatSpeechMixin,
         TextToSpeechMixin,
         WidgetsBindingObserver {
   // Controller que gerenciará o estado e lógica (será inicializado no initState)
-  late NutritionAssistantController _controller;
+  late NutroChatController _chatController;
 
   // Serviços - Agora gerenciados pelo Controller
   // final AIService _aiService = AIService();
@@ -217,7 +217,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
   }
 
-  // Implementação dos getters e métodos requeridos pelo NutritionAssistantSpeechMixin
+  // Implementação dos getters e métodos requeridos pelo NutroChatSpeechMixin
   @override
   TextEditingController get messageController => _messageController;
 
@@ -229,7 +229,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   @override
   void incrementAndroidUpdateCounter() =>
-      _controller.incrementAndroidUpdateCounter();
+      _chatController.incrementAndroidUpdateCounter();
 
   @override
   int get androidUpdateCounter => 0; // Não precisamos mais desta variável
@@ -245,7 +245,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   @override
   void initState() {
     super.initState();
-    print('🚀 NutritionAssistantScreen - initState chamado');
+    print('🚀 NutroChatScreen - initState chamado');
     print('   - conversationId: ${widget.conversationId}');
     print('   - isFreeChat: ${widget.isFreeChat}');
     print('   - freeChatId: ${widget.freeChatId}');
@@ -254,7 +254,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     print(
         '   - initialToolResponse (Resposta da IA para ferramenta): ${widget.initialToolResponse?.substring(0, math.min(100, widget.initialToolResponse?.length ?? 0))}...');
 
-    nutritionAssistantManager.register(this);
+    nutroChatManager.register(this);
     _animationController = AnimationController(
       duration: Duration(milliseconds: 1000),
       vsync: this,
@@ -291,7 +291,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                   .replaceAll(' ', '_') ??
               'chat';
           print(
-              '📱 NutritionAssistantScreen: Detectado JSON de ferramenta. ToolType: $toolType');
+              '📱 NutroChatScreen: Detectado JSON de ferramenta. ToolType: $toolType');
 
           // Tentar obter conversationId do toolData
           if (_toolData!.containsKey('conversationId') &&
@@ -359,7 +359,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               if (extractedMessages != null && extractedMessages.isNotEmpty) {
                 messagesFromToolData = extractedMessages;
                 print(
-                    '✅ NutritionAssistantScreen: Extraídas ${extractedMessages.length} mensagens do histórico da ferramenta');
+                    '✅ NutroChatScreen: Extraídas ${extractedMessages.length} mensagens do histórico da ferramenta');
 
                 // Verificar formato das mensagens
                 if (extractedMessages.length > 0) {
@@ -368,17 +368,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 }
               } else {
                 print(
-                    '⚠️ NutritionAssistantScreen: Nenhuma mensagem válida extraída do histórico da ferramenta');
+                    '⚠️ NutroChatScreen: Nenhuma mensagem válida extraída do histórico da ferramenta');
               }
             } catch (e) {
               print(
-                  '❌ NutritionAssistantScreen: Erro ao processar histórico da ferramenta: $e');
+                  '❌ NutroChatScreen: Erro ao processar histórico da ferramenta: $e');
             }
           }
         }
       } catch (e) {
         print(
-            '⚠️ NutritionAssistantScreen: Erro ao decodificar initialPrompt como JSON: $e');
+            '⚠️ NutroChatScreen: Erro ao decodificar initialPrompt como JSON: $e');
         isFromTool = false;
       }
     }
@@ -393,7 +393,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     final selectedDate = mealsProvider.selectedDate;
 
     // Inicializar o controller com as opções corretas
-    _controller = NutritionAssistantController(
+    _chatController = NutroChatController(
       speechMixin: _speechMixinRef,
       ttsRef: _ttsMixinRef,
       toolType: toolType,
@@ -417,7 +417,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         // Nova interação de ferramenta (initialToolResponse é nulo/vazio, mas temos o prompt da ferramenta).
         // E não estamos carregando conversa completa.
         print(
-            '⚙️ NutritionAssistantScreen: Nova interação de ferramenta. Processando prompt silenciosamente.');
+            '⚙️ NutroChatScreen: Nova interação de ferramenta. Processando prompt silenciosamente.');
         String promptToUse = _toolData!['fullPrompt'] ?? widget.initialPrompt!;
         Uint8List? cameraBytes;
         if (_toolData!['sourceType'] == 'camera' &&
@@ -429,7 +429,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           }
         }
         Future.delayed(Duration(milliseconds: 100), () {
-          _controller.processSilently(promptToUse, context,
+          _chatController.processSilently(promptToUse, context,
               imageBytes: cameraBytes);
         });
       } else if (widget.initialPrompt != null &&
@@ -437,7 +437,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         // Não é de ferramenta (ou caso de ferramenta não coberto), mas temos um prompt inicial.
         // E não estamos carregando uma conversa completa.
         print(
-            '💬 NutritionAssistantScreen: Novo prompt de chat. Enviando mensagem.');
+            '💬 NutroChatScreen: Novo prompt de chat. Enviando mensagem.');
         Future.delayed(Duration(milliseconds: 100), () {
           _messageController.text = widget.initialPrompt!;
           _handleSendMessage();
@@ -447,7 +447,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       // A mensagem de boas-vindas só é adicionada pelo controller se showWelcomeMessage for true.
     } else {
       print(
-          '📱 NutritionAssistantScreen: Controller inicializado com histórico ou initialToolResponse. Nenhuma ação de prompt adicional.');
+          '📱 NutroChatScreen: Controller inicializado com histórico ou initialToolResponse. Nenhuma ação de prompt adicional.');
       // Rolar até a última resposta da IA ao carregar uma conversa existente
       Future.delayed(Duration(milliseconds: 500), () {
         _scrollToLastAiResponse();
@@ -469,7 +469,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     // Determinar o toolType baseado no parâmetro widget.toolType
     final effectiveToolType = widget.toolType ?? 'free_chat';
     print(
-        '💬 NutritionAssistantScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
+        '💬 NutroChatScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
 
     final freeChatProvider =
         Provider.of<FreeChatProvider>(context, listen: false);
@@ -480,16 +480,16 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       _currentFreeChatId = widget.freeChatId;
       initialMessages = freeChatProvider.getMessages(widget.freeChatId!);
       print(
-          '📂 NutritionAssistantScreen: Carregando conversa livre existente: ${widget.freeChatId}');
+          '📂 NutroChatScreen: Carregando conversa livre existente: ${widget.freeChatId}');
     } else {
       // Criar nova conversa
       _currentFreeChatId = freeChatProvider.createConversation();
       print(
-          '📝 NutritionAssistantScreen: Nova conversa livre criada: $_currentFreeChatId');
+          '📝 NutroChatScreen: Nova conversa livre criada: $_currentFreeChatId');
     }
 
     // Inicializar controller para conversa livre
-    _controller = NutritionAssistantController(
+    _chatController = NutroChatController(
       speechMixin: _speechMixinRef,
       ttsRef: _ttsMixinRef,
       toolType: effectiveToolType,
@@ -512,7 +512,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     super.didChangeDependencies();
 
     // Mensagem de boas-vindas agora é exibida como overlay
-    // _controller.updateWelcomeMessage(context);
+    // _chatController.updateWelcomeMessage(context);
   }
 
   @override
@@ -540,13 +540,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   @override
   void dispose() {
-    print('🧹 NutritionAssistantScreen - dispose chamado');
+    print('🧹 NutroChatScreen - dispose chamado');
 
     // Remover observer
     WidgetsBinding.instance.removeObserver(this);
 
     // Remover registro no singleton manager
-    nutritionAssistantManager.unregister(this);
+    nutroChatManager.unregister(this);
 
     // Garantir que a tela pode desligar quando o componente for destruído
     if (!kIsWeb && Platform.isAndroid) {
@@ -568,7 +568,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     _scrollController.dispose();
     _inputFocusNode.dispose();
     _animationController.dispose();
-    _controller.dispose();
+    _chatController.dispose();
 
     super.dispose();
   }
@@ -577,7 +577,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   void deactivate() {
     // Este método é chamado quando a tela é removida da árvore de widgets
     // mas pode ser adicionada novamente, como quando muda de abas
-    print('NutritionAssistantScreen - deactivate chamado');
+    print('NutroChatScreen - deactivate chamado');
 
     // Verificar se o usuário enviou pelo menos 2 mensagens
     if (_userMessageCount >= 2 &&
@@ -610,7 +610,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   void _scrollToLastAiResponse({bool animate = false}) {
     if (!_scrollController.hasClients) return;
 
-    final messages = _controller.messages;
+    final messages = _chatController.messages;
     if (messages.isEmpty) return;
 
     // Encontrar o índice da última mensagem da IA (isUser == false)
@@ -876,19 +876,19 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   // Lidar com a seleção de imagem
   Future<void> _handleImageSelection(ImageSource source) async {
     // Mostrar indicador de carregamento
-    _controller.setProcessingMedia(true);
+    _chatController.setProcessingMedia(true);
 
     // Usar o helper para selecionar a imagem
     final bytes = await MediaPickerHelper.pickImage(source, context);
 
     // O helper já lidou com erros, então apenas desativar o indicador se não houver bytes
     if (bytes == null) {
-      _controller.setProcessingMedia(false);
+      _chatController.setProcessingMedia(false);
       return;
     }
 
     // Atualizar o controller com a imagem selecionada
-    _controller.setSelectedImage(bytes, source);
+    _chatController.setSelectedImage(bytes, source);
 
     // Foco no campo de texto após selecionar a imagem
     FocusScope.of(context).requestFocus();
@@ -905,7 +905,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
 
     // Enviar a mensagem e verificar se foi processada (se tinha créditos suficientes)
-    final hadEnoughCredits = await _controller.sendMessage(message, context);
+    final hadEnoughCredits = await _chatController.sendMessage(message, context);
 
     // Apenas limpar o campo se a mensagem foi processada com sucesso
     if (hadEnoughCredits) {
@@ -1028,7 +1028,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     try {
                       // Encontrar índice da mensagem no array de mensagens
                       int messageIndex = -1;
-                      final messages = _controller.messages;
+                      final messages = _chatController.messages;
                       for (int i = 0; i < messages.length; i++) {
                         if ((messages[i].containsKey('message') &&
                                 messages[i]['message'] == message) ||
@@ -1040,7 +1040,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                       }
 
                       if (messageIndex >= 0) {
-                        _controller.handleVoiceButtonPressed(
+                        _chatController.handleVoiceButtonPressed(
                             messageIndex, context);
                       } else {
                         // Se não encontrar a mensagem específica, lê o texto atual
@@ -1085,7 +1085,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     Navigator.pop(context);
                     // Chamar o método regenerateLastResponse do controller
                     final hadEnoughCredits =
-                        await _controller.regenerateLastResponse(context);
+                        await _chatController.regenerateLastResponse(context);
 
                     // Após iniciar a regeneração, rolar até o início da última resposta da IA (apenas se houver créditos)
                     if (hadEnoughCredits) {
@@ -1170,15 +1170,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
     // Usar AnimatedBuilder para reconstruir apenas quando o controller mudar
     return AnimatedBuilder(
-        animation: _controller,
+        animation: _chatController,
         builder: (context, _) {
-          final messages = _controller.messages;
-          final isLoading = _controller.isLoading;
+          final messages = _chatController.messages;
+          final isLoading = _chatController.isLoading;
           // isProcessingMedia no longer used as we removed the condition from TextField enabled property
-          final hasSelectedImage = _controller.hasSelectedImage;
-          final selectedImageBytes = _controller.selectedImageBytes;
+          final hasSelectedImage = _chatController.hasSelectedImage;
+          final selectedImageBytes = _chatController.selectedImageBytes;
           final currentlySpeakingMessageIndex =
-              _controller.currentlySpeakingMessageIndex;
+              _chatController.currentlySpeakingMessageIndex;
 
           // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
           if (!_hasScrolledToInitialMessages &&
@@ -1186,7 +1186,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               !isLoading) {
             _hasScrolledToInitialMessages = true;
             print(
-                '📱 NutritionAssistantScreen: Mensagens carregadas, fazendo scroll inicial');
+                '📱 NutroChatScreen: Mensagens carregadas, fazendo scroll inicial');
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollToLastAiResponse();
             });
@@ -1226,7 +1226,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   _showHeader();
 
                                   mealsProvider.setSelectedDate(date);
-                                  await _controller.changeSelectedDate(date);
+                                  await _chatController.changeSelectedDate(date);
 
                                   // Scroll instantâneo para a última resposta da IA
                                   _scrollToLastAiResponse();
@@ -1282,7 +1282,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                           _clearSuggestions();
                                           _showHeader();
                                           mealsProvider.setSelectedDate(date);
-                                          await _controller
+                                          await _chatController
                                               .changeSelectedDate(date);
                                           _scrollToLastAiResponse();
                                         },
@@ -1666,7 +1666,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                         right: 4,
                                         child: GestureDetector(
                                           onTap: () {
-                                            _controller.clearSelectedImage();
+                                            _chatController.clearSelectedImage();
                                           },
                                           child: Container(
                                             padding: EdgeInsets.all(4),
@@ -1702,139 +1702,138 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                             ),
                             padding: EdgeInsets.symmetric(
                                 horizontal: 4, vertical: 2),
-                            child: Row(
-                              children: [
-                                // Botão de galeria/foto
-                                IconButton(
-                                  icon: Icon(Icons.camera_alt,
-                                      color: isDarkMode
-                                          ? Colors.grey[400]
-                                          : AppTheme.textSecondaryColor),
-                                  onPressed: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      backgroundColor: Theme.of(context)
-                                          .scaffoldBackgroundColor,
-                                      builder: (context) => SafeArea(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            ListTile(
-                                              leading: Icon(Icons.photo_library,
-                                                  color: isDarkMode
-                                                      ? Colors.white70
-                                                      : AppTheme
-                                                          .textSecondaryColor),
-                                              title: Text('Galeria',
-                                                  style: TextStyle(
-                                                      color: isDarkMode
-                                                          ? Colors.white
-                                                          : AppTheme
-                                                              .textPrimaryColor)),
-                                              onTap: () {
-                                                Navigator.pop(context);
-                                                _handleImageSelection(
-                                                    ImageSource.gallery);
-                                              },
+                            child: isListening
+                                ? _buildRecordingComposer(isDarkMode)
+                                : Row(
+                                    children: [
+                                      // Botão de galeria/foto
+                                      IconButton(
+                                        icon: Icon(Icons.camera_alt,
+                                            color: isDarkMode
+                                                ? Colors.grey[400]
+                                                : AppTheme.textSecondaryColor),
+                                        onPressed: () {
+                                          showModalBottomSheet(
+                                            context: context,
+                                            backgroundColor: Theme.of(context)
+                                                .scaffoldBackgroundColor,
+                                            builder: (context) => SafeArea(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  ListTile(
+                                                    leading: Icon(
+                                                        Icons.photo_library,
+                                                        color: isDarkMode
+                                                            ? Colors.white70
+                                                            : AppTheme
+                                                                .textSecondaryColor),
+                                                    title: Text('Galeria',
+                                                        style: TextStyle(
+                                                            color: isDarkMode
+                                                                ? Colors.white
+                                                                : AppTheme
+                                                                    .textPrimaryColor)),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      _handleImageSelection(
+                                                          ImageSource.gallery);
+                                                    },
+                                                  ),
+                                                  ListTile(
+                                                    leading: Icon(
+                                                        Icons.camera_alt,
+                                                        color: isDarkMode
+                                                            ? Colors.white70
+                                                            : AppTheme
+                                                                .textSecondaryColor),
+                                                    title: Text('Câmera',
+                                                        style: TextStyle(
+                                                            color: isDarkMode
+                                                                ? Colors.white
+                                                                : AppTheme
+                                                                    .textPrimaryColor)),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      _handleImageSelection(
+                                                          ImageSource.camera);
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                            ListTile(
-                                              leading: Icon(Icons.camera_alt,
-                                                  color: isDarkMode
-                                                      ? Colors.white70
+                                          );
+                                        },
+                                        splashRadius: 20,
+                                      ),
+
+                                      // Botão de recentes/favoritos
+                                      IconButton(
+                                        icon: Icon(Icons.history,
+                                            color: isDarkMode
+                                                ? Colors.grey[400]
+                                                : AppTheme.textSecondaryColor),
+                                        onPressed: () =>
+                                            _openRecentFoodsSheet(),
+                                        splashRadius: 20,
+                                        tooltip: 'Recentes e Favoritos',
+                                      ),
+
+                                      // Campo de texto
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _messageController,
+                                          focusNode: _inputFocusNode,
+                                          decoration: InputDecoration(
+                                            hintText: context.tr
+                                                .translate('ask_anything'),
+                                            hintStyle: TextStyle(
+                                              fontSize: 15,
+                                              color: isTranscribingAudio
+                                                  ? Colors.orange
+                                                  : isDarkMode
+                                                      ? Colors.grey[500]
                                                       : AppTheme
-                                                          .textSecondaryColor),
-                                              title: Text('Câmera',
-                                                  style: TextStyle(
-                                                      color: isDarkMode
-                                                          ? Colors.white
-                                                          : AppTheme
-                                                              .textPrimaryColor)),
-                                              onTap: () {
-                                                Navigator.pop(context);
-                                                _handleImageSelection(
-                                                    ImageSource.camera);
-                                              },
+                                                          .textSecondaryColor,
                                             ),
-                                          ],
+                                            border: InputBorder.none,
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                    vertical: 10,
+                                                    horizontal: 0),
+                                            focusedBorder: InputBorder.none,
+                                            enabledBorder: InputBorder.none,
+                                            errorBorder: InputBorder.none,
+                                            disabledBorder: InputBorder.none,
+                                            fillColor: isDarkMode
+                                                ? Color(0xFF303030)
+                                                : AppTheme.surfaceColor,
+                                            filled: true,
+                                          ),
+                                          style: TextStyle(
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : AppTheme.textPrimaryColor),
+                                          textCapitalization:
+                                              TextCapitalization.sentences,
+                                          maxLines: null,
+                                          onChanged: (text) {
+                                            if (_suggestions.isNotEmpty) {
+                                              _clearSuggestions();
+                                            }
+                                            setState(() {});
+                                          },
+                                          enabled:
+                                              true, // Sempre habilitado, mesmo durante o carregamento
+                                          cursorColor: isDarkMode
+                                              ? Colors.grey[400]
+                                              : AppTheme.textPrimaryColor,
                                         ),
                                       ),
-                                    );
-                                  },
-                                  splashRadius: 20,
-                                ),
 
-                                // Botão de recentes/favoritos
-                                IconButton(
-                                  icon: Icon(Icons.history,
-                                      color: isDarkMode
-                                          ? Colors.grey[400]
-                                          : AppTheme.textSecondaryColor),
-                                  onPressed: () => _openRecentFoodsSheet(),
-                                  splashRadius: 20,
-                                  tooltip: 'Recentes e Favoritos',
-                                ),
-
-                                // Campo de texto
-                                Expanded(
-                                  child: TextField(
-                                    controller: _messageController,
-                                    focusNode: _inputFocusNode,
-                                    decoration: InputDecoration(
-                                      hintText:
-                                          context.tr.translate('ask_anything'),
-                                      hintStyle: TextStyle(
-                                        fontSize: 15,
-                                        color: isListening
-                                            ? Colors.red
-                                            : isDarkMode
-                                                ? Colors.grey[500]
-                                                : AppTheme.textSecondaryColor,
-                                      ),
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: 10, horizontal: 0),
-                                      focusedBorder: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      errorBorder: InputBorder.none,
-                                      disabledBorder: InputBorder.none,
-                                      fillColor: isListening
-                                          ? Color(
-                                              0xFF3B2E2E) // Tom avermelhado quando gravando
-                                          : isDarkMode
-                                              ? Color(0xFF303030)
-                                              : AppTheme.surfaceColor,
-                                      filled: true,
-                                    ),
-                                    style: TextStyle(
-                                        color: isDarkMode
-                                            ? Colors.white
-                                            : AppTheme.textPrimaryColor),
-                                    textCapitalization:
-                                        TextCapitalization.sentences,
-                                    maxLines: null,
-                                    onChanged: (text) {
-                                      if (_suggestions.isNotEmpty) {
-                                        _clearSuggestions();
-                                      }
-                                      setState(() {});
-                                    },
-                                    enabled:
-                                        true, // Sempre habilitado, mesmo durante o carregamento
-                                    cursorColor: isDarkMode
-                                        ? Colors.grey[400]
-                                        : AppTheme.textPrimaryColor,
-                                  ),
-                                ),
-
-                                // Botão de microfone ou enviar
-                                IconButton(
-                                  icon: isListening
-                                      ? Icon(
-                                          Icons.stop_circle,
-                                          color: Colors.red,
-                                          size: 28,
-                                        )
-                                      : Icon(
+                                      // Botão de microfone ou enviar
+                                      IconButton(
+                                        icon: Icon(
                                           isLoading
                                               ? Icons.stop_circle
                                               : isTranscribingAudio
@@ -1851,31 +1850,28 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                   ? Colors.orange
                                                   : isDarkMode
                                                       ? Colors.grey[400]
-                                                      : AppTheme.textSecondaryColor,
+                                                      : AppTheme
+                                                          .textSecondaryColor,
                                         ),
-                                  onPressed: () async {
-                                    if (isLoading) {
-                                      // Se estiver carregando, interromper a geração
-                                      _controller.stopGeneration();
-                                    } else if (isTranscribingAudio) {
-                                      return;
-                                    } else if (isListening) {
-                                      await stopListening();
-                                      // Forçar atualização da UI após parar
-                                      setState(() {});
-                                    } else if (_messageController.text
-                                            .trim()
-                                            .isEmpty &&
-                                        !hasSelectedImage) {
-                                      startListening();
-                                    } else {
-                                      _handleSendMessage();
-                                    }
-                                  },
-                                  splashRadius: 20,
-                                ),
-                              ],
-                            ),
+                                        onPressed: () async {
+                                          if (isLoading) {
+                                            // Se estiver carregando, interromper a geração
+                                            _chatController.stopGeneration();
+                                          } else if (isTranscribingAudio) {
+                                            return;
+                                          } else if (_messageController.text
+                                                  .trim()
+                                                  .isEmpty &&
+                                              !hasSelectedImage) {
+                                            startListening();
+                                          } else {
+                                            _handleSendMessage();
+                                          }
+                                        },
+                                        splashRadius: 20,
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ],
                       ),
@@ -1886,6 +1882,259 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             ),
           );
         });
+  }
+
+  Widget _buildRecordingComposer(bool isDarkMode) {
+    final accentColor = const Color(0xFFFF5C5C);
+
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: accentColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: accentColor.withValues(alpha: 0.45),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDarkMode ? Color(0xFF1F2329) : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _buildRecordingWaveform(isDarkMode)),
+                SizedBox(width: 12),
+                Text(
+                  _formatRecordingDuration(recordingDuration),
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
+        Material(
+          color: accentColor.withValues(alpha: 0.18),
+          shape: CircleBorder(),
+          child: InkWell(
+            customBorder: CircleBorder(),
+            onTap: () async {
+              await stopListening();
+              if (mounted) {
+                setState(() {});
+              }
+            },
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Icon(
+                Icons.stop_rounded,
+                color: accentColor,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecordingWaveform(bool isDarkMode) {
+    final activeColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+    final idleColor =
+        (isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor)
+            .withValues(alpha: 0.55);
+
+    return SizedBox(
+      height: 34,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: waveformSamples.asMap().entries.map((entry) {
+          final index = entry.key;
+          final sample = entry.value;
+          final isCenterBar = (index - (waveformSamples.length ~/ 2)).abs() <= 1;
+          final barHeight = 8.0 + (sample * 22.0);
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 1.6),
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 120),
+              curve: Curves.easeOut,
+              width: 4,
+              height: barHeight,
+              decoration: BoxDecoration(
+                color: isCenterBar ? activeColor : idleColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _formatRecordingDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(1, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  bool _messageSuggestsLoginRequired(String message) {
+    final normalized = message.toLowerCase();
+    const patterns = [
+      'precisa estar logado',
+      'precisa fazer login',
+      'faça o login',
+      'faca o login',
+      'fazer login',
+      'login',
+      'logado',
+      'need to be logged in',
+      'need to log in',
+      'please log in',
+      'sign in to continue',
+    ];
+
+    return patterns.any(normalized.contains);
+  }
+
+  bool _messageSuggestsGoalConfiguration(String message) {
+    final normalized = message.toLowerCase();
+    const patterns = [
+      'configurar suas metas',
+      'configurar as metas',
+      'metas nutricionais',
+      'continuar configurando pelo chat',
+      'configure your goals',
+      'set up your goals',
+      'nutrition goals',
+      'configure your profile',
+      'configurar seu perfil',
+      'preciso configurar seu perfil',
+      'sexo/gênero',
+      'sexo/genero',
+    ];
+
+    if (patterns.any(normalized.contains)) {
+      return true;
+    }
+
+    final mentionsGoalSetupContext = normalized.contains('perfil') ||
+        normalized.contains('meta') ||
+        normalized.contains('goals');
+    final asksForProfileField = normalized.contains('idade') ||
+        normalized.contains('height') ||
+        normalized.contains('altura') ||
+        normalized.contains('weight') ||
+        normalized.contains('peso') ||
+        normalized.contains('gender') ||
+        normalized.contains('gênero') ||
+        normalized.contains('genero') ||
+        normalized.contains('sex') ||
+        normalized.contains('sexo');
+
+    return mentionsGoalSetupContext && asksForProfileField;
+  }
+
+  Future<void> _openLoginFromChat() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(popOnSuccess: true),
+      ),
+    );
+  }
+
+  Future<void> _openGoalWizardFromChat() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const NutritionGoalsWizardScreen(
+          startStep: 0,
+          fromProfile: false,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _continueGoalSetupInChat() async {
+    if (_chatController.isLoading) {
+      return;
+    }
+
+    final prompt =
+        AppLocalizations.of(context).translate('chat_goal_setup_chat_prompt');
+    _messageController.text = prompt;
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: prompt.length),
+    );
+    setState(() {});
+    await _handleSendMessage();
+  }
+
+  Widget? _buildContextualMessageActions({
+    required String message,
+    required bool isUser,
+    required bool isStreaming,
+  }) {
+    if (isUser || isStreaming || message.trim().isEmpty) {
+      return null;
+    }
+
+    final appLocalizations = AppLocalizations.of(context);
+    final shouldShowLogin = _messageSuggestsLoginRequired(message);
+    final shouldShowGoalSetup = _messageSuggestsGoalConfiguration(message);
+
+    if (!shouldShowLogin && !shouldShowGoalSetup) {
+      return null;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, right: 4, bottom: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (shouldShowLogin)
+            FilledButton.tonalIcon(
+              onPressed: _openLoginFromChat,
+              icon: const Icon(Icons.login_rounded, size: 18),
+              label: Text(appLocalizations.translate('chat_action_login')),
+            ),
+          if (shouldShowGoalSetup)
+            FilledButton.tonalIcon(
+              onPressed: _openGoalWizardFromChat,
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: Text(
+                appLocalizations.translate('chat_action_configure_goals_ui'),
+              ),
+            ),
+          if (shouldShowGoalSetup)
+            OutlinedButton.icon(
+              onPressed: _continueGoalSetupInChat,
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+              label: Text(
+                appLocalizations.translate('chat_action_continue_goals_chat'),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMessageBubble({
@@ -1940,6 +2189,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             final hasJsonInNotifier =
                 FoodJsonParser.containsFoodJson(notifier.message);
             final cleanMessage = notifier.displayMessage;
+            final contextualActions = _buildContextualMessageActions(
+              message: cleanMessage,
+              isUser: isUser,
+              isStreaming: notifier.isStreaming,
+            );
 
             // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
             final bool showMessageBubble =
@@ -1962,6 +2216,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     bottomSpacing:
                         hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
                   ),
+                if (contextualActions != null) contextualActions,
                 if (hasJsonInNotifier && !notifier.isStreaming)
                   Consumer<DailyMealsProvider>(
                     builder: (context, mealsProvider, _) {
@@ -1971,7 +2226,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                         selectedDate: mealsProvider.selectedDate,
                         messageId: index.toString(),
                         onDeleteMessage: () {
-                          _controller.deleteMessagePair(index);
+                          _chatController.deleteMessagePair(index);
                         },
                       );
                     },
@@ -1986,6 +2241,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
       final bool showMessageBubble =
           displayMessage.trim().isNotEmpty || isStreaming;
+      final contextualActions = _buildContextualMessageActions(
+        message: displayMessage,
+        isUser: isUser,
+        isStreaming: isStreaming,
+      );
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2002,6 +2262,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               imageBytes: imageBytes,
               bottomSpacing: hasFoodJson && !isStreaming ? 4 : 8,
             ),
+          if (contextualActions != null) contextualActions,
           if (hasFoodJson && !isStreaming) ...[
             Consumer<DailyMealsProvider>(
               builder: (context, mealsProvider, _) {
@@ -2011,7 +2272,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                   selectedDate: mealsProvider.selectedDate,
                   messageId: index.toString(),
                   onDeleteMessage: () {
-                    _controller.deleteMessagePair(index);
+                    _chatController.deleteMessagePair(index);
                   },
                 );
               },
@@ -2038,7 +2299,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   // Widget para os botões de ação abaixo da última mensagem
   Widget _buildActionButtons(int? currentlySpeakingMessageIndex) {
-    final messages = _controller.messages;
+    final messages = _chatController.messages;
 
     return Container(
       padding: EdgeInsets.only(top: 0, bottom: 4),
@@ -2076,7 +2337,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     ? Icons.stop
                     : Icons.volume_up_outlined, () {
               // Ler ou parar a leitura da mensagem da IA
-              _controller.handleVoiceButtonPressed(
+              _chatController.handleVoiceButtonPressed(
                   messages.length - 1, context);
             }),
           ),
@@ -2084,7 +2345,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           _buildActionIcon(Icons.refresh_outlined, () async {
             // Regenerar resposta - verificar se há créditos suficientes
             final hadEnoughCredits =
-                await _controller.regenerateLastResponse(context);
+                await _chatController.regenerateLastResponse(context);
 
             // Rolar até o início da última resposta da IA apenas se houver créditos
             if (hadEnoughCredits) {
@@ -2103,7 +2364,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     // Não carregar anúncios na web
     if (kIsWeb) {
       print(
-          "NutritionAssistantScreen: Pulando carregamento de anúncios na versão web");
+          "NutroChatScreen: Pulando carregamento de anúncios na versão web");
       return;
     }
 
@@ -2128,7 +2389,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   // Este método contém a mesma lógica que o método deactivate() original
   void handleTabChanged() {
     print(
-        'NutritionAssistantScreen - handleTabChanged chamado ao trocar de aba');
+        'NutroChatScreen - handleTabChanged chamado ao trocar de aba');
 
     // Não mostrar anúncios na web
     if (kIsWeb) {
@@ -2523,9 +2784,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }
 }
 
-// Implementação de NutritionAssistantSpeechMixinRef que delega para o mixin
-class _SpeechMixinRefImpl implements NutritionAssistantSpeechMixinRef {
-  final NutritionAssistantSpeechMixin _mixin;
+// Implementação de NutroChatSpeechMixinRef que delega para o mixin
+class _SpeechMixinRefImpl implements NutroChatSpeechMixinRef {
+  final NutroChatSpeechMixin _mixin;
 
   _SpeechMixinRefImpl(this._mixin);
 
@@ -2554,6 +2815,7 @@ class _TTSMixinRefImpl implements TextToSpeechMixinRef {
   @override
   void stopSpeech() => _mixin.stopSpeech();
 }
+
 
 
 

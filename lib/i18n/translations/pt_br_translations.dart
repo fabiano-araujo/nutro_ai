@@ -177,6 +177,23 @@ final Map<String, String> ptBRTranslations = {
 
   // Mensagens
   'loading': 'Carregando...',
+  'agent_loading_daily_status': 'Buscando seu resumo nutricional de hoje...',
+  'agent_loading_weekly_status': 'Buscando seu resumo nutricional da semana...',
+  'agent_loading_weight_status': 'Buscando seus dados de peso e progresso...',
+  'agent_loading_recalculate_goals': 'Recalculando suas metas nutricionais...',
+  'agent_loading_generate_diet': 'Gerando sua nova dieta...',
+  'agent_loading_goal_setup_status': 'Verificando o que falta nas suas metas...',
+  'agent_loading_update_goal_profile': 'Salvando seus dados de perfil...',
+  'agent_loading_update_goal_preferences':
+      'Salvando suas preferências nutricionais...',
+  'agent_loading_generic': 'Consultando seus dados no app...',
+  'agent_command_limit_reached':
+      'Nao consegui concluir a acao interna. Tente novamente.',
+  'chat_action_login': 'Fazer login',
+  'chat_action_configure_goals_ui': 'Configurar na interface',
+  'chat_action_continue_goals_chat': 'Continuar no chat',
+  'chat_goal_setup_chat_prompt':
+      'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faca uma pergunta por vez e comece pela idade, altura, peso e genero.',
   'error_occurred': 'Ocorreu um erro',
   'try_again': 'Tentar novamente',
   'no_results': 'Nenhum resultado encontrado',

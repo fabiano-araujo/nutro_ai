@@ -162,7 +162,10 @@ class DietPlanProvider extends ChangeNotifier {
           final foods = (mealData['foods'] as List<dynamic>?)?.map((foodData) {
                 return PlannedFood(
                   name: foodData['name'] ?? '',
-                  emoji: foodData['emoji'] ?? '🍽️',
+                  emoji: resolveFoodEmoji(
+                    foodData['name'] ?? '',
+                    preferred: foodData['emoji']?.toString(),
+                  ),
                   amount: (foodData['amount'] is String)
                       ? double.tryParse(foodData['amount']) ?? 100
                       : (foodData['amount'] as num?)?.toDouble() ?? 100,
@@ -357,8 +360,8 @@ class DietPlanProvider extends ChangeNotifier {
 
     _isLoading = true;
     _error = null;
-    _expectedMealsCount =
-        mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
+    _activeMealTypes = _resolveMealTypes(mealTypes);
+    _expectedMealsCount = _activeMealTypes.length;
     _parsedMealIndices.clear(); // Reset parsed meals tracker
     _partialDietPlan = DietPlan(
       date: _formatDate(date),
@@ -375,11 +378,11 @@ class DietPlanProvider extends ChangeNotifier {
     try {
       // Build the prompt for AI
       final prompt =
-          _buildDietPlanPrompt(nutritionGoals, languageCode, mealTypes);
+          _buildDietPlanPrompt(nutritionGoals, languageCode, _activeMealTypes);
 
       print('🍽️ Gerando plano de dieta para ${_formatDate(date)}');
       print('📊 Refeições: $_expectedMealsCount');
-      print('🍴 Tipos: ${mealTypes.map((m) => m.name).join(', ')}');
+      print('🍴 Tipos: ${_activeMealTypes.map((m) => m.name).join(', ')}');
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
       print('👤 UserId: $userId');
@@ -404,7 +407,7 @@ class DietPlanProvider extends ChangeNotifier {
         'agentType': 'diet',
         'language': languageCode,
         'mealTypes':
-            mealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
+            _activeMealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
       };
 
       request.bodyBytes = utf8.encode(jsonEncode(requestBody));
@@ -489,47 +492,47 @@ class DietPlanProvider extends ChangeNotifier {
 
       // Try to extract JSON from response
       print('🔍 Tentando extrair JSON da resposta...');
-      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(response);
-      if (jsonMatch == null) {
+      final jsonString = _extractJsonPayload(response);
+      if (jsonString == null) {
         print('❌ ERRO: Não foi possível extrair JSON da resposta!');
         throw Exception('Não foi possível extrair JSON da resposta da IA');
       }
 
-      final jsonString = jsonMatch.group(0)!;
       print('📄 JSON extraído (${jsonString.length} chars):');
       print('─' * 80);
       print(jsonString);
       print('─' * 80);
 
       print('🔧 Fazendo parse do JSON...');
-      final jsonData = jsonDecode(jsonString);
+      final jsonData = _normalizeAiJson(_decodeAiJson(jsonString));
       print('✓ JSON parseado com sucesso!');
       print('📊 Estrutura do JSON: ${jsonData.keys.toList()}');
 
       // Create diet plan from JSON
       print('🍱 Criando objeto DietPlan a partir do JSON...');
-      final dietPlan = DietPlan.fromJson(jsonData);
+      final dietPlan = DietPlan.fromAiJson(
+        jsonData,
+        date: _formatDate(date),
+        mealNames: _buildMealNameMap(_activeMealTypes),
+      );
       print('✓ DietPlan criado: ${dietPlan.meals.length} refeições');
-
-      // Update date to match requested date
-      final updatedPlan = dietPlan.copyWith(date: _formatDate(date));
-      print('✓ Data atualizada para: ${_formatDate(date)}');
 
       // Store the diet plan (using weekly key if in weekly mode)
       final dateKey = _preferences.dietMode == DietMode.weekly
           ? _weeklyKey
           : _formatDate(date);
-      _dietPlans[dateKey] = updatedPlan;
+      _dietPlans[dateKey] = dietPlan;
 
       _isLoading = false;
       _error = null;
       _partialDietPlan = null; // Clear partial state
+      _activeMealTypes = const [];
 
       // Save to preferences
       await _saveToPreferences();
 
       // Save to server
-      await _saveToServer(dateKey, updatedPlan);
+      await _saveToServer(dateKey, dietPlan);
 
       notifyListeners();
 
@@ -538,6 +541,7 @@ class DietPlanProvider extends ChangeNotifier {
       _isLoading = false;
       _error = 'Erro ao gerar plano de dieta: $e';
       _partialDietPlan = null; // Clear partial state on error
+      _activeMealTypes = const [];
       notifyListeners();
 
       print('❌ Erro ao gerar plano de dieta: $e');
@@ -546,14 +550,15 @@ class DietPlanProvider extends ChangeNotifier {
 
   // Try to parse and add complete meals incrementally from partial JSON
   Set<int> _parsedMealIndices = {};
+  List<MealTypeConfig> _activeMealTypes = const [];
 
   void _tryParseIncrementalMeals(String partialJson) {
     if (_partialDietPlan == null) return;
 
     try {
       // Try to extract the meals array from partial JSON
-      final mealsMatch =
-          RegExp(r'"meals"\s*:\s*\[(.*)', dotAll: true).firstMatch(partialJson);
+      final mealsMatch = RegExp(r'"(?:meals|m)"\s*:\s*\[(.*)', dotAll: true)
+          .firstMatch(partialJson);
       if (mealsMatch == null) return;
 
       final mealsContent = mealsMatch.group(1)!;
@@ -575,10 +580,15 @@ class DietPlanProvider extends ChangeNotifier {
           final mealData = jsonDecode(mealJson) as Map<String, dynamic>;
 
           // Validate that it's a complete meal with required fields
-          if (mealData.containsKey('type') &&
-              mealData.containsKey('foods') &&
-              mealData.containsKey('mealTotals')) {
-            final meal = PlannedMeal.fromJson(mealData);
+          final hasLegacyFields =
+              mealData.containsKey('type') && mealData.containsKey('foods');
+          final hasCompactFields =
+              mealData.containsKey('t') && mealData.containsKey('f');
+          if (hasLegacyFields || hasCompactFields) {
+            final meal = PlannedMeal.fromAiJson(
+              mealData,
+              mealNames: _buildMealNameMap(_activeMealTypes),
+            );
 
             // Add to partial diet plan if not already there
             if (_partialDietPlan!.meals.length <= i) {
@@ -624,6 +634,127 @@ class DietPlanProvider extends ChangeNotifier {
     return countryMap[languageCode] ?? 'Brazil';
   }
 
+  List<MealTypeConfig> _resolveMealTypes(List<MealTypeConfig> mealTypes) {
+    if (mealTypes.isNotEmpty) {
+      return mealTypes;
+    }
+
+    return [
+      MealTypeConfig(
+        id: 'breakfast',
+        name: 'Café da Manhã',
+        emoji: '🍳',
+        order: 0,
+      ),
+      MealTypeConfig(
+        id: 'lunch',
+        name: 'Almoço',
+        emoji: '🍽️',
+        order: 1,
+      ),
+      MealTypeConfig(
+        id: 'dinner',
+        name: 'Jantar',
+        emoji: '🍝',
+        order: 2,
+      ),
+    ];
+  }
+
+  Map<String, String> _buildMealNameMap(List<MealTypeConfig> mealTypes) {
+    return {
+      for (final meal in _resolveMealTypes(mealTypes)) meal.id: meal.name,
+    };
+  }
+
+  Map<String, dynamic> _normalizeAiJson(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    if (raw is List) {
+      return {'m': raw};
+    }
+
+    throw const FormatException('Formato JSON inesperado da IA');
+  }
+
+  dynamic _decodeAiJson(String jsonString) {
+    try {
+      return jsonDecode(jsonString);
+    } catch (_) {
+      final sanitized = jsonString
+          .replaceAll(RegExp(r',\s*([\]}])'), r'$1')
+          .replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim();
+      return jsonDecode(sanitized);
+    }
+  }
+
+  String? _extractJsonPayload(String response) {
+    final trimmed = response.trim();
+    final objectStart = trimmed.indexOf('{');
+    final arrayStart = trimmed.indexOf('[');
+
+    var start = -1;
+    if (objectStart >= 0 && arrayStart >= 0) {
+      start = objectStart < arrayStart ? objectStart : arrayStart;
+    } else if (objectStart >= 0) {
+      start = objectStart;
+    } else {
+      start = arrayStart;
+    }
+
+    if (start < 0) {
+      return null;
+    }
+
+    final openChar = trimmed[start];
+    final closeChar = openChar == '{' ? '}' : ']';
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+
+    for (var i = start; i < trimmed.length; i++) {
+      final char = trimmed[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char == r'\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char == '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (char == openChar) {
+        depth++;
+      } else if (char == closeChar) {
+        depth--;
+        if (depth == 0) {
+          return trimmed.substring(start, i + 1);
+        }
+      }
+    }
+
+    return null;
+  }
+
   // Build prompt for AI diet generation
   String _buildDietPlanPrompt(NutritionGoalsProvider nutritionGoals,
       String languageCode, List<MealTypeConfig> mealTypes) {
@@ -640,39 +771,22 @@ class DietPlanProvider extends ChangeNotifier {
     final mealsCount =
         mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
 
-    // Build explicit meal mapping for the prompt
-    final mealMappings = mealTypes.isNotEmpty
-        ? mealTypes
-            .map((m) => '{"type": "${m.id}", "name": "${m.name}"}')
-            .join(', ')
-        : '{"type": "breakfast", "name": "Café da Manhã"}, {"type": "lunch", "name": "Almoço"}, {"type": "dinner", "name": "Jantar"}';
+    final mealIds = _resolveMealTypes(mealTypes).map((m) => m.id).join(', ');
 
     return '''
-Create a daily diet plan using foods from $country cuisine.
+Create a daily diet using $country foods.
 
-TARGETS: $calories kcal, ${protein}g protein, ${carbs}g carbs, ${fat}g fat
+Target near: $calories kcal, ${protein}p, ${carbs}c, ${fat}f.
+Meals: exactly $mealsCount using these t values only: [$mealIds].
 
-MEALS TO CREATE (exactly $mealsCount meals):
-[$mealMappings]
+Return ONLY compact JSON:
+{"m":[["breakfast","08:00",[["Food",100,"g",300,10,40,8]]]]}
 
-IMPORTANT: Use EXACTLY these "type" and "name" values for each meal. Do NOT change the meal names.
-
-Return ONLY valid JSON:
-{
-  "date": "YYYY-MM-DD",
-  "totalNutrition": {"calories": $calories, "protein": $protein, "carbs": $carbs, "fat": $fat},
-  "meals": [
-    {
-      "type": "meal_type_id",
-      "time": "HH:MM",
-      "name": "EXACT meal name from list above",
-      "foods": [{"name": "Food", "emoji": "🍳", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}],
-      "mealTotals": {"calories": number, "protein": number, "carbs": number, "fat": number}
-    }
-  ]
-}
-
-CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
+Rules:
+- meal = [type, time, foods]
+- food = [name, amount, unit, kcal, protein, carbs, fat]
+- Use realistic portions
+- No totals, no date, no icons, no markdown, no extra text
 ''';
   }
 
@@ -808,16 +922,25 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
 
       // Extract JSON from response
       print('🔍 Tentando extrair JSON da resposta...');
-      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(response);
-      if (jsonMatch == null) {
+      final jsonString = _extractJsonPayload(response);
+      if (jsonString == null) {
         throw Exception('Não foi possível extrair JSON da resposta da IA');
       }
 
-      final jsonString = jsonMatch.group(0)!;
-      final jsonData = jsonDecode(jsonString);
+      final jsonData = _normalizeAiJson(_decodeAiJson(jsonString));
+      final meals = (jsonData['m'] as List<dynamic>? ?? const []);
+      if (meals.isEmpty) {
+        throw Exception('A IA não retornou nenhuma refeição válida');
+      }
 
       // Create new meal from JSON
-      final newMeal = PlannedMeal.fromJson(jsonData);
+      final newMeal = PlannedMeal.fromAiJson(
+        meals.first,
+        mealNames: {mealToReplace.type: mealToReplace.name},
+        fallbackType: mealToReplace.type,
+        fallbackTime: mealToReplace.time,
+        fallbackName: mealToReplace.name,
+      );
 
       // Update the meal in the plan
       final updatedMeals = List<PlannedMeal>.from(currentPlan.meals);
@@ -857,27 +980,25 @@ CRITICAL: Sum of all mealTotals MUST equal totalNutrition EXACTLY.
     PlannedMeal mealToReplace,
     NutritionGoalsProvider nutritionGoals,
   ) {
+    final currentFoods =
+        mealToReplace.foods.map((food) => food.name).join(', ');
     return '''
-Crie uma nova refeição mantendo os mesmos macros nutricionais da refeição atual:
+Crie uma nova refeição brasileira/portuguesa com macros próximos desta meta:
+${mealToReplace.mealTotals.calories} kcal, ${mealToReplace.mealTotals.protein}p, ${mealToReplace.mealTotals.carbs}c, ${mealToReplace.mealTotals.fat}f.
 
-Refeição atual:
-${jsonEncode(mealToReplace.toJson())}
+Mantenha:
+- t="${mealToReplace.type}"
+- h="${mealToReplace.time}"
 
-IMPORTANTE:
-- Mantenha o tipo (${mealToReplace.type}), nome ("${mealToReplace.name}") e horário (${mealToReplace.time}) EXATAMENTE iguais
-- Mantenha os totais nutricionais MUITO próximos: ${mealToReplace.mealTotals.calories} cal, ${mealToReplace.mealTotals.protein}g proteína, ${mealToReplace.mealTotals.carbs}g carbs, ${mealToReplace.mealTotals.fat}g gordura
-- Use alimentos DIFERENTES dos atuais
-- Alimentos da culinária brasileira/portuguesa
-- Retorne APENAS um objeto JSON válido (sem markdown) com a estrutura:
-{
-  "type": "${mealToReplace.type}",
-  "time": "${mealToReplace.time}",
-  "name": "${mealToReplace.name}",
-  "foods": [
-    {"name": "Nome", "emoji": "🍽️", "amount": number, "unit": "g|ml|unidade", "calories": number, "protein": number, "carbs": number, "fat": number}
-  ],
-  "mealTotals": {"calories": number, "protein": number, "carbs": number, "fat": number}
-}
+Evite repetir estes alimentos: $currentFoods
+
+Retorne ONLY:
+{"m":[["${mealToReplace.type}","${mealToReplace.time}",[["Food",100,"g",300,10,40,8]]]]}
+
+Rules:
+- meal = [type, time, foods]
+- food = [name, amount, unit, kcal, protein, carbs, fat]
+- No totals, no name field, no icons, no markdown, no extra text
 ''';
   }
 

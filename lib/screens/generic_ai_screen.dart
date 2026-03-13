@@ -175,11 +175,11 @@ class _GenericAIScreenState extends State<GenericAIScreen>
     // Construir o prompt antes de navegar
     final prompt = _buildPrompt();
 
-    // Navegue para a tela NutritionAssistantScreen e passe o prompt
+    // Navegue para a tela NutroChatScreen e passe o prompt
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => NutritionAssistantScreen(initialPrompt: prompt),
+        builder: (context) => NutroChatScreen(initialPrompt: prompt),
       ),
     );
   }
@@ -948,3 +948,4 @@ class _GenericAIScreenState extends State<GenericAIScreen>
     );
   }
 }
+

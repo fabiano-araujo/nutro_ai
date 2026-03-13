@@ -521,8 +521,10 @@ class AIService {
 
   // Process audio and transcribe it on the server
   Future<String> processAudio(Uint8List audioBytes,
-      {String mimeType = 'audio/m4a', String languageCode = 'pt_BR'}) async {
+      {String mimeType = 'audio/wav', String languageCode = 'pt_BR'}) async {
     try {
+      print(
+          '🎙️ AIService.processAudio - enviando áudio: bytes=${audioBytes.length}, mimeType=$mimeType, language=$languageCode');
       final audioBase64 = base64Encode(audioBytes);
       final endpoint = '${AppConstants.API_BASE_URL}/ai/transcribe-audio';
       final response = await _httpClient.post(

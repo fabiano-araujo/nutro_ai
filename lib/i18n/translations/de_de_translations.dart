@@ -174,6 +174,29 @@ final Map<String, String> deDETranslations = {
 
   // Nachrichten
   'loading': 'Wird geladen...',
+  'agent_loading_daily_status':
+      'Dein heutiger Ernahrungsstand wird geladen...',
+  'agent_loading_weekly_status':
+      'Deine wochentliche Ernahrungszusammenfassung wird geladen...',
+  'agent_loading_weight_status':
+      'Deine Gewichts- und Fortschrittsdaten werden geladen...',
+  'agent_loading_recalculate_goals':
+      'Deine Ernahrungsziele werden neu berechnet...',
+  'agent_loading_generate_diet': 'Dein neuer Ernahrungsplan wird erstellt...',
+  'agent_loading_goal_setup_status':
+      'Es wird gepruft, was in deiner Zielkonfiguration noch fehlt...',
+  'agent_loading_update_goal_profile':
+      'Deine Profildaten werden gespeichert...',
+  'agent_loading_update_goal_preferences':
+      'Deine Ernahrungseinstellungen werden gespeichert...',
+  'agent_loading_generic': 'Deine App-Daten werden geladen...',
+  'agent_command_limit_reached':
+      'Die interne Aktion konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
+  'chat_action_login': 'Einloggen',
+  'chat_action_configure_goals_ui': 'In der App einrichten',
+  'chat_action_continue_goals_chat': 'Im Chat fortfahren',
+  'chat_goal_setup_chat_prompt':
+      'Ich mochte meine Ernahrungsziele im Chat einrichten. Nutze bei Bedarf die App-Befehle, stelle jeweils nur eine Frage und beginne mit Alter, Grosse, Gewicht und Geschlecht.',
   'error_occurred': 'Ein Fehler ist aufgetreten',
   'try_again': 'Erneut versuchen',
   'no_results': 'Keine Ergebnisse gefunden',

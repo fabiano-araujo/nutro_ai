@@ -70,7 +70,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Chave para reiniciar o NutritionAssistantScreen
+  // Chave para reiniciar o NutroChatScreen
   Key _nutritionAssistantKey = UniqueKey();
 
   // Modo atual: 'diary' para diário (com JSON/calendário), 'free_chat' para conversa livre
@@ -168,15 +168,15 @@ class _MainNavigationState extends State<MainNavigation> {
         _loadUserDataFromServer(
             token, authService.currentUser!.id, creditProvider);
 
-        // Forçar recriação do NutritionAssistantScreen para carregar dados do usuário
+        // Forçar recriação do NutroChatScreen para carregar dados do usuário
         print(
-            '[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen para login...');
+            '[🔄 AUTH_DATA] Forçando recriação do NutroChatScreen para login...');
         setState(() {
           _nutritionAssistantKey = UniqueKey();
           _currentMode = 'diary';
           _currentFreeChatId = null;
         });
-        print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
+        print('[🔄 AUTH_DATA] ✅ NutroChatScreen será recriado');
 
         print(
             '[🔄 AUTH_DATA] ========== LOGIN CONFIGURAÇÃO CONCLUÍDA ==========');
@@ -203,14 +203,14 @@ class _MainNavigationState extends State<MainNavigation> {
       dietPlanProvider.clearAuth();
       print('[🔄 AUTH_DATA] ✅ DietPlanProvider limpo');
 
-      // Forçar recriação do NutritionAssistantScreen para limpar estado visual
-      print('[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen...');
+      // Forçar recriação do NutroChatScreen para limpar estado visual
+      print('[🔄 AUTH_DATA] Forçando recriação do NutroChatScreen...');
       setState(() {
         _nutritionAssistantKey = UniqueKey();
         _currentMode = 'diary';
         _currentFreeChatId = null;
       });
-      print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
+      print('[🔄 AUTH_DATA] ✅ NutroChatScreen será recriado');
 
       print(
           '[🔄 AUTH_DATA] ========== LOGOUT AUTH LIMPEZA CONCLUÍDA ==========');
@@ -292,7 +292,7 @@ class _MainNavigationState extends State<MainNavigation> {
           index: _selectedIndex,
           children: [
             // Aba 0: Início / Chat
-            NutritionAssistantScreen(
+            NutroChatScreen(
               key: _nutritionAssistantKey,
               isFreeChat: _currentMode == 'free_chat',
               freeChatId: _currentFreeChatId,
@@ -595,3 +595,4 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
+

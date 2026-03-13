@@ -38,7 +38,7 @@ dependencies:
   google_mlkit_text_recognition: ^0.15.0
   
   permission_handler: ^11.4.0
-  record: ^5.2.1
+  record: ^6.2.0
   speech_to_text: ^7.0.0
   flutter_math_fork: ^0.7.2
   url_launcher: ^6.3.1

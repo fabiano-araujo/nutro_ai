@@ -50,6 +50,8 @@ This file guides coding agents working in this repository.
 5. Localization is mandatory for user-facing text (`lib/i18n/`, `LanguageController`).
 6. Model aliases/quality labels are resolved server-side in AI controller/config; keep client and server naming aligned when changing model options.
 7. Chat voice input now records raw audio client-side and sends it to `POST /ai/transcribe-audio`; the server transcribes with `google/gemini-2.5-flash-lite-preview-09-2025`.
+8. Agentic chat may emit app commands that the Flutter app executes locally before asking the backend for a final natural-language reply. Current command families include nutrition status, weekly summary, weight status, diet generation, and nutrition-goal setup/status updates.
+8. Agentic chat requests can return `{"app_command": {...}}` from the backend for app-scoped actions/data. The Flutter chat executes the command via providers, sends the result back to the server in a second request, and only the final natural-language answer should remain visible to the user.
 
 ## 4) Main Commands
 
@@ -95,6 +97,7 @@ npx prisma studio
 - `lib/screens/ai_tutor_screen.dart` (`NutritionAssistantScreen`)
 - `lib/controllers/ai_tutor_controller.dart`
 - `lib/services/ai_service.dart`
+- `lib/services/app_agent_service.dart`
 - `lib/widgets/streaming_response_display.dart`
 - `lib/utils/ai_interaction_helper.dart`
 - `lib/utils/conversation_helper.dart`
