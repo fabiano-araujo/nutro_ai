@@ -24,6 +24,7 @@ class DietPlanProvider extends ChangeNotifier {
   // Partial diet plan being constructed during streaming
   DietPlan? _partialDietPlan;
   int _expectedMealsCount = 0;
+  late final Future<void> _loadFuture;
 
   // Chave fixa para dieta semanal única
   static const String _weeklyKey = 'weekly';
@@ -46,6 +47,21 @@ class DietPlanProvider extends ChangeNotifier {
   DietPlan? get partialDietPlan => _partialDietPlan;
   int get expectedMealsCount => _expectedMealsCount;
   DietMode get dietMode => _preferences.dietMode;
+  bool get hasCompletedDietPersonalization =>
+      missingDietPersonalizationTopics.isEmpty;
+  List<String> get missingDietPersonalizationTopics {
+    final missing = <String>[];
+    if (!_preferences.hasReviewedRestrictions) {
+      missing.add('dietary_restrictions');
+    }
+    if (!_preferences.hasReviewedFoodPreferences) {
+      missing.add('food_preferences');
+    }
+    if (!_preferences.hasReviewedRoutineNeeds) {
+      missing.add('routine_and_appetite');
+    }
+    return missing;
+  }
 
   // Check if has any diet plan (for any date or weekly)
   bool get hasAnyDietPlan => _dietPlans.isNotEmpty;
@@ -76,8 +92,10 @@ class DietPlanProvider extends ChangeNotifier {
   }
 
   DietPlanProvider() {
-    _loadFromPreferences();
+    _loadFuture = _loadFromPreferences();
   }
+
+  Future<void> ensureLoaded() => _loadFuture;
 
   /// Define as credenciais de autenticação e carrega dados do servidor
   Future<void> setAuth(String token, int userId) async {
@@ -331,6 +349,62 @@ class DietPlanProvider extends ChangeNotifier {
   // Update preferences
   void updatePreferences(DietPreferences newPreferences) {
     _preferences = newPreferences;
+    _saveToPreferences();
+    notifyListeners();
+  }
+
+  void updateDietGenerationPreferences({
+    int? mealsPerDay,
+    String? hungriestMealTime,
+    List<String>? foodRestrictions,
+    List<String>? favoriteFoods,
+    List<String>? avoidedFoods,
+    List<String>? routineConsiderations,
+    bool? reviewedRestrictions,
+    bool? reviewedFoodPreferences,
+    bool? reviewedRoutineNeeds,
+    bool mergeRestrictions = true,
+    bool mergeFoodPreferences = true,
+    bool mergeRoutineConsiderations = true,
+  }) {
+    _preferences = _preferences.copyWith(
+      mealsPerDay: mealsPerDay,
+      hungriestMealTime: hungriestMealTime,
+      foodRestrictions: foodRestrictions == null
+          ? _preferences.foodRestrictions
+          : _resolveUpdatedList(
+              current: _preferences.foodRestrictions,
+              incoming: foodRestrictions,
+              merge: mergeRestrictions,
+            ),
+      favoriteFoods: favoriteFoods == null
+          ? _preferences.favoriteFoods
+          : _resolveUpdatedList(
+              current: _preferences.favoriteFoods,
+              incoming: favoriteFoods,
+              merge: mergeFoodPreferences,
+            ),
+      avoidedFoods: avoidedFoods == null
+          ? _preferences.avoidedFoods
+          : _resolveUpdatedList(
+              current: _preferences.avoidedFoods,
+              incoming: avoidedFoods,
+              merge: mergeFoodPreferences,
+            ),
+      routineConsiderations: routineConsiderations == null
+          ? _preferences.routineConsiderations
+          : _resolveUpdatedList(
+              current: _preferences.routineConsiderations,
+              incoming: routineConsiderations,
+              merge: mergeRoutineConsiderations,
+            ),
+      hasReviewedRestrictions:
+          reviewedRestrictions ?? _preferences.hasReviewedRestrictions,
+      hasReviewedFoodPreferences:
+          reviewedFoodPreferences ?? _preferences.hasReviewedFoodPreferences,
+      hasReviewedRoutineNeeds:
+          reviewedRoutineNeeds ?? _preferences.hasReviewedRoutineNeeds,
+    );
     _saveToPreferences();
     notifyListeners();
   }
@@ -772,12 +846,14 @@ class DietPlanProvider extends ChangeNotifier {
         mealTypes.isNotEmpty ? mealTypes.length : _preferences.mealsPerDay;
 
     final mealIds = _resolveMealTypes(mealTypes).map((m) => m.id).join(', ');
+    final preferenceLines = _buildDietPreferenceLines();
 
     return '''
 Create a daily diet using $country foods.
 
 Target near: $calories kcal, ${protein}p, ${carbs}c, ${fat}f.
 Meals: exactly $mealsCount using these t values only: [$mealIds].
+$preferenceLines
 
 Return ONLY compact JSON:
 {"m":[["breakfast","08:00",[["Food",100,"g",300,10,40,8]]]]}
@@ -786,6 +862,9 @@ Rules:
 - meal = [type, time, foods]
 - food = [name, amount, unit, kcal, protein, carbs, fat]
 - Use realistic portions
+- Adapt food choices, portion density, and meal timing to the personalization notes above
+- If breakfast appetite is low or there is morning sleepiness, keep breakfast simpler and easier to consume
+- If hunger is high, prefer higher-satiety foods; if eating is difficult or weight gain is hard, prefer more practical and energy-dense foods
 - No totals, no date, no icons, no markdown, no extra text
 ''';
   }
@@ -1278,5 +1357,65 @@ Rules:
     } catch (e) {
       print('❌ Erro ao salvar planos de dieta: $e');
     }
+  }
+
+  List<String> _resolveUpdatedList({
+    required List<String> current,
+    required List<String> incoming,
+    required bool merge,
+  }) {
+    final normalizedIncoming = incoming
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    if (!merge) {
+      return normalizedIncoming;
+    }
+
+    final seen = <String>{};
+    final merged = <String>[];
+    for (final item in [...current, ...normalizedIncoming]) {
+      final trimmed = item.trim();
+      if (trimmed.isEmpty) {
+        continue;
+      }
+      final key = trimmed.toLowerCase();
+      if (seen.add(key)) {
+        merged.add(trimmed);
+      }
+    }
+    return merged;
+  }
+
+  String _buildDietPreferenceLines() {
+    final lines = <String>[];
+
+    if (_preferences.hasReviewedRestrictions) {
+      lines.add(_preferences.foodRestrictions.isEmpty
+          ? '- Restrictions: none reported'
+          : '- Restrictions: ${_preferences.foodRestrictions.join(', ')}');
+    }
+
+    if (_preferences.hasReviewedFoodPreferences) {
+      lines.add(_preferences.favoriteFoods.isEmpty
+          ? '- Preferred foods: none specifically requested'
+          : '- Preferred foods: ${_preferences.favoriteFoods.join(', ')}');
+      lines.add(_preferences.avoidedFoods.isEmpty
+          ? '- Foods to avoid by preference: none reported'
+          : '- Foods to avoid by preference: ${_preferences.avoidedFoods.join(', ')}');
+    }
+
+    if (_preferences.hasReviewedRoutineNeeds) {
+      lines.add(_preferences.routineConsiderations.isEmpty
+          ? '- Appetite/routine considerations: none reported'
+          : '- Appetite/routine considerations: ${_preferences.routineConsiderations.join(', ')}');
+      lines.add('- Hungriest meal window: ${_preferences.hungriestMealTime}');
+    }
+
+    if (lines.isEmpty) {
+      return '';
+    }
+
+    return 'Personalization notes:\n${lines.join('\n')}';
   }
 }

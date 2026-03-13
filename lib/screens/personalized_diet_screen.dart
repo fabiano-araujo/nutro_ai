@@ -57,7 +57,9 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     if (!authService.isAuthenticated || authService.currentUser == null) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(popOnSuccess: true),
+        ),
       );
       return;
     }
@@ -69,6 +71,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         authService.currentUser!.id,
       );
     }
+
+    await dietProvider.ensureLoaded();
 
     // Check if trying to generate daily diet without premium
     // Weekly diet is free, daily diet is paid
@@ -92,6 +96,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
     // Ensure meal types are loaded
     await mealTypesProvider.ensureLoaded();
+
+    if (!dietProvider.hasCompletedDietPersonalization) {
+      final shouldContinue =
+          await _showDietGenerationPreferencesDialog(dietProvider);
+      if (!mounted || !shouldContinue) {
+        return;
+      }
+    }
 
     // Get device locale
     final locale = Localizations.localeOf(context);
@@ -127,6 +139,190 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         );
       }
     }
+  }
+
+  Future<bool> _showDietGenerationPreferencesDialog(
+    DietPlanProvider dietProvider,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final preferences = dietProvider.preferences;
+    final restrictionsController = TextEditingController(
+      text: preferences.foodRestrictions.join(', '),
+    );
+    final favoriteFoodsController = TextEditingController(
+      text: preferences.favoriteFoods.join(', '),
+    );
+    final avoidedFoodsController = TextEditingController(
+      text: preferences.avoidedFoods.join(', '),
+    );
+    final routineController = TextEditingController(
+      text: preferences.routineConsiderations.join(', '),
+    );
+    var selectedHungriestMeal = preferences.hungriestMealTime;
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return StatefulBuilder(
+              builder: (context, setDialogState) {
+                return AlertDialog(
+                  title: Text(
+                    l10n.translate('diet_generation_preferences_title'),
+                  ),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.translate(
+                            'diet_generation_preferences_description',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: restrictionsController,
+                          decoration: InputDecoration(
+                            labelText: l10n.translate(
+                              'diet_generation_preferences_restrictions_label',
+                            ),
+                            hintText: l10n.translate(
+                              'diet_generation_preferences_restrictions_hint',
+                            ),
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: favoriteFoodsController,
+                          decoration: InputDecoration(
+                            labelText: l10n.translate(
+                              'diet_generation_preferences_favorite_foods_label',
+                            ),
+                            hintText: l10n.translate(
+                              'diet_generation_preferences_favorite_foods_hint',
+                            ),
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: avoidedFoodsController,
+                          decoration: InputDecoration(
+                            labelText: l10n.translate(
+                              'diet_generation_preferences_avoided_foods_label',
+                            ),
+                            hintText: l10n.translate(
+                              'diet_generation_preferences_avoided_foods_hint',
+                            ),
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedHungriestMeal,
+                          decoration: InputDecoration(
+                            labelText: l10n.translate(
+                              'diet_generation_preferences_hungriest_label',
+                            ),
+                          ),
+                          items: [
+                            DropdownMenuItem(
+                              value: 'breakfast',
+                              child: Text(l10n.translate('breakfast')),
+                            ),
+                            DropdownMenuItem(
+                              value: 'lunch',
+                              child: Text(l10n.translate('lunch')),
+                            ),
+                            DropdownMenuItem(
+                              value: 'dinner',
+                              child: Text(l10n.translate('dinner')),
+                            ),
+                            DropdownMenuItem(
+                              value: 'snack',
+                              child: Text(l10n.translate('snack')),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setDialogState(() {
+                              selectedHungriestMeal = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: routineController,
+                          decoration: InputDecoration(
+                            labelText: l10n.translate(
+                              'diet_generation_preferences_routine_label',
+                            ),
+                            hintText: l10n.translate(
+                              'diet_generation_preferences_routine_hint',
+                            ),
+                          ),
+                          maxLines: 3,
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: Text(l10n.translate('cancel')),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        dietProvider.updateDietGenerationPreferences(
+                          foodRestrictions: _splitPreferenceList(
+                            restrictionsController.text,
+                          ),
+                          favoriteFoods: _splitPreferenceList(
+                            favoriteFoodsController.text,
+                          ),
+                          avoidedFoods: _splitPreferenceList(
+                            avoidedFoodsController.text,
+                          ),
+                          routineConsiderations: _splitPreferenceList(
+                            routineController.text,
+                          ),
+                          hungriestMealTime: selectedHungriestMeal,
+                          reviewedRestrictions: true,
+                          reviewedFoodPreferences: true,
+                          reviewedRoutineNeeds: true,
+                          mergeRestrictions: false,
+                          mergeFoodPreferences: false,
+                          mergeRoutineConsiderations: false,
+                        );
+                        Navigator.pop(dialogContext, true);
+                      },
+                      child: Text(l10n.translate('continue')),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ) ??
+        false;
+
+    restrictionsController.dispose();
+    favoriteFoodsController.dispose();
+    avoidedFoodsController.dispose();
+    routineController.dispose();
+
+    return confirmed;
+  }
+
+  List<String> _splitPreferenceList(String rawValue) {
+    return rawValue
+        .split(RegExp(r'\s*(?:,|;|\n)\s*'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 
   // Show premium required dialog for daily diet

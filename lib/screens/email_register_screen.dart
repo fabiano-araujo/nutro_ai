@@ -108,8 +108,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
             ),
           );
 
-          // Voltar para a tela anterior (que deve atualizar automaticamente)
-          Navigator.of(context).pop();
+          Navigator.of(context).pop(true);
         }
       } else {
         // Tratar erro de registro

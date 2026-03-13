@@ -24,6 +24,14 @@ class AppAgentCommand {
   final String rawJson;
 
   static AppAgentCommand? tryParse(String responseContent) {
+    final batch = tryParseBatch(responseContent);
+    if (batch == null || batch.commands.isEmpty) {
+      return null;
+    }
+    return batch.commands.first;
+  }
+
+  static AppAgentCommandBatch? tryParseBatch(String responseContent) {
     final jsonString = _extractCommandJson(responseContent);
     if (jsonString == null) {
       return null;
@@ -36,21 +44,41 @@ class AppAgentCommand {
       }
 
       final root = Map<String, dynamic>.from(decoded);
+      final commands = <AppAgentCommand>[];
+
+      if (root['app_commands'] is List) {
+        for (final item in root['app_commands'] as List) {
+          if (item is! Map) {
+            continue;
+          }
+
+          final command = _buildCommandFromMap(
+            Map<String, dynamic>.from(item),
+            jsonEncode({'app_command': item}),
+          );
+          if (command != null) {
+            commands.add(command);
+          }
+        }
+      }
+
       final commandNode = root['app_command'] ?? root['appCommand'];
-      if (commandNode is! Map) {
+      if (commandNode is Map) {
+        final command = _buildCommandFromMap(
+          Map<String, dynamic>.from(commandNode),
+          jsonString,
+        );
+        if (command != null) {
+          commands.add(command);
+        }
+      }
+
+      if (commands.isEmpty) {
         return null;
       }
 
-      final commandMap = Map<String, dynamic>.from(commandNode);
-      final name = commandMap['name']?.toString().trim();
-      if (name == null || name.isEmpty) {
-        return null;
-      }
-
-      final args = commandMap['arguments'];
-      return AppAgentCommand(
-        name: name,
-        arguments: args is Map ? Map<String, dynamic>.from(args) : const {},
+      return AppAgentCommandBatch(
+        commands: commands,
         rawJson: jsonString,
       );
     } catch (_) {
@@ -61,7 +89,8 @@ class AppAgentCommand {
   static bool containsCommandCandidate(String responseContent) {
     final normalized = responseContent.toLowerCase();
     return normalized.contains('"app_command"') ||
-        normalized.contains('"appcommand"');
+        normalized.contains('"appcommand"') ||
+        normalized.contains('"app_commands"');
   }
 
   static String removeCommandJson(String responseContent) {
@@ -109,6 +138,7 @@ class AppAgentCommand {
         responseContent.replaceAll('```json', '').replaceAll('```', '').trim();
 
     final candidatePatterns = [
+      RegExp(r'\{\s*"app_commands"', dotAll: true),
       RegExp(r'\{\s*"app_command"', dotAll: true),
       RegExp(r'\{\s*"appCommand"', dotAll: true),
     ];
@@ -164,6 +194,33 @@ class AppAgentCommand {
 
     return null;
   }
+
+  static AppAgentCommand? _buildCommandFromMap(
+    Map<String, dynamic> commandMap,
+    String rawJson,
+  ) {
+    final name = commandMap['name']?.toString().trim();
+    if (name == null || name.isEmpty) {
+      return null;
+    }
+
+    final args = commandMap['arguments'];
+    return AppAgentCommand(
+      name: name,
+      arguments: args is Map ? Map<String, dynamic>.from(args) : const {},
+      rawJson: rawJson,
+    );
+  }
+}
+
+class AppAgentCommandBatch {
+  const AppAgentCommandBatch({
+    required this.commands,
+    required this.rawJson,
+  });
+
+  final List<AppAgentCommand> commands;
+  final String rawJson;
 }
 
 class AppAgentExecutionResult {
@@ -212,6 +269,10 @@ class AppAgentService {
   static const getGoalSetupStatus = 'get_goal_setup_status';
   static const updateGoalSetupProfile = 'update_goal_setup_profile';
   static const updateGoalSetupPreferences = 'update_goal_setup_preferences';
+  static const getDietGenerationPreferencesStatus =
+      'get_diet_generation_preferences_status';
+  static const updateDietGenerationPreferences =
+      'update_diet_generation_preferences';
   static const getMacroTargetsStatus = 'get_macro_targets_status';
   static const updateMacroTargetsPercentage = 'update_macro_targets_percentage';
   static const updateMacroTargetsGrams = 'update_macro_targets_grams';
@@ -239,6 +300,10 @@ class AppAgentService {
         return _updateGoalSetupProfile(command, context);
       case updateGoalSetupPreferences:
         return _updateGoalSetupPreferences(command, context);
+      case getDietGenerationPreferencesStatus:
+        return _getDietGenerationPreferencesStatus(command, context);
+      case updateDietGenerationPreferences:
+        return _updateDietGenerationPreferences(command, context);
       case getMacroTargetsStatus:
         return _getMacroTargetsStatus(command, context);
       case updateMacroTargetsPercentage:
@@ -262,6 +327,8 @@ class AppAgentService {
               getGoalSetupStatus,
               updateGoalSetupProfile,
               updateGoalSetupPreferences,
+              getDietGenerationPreferencesStatus,
+              updateDietGenerationPreferences,
               getMacroTargetsStatus,
               updateMacroTargetsPercentage,
               updateMacroTargetsGrams,
@@ -291,6 +358,10 @@ class AppAgentService {
         return l10n.translate('agent_loading_update_goal_profile');
       case updateGoalSetupPreferences:
         return l10n.translate('agent_loading_update_goal_preferences');
+      case getDietGenerationPreferencesStatus:
+        return l10n.translate('agent_loading_diet_preferences_status');
+      case updateDietGenerationPreferences:
+        return l10n.translate('agent_loading_update_diet_preferences');
       case getMacroTargetsStatus:
         return l10n.translate('agent_loading_macro_status');
       case updateMacroTargetsPercentage:
@@ -318,19 +389,24 @@ class AppAgentService {
 
   static String buildFollowUpPrompt({
     required String originalUserMessage,
-    required AppAgentExecutionResult executionResult,
+    required List<AppAgentExecutionResult> executionResults,
+    String conversationContext = '',
   }) {
-    final resultJson = jsonEncode(executionResult.toJson());
+    final resultJson =
+        jsonEncode(executionResults.map((result) => result.toJson()).toList());
 
     return '''
-[APP_COMMAND_RESULT_BEGIN]
+[APP_COMMAND_RESULTS_BEGIN]
 $resultJson
-[APP_COMMAND_RESULT_END]
+[APP_COMMAND_RESULTS_END]
+
+${conversationContext.trim().isEmpty ? '' : 'Contexto recente da conversa:\n$conversationContext\n'}
 
 Pedido original do usuário:
 $originalUserMessage
 
-Use o resultado do app acima para responder ao usuário em linguagem natural. Não revele nomes internos de comandos, não use JSON na resposta final e não peça os mesmos dados novamente se eles já vieram no resultado.
+Use os resultados do app acima para responder ao usuário em linguagem natural. Não revele nomes internos de comandos, não use JSON na resposta final e não peça os mesmos dados novamente se eles já vieram no resultado.
+Se o resultado indicar que ainda faltam preferências para gerar a dieta, faça exatamente uma pergunta curta sobre o próximo tópico que falta.
 Responda no mesmo idioma do pedido original do usuário.
 ''';
   }
@@ -514,6 +590,7 @@ Responda no mesmo idioma do pedido original do usuário.
         Provider.of<MealTypesProvider>(context, listen: false);
 
     await goalsProvider.ensureLoaded();
+    await dietProvider.ensureLoaded();
     await mealTypesProvider.ensureLoaded();
 
     if (!authService.isAuthenticated || authService.currentUser == null) {
@@ -557,6 +634,18 @@ Responda no mesmo idioma do pedido original do usuário.
       );
     }
 
+    if (!dietProvider.hasCompletedDietPersonalization) {
+      return AppAgentExecutionResult(
+        commandName: command.name,
+        success: false,
+        errorMessage: 'diet_generation_preferences_required',
+        payload: {
+          'reason': 'diet_generation_preferences_required',
+          ..._buildDietGenerationPreferencesPayload(dietProvider),
+        },
+      );
+    }
+
     final locale = Localizations.localeOf(context);
     final languageCode =
         '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
@@ -594,8 +683,25 @@ Responda no mesmo idioma do pedido original do usuário.
         'totalCarbs': _round1(plan.totalNutrition.carbs),
         'totalFat': _round1(plan.totalNutrition.fat),
         'mealCount': plan.meals.length,
+        'dietPersonalization': _buildDietGenerationPreferencesPayload(
+          dietProvider,
+        ),
         'meals': plan.meals.map(_serializePlannedMeal).toList(),
       },
+    );
+  }
+
+  static Future<AppAgentExecutionResult> _getDietGenerationPreferencesStatus(
+    AppAgentCommand command,
+    BuildContext context,
+  ) async {
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+    await dietProvider.ensureLoaded();
+
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: true,
+      payload: _buildDietGenerationPreferencesPayload(dietProvider),
     );
   }
 
@@ -751,6 +857,182 @@ Responda no mesmo idioma do pedido original do usuário.
       payload: {
         'updatedFields': updatedFields,
         ..._buildGoalSetupPayload(goalsProvider),
+      },
+    );
+  }
+
+  static Future<AppAgentExecutionResult> _updateDietGenerationPreferences(
+    AppAgentCommand command,
+    BuildContext context,
+  ) async {
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+    await dietProvider.ensureLoaded();
+    final args = command.arguments;
+
+    final hasRestrictionsKey = _hasAnyKey(args, const [
+      'foodRestrictions',
+      'restrictions',
+      'dietaryRestrictions',
+      'allergies',
+    ]);
+    final hasFavoriteFoodsKey = _hasAnyKey(args, const [
+      'favoriteFoods',
+      'preferredFoods',
+      'likedFoods',
+      'foodPreferences',
+    ]);
+    final hasAvoidedFoodsKey = _hasAnyKey(args, const [
+      'avoidedFoods',
+      'dislikedFoods',
+      'foodsToAvoid',
+    ]);
+    final hasRoutineKey = _hasAnyKey(args, const [
+      'routineConsiderations',
+      'routineNotes',
+      'specialConsiderations',
+      'dietNotes',
+      'appetiteTraits',
+      'appetiteNotes',
+      'lifestyleConsiderations',
+    ]);
+    final hasHungriestMealTimeKey = _hasAnyKey(args, const [
+      'hungriestMealTime',
+      'hungriestMeal',
+      'hungerWindow',
+    ]);
+    final mealsPerDay = _tryParseInt(args['mealsPerDay']);
+
+    final clearRestrictions = _tryParseBool(
+          args['clearRestrictions'] ?? args['noRestrictions'],
+        ) ??
+        false;
+    final clearFoodPreferences = _tryParseBool(
+          args['clearFoodPreferences'] ?? args['noFoodPreferences'],
+        ) ??
+        false;
+    final clearRoutineNeeds = _tryParseBool(
+          args['clearRoutineNeeds'] ?? args['noRoutineNeeds'],
+        ) ??
+        false;
+
+    final foodRestrictions = _extractStringList(_readFirstValue(args, const [
+      'foodRestrictions',
+      'restrictions',
+      'dietaryRestrictions',
+      'allergies',
+    ]));
+    final favoriteFoods = _extractStringList(_readFirstValue(args, const [
+      'favoriteFoods',
+      'preferredFoods',
+      'likedFoods',
+      'foodPreferences',
+    ]));
+    final avoidedFoods = _extractStringList(_readFirstValue(args, const [
+      'avoidedFoods',
+      'dislikedFoods',
+      'foodsToAvoid',
+    ]));
+    final routineConsiderations = _extractStringList(_readFirstValue(
+      args,
+      const [
+        'routineConsiderations',
+        'routineNotes',
+        'specialConsiderations',
+        'dietNotes',
+        'appetiteTraits',
+        'appetiteNotes',
+        'lifestyleConsiderations',
+      ],
+    ));
+    final hungriestMealTime = _normalizeMealWindow(_readFirstValue(args, const [
+      'hungriestMealTime',
+      'hungriestMeal',
+      'hungerWindow',
+    ]));
+
+    final updatedFields = <String>[];
+    if (hasRestrictionsKey || clearRestrictions) {
+      updatedFields.add('foodRestrictions');
+    }
+    if (hasFavoriteFoodsKey || clearFoodPreferences) {
+      updatedFields.add('favoriteFoods');
+    }
+    if (hasAvoidedFoodsKey || clearFoodPreferences) {
+      updatedFields.add('avoidedFoods');
+    }
+    if (hasRoutineKey || clearRoutineNeeds) {
+      updatedFields.add('routineConsiderations');
+    }
+    if (hasHungriestMealTimeKey) {
+      updatedFields.add('hungriestMealTime');
+    }
+    if (mealsPerDay != null) {
+      updatedFields.add('mealsPerDay');
+    }
+
+    if (updatedFields.isEmpty) {
+      return AppAgentExecutionResult(
+        commandName: command.name,
+        success: false,
+        errorMessage: 'missing_diet_preferences_arguments',
+        payload: {
+          'acceptedArguments': const [
+            'foodRestrictions',
+            'favoriteFoods',
+            'avoidedFoods',
+            'routineConsiderations',
+            'hungriestMealTime',
+            'mealsPerDay',
+          ],
+        },
+      );
+    }
+
+    dietProvider.updateDietGenerationPreferences(
+      mealsPerDay: mealsPerDay,
+      hungriestMealTime: hungriestMealTime,
+      foodRestrictions: hasRestrictionsKey || clearRestrictions
+          ? (clearRestrictions ? const [] : foodRestrictions)
+          : null,
+      favoriteFoods: hasFavoriteFoodsKey || clearFoodPreferences
+          ? (clearFoodPreferences ? const [] : favoriteFoods)
+          : null,
+      avoidedFoods: hasAvoidedFoodsKey || clearFoodPreferences
+          ? (clearFoodPreferences ? const [] : avoidedFoods)
+          : null,
+      routineConsiderations: hasRoutineKey || clearRoutineNeeds
+          ? (clearRoutineNeeds ? const [] : routineConsiderations)
+          : null,
+      reviewedRestrictions:
+          hasRestrictionsKey || clearRestrictions ? true : null,
+      reviewedFoodPreferences:
+          hasFavoriteFoodsKey || hasAvoidedFoodsKey || clearFoodPreferences
+              ? true
+              : null,
+      reviewedRoutineNeeds:
+          hasRoutineKey || hasHungriestMealTimeKey || clearRoutineNeeds
+              ? true
+              : null,
+      mergeRestrictions: !_isReplaceRequested(
+        args,
+        const ['replaceRestrictions', 'setRestrictions'],
+      ),
+      mergeFoodPreferences: !_isReplaceRequested(
+        args,
+        const ['replaceFoodPreferences', 'setFoodPreferences'],
+      ),
+      mergeRoutineConsiderations: !_isReplaceRequested(
+        args,
+        const ['replaceRoutineConsiderations', 'setRoutineConsiderations'],
+      ),
+    );
+
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: true,
+      payload: {
+        'updatedFields': updatedFields,
+        ..._buildDietGenerationPreferencesPayload(dietProvider),
       },
     );
   }
@@ -970,21 +1252,13 @@ Responda no mesmo idioma do pedido original do usuário.
   static Map<String, dynamic> _buildGoalSetupPayload(
     NutritionGoalsProvider goalsProvider,
   ) {
+    final missingFields = goalsProvider.missingSetupFields;
     return {
       'hasConfiguredGoals': goalsProvider.hasConfiguredGoals,
-      'configurationStatus': goalsProvider.hasConfiguredGoals
-          ? 'configured'
-          : 'needs_initial_setup',
-      'requiredFieldsForInitialSetup': goalsProvider.hasConfiguredGoals
-          ? const []
-          : const [
-              'age',
-              'height_cm',
-              'weight_kg',
-              'sex',
-              'activity_level',
-              'fitness_goal',
-            ],
+      'configurationStatus':
+          missingFields.isEmpty ? 'configured' : 'needs_initial_setup',
+      'requiredFieldsForInitialSetup': missingFields,
+      'setupCompletionStatus': goalsProvider.setupCompletionStatus,
       'sex': goalsProvider.sex,
       'age': goalsProvider.age,
       'weightKg': _round1(goalsProvider.weight),
@@ -999,6 +1273,31 @@ Responda no mesmo idioma do pedido original do usuário.
       'fatGoal': goalsProvider.fatGoal,
       'macroEditingAvailable': goalsProvider.hasConfiguredGoals,
       'macroTargets': goalsProvider.getMacroSnapshot(),
+    };
+  }
+
+  static Map<String, dynamic> _buildDietGenerationPreferencesPayload(
+    DietPlanProvider dietProvider,
+  ) {
+    final preferences = dietProvider.preferences;
+    final missingTopics = dietProvider.missingDietPersonalizationTopics;
+    return {
+      'isReadyForDietGeneration': missingTopics.isEmpty,
+      'dietPersonalizationStatus':
+          missingTopics.isEmpty ? 'ready_for_generation' : 'needs_more_context',
+      'missingTopics': missingTopics,
+      'reviewedTopics': {
+        'dietary_restrictions': preferences.hasReviewedRestrictions,
+        'food_preferences': preferences.hasReviewedFoodPreferences,
+        'routine_and_appetite': preferences.hasReviewedRoutineNeeds,
+      },
+      'mealsPerDay': preferences.mealsPerDay,
+      'hungriestMealTime': preferences.hungriestMealTime,
+      'foodRestrictions': preferences.foodRestrictions,
+      'favoriteFoods': preferences.favoriteFoods,
+      'avoidedFoods': preferences.avoidedFoods,
+      'routineConsiderations': preferences.routineConsiderations,
+      'nextSuggestedTopic': missingTopics.isEmpty ? null : missingTopics.first,
     };
   }
 
@@ -1235,6 +1534,75 @@ Responda no mesmo idioma do pedido original do usuário.
     }
   }
 
+  static bool _hasAnyKey(Map<String, dynamic> args, List<String> keys) {
+    for (final key in keys) {
+      if (args.containsKey(key)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static dynamic _readFirstValue(Map<String, dynamic> args, List<String> keys) {
+    for (final key in keys) {
+      if (args.containsKey(key)) {
+        return args[key];
+      }
+    }
+    return null;
+  }
+
+  static List<String> _extractStringList(dynamic value) {
+    if (value == null) {
+      return const [];
+    }
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty) {
+      return const [];
+    }
+
+    final separatorPattern = RegExp(r'\s*(?:,|;|\n)\s*');
+    final parts = normalized.split(separatorPattern);
+    return parts.where((item) => item.trim().isNotEmpty).toList();
+  }
+
+  static String? _normalizeMealWindow(dynamic value) {
+    final normalized = value?.toString().trim().toLowerCase();
+    switch (normalized) {
+      case 'breakfast':
+      case 'cafe da manha':
+      case 'café da manhã':
+      case 'morning':
+      case 'manhã':
+      case 'manha':
+        return 'breakfast';
+      case 'lunch':
+      case 'almoco':
+      case 'almoço':
+      case 'midday':
+        return 'lunch';
+      case 'dinner':
+      case 'jantar':
+      case 'night':
+      case 'noite':
+        return 'dinner';
+      case 'snack':
+      case 'lanche':
+      case 'afternoon':
+      case 'tarde':
+        return 'snack';
+      default:
+        return null;
+    }
+  }
+
   static int? _tryParseInt(dynamic value) {
     if (value == null) {
       return null;
@@ -1243,6 +1611,44 @@ Responda no mesmo idioma do pedido original do usuário.
       return value;
     }
     return int.tryParse(value.toString().trim());
+  }
+
+  static bool? _tryParseBool(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is bool) {
+      return value;
+    }
+
+    switch (value.toString().trim().toLowerCase()) {
+      case 'true':
+      case '1':
+      case 'yes':
+      case 'sim':
+        return true;
+      case 'false':
+      case '0':
+      case 'no':
+      case 'nao':
+      case 'não':
+        return false;
+      default:
+        return null;
+    }
+  }
+
+  static bool _isReplaceRequested(
+    Map<String, dynamic> args,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final parsed = _tryParseBool(args[key]);
+      if (parsed == true) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static double? _tryParseDouble(dynamic value) {

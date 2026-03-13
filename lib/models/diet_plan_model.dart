@@ -492,6 +492,11 @@ class DietPreferences {
   final String hungriestMealTime; // breakfast, lunch, dinner, snack
   final List<String> foodRestrictions;
   final List<String> favoriteFoods;
+  final List<String> avoidedFoods;
+  final List<String> routineConsiderations;
+  final bool hasReviewedRestrictions;
+  final bool hasReviewedFoodPreferences;
+  final bool hasReviewedRoutineNeeds;
   final DietMode dietMode; // daily ou weekly
 
   DietPreferences({
@@ -499,21 +504,45 @@ class DietPreferences {
     this.hungriestMealTime = 'lunch',
     this.foodRestrictions = const [],
     this.favoriteFoods = const [],
+    this.avoidedFoods = const [],
+    this.routineConsiderations = const [],
+    this.hasReviewedRestrictions = false,
+    this.hasReviewedFoodPreferences = false,
+    this.hasReviewedRoutineNeeds = false,
     this.dietMode = DietMode.weekly, // Padrão: dieta semanal única
   });
 
   factory DietPreferences.fromJson(Map<String, dynamic> json) {
+    final restrictions = (json['foodRestrictions'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final favorites = (json['favoriteFoods'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final avoided = (json['avoidedFoods'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final routine = (json['routineConsiderations'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
     return DietPreferences(
       mealsPerDay: json['mealsPerDay'] ?? 3,
       hungriestMealTime: json['hungriestMealTime'] ?? 'lunch',
-      foodRestrictions: (json['foodRestrictions'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      favoriteFoods: (json['favoriteFoods'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
+      foodRestrictions: restrictions,
+      favoriteFoods: favorites,
+      avoidedFoods: avoided,
+      routineConsiderations: routine,
+      hasReviewedRestrictions:
+          json['hasReviewedRestrictions'] ?? restrictions.isNotEmpty,
+      hasReviewedFoodPreferences: json['hasReviewedFoodPreferences'] ??
+          (favorites.isNotEmpty || avoided.isNotEmpty),
+      hasReviewedRoutineNeeds:
+          json['hasReviewedRoutineNeeds'] ?? routine.isNotEmpty,
       dietMode: DietMode.values.firstWhere(
         (e) => e.name == json['dietMode'],
         orElse: () => DietMode.weekly,
@@ -527,6 +556,11 @@ class DietPreferences {
       'hungriestMealTime': hungriestMealTime,
       'foodRestrictions': foodRestrictions,
       'favoriteFoods': favoriteFoods,
+      'avoidedFoods': avoidedFoods,
+      'routineConsiderations': routineConsiderations,
+      'hasReviewedRestrictions': hasReviewedRestrictions,
+      'hasReviewedFoodPreferences': hasReviewedFoodPreferences,
+      'hasReviewedRoutineNeeds': hasReviewedRoutineNeeds,
       'dietMode': dietMode.name,
     };
   }
@@ -536,6 +570,11 @@ class DietPreferences {
     String? hungriestMealTime,
     List<String>? foodRestrictions,
     List<String>? favoriteFoods,
+    List<String>? avoidedFoods,
+    List<String>? routineConsiderations,
+    bool? hasReviewedRestrictions,
+    bool? hasReviewedFoodPreferences,
+    bool? hasReviewedRoutineNeeds,
     DietMode? dietMode,
   }) {
     return DietPreferences(
@@ -543,6 +582,15 @@ class DietPreferences {
       hungriestMealTime: hungriestMealTime ?? this.hungriestMealTime,
       foodRestrictions: foodRestrictions ?? this.foodRestrictions,
       favoriteFoods: favoriteFoods ?? this.favoriteFoods,
+      avoidedFoods: avoidedFoods ?? this.avoidedFoods,
+      routineConsiderations:
+          routineConsiderations ?? this.routineConsiderations,
+      hasReviewedRestrictions:
+          hasReviewedRestrictions ?? this.hasReviewedRestrictions,
+      hasReviewedFoodPreferences:
+          hasReviewedFoodPreferences ?? this.hasReviewedFoodPreferences,
+      hasReviewedRoutineNeeds:
+          hasReviewedRoutineNeeds ?? this.hasReviewedRoutineNeeds,
       dietMode: dietMode ?? this.dietMode,
     );
   }

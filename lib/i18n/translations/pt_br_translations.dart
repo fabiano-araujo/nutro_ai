@@ -187,6 +187,10 @@ final Map<String, String> ptBRTranslations = {
   'agent_loading_update_goal_profile': 'Salvando seus dados de perfil...',
   'agent_loading_update_goal_preferences':
       'Salvando suas preferências nutricionais...',
+  'agent_loading_diet_preferences_status':
+      'Verificando preferências importantes para montar sua dieta...',
+  'agent_loading_update_diet_preferences':
+      'Salvando suas preferências para a dieta...',
   'agent_loading_macro_status':
       'Buscando sua configuração atual de macronutrientes...',
   'agent_loading_update_macros_percentage':
@@ -207,6 +211,27 @@ final Map<String, String> ptBRTranslations = {
       'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faca uma pergunta por vez e comece pela idade, altura, peso e genero.',
   'chat_macro_edit_chat_prompt':
       'Quero ajustar meus macronutrientes por aqui. Veja meus macros atuais e me conduza pelo melhor formato entre porcentagem, g/kg ou gramas.',
+  'diet_generation_preferences_title': 'Antes de montar sua dieta',
+  'diet_generation_preferences_description':
+      'Me conte as particularidades que devo considerar para escolher melhor os alimentos. Se algum campo nao se aplicar, deixe em branco e eu vou entender como nenhum.',
+  'diet_generation_preferences_restrictions_label':
+      'Restricoes ou alergias alimentares',
+  'diet_generation_preferences_restrictions_hint':
+      'Ex.: lactose, gluten, vegetariano',
+  'diet_generation_preferences_favorite_foods_label':
+      'Alimentos que voce gosta de incluir',
+  'diet_generation_preferences_favorite_foods_hint':
+      'Ex.: frango, iogurte, tapioca, arroz e feijao',
+  'diet_generation_preferences_avoided_foods_label':
+      'Alimentos que prefere evitar',
+  'diet_generation_preferences_avoided_foods_hint':
+      'Ex.: peixe, brocolis, cafe',
+  'diet_generation_preferences_hungriest_label':
+      'Em qual refeicao voce costuma ter mais fome?',
+  'diet_generation_preferences_routine_label':
+      'Particularidades de apetite e rotina',
+  'diet_generation_preferences_routine_hint':
+      'Ex.: muito sono de manha, pouca fome cedo, muita fome a noite, dificuldade em comer ou ganhar peso',
   'error_occurred': 'Ocorreu um erro',
   'try_again': 'Tentar novamente',
   'no_results': 'Nenhum resultado encontrado',

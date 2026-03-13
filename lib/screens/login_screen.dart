@@ -65,6 +65,21 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  void _closeAfterSuccessfulLogin() {
+    if (_didAutoCloseAfterLogin) {
+      return;
+    }
+
+    _didAutoCloseAfterLogin = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).maybePop(true);
+    });
+  }
+
   Future<void> _handleGoogleLogin() async {
     setState(() {
       _isLoading = true;
@@ -77,12 +92,13 @@ class _LoginScreenState extends State<LoginScreen>
       final success = await authService.signInWithGoogle();
 
       if (success && mounted) {
-        // Não fechamos a tela - o Builder no IndexedStack vai detectar
-        // a mudança no authService e mostrar automaticamente o ProfileScreen
         setState(() {
-          // Forçar reconstrução da tela para refletir o novo estado
           _isLoading = false;
         });
+
+        if (widget.popOnSuccess) {
+          _closeAfterSuccessfulLogin();
+        }
       } else if (!success && mounted) {
         // Usar a mensagem de erro do serviço, se disponível
         final errorMsg = authService.errorMessage ??
@@ -133,13 +149,7 @@ class _LoginScreenState extends State<LoginScreen>
     if (widget.popOnSuccess &&
         authService.isAuthenticated &&
         !_didAutoCloseAfterLogin) {
-      _didAutoCloseAfterLogin = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        Navigator.of(context).maybePop();
-      });
+      _closeAfterSuccessfulLogin();
     }
 
     // Usar a mesma cor de fundo do AI Tutor Screen
@@ -410,13 +420,22 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               const SizedBox(height: 20),
                               ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.of(context).push(
+                                onPressed: () async {
+                                  final loginSucceeded =
+                                      await Navigator.of(context).push<bool>(
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           const EmailLoginScreen(),
                                     ),
                                   );
+
+                                  if (!mounted || loginSucceeded != true) {
+                                    return;
+                                  }
+
+                                  if (widget.popOnSuccess) {
+                                    _closeAfterSuccessfulLogin();
+                                  }
                                 },
                                 icon: const Icon(Icons.email_outlined),
                                 label: Text(context.tr

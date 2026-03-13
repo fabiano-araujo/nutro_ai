@@ -183,6 +183,9 @@ final Map<String, String> enUSTranslations = {
   'agent_loading_update_goal_profile': 'Saving your profile details...',
   'agent_loading_update_goal_preferences':
       'Saving your nutrition preferences...',
+  'agent_loading_diet_preferences_status':
+      'Checking the key preferences for your diet generation...',
+  'agent_loading_update_diet_preferences': 'Saving your diet preferences...',
   'agent_loading_macro_status': 'Checking your current macronutrient setup...',
   'agent_loading_update_macros_percentage':
       'Updating your macros by percentage...',
@@ -200,6 +203,26 @@ final Map<String, String> enUSTranslations = {
       'I want to set up my nutrition goals through chat. Use the app commands when needed, ask one question at a time, and start with my age, height, weight, and gender.',
   'chat_macro_edit_chat_prompt':
       'I want to adjust my macronutrients here. Check my current macros and guide me through the best format between percentage, g/kg, or grams.',
+  'diet_generation_preferences_title': 'Before generating your diet',
+  'diet_generation_preferences_description':
+      'Tell me the details that should influence your food choices. If a field does not apply, leave it blank and it will be treated as none.',
+  'diet_generation_preferences_restrictions_label':
+      'Food restrictions or allergies',
+  'diet_generation_preferences_restrictions_hint':
+      'Example: lactose, gluten, vegetarian',
+  'diet_generation_preferences_favorite_foods_label':
+      'Foods you like to include',
+  'diet_generation_preferences_favorite_foods_hint':
+      'Example: chicken, yogurt, oats, rice and beans',
+  'diet_generation_preferences_avoided_foods_label':
+      'Foods you prefer to avoid',
+  'diet_generation_preferences_avoided_foods_hint':
+      'Example: fish, broccoli, coffee',
+  'diet_generation_preferences_hungriest_label':
+      'Which meal is usually your hungriest one?',
+  'diet_generation_preferences_routine_label': 'Appetite and routine notes',
+  'diet_generation_preferences_routine_hint':
+      'Example: sleepy in the morning, low morning appetite, very hungry at night, difficulty eating enough, difficulty gaining weight',
   'error_occurred': 'An error occurred',
   'try_again': 'Try again',
   'no_results': 'No results found',

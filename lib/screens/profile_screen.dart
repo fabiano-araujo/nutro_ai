@@ -33,7 +33,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   void _navigateToLogin() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      MaterialPageRoute(
+        builder: (context) => const LoginScreen(popOnSuccess: true),
+      ),
     );
   }
 

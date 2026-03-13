@@ -212,8 +212,7 @@ class NutroChatController with ChangeNotifier {
     } else if (showWelcomeMessage) {
       // Nenhuma mensagem inicial e nenhum ID de conversa, e showWelcomeMessage é true.
       // Esta é a única condição em que a mensagem de boas-vindas deve ser adicionada.
-      print(
-          '👋 NutroChatController: Adicionando mensagem de boas-vindas.');
+      print('👋 NutroChatController: Adicionando mensagem de boas-vindas.');
       _addWelcomeMessage(); // _addWelcomeMessage já chama notifyListeners
     } else {
       print(
@@ -304,8 +303,7 @@ class NutroChatController with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print(
-          '❌ NutroChatController - Erro inesperado ao carregar conversa: $e');
+      print('❌ NutroChatController - Erro inesperado ao carregar conversa: $e');
       _addWelcomeMessage();
       _isLoading = false;
       notifyListeners();
@@ -643,8 +641,7 @@ class NutroChatController with ChangeNotifier {
         mealTypesForAI = mealTypesProvider.mealTypes
             .map((mt) => {'id': mt.id, 'name': mt.name})
             .toList();
-        print(
-            '🍽️ NutroChatController - Tipos de refeição: $mealTypesForAI');
+        print('🍽️ NutroChatController - Tipos de refeição: $mealTypesForAI');
       } catch (e) {
         print(
             '⚠️ NutroChatController - Não foi possível obter tipos de refeição: $e');
@@ -709,11 +706,13 @@ class NutroChatController with ChangeNotifier {
           responseContent: responseContent,
           notifier: notifier,
           originalUserMessage: message,
+          conversationContext: contextPrompt,
           context: context,
           languageCode: languageCode,
           quality: quality,
           provider: provider,
           agentType: agentType,
+          userId: userId,
           mealTypesForAI: mealTypesForAI,
           toolDataForHistory: toolDataForHistory,
         ),
@@ -756,39 +755,56 @@ class NutroChatController with ChangeNotifier {
     required String responseContent,
     required MessageNotifier notifier,
     required String originalUserMessage,
+    required String conversationContext,
     required BuildContext context,
     required String languageCode,
     required String quality,
     required String provider,
     required String agentType,
+    required String userId,
     required List<Map<String, String>>? mealTypesForAI,
     required String? toolDataForHistory,
   }) async {
-    final command = AppAgentCommand.tryParse(responseContent);
-    if (command == null) {
+    final commandBatch = AppAgentCommand.tryParseBatch(responseContent);
+    if (commandBatch == null || commandBatch.commands.isEmpty) {
       return false;
     }
 
     if (_agenticCommandExecutions >= _maxAgenticCommandExecutions) {
-      final fallbackMessage = AppLocalizations.of(context)
-          .translate('agent_command_limit_reached');
+      final fallbackMessage =
+          AppLocalizations.of(context).translate('agent_command_limit_reached');
       _finalizeInterceptedMessage(notifier, fallbackMessage);
       return true;
     }
 
     _agenticCommandExecutions++;
 
-    final loadingMessage =
-        AppAgentService.buildLoadingMessage(context, command.name);
-    notifier.updateMessage(command.rawJson, displayContent: loadingMessage);
+    final loadingMessage = commandBatch.commands.length == 1
+        ? AppAgentService.buildLoadingMessage(
+            context,
+            commandBatch.commands.first.name,
+          )
+        : AppLocalizations.of(context).translate('agent_loading_generic');
+    notifier.updateMessage(commandBatch.rawJson,
+        displayContent: loadingMessage);
     notifyListeners();
 
     try {
-      final executionResult =
-          await AppAgentService.executeCommand(command, context);
+      final executionResults = <AppAgentExecutionResult>[];
+      for (final command in commandBatch.commands) {
+        final executionResult =
+            await AppAgentService.executeCommand(command, context);
+        executionResults.add(executionResult);
+
+        if (!executionResult.success) {
+          break;
+        }
+      }
+
       final followUpPrompt = AppAgentService.buildFollowUpPrompt(
         originalUserMessage: originalUserMessage,
-        executionResult: executionResult,
+        executionResults: executionResults,
+        conversationContext: conversationContext,
       );
 
       final followUpStream = _aiService.getAnswerStream(
@@ -796,7 +812,7 @@ class NutroChatController with ChangeNotifier {
         subject: 'education',
         languageCode: languageCode,
         quality: quality,
-        userId: '',
+        userId: userId,
         agentType: agentType,
         provider: provider,
         mealTypes: mealTypesForAI,
@@ -840,8 +856,7 @@ class NutroChatController with ChangeNotifier {
         },
       );
     } catch (e) {
-      print(
-          '❌ NutroChatController - Erro ao executar comando agêntico: $e');
+      print('❌ NutroChatController - Erro ao executar comando agêntico: $e');
       _finalizeInterceptedMessage(
         notifier,
         'Desculpe, ocorreu um erro ao acessar seus dados no app. Tente novamente.',
@@ -913,7 +928,8 @@ class NutroChatController with ChangeNotifier {
           'google/gemini-2.5-flash-lite-preview-09-2025'; // Modelo específico para análise de imagem e quantidade dos alimentos
       String agentType =
           'free-image'; // Agent especializado em análise de imagem
-      String provider = ''; // Deixar o OpenRouter escolher o provider compatível
+      String provider =
+          ''; // Deixar o OpenRouter escolher o provider compatível
 
       print(
           '📸 Usando modelo $quality com agent $agentType via provider $provider para análise de imagem');
@@ -1970,6 +1986,3 @@ abstract class TextToSpeechMixinRef {
   Future<void> speak(String text);
   void stopSpeech();
 }
-
-
-

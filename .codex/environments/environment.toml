@@ -6,6 +6,31 @@ name = "nutro_ia"
 script = ""
 
 [[actions]]
-name = "Executar"
+name = "Flutter: Android"
 icon = "run"
 command = "flutter run"
+
+[[actions]]
+name = "Flutter: Chrome"
+icon = "run"
+command = "flutter run -d chrome"
+
+[[actions]]
+name = "Flutter: Windows"
+icon = "run"
+command = "flutter run -d windows"
+
+[[actions]]
+name = "Flutter: Debug (Auto)"
+icon = "run"
+command = "flutter run"
+
+[[actions]]
+name = "Flutter: Profile"
+icon = "run"
+command = "flutter run --profile"
+
+[[actions]]
+name = "Flutter: Attach"
+icon = "run"
+command = "flutter attach"

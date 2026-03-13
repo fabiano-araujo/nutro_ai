@@ -76,6 +76,12 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   // Track if user has configured goals
   bool _hasConfiguredGoals = false;
+  bool _hasExplicitSex = false;
+  bool _hasExplicitAge = false;
+  bool _hasExplicitWeight = false;
+  bool _hasExplicitHeight = false;
+  bool _hasExplicitActivityLevel = false;
+  bool _hasExplicitFitnessGoal = false;
   late final Future<void> _loadFuture;
 
   // Getters
@@ -95,6 +101,25 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int get fatPercentage => _fatPercentage;
   bool get useCalculatedGoals => _useCalculatedGoals;
   bool get hasConfiguredGoals => _hasConfiguredGoals;
+  List<String> get missingSetupFields {
+    final missing = <String>[];
+    if (!_hasExplicitSex) missing.add('sex');
+    if (!_hasExplicitAge) missing.add('age');
+    if (!_hasExplicitWeight) missing.add('weight_kg');
+    if (!_hasExplicitHeight) missing.add('height_cm');
+    if (!_hasExplicitActivityLevel) missing.add('activity_level');
+    if (!_hasExplicitFitnessGoal) missing.add('fitness_goal');
+    return missing;
+  }
+
+  Map<String, bool> get setupCompletionStatus => {
+        'sex': _hasExplicitSex,
+        'age': _hasExplicitAge,
+        'weight_kg': _hasExplicitWeight,
+        'height_cm': _hasExplicitHeight,
+        'activity_level': _hasExplicitActivityLevel,
+        'fitness_goal': _hasExplicitFitnessGoal,
+      };
   Map<String, int> get macroPercentages => {
         'carbs': _carbsPercentage,
         'protein': _proteinPercentage,
@@ -133,11 +158,22 @@ class NutritionGoalsProvider extends ChangeNotifier {
   Future<void> _loadFromPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // Prefer an explicit completion flag. Fall back to the old heuristic for
-      // users who still only have legacy saved data.
-      _hasConfiguredGoals = prefs.getBool('nutrition_hasConfiguredGoals') ??
+      final legacyConfigured = prefs.getBool('nutrition_hasConfiguredGoals') ??
           prefs.containsKey('nutrition_fitnessGoal');
+
+      _hasExplicitSex =
+          prefs.getBool('nutrition_hasExplicitSex') ?? legacyConfigured;
+      _hasExplicitAge =
+          prefs.getBool('nutrition_hasExplicitAge') ?? legacyConfigured;
+      _hasExplicitWeight =
+          prefs.getBool('nutrition_hasExplicitWeight') ?? legacyConfigured;
+      _hasExplicitHeight =
+          prefs.getBool('nutrition_hasExplicitHeight') ?? legacyConfigured;
+      _hasExplicitActivityLevel =
+          prefs.getBool('nutrition_hasExplicitActivityLevel') ??
+              legacyConfigured;
+      _hasExplicitFitnessGoal =
+          prefs.getBool('nutrition_hasExplicitFitnessGoal') ?? legacyConfigured;
 
       _sex = prefs.getString('nutrition_sex') ?? 'male';
       _age = prefs.getInt('nutrition_age') ?? 30;
@@ -173,6 +209,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
       final weightUnitIndex = prefs.getInt('nutrition_weightUnit') ?? 0;
       _weightUnit = WeightUnit.values[weightUnitIndex];
+      _hasConfiguredGoals = _computeHasConfiguredGoals();
     } catch (e) {
       print('Error loading nutrition goals: $e');
     } finally {
@@ -188,6 +225,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
       if (markConfigured != null) {
         _hasConfiguredGoals = markConfigured;
       }
+
+      _hasConfiguredGoals = _computeHasConfiguredGoals();
 
       await prefs.setString('nutrition_sex', _sex);
       await prefs.setInt('nutrition_age', _age);
@@ -217,6 +256,18 @@ class NutritionGoalsProvider extends ChangeNotifier {
       // Save measurement units
       await prefs.setInt('nutrition_heightUnit', _heightUnit.index);
       await prefs.setInt('nutrition_weightUnit', _weightUnit.index);
+      await prefs.setBool('nutrition_hasExplicitSex', _hasExplicitSex);
+      await prefs.setBool('nutrition_hasExplicitAge', _hasExplicitAge);
+      await prefs.setBool('nutrition_hasExplicitWeight', _hasExplicitWeight);
+      await prefs.setBool('nutrition_hasExplicitHeight', _hasExplicitHeight);
+      await prefs.setBool(
+        'nutrition_hasExplicitActivityLevel',
+        _hasExplicitActivityLevel,
+      );
+      await prefs.setBool(
+        'nutrition_hasExplicitFitnessGoal',
+        _hasExplicitFitnessGoal,
+      );
       await prefs.setBool('nutrition_hasConfiguredGoals', _hasConfiguredGoals);
     } catch (e) {
       print('Error saving nutrition goals: $e');
@@ -231,10 +282,22 @@ class NutritionGoalsProvider extends ChangeNotifier {
     double? height,
     double? bodyFat,
   }) {
-    if (sex != null) _sex = sex;
-    if (age != null) _age = age;
-    if (weight != null) _weight = weight;
-    if (height != null) _height = height;
+    if (sex != null) {
+      _sex = sex;
+      _hasExplicitSex = true;
+    }
+    if (age != null) {
+      _age = age;
+      _hasExplicitAge = true;
+    }
+    if (weight != null) {
+      _weight = weight;
+      _hasExplicitWeight = true;
+    }
+    if (height != null) {
+      _height = height;
+      _hasExplicitHeight = true;
+    }
     if (bodyFat != null) _bodyFat = bodyFat;
 
     _saveToPreferences();
@@ -247,11 +310,17 @@ class NutritionGoalsProvider extends ChangeNotifier {
     FitnessGoal? fitnessGoal,
     CalculationFormula? formula,
   }) {
-    if (activityLevel != null) _activityLevel = activityLevel;
-    if (fitnessGoal != null) _fitnessGoal = fitnessGoal;
+    if (activityLevel != null) {
+      _activityLevel = activityLevel;
+      _hasExplicitActivityLevel = true;
+    }
+    if (fitnessGoal != null) {
+      _fitnessGoal = fitnessGoal;
+      _hasExplicitFitnessGoal = true;
+    }
     if (formula != null) _formula = formula;
 
-    _saveToPreferences(markConfigured: fitnessGoal != null ? true : null);
+    _saveToPreferences();
     notifyListeners();
   }
 
@@ -816,6 +885,12 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _manualCarbsGoal = 250;
     _manualFatGoal = 67;
     _hasConfiguredGoals = false;
+    _hasExplicitSex = false;
+    _hasExplicitAge = false;
+    _hasExplicitWeight = false;
+    _hasExplicitHeight = false;
+    _hasExplicitActivityLevel = false;
+    _hasExplicitFitnessGoal = false;
 
     // Limpar do SharedPreferences
     try {
@@ -839,6 +914,15 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   double _round1(double value) {
     return (value * 10).roundToDouble() / 10;
+  }
+
+  bool _computeHasConfiguredGoals() {
+    return _hasExplicitSex &&
+        _hasExplicitAge &&
+        _hasExplicitWeight &&
+        _hasExplicitHeight &&
+        _hasExplicitActivityLevel &&
+        _hasExplicitFitnessGoal;
   }
 
   Map<String, int> _normalizePercentagesToHundred({

@@ -27,11 +27,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     super.didChangeDependencies();
 
     _commonBenefits = [
-      context.tr.translate('no_ads'),
-      context.tr.translate('all_premium_features'),
-      context.tr.translate('advanced_content_generation'),
-      context.tr.translate('multiple_languages'),
-      context.tr.translate('export_formats'),
+      'Dieta personalizada com IA',
+      'Cardapio diario ajustado ao seu objetivo',
+      'Registro de refeicoes, calorias e macros',
+      'Resumo nutricional com progresso semanal',
+      'Acompanhamento de metas e evolucao de peso',
     ];
 
     if (_plans.isEmpty && !_hasError) {
@@ -56,20 +56,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       );
     }
 
-    if (purchaseService.isLoading && purchaseService.products.isEmpty) {
-      return _buildLoadingScreen(context, isDarkMode);
-    }
-
-    if (!purchaseService.isLoading && purchaseService.products.isEmpty) {
-      return _buildErrorScreen(
-        context,
-        isDarkMode,
-        purchaseService.errorMessage ??
-            context.tr.translate('error_loading_plans'),
-      );
-    }
-
-    final selectedPlan = _plans[_selectedPlanIndex];
+    final hasRealProducts = purchaseService.products.isNotEmpty;
+    final selectedPlanIndex =
+        _selectedPlanIndex >= _plans.length ? 0 : _selectedPlanIndex;
+    final selectedPlan = _plans[selectedPlanIndex];
     final selectedProduct = _findProduct(
       purchaseService.products,
       selectedPlan.id,
@@ -119,9 +109,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 padding: const EdgeInsets.only(bottom: 14),
                                 child: _PlanOptionCard(
                                   plan: plan,
-                                  actualPrice: product?.price ?? plan.price,
+                                  productDetails: product,
                                   isDarkMode: isDarkMode,
-                                  isSelected: index == _selectedPlanIndex,
+                                  isSelected: index == selectedPlanIndex,
                                   onTap: () {
                                     setState(() {
                                       _selectedPlanIndex = index;
@@ -160,6 +150,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     isDarkMode,
                     selectedPlan,
                     selectedProduct,
+                    hasRealProducts,
                   ),
                 ),
               ),
@@ -216,7 +207,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     SubscriptionPlan selectedPlan,
     ProductDetails? selectedProduct,
   ) {
-    final price = selectedProduct?.price ?? selectedPlan.price;
+    final title = _productTitle(selectedProduct, selectedPlan);
+    final description = _productDescription(selectedProduct, selectedPlan);
+    final price = _productPrice(selectedProduct, selectedPlan);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -321,13 +314,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        selectedPlan.title,
+                        title,
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
                                 ),
                       ),
+                      if (description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.72),
+                                  ),
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       Text(
                         price,
@@ -445,6 +448,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     bool isDarkMode,
     SubscriptionPlan selectedPlan,
     ProductDetails? selectedProduct,
+    bool hasRealProducts,
   ) {
     final buttonEnabled =
         !_isLoading && !purchaseService.isLoading && selectedProduct != null;
@@ -484,7 +488,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          selectedPlan.title,
+                          _productTitle(selectedProduct, selectedPlan),
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     color: isDarkMode
@@ -495,7 +499,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          selectedProduct?.price ?? selectedPlan.price,
+                          _productPrice(selectedProduct, selectedPlan),
                           style:
                               Theme.of(context).textTheme.bodyLarge?.copyWith(
                                     color: isDarkMode
@@ -544,10 +548,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 ),
                       ),
               ),
-              if (selectedProduct == null) ...[
+              if (!hasRealProducts) ...[
                 const SizedBox(height: 10),
                 Text(
-                  context.tr.translate('subscription_error'),
+                  purchaseService.errorMessage ??
+                      context.tr.translate('error_loading_plans'),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: isDarkMode
@@ -570,45 +575,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingScreen(BuildContext context, bool isDarkMode) {
-    return _buildStateScaffold(
-      context: context,
-      isDarkMode: isDarkMode,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 54,
-            height: 54,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF8A65)),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            context.tr.translate('premium_plans'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: isDarkMode ? Colors.white : const Color(0xFF2F2117),
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            context.tr.translate('unlock_potential'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isDarkMode
-                      ? Colors.white.withValues(alpha: 0.72)
-                      : const Color(0xFF6E5A4D),
-                ),
-          ),
-        ],
       ),
     );
   }
@@ -777,7 +743,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     BuildContext context,
     PurchaseService purchaseService,
   ) async {
-    final selectedPlan = _plans[_selectedPlanIndex];
+    final availablePlans = _plans
+        .where(
+            (plan) => _findProduct(purchaseService.products, plan.id) != null)
+        .toList();
+
+    if (availablePlans.isEmpty) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = context.tr.translate('error_loading_plans');
+      });
+      return;
+    }
+
+    final selectedPlan = availablePlans[
+        _selectedPlanIndex >= availablePlans.length ? 0 : _selectedPlanIndex];
     final selectedProduct = _findProduct(
       purchaseService.products,
       selectedPlan.id,
@@ -814,17 +794,48 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 }
 
+String _productTitle(ProductDetails? productDetails, SubscriptionPlan plan) {
+  if (productDetails == null) {
+    return plan.title;
+  }
+
+  final rawTitle = productDetails.title.trim();
+  final suffixStart = rawTitle.indexOf('(');
+
+  if (suffixStart > 0 && rawTitle.endsWith(')')) {
+    return rawTitle.substring(0, suffixStart).trim();
+  }
+
+  return rawTitle;
+}
+
+String _productDescription(
+  ProductDetails? productDetails,
+  SubscriptionPlan plan,
+) {
+  if (productDetails == null) {
+    return plan.description;
+  }
+
+  final description = productDetails.description.trim();
+  return description.isEmpty ? plan.description : description;
+}
+
+String _productPrice(ProductDetails? productDetails, SubscriptionPlan plan) {
+  return productDetails?.price ?? plan.price;
+}
+
 class _PlanOptionCard extends StatelessWidget {
   const _PlanOptionCard({
     required this.plan,
-    required this.actualPrice,
+    required this.productDetails,
     required this.isDarkMode,
     required this.isSelected,
     required this.onTap,
   });
 
   final SubscriptionPlan plan;
-  final String actualPrice;
+  final ProductDetails? productDetails;
   final bool isDarkMode;
   final bool isSelected;
   final VoidCallback onTap;
@@ -833,6 +844,9 @@ class _PlanOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final features =
         isSelected ? plan.features : plan.features.take(2).toList();
+    final title = _productTitle(productDetails, plan);
+    final description = _productDescription(productDetails, plan);
+    final price = _productPrice(productDetails, plan);
 
     return Material(
       color: Colors.transparent,
@@ -889,7 +903,7 @@ class _PlanOptionCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                plan.title,
+                                title,
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleMedium
@@ -911,42 +925,44 @@ class _PlanOptionCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          plan.description,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: isDarkMode
-                                        ? Colors.white.withValues(alpha: 0.68)
-                                        : const Color(0xFF776153),
-                                  ),
-                        ),
+                        if (description.isNotEmpty)
+                          Text(
+                            description,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: isDarkMode
+                                      ? Colors.white.withValues(alpha: 0.68)
+                                      : const Color(0xFF776153),
+                                ),
+                          ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 12),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
+                  SizedBox(
                     width: 28,
                     height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSelected ? plan.color : Colors.transparent,
-                      border: Border.all(
-                        color: isSelected
-                            ? plan.color
-                            : (isDarkMode
-                                ? Colors.white.withValues(alpha: 0.18)
-                                : const Color(0xFFD8B89C)),
-                        width: 2,
-                      ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: isSelected
+                          ? Container(
+                              key: const ValueKey('selected-badge'),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: plan.color,
+                              ),
+                              child: const Icon(
+                                Icons.check_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey('empty-badge'),
+                            ),
                     ),
-                    child: isSelected
-                        ? const Icon(
-                            Icons.check_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          )
-                        : null,
                   ),
                 ],
               ),
@@ -955,7 +971,7 @@ class _PlanOptionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    actualPrice,
+                    price,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: isDarkMode
                               ? Colors.white
