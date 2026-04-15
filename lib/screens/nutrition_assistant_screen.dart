@@ -9,7 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import '../controllers/ai_tutor_controller.dart';
+import '../controllers/nutrition_assistant_controller.dart';
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/ad_manager.dart';
@@ -23,7 +23,7 @@ import '../widgets/message_notifier.dart';
 import '../utils/code_detector.dart';
 import 'html_preview_screen.dart';
 import '../utils/message_formatter.dart';
-import '../mixins/ai_tutor_speech_mixin.dart';
+import '../mixins/nutrition_assistant_speech_mixin.dart';
 import '../mixins/text_to_speech_mixin.dart';
 import '../utils/message_ui_helper.dart';
 import '../utils/conversation_helper.dart';
@@ -36,6 +36,7 @@ import '../utils/ai_interaction_helper.dart';
 import 'dart:convert';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
+import '../widgets/month_calendar_sheet.dart';
 import '../widgets/nutrition_card.dart';
 import '../widgets/food_json_display.dart';
 import '../providers/free_chat_provider.dart';
@@ -48,25 +49,27 @@ import 'nutrition_goals_wizard_screen.dart';
 import '../utils/food_json_parser.dart';
 import '../widgets/recent_foods_sheet.dart';
 import '../widgets/macro_edit_bottom_sheet.dart';
+import '../services/app_agent_service.dart';
+import '../services/auth_service.dart';
 
-// Singleton para gerenciar o estado da tela NutroChat em toda a aplicação
+// Singleton para gerenciar o estado da tela NutritionAssistant em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
 // com IndexedStack, que não chama deactivate() quando mudamos de aba.
-class NutroChatManager {
-  static final NutroChatManager _instance = NutroChatManager._internal();
-  NutroChatScreenState? activeState;
+class NutritionAssistantManager {
+  static final NutritionAssistantManager _instance = NutritionAssistantManager._internal();
+  NutritionAssistantScreenState? activeState;
 
-  factory NutroChatManager() {
+  factory NutritionAssistantManager() {
     return _instance;
   }
 
-  NutroChatManager._internal();
+  NutritionAssistantManager._internal();
 
-  void register(NutroChatScreenState state) {
+  void register(NutritionAssistantScreenState state) {
     activeState = state;
   }
 
-  void unregister(NutroChatScreenState state) {
+  void unregister(NutritionAssistantScreenState state) {
     if (activeState == state) {
       activeState = null;
     }
@@ -80,9 +83,9 @@ class NutroChatManager {
 }
 
 // Singleton global para facilitar acesso de qualquer lugar do app
-final nutroChatManager = NutroChatManager();
+final nutritionAssistantManager = NutritionAssistantManager();
 
-class NutroChatScreen extends StatefulWidget {
+class NutritionAssistantScreen extends StatefulWidget {
   final String? conversationId; // ID da conversa a ser carregada
   final String?
       initialPrompt; // Prompt inicial a ser processado (pode ser JSON de ferramenta)
@@ -93,7 +96,7 @@ class NutroChatScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
   final String? toolType;
 
-  const NutroChatScreen({
+  const NutritionAssistantScreen({
     Key? key,
     this.conversationId,
     this.initialPrompt,
@@ -105,22 +108,22 @@ class NutroChatScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  NutroChatScreenState createState() => NutroChatScreenState();
+  NutritionAssistantScreenState createState() => NutritionAssistantScreenState();
 
   // Método que permite chamar a lógica de deactivate externamente
   static void handleTabExit() {
-    nutroChatManager.handleTabExit();
+    nutritionAssistantManager.handleTabExit();
   }
 }
 
-class NutroChatScreenState extends State<NutroChatScreen>
+class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     with
         TickerProviderStateMixin,
-        NutroChatSpeechMixin,
+        NutritionAssistantSpeechMixin,
         TextToSpeechMixin,
         WidgetsBindingObserver {
   // Controller que gerenciará o estado e lógica (será inicializado no initState)
-  late NutroChatController _chatController;
+  late NutritionAssistantController _chatController;
 
   // Serviços - Agora gerenciados pelo Controller
   // final AIService _aiService = AIService();
@@ -129,6 +132,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
   // Controllers para UI
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _messageInputScrollController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
 
   // Para animação do ícone pulsante
@@ -164,6 +168,13 @@ class NutroChatScreenState extends State<NutroChatScreen>
 
   // Flag para controlar se já fizemos o scroll inicial após carregar mensagens
   bool _hasScrolledToInitialMessages = false;
+
+  // Banner de login (só aparece após enviar mensagem; dispensável)
+  bool _loginBannerDismissed = false;
+
+  // Contador anterior de refeições, para detectar quando uma nova foi adicionada
+  int _lastMealCount = -1;
+  bool _showMealAddedToast = false;
 
   // Método para mostrar sugestões baseado na ação
   void _showSuggestionsForAction(String actionType) {
@@ -216,7 +227,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
     }
   }
 
-  // Implementação dos getters e métodos requeridos pelo NutroChatSpeechMixin
+  // Implementação dos getters e métodos requeridos pelo NutritionAssistantSpeechMixin
   @override
   TextEditingController get messageController => _messageController;
 
@@ -243,7 +254,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
   @override
   void initState() {
     super.initState();
-    print('🚀 NutroChatScreen - initState chamado');
+    print('🚀 NutritionAssistantScreen - initState chamado');
     print('   - conversationId: ${widget.conversationId}');
     print('   - isFreeChat: ${widget.isFreeChat}');
     print('   - freeChatId: ${widget.freeChatId}');
@@ -252,7 +263,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
     print(
         '   - initialToolResponse (Resposta da IA para ferramenta): ${widget.initialToolResponse?.substring(0, math.min(100, widget.initialToolResponse?.length ?? 0))}...');
 
-    nutroChatManager.register(this);
+    nutritionAssistantManager.register(this);
     _animationController = AnimationController(
       duration: Duration(milliseconds: 1000),
       vsync: this,
@@ -289,7 +300,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
                   .replaceAll(' ', '_') ??
               'chat';
           print(
-              '📱 NutroChatScreen: Detectado JSON de ferramenta. ToolType: $toolType');
+              '📱 NutritionAssistantScreen: Detectado JSON de ferramenta. ToolType: $toolType');
 
           // Tentar obter conversationId do toolData
           if (_toolData!.containsKey('conversationId') &&
@@ -357,7 +368,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
               if (extractedMessages != null && extractedMessages.isNotEmpty) {
                 messagesFromToolData = extractedMessages;
                 print(
-                    '✅ NutroChatScreen: Extraídas ${extractedMessages.length} mensagens do histórico da ferramenta');
+                    '✅ NutritionAssistantScreen: Extraídas ${extractedMessages.length} mensagens do histórico da ferramenta');
 
                 // Verificar formato das mensagens
                 if (extractedMessages.length > 0) {
@@ -366,17 +377,17 @@ class NutroChatScreenState extends State<NutroChatScreen>
                 }
               } else {
                 print(
-                    '⚠️ NutroChatScreen: Nenhuma mensagem válida extraída do histórico da ferramenta');
+                    '⚠️ NutritionAssistantScreen: Nenhuma mensagem válida extraída do histórico da ferramenta');
               }
             } catch (e) {
               print(
-                  '❌ NutroChatScreen: Erro ao processar histórico da ferramenta: $e');
+                  '❌ NutritionAssistantScreen: Erro ao processar histórico da ferramenta: $e');
             }
           }
         }
       } catch (e) {
         print(
-            '⚠️ NutroChatScreen: Erro ao decodificar initialPrompt como JSON: $e');
+            '⚠️ NutritionAssistantScreen: Erro ao decodificar initialPrompt como JSON: $e');
         isFromTool = false;
       }
     }
@@ -388,13 +399,19 @@ class NutroChatScreenState extends State<NutroChatScreen>
     // Obter a data selecionada do provider
     final mealsProvider =
         Provider.of<DailyMealsProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
     final selectedDate = mealsProvider.selectedDate;
+    final storageScope =
+        authService.isAuthenticated && authService.currentUser != null
+            ? 'user_${authService.currentUser!.id}'
+            : 'guest';
 
     // Inicializar o controller com as opções corretas
-    _chatController = NutroChatController(
+    _chatController = NutritionAssistantController(
       speechMixin: _speechMixinRef,
       ttsRef: _ttsMixinRef,
       toolType: toolType,
+      storageScope: storageScope,
       conversationId: widget.conversationId ?? conversationIdFromToolData,
       showWelcomeMessage: false, // Usando overlay em vez de mensagem no chat
       rawInitialPromptJson: isFromTool
@@ -415,7 +432,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
         // Nova interação de ferramenta (initialToolResponse é nulo/vazio, mas temos o prompt da ferramenta).
         // E não estamos carregando conversa completa.
         print(
-            '⚙️ NutroChatScreen: Nova interação de ferramenta. Processando prompt silenciosamente.');
+            '⚙️ NutritionAssistantScreen: Nova interação de ferramenta. Processando prompt silenciosamente.');
         String promptToUse = _toolData!['fullPrompt'] ?? widget.initialPrompt!;
         Uint8List? cameraBytes;
         if (_toolData!['sourceType'] == 'camera' &&
@@ -434,7 +451,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
           widget.initialPrompt!.isNotEmpty) {
         // Não é de ferramenta (ou caso de ferramenta não coberto), mas temos um prompt inicial.
         // E não estamos carregando uma conversa completa.
-        print('💬 NutroChatScreen: Novo prompt de chat. Enviando mensagem.');
+        print('💬 NutritionAssistantScreen: Novo prompt de chat. Enviando mensagem.');
         Future.delayed(Duration(milliseconds: 100), () {
           _messageController.text = widget.initialPrompt!;
           _handleSendMessage();
@@ -444,7 +461,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
       // A mensagem de boas-vindas só é adicionada pelo controller se showWelcomeMessage for true.
     } else {
       print(
-          '📱 NutroChatScreen: Controller inicializado com histórico ou initialToolResponse. Nenhuma ação de prompt adicional.');
+          '📱 NutritionAssistantScreen: Controller inicializado com histórico ou initialToolResponse. Nenhuma ação de prompt adicional.');
       // Rolar até a última resposta da IA ao carregar uma conversa existente
       Future.delayed(Duration(milliseconds: 500), () {
         _scrollToLastAiResponse();
@@ -461,38 +478,79 @@ class NutroChatScreenState extends State<NutroChatScreen>
     _carregarAnuncioIntersticial();
   }
 
+  /// Sincroniza mensagens do _chatController para o FreeChatProvider (persistência)
+  void _syncFreeChatMessages() {
+    if (_currentFreeChatId == null) return;
+    if (!mounted) return;
+    final freeChatProvider =
+        Provider.of<FreeChatProvider>(context, listen: false);
+    final rawMessages = _chatController.messages;
+    final converted = <Map<String, dynamic>>[];
+    for (final m in rawMessages) {
+      String text = '';
+      if (m.containsKey('message') && m['message'] is String) {
+        text = m['message'] as String;
+      } else if (m.containsKey('notifier')) {
+        final notifier = m['notifier'];
+        try {
+          text = (notifier?.message as String?) ?? '';
+        } catch (_) {}
+      }
+      if (text.trim().isEmpty) continue;
+      converted.add({
+        'isUser': m['isUser'] ?? false,
+        'message': text,
+        'timestamp': (m['timestamp'] is DateTime)
+            ? (m['timestamp'] as DateTime).toIso8601String()
+            : (m['timestamp']?.toString() ??
+                DateTime.now().toIso8601String()),
+      });
+    }
+    if (converted.isEmpty) return;
+    freeChatProvider.updateMessages(_currentFreeChatId!, converted);
+  }
+
   /// Inicializa o modo de conversa livre
   void _initFreeChatMode() {
     // Determinar o toolType baseado no parâmetro widget.toolType
     final effectiveToolType = widget.toolType ?? 'free_chat';
     print(
-        '💬 NutroChatScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
+        '💬 NutritionAssistantScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
 
     final freeChatProvider =
         Provider.of<FreeChatProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
     List<Map<String, dynamic>>? initialMessages;
+    final storageScope =
+        authService.isAuthenticated && authService.currentUser != null
+            ? 'user_${authService.currentUser!.id}'
+            : 'guest';
 
     // Verificar se tem um freeChatId para carregar
     if (widget.freeChatId != null) {
       _currentFreeChatId = widget.freeChatId;
       initialMessages = freeChatProvider.getMessages(widget.freeChatId!);
       print(
-          '📂 NutroChatScreen: Carregando conversa livre existente: ${widget.freeChatId}');
+          '📂 NutritionAssistantScreen: Carregando conversa livre existente: ${widget.freeChatId}');
     } else {
       // Criar nova conversa
       _currentFreeChatId = freeChatProvider.createConversation();
       print(
-          '📝 NutroChatScreen: Nova conversa livre criada: $_currentFreeChatId');
+          '📝 NutritionAssistantScreen: Nova conversa livre criada: $_currentFreeChatId');
     }
 
     // Inicializar controller para conversa livre
-    _chatController = NutroChatController(
+    _chatController = NutritionAssistantController(
       speechMixin: _speechMixinRef,
       ttsRef: _ttsMixinRef,
       toolType: effectiveToolType,
+      storageScope: storageScope,
       showWelcomeMessage: initialMessages == null || initialMessages.isEmpty,
       initialMessages: initialMessages,
     );
+
+    // Sincronizar mensagens com FreeChatProvider para persistir
+    _chatController.addListener(_syncFreeChatMessages);
 
     if (!kIsWeb && Platform.isAndroid) {
       Future.delayed(Duration(milliseconds: 1000), () {
@@ -537,13 +595,13 @@ class NutroChatScreenState extends State<NutroChatScreen>
 
   @override
   void dispose() {
-    print('🧹 NutroChatScreen - dispose chamado');
+    print('🧹 NutritionAssistantScreen - dispose chamado');
 
     // Remover observer
     WidgetsBinding.instance.removeObserver(this);
 
     // Remover registro no singleton manager
-    nutroChatManager.unregister(this);
+    nutritionAssistantManager.unregister(this);
 
     // Garantir que a tela pode desligar quando o componente for destruído
     if (!kIsWeb && Platform.isAndroid) {
@@ -563,6 +621,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
 
     _messageController.dispose();
     _scrollController.dispose();
+    _messageInputScrollController.dispose();
     _inputFocusNode.dispose();
     _animationController.dispose();
     _chatController.dispose();
@@ -574,7 +633,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
   void deactivate() {
     // Este método é chamado quando a tela é removida da árvore de widgets
     // mas pode ser adicionada novamente, como quando muda de abas
-    print('NutroChatScreen - deactivate chamado');
+    print('NutritionAssistantScreen - deactivate chamado');
 
     // Verificar se o usuário enviou pelo menos 2 mensagens
     if (_userMessageCount >= 2 &&
@@ -1184,7 +1243,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
               !isLoading) {
             _hasScrolledToInitialMessages = true;
             print(
-                '📱 NutroChatScreen: Mensagens carregadas, fazendo scroll inicial');
+                '📱 NutritionAssistantScreen: Mensagens carregadas, fazendo scroll inicial');
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollToLastAiResponse();
             });
@@ -1203,34 +1262,17 @@ class NutroChatScreenState extends State<NutroChatScreen>
               body: SafeArea(
                 child: Column(
                   children: [
-                    // AppBar sempre fixo (não se move com o scroll)
+                    // Header minimalista estilo ChatGPT: ☰  Hoje ▾  🔍
                     Consumer<DailyMealsProvider>(
                       builder: (context, mealsProvider, child) {
-                        return WeeklyCalendar(
+                        return _buildMinimalHeader(
+                          context,
+                          isDarkMode: isDarkMode,
                           selectedDate: mealsProvider.selectedDate,
-                          showAppBar: true, // Mostrar apenas o AppBar
-                          showCalendar: false, // Sem o calendário semanal
-                          isFreeChat: widget.isFreeChat, // Modo conversa livre
-                          onOpenDrawer: widget.onOpenDrawer,
-                          onDaySelected: widget.isFreeChat
+                          onDateTap: widget.isFreeChat
                               ? null
-                              : (date) async {
-                                  print('Data selecionada: $date');
-
-                                  // Limpar sugestões ao mudar de dia
-                                  _clearSuggestions();
-
-                                  // Mostrar o header ao clicar em um dia
-                                  _showHeader();
-
-                                  mealsProvider.setSelectedDate(date);
-                                  await _chatController
-                                      .changeSelectedDate(date);
-
-                                  // Scroll instantâneo para a última resposta da IA
-                                  _scrollToLastAiResponse();
-                                },
-                          onSearchPressed: widget.isFreeChat
+                              : () => _showDatePickerSheet(context),
+                          onSearchTap: widget.isFreeChat
                               ? null
                               : () {
                                   Navigator.push(
@@ -1254,7 +1296,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
                           // Calcular altura baseado se tem refeições
                           final bool hasMeals =
                               mealsProvider.todayMeals.isNotEmpty;
-                          final double maxHeight = hasMeals ? 175.0 : 75.0;
+                          final double maxHeight = hasMeals ? 108.0 : 0.0;
                           // Altura visível = maxHeight + offset (offset é negativo)
                           final double visibleHeight =
                               (maxHeight + _headerOffset).clamp(0.0, maxHeight);
@@ -1270,32 +1312,6 @@ class NutroChatScreenState extends State<NutroChatScreen>
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      // Calendário semanal (apenas os dias da semana)
-                                      WeeklyCalendar(
-                                        selectedDate:
-                                            mealsProvider.selectedDate,
-                                        showAppBar: false,
-                                        showCalendar: true,
-                                        onDaySelected: (date) async {
-                                          print('Data selecionada: $date');
-                                          _clearSuggestions();
-                                          _showHeader();
-                                          mealsProvider.setSelectedDate(date);
-                                          await _chatController
-                                              .changeSelectedDate(date);
-                                          _scrollToLastAiResponse();
-                                        },
-                                        onSearchPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const FoodSearchScreen(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-
                                       // Nutrition card
                                       if (hasMeals)
                                         Consumer2<NutritionGoalsProvider,
@@ -1303,6 +1319,11 @@ class NutroChatScreenState extends State<NutroChatScreen>
                                           builder: (context, nutritionProvider,
                                               mealsProvider, child) {
                                             return NutritionCard(
+                                              hasConfiguredGoals:
+                                                  nutritionProvider
+                                                      .hasConfiguredGoals,
+                                              onEditGoals:
+                                                  _openGoalWizardFromChat,
                                               caloriesConsumed:
                                                   mealsProvider.totalCalories,
                                               caloriesGoal: nutritionProvider
@@ -1469,50 +1490,48 @@ class NutroChatScreenState extends State<NutroChatScreen>
                               child: Container(
                                 color: currentScaffoldBackgroundColor,
                                 child: Align(
-                                  alignment: Alignment(-1.0,
-                                      -0.3), // À esquerda e mais próximo do topo
+                                  alignment: Alignment.center, // Centralizado vertical e horizontalmente
                                   child: SingleChildScrollView(
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 16),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                          CrossAxisAlignment.center,
                                       children: [
                                         // Saudação baseada no horário
                                         Text(
                                           _getTimeBasedGreeting(context),
+                                          textAlign: TextAlign.center,
                                           style: TextStyle(
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
                                             color: AppTheme.getSoftTextColor(
                                                 isDarkMode),
                                             height: 1.3,
                                           ),
                                         ),
-                                        SizedBox(height: 24),
-                                        // Grid de ações 2x2
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _buildActionCard(
+                                        SizedBox(height: 16),
+                                        // Chips de ação estilo ChatGPT (2 por linha, centralizados)
+                                        Consumer<NutritionGoalsProvider>(
+                                          builder: (context, nutritionProvider,
+                                              child) {
+                                            final bool hasGoals =
+                                                nutritionProvider
+                                                    .hasConfiguredGoals;
+                                            final List<Widget> chips = [
+                                              _buildActionChip(
                                                 icon: Icons.restaurant_menu,
-                                                title: 'Registrar',
-                                                subtitle: 'Adicionar refeição',
+                                                label: 'Anotar comida',
                                                 isDarkMode: isDarkMode,
-                                                isPrimary: true,
                                                 onTap: () {
                                                   _showSuggestionsForAction(
                                                       'registrar_refeicao');
                                                 },
                                               ),
-                                            ),
-                                            SizedBox(width: 12),
-                                            Expanded(
-                                              child: _buildActionCard(
+                                              _buildActionChip(
                                                 icon: Icons.camera_alt,
-                                                title: 'Foto',
-                                                subtitle: 'Analisar com IA',
+                                                label: 'Tirar foto',
                                                 isDarkMode: isDarkMode,
                                                 onTap: () {
                                                   Navigator.push(
@@ -1524,94 +1543,71 @@ class NutroChatScreenState extends State<NutroChatScreen>
                                                   );
                                                 },
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 12),
-                                        // Segunda linha do grid
-                                        Consumer<NutritionGoalsProvider>(
-                                          builder: (context, nutritionProvider,
-                                              child) {
-                                            if (!nutritionProvider
-                                                .hasConfiguredGoals) {
-                                              // Usuário não configurou metas
-                                              return Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: _buildActionCard(
-                                                      icon:
-                                                          Icons.person_outline,
-                                                      title: 'Perfil',
-                                                      subtitle:
-                                                          'Configurar dados',
-                                                      isDarkMode: isDarkMode,
-                                                      onTap: () {
-                                                        Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder: (context) =>
-                                                                const NutritionGoalsWizardScreen(),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ),
-                                                  ),
-                                                  SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: _buildActionCard(
-                                                      icon: Icons.flag_outlined,
-                                                      title: 'Metas',
-                                                      subtitle:
-                                                          'Definir objetivos',
-                                                      isDarkMode: isDarkMode,
-                                                      onTap: () {
-                                                        Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder: (context) =>
-                                                                const NutritionGoalsWizardScreen(),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ),
-                                                  ),
+                                              if (hasGoals)
+                                                _buildActionChip(
+                                                  icon:
+                                                      Icons.lightbulb_outline,
+                                                  label: 'Ideias de comida',
+                                                  isDarkMode: isDarkMode,
+                                                  onTap: () {
+                                                    _showSuggestionsForAction(
+                                                        'sugestoes_refeicoes');
+                                                  },
+                                                ),
+                                              if (hasGoals)
+                                                _buildActionChip(
+                                                  icon: Icons.help_outline,
+                                                  label: 'Tirar dúvida',
+                                                  isDarkMode: isDarkMode,
+                                                  onTap: () {
+                                                    _showSuggestionsForAction(
+                                                        'perguntar_nutricao');
+                                                  },
+                                                ),
+                                              if (!hasGoals)
+                                                _buildActionChip(
+                                                  icon: Icons.flag_outlined,
+                                                  label: 'Definir metas',
+                                                  isDarkMode: isDarkMode,
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            const NutritionGoalsWizardScreen(),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                            ];
+                                            final List<Widget> rows = [];
+                                            for (int i = 0;
+                                                i < chips.length;
+                                                i += 2) {
+                                              final rowChips = <Widget>[
+                                                chips[i],
+                                                if (i + 1 < chips.length) ...[
+                                                  SizedBox(width: 8),
+                                                  chips[i + 1],
                                                 ],
-                                              );
-                                            } else {
-                                              // Usuário já configurou
-                                              return Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: _buildActionCard(
-                                                      icon: Icons
-                                                          .lightbulb_outline,
-                                                      title: 'Sugestões',
-                                                      subtitle:
-                                                          'Ideias de refeição',
-                                                      isDarkMode: isDarkMode,
-                                                      onTap: () {
-                                                        _showSuggestionsForAction(
-                                                            'sugestoes_refeicoes');
-                                                      },
-                                                    ),
-                                                  ),
-                                                  SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: _buildActionCard(
-                                                      icon: Icons.help_outline,
-                                                      title: 'Perguntar',
-                                                      subtitle:
-                                                          'Dúvidas nutrição',
-                                                      isDarkMode: isDarkMode,
-                                                      onTap: () {
-                                                        _showSuggestionsForAction(
-                                                            'perguntar_nutricao');
-                                                      },
-                                                    ),
-                                                  ),
-                                                ],
-                                              );
+                                              ];
+                                              if (rows.isNotEmpty) {
+                                                rows.add(SizedBox(height: 8));
+                                              }
+                                              rows.add(Row(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: rowChips,
+                                              ));
                                             }
+                                            return Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: rows,
+                                            );
                                           },
                                         ),
                                       ],
@@ -1633,6 +1629,183 @@ class NutroChatScreenState extends State<NutroChatScreen>
                           left: 16, right: 16, bottom: 6, top: 8),
                       child: Column(
                         children: [
+                          // Toast "Adicionado ao diário" (animado)
+                          if (!widget.isFreeChat)
+                            Consumer<DailyMealsProvider>(
+                              builder: (context, mealsProvider, _) {
+                                // Conta total de itens (foods) em todas as refeições do dia
+                                final count = mealsProvider.todayMeals.fold<int>(
+                                    0, (s, m) => s + m.foods.length);
+                                if (_lastMealCount == -1) {
+                                  _lastMealCount = count;
+                                } else if (count > _lastMealCount) {
+                                  _lastMealCount = count;
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    if (!mounted) return;
+                                    setState(
+                                        () => _showMealAddedToast = true);
+                                    Future.delayed(
+                                        const Duration(seconds: 3), () {
+                                      if (!mounted) return;
+                                      setState(() =>
+                                          _showMealAddedToast = false);
+                                    });
+                                  });
+                                } else if (count < _lastMealCount) {
+                                  _lastMealCount = count;
+                                }
+                                return AnimatedSwitcher(
+                                  duration:
+                                      const Duration(milliseconds: 250),
+                                  transitionBuilder: (child, anim) =>
+                                      SizeTransition(
+                                    sizeFactor: anim,
+                                    child: FadeTransition(
+                                        opacity: anim, child: child),
+                                  ),
+                                  child: _showMealAddedToast
+                                      ? Padding(
+                                          key: const ValueKey('meal-toast'),
+                                          padding: const EdgeInsets.only(
+                                              bottom: 8),
+                                          child: Container(
+                                            padding: const EdgeInsets
+                                                .symmetric(
+                                                horizontal: 14, vertical: 10),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green
+                                                  .withOpacity(isDarkMode
+                                                      ? 0.18
+                                                      : 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                              border: Border.all(
+                                                  color: Colors.green
+                                                      .withOpacity(0.35)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                    Icons.check_circle,
+                                                    color: Colors.green,
+                                                    size: 18),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    () {
+                                                      final d = mealsProvider
+                                                          .selectedDate;
+                                                      final now =
+                                                          DateTime.now();
+                                                      final isToday =
+                                                          d.year == now.year &&
+                                                              d.month ==
+                                                                  now.month &&
+                                                              d.day == now.day;
+                                                      final yest = now
+                                                          .subtract(const Duration(
+                                                              days: 1));
+                                                      final isYest = d.year ==
+                                                              yest.year &&
+                                                          d.month ==
+                                                              yest.month &&
+                                                          d.day == yest.day;
+                                                      if (isToday) {
+                                                        return 'Adicionado ao diário de hoje';
+                                                      }
+                                                      if (isYest) {
+                                                        return 'Adicionado ao diário de ontem';
+                                                      }
+                                                      return 'Adicionado ao diário de ${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+                                                    }(),
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: isDarkMode
+                                                          ? Colors.white
+                                                          : Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: ValueKey('no-toast')),
+                                );
+                              },
+                            ),
+
+                          // Banner "Fazer login" discreto — só após enviar mensagem
+                          Consumer<AuthService>(
+                            builder: (context, auth, _) {
+                              final sentSomething =
+                                  _chatController.messages.any((m) =>
+                                      (m['isUser'] == true) ||
+                                      (m is Map && m['isUser'] == true));
+                              if (auth.isAuthenticated) return const SizedBox.shrink();
+                              if (_loginBannerDismissed) return const SizedBox.shrink();
+                              if (!sentSomething) return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode
+                                        ? Colors.white.withOpacity(0.06)
+                                        : Colors.black.withOpacity(0.04),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.info_outline,
+                                          size: 16,
+                                          color: isDarkMode
+                                              ? Colors.white70
+                                              : Colors.black54),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Entre para salvar seu progresso',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: _openLoginFromChat,
+                                        style: TextButton.styleFrom(
+                                          minimumSize: const Size(0, 28),
+                                          padding: const EdgeInsets
+                                              .symmetric(horizontal: 8),
+                                        ),
+                                        child: const Text('Entrar',
+                                            style: TextStyle(fontSize: 13)),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.close,
+                                            size: 16,
+                                            color: isDarkMode
+                                                ? Colors.white54
+                                                : Colors.black45),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                            minWidth: 28, minHeight: 28),
+                                        onPressed: () => setState(() =>
+                                            _loginBannerDismissed = true),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
                           // Exibir miniatura da imagem selecionada
                           if (hasSelectedImage && selectedImageBytes != null)
                             Padding(
@@ -1696,8 +1869,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
                             decoration: BoxDecoration(
                               color: isDarkMode
                                   ? Color(0xFF303030)
-                                  : AppTheme
-                                      .surfaceColor, // Cor de fundo escuro para o input
+                                  : AppTheme.surfaceColor,
                               borderRadius: BorderRadius.circular(24),
                             ),
                             padding: EdgeInsets.symmetric(
@@ -1711,7 +1883,8 @@ class NutroChatScreenState extends State<NutroChatScreen>
                                         icon: Icon(Icons.camera_alt,
                                             color: isDarkMode
                                                 ? Colors.grey[400]
-                                                : AppTheme.textSecondaryColor),
+                                                : AppTheme
+                                                    .textSecondaryColor),
                                         onPressed: () {
                                           showModalBottomSheet(
                                             context: context,
@@ -1767,26 +1940,19 @@ class NutroChatScreenState extends State<NutroChatScreen>
                                         splashRadius: 20,
                                       ),
 
-                                      // Botão de recentes/favoritos
-                                      IconButton(
-                                        icon: Icon(Icons.history,
-                                            color: isDarkMode
-                                                ? Colors.grey[400]
-                                                : AppTheme.textSecondaryColor),
-                                        onPressed: () =>
-                                            _openRecentFoodsSheet(),
-                                        splashRadius: 20,
-                                        tooltip: 'Recentes e Favoritos',
-                                      ),
-
                                       // Campo de texto
                                       Expanded(
                                         child: TextField(
                                           controller: _messageController,
+                                          scrollController:
+                                              _messageInputScrollController,
                                           focusNode: _inputFocusNode,
+                                          scrollPhysics:
+                                              const ClampingScrollPhysics(),
+                                          keyboardType: TextInputType.multiline,
                                           decoration: InputDecoration(
                                             hintText: context.tr
-                                                .translate('ask_anything'),
+                                                .translate('what_did_you_eat'),
                                             hintStyle: TextStyle(
                                               fontSize: 15,
                                               color: isTranscribingAudio
@@ -1998,83 +2164,6 @@ class NutroChatScreenState extends State<NutroChatScreen>
     return '$minutes:$seconds';
   }
 
-  bool _messageSuggestsLoginRequired(String message) {
-    final normalized = message.toLowerCase();
-    const patterns = [
-      'precisa estar logado',
-      'precisa fazer login',
-      'faça o login',
-      'faca o login',
-      'fazer login',
-      'login',
-      'logado',
-      'need to be logged in',
-      'need to log in',
-      'please log in',
-      'sign in to continue',
-    ];
-
-    return patterns.any(normalized.contains);
-  }
-
-  bool _messageSuggestsGoalConfiguration(String message) {
-    final normalized = message.toLowerCase();
-    const patterns = [
-      'configurar suas metas',
-      'configurar as metas',
-      'metas nutricionais',
-      'continuar configurando pelo chat',
-      'configure your goals',
-      'set up your goals',
-      'nutrition goals',
-      'configure your profile',
-      'configurar seu perfil',
-      'preciso configurar seu perfil',
-      'sexo/gênero',
-      'sexo/genero',
-    ];
-
-    if (patterns.any(normalized.contains)) {
-      return true;
-    }
-
-    final mentionsGoalSetupContext = normalized.contains('perfil') ||
-        normalized.contains('meta') ||
-        normalized.contains('goals');
-    final asksForProfileField = normalized.contains('idade') ||
-        normalized.contains('height') ||
-        normalized.contains('altura') ||
-        normalized.contains('weight') ||
-        normalized.contains('peso') ||
-        normalized.contains('gender') ||
-        normalized.contains('gênero') ||
-        normalized.contains('genero') ||
-        normalized.contains('sex') ||
-        normalized.contains('sexo');
-
-    return mentionsGoalSetupContext && asksForProfileField;
-  }
-
-  bool _messageSuggestsMacroEditing(String message) {
-    final normalized = message.toLowerCase();
-    final mentionsMacros = normalized.contains('macro') ||
-        normalized.contains('macronutriente') ||
-        normalized.contains('proteína') ||
-        normalized.contains('proteina') ||
-        normalized.contains('carboidrato') ||
-        normalized.contains('gordura') ||
-        normalized.contains('g/kg') ||
-        normalized.contains('gramas');
-    final mentionsEditing = normalized.contains('editar') ||
-        normalized.contains('ajustar') ||
-        normalized.contains('configurar') ||
-        normalized.contains('change') ||
-        normalized.contains('adjust') ||
-        normalized.contains('set');
-
-    return mentionsMacros && mentionsEditing;
-  }
-
   Future<void> _openLoginFromChat() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -2094,21 +2183,6 @@ class NutroChatScreenState extends State<NutroChatScreen>
     );
   }
 
-  Future<void> _continueGoalSetupInChat() async {
-    if (_chatController.isLoading) {
-      return;
-    }
-
-    final prompt =
-        AppLocalizations.of(context).translate('chat_goal_setup_chat_prompt');
-    _messageController.text = prompt;
-    _messageController.selection = TextSelection.fromPosition(
-      TextPosition(offset: prompt.length),
-    );
-    setState(() {});
-    await _handleSendMessage();
-  }
-
   Future<void> _openMacroEditorFromChat() async {
     final goalsProvider =
         Provider.of<NutritionGoalsProvider>(context, listen: false);
@@ -2119,36 +2193,29 @@ class NutroChatScreenState extends State<NutroChatScreen>
     );
   }
 
-  Future<void> _continueMacroEditingInChat() async {
-    if (_chatController.isLoading) {
-      return;
-    }
-
-    final prompt =
-        AppLocalizations.of(context).translate('chat_macro_edit_chat_prompt');
-    _messageController.text = prompt;
-    _messageController.selection = TextSelection.fromPosition(
-      TextPosition(offset: prompt.length),
-    );
-    setState(() {});
-    await _handleSendMessage();
-  }
-
   Widget? _buildContextualMessageActions({
-    required String message,
+    required String rawMessage,
     required bool isUser,
     required bool isStreaming,
   }) {
-    if (isUser || isStreaming || message.trim().isEmpty) {
+    if (isUser || isStreaming || rawMessage.trim().isEmpty) {
       return null;
     }
 
     final appLocalizations = AppLocalizations.of(context);
-    final shouldShowLogin = _messageSuggestsLoginRequired(message);
-    final shouldShowGoalSetup = _messageSuggestsGoalConfiguration(message);
-    final shouldShowMacroEditing = _messageSuggestsMacroEditing(message);
-
-    if (!shouldShowLogin && !shouldShowGoalSetup && !shouldShowMacroEditing) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final uiHint = AppAgentUiHint.tryParse(rawMessage);
+    final actions = {
+      ...?uiHint?.actions,
+    };
+    // Login agora aparece como banner acima do input, não como ação inline.
+    actions.remove(AppAgentUiHint.actionLogin);
+    if (goalsProvider.hasConfiguredGoals) {
+      actions.remove(AppAgentUiHint.actionConfigureGoalsUi);
+    }
+    if (actions.isEmpty) {
       return null;
     }
 
@@ -2158,13 +2225,13 @@ class NutroChatScreenState extends State<NutroChatScreen>
         spacing: 8,
         runSpacing: 8,
         children: [
-          if (shouldShowLogin)
+          if (actions.contains(AppAgentUiHint.actionLogin))
             FilledButton.tonalIcon(
               onPressed: _openLoginFromChat,
               icon: const Icon(Icons.login_rounded, size: 18),
               label: Text(appLocalizations.translate('chat_action_login')),
             ),
-          if (shouldShowGoalSetup)
+          if (actions.contains(AppAgentUiHint.actionConfigureGoalsUi))
             FilledButton.tonalIcon(
               onPressed: _openGoalWizardFromChat,
               icon: const Icon(Icons.tune_rounded, size: 18),
@@ -2172,28 +2239,12 @@ class NutroChatScreenState extends State<NutroChatScreen>
                 appLocalizations.translate('chat_action_configure_goals_ui'),
               ),
             ),
-          if (shouldShowGoalSetup)
-            OutlinedButton.icon(
-              onPressed: _continueGoalSetupInChat,
-              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-              label: Text(
-                appLocalizations.translate('chat_action_continue_goals_chat'),
-              ),
-            ),
-          if (shouldShowMacroEditing)
+          if (actions.contains(AppAgentUiHint.actionEditMacrosUi))
             FilledButton.tonalIcon(
               onPressed: _openMacroEditorFromChat,
               icon: const Icon(Icons.tune_rounded, size: 18),
               label: Text(
                 appLocalizations.translate('chat_action_edit_macros_ui'),
-              ),
-            ),
-          if (shouldShowMacroEditing)
-            OutlinedButton.icon(
-              onPressed: _continueMacroEditingInChat,
-              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-              label: Text(
-                appLocalizations.translate('chat_action_continue_macros_chat'),
               ),
             ),
         ],
@@ -2241,8 +2292,16 @@ class NutroChatScreenState extends State<NutroChatScreen>
     // Verificar se a mensagem contém JSON de alimentos (apenas para mensagens da IA)
     final bool hasFoodJson =
         !isUser && FoodJsonParser.containsFoodJson(message);
-    final String displayMessage =
-        hasFoodJson ? FoodJsonParser.removeJsonFromMessage(message) : message;
+    final String displayMessage = AppAgentService.sanitizeDisplayMessage(
+      message,
+      autoRegisterFoods: hasFoodJson,
+      fallbackSanitizer: (content) {
+        if (!hasFoodJson) {
+          return content;
+        }
+        return FoodJsonParser.removeJsonCandidateFromMessage(content);
+      },
+    );
 
     // Se for notificador, vamos usar um ChangeNotifierProvider para atualizar apenas este widget
     if (usingNotifier) {
@@ -2252,9 +2311,11 @@ class NutroChatScreenState extends State<NutroChatScreen>
           builder: (context, notifier, _) {
             final hasJsonInNotifier =
                 FoodJsonParser.containsFoodJson(notifier.message);
+            final showsMealCard =
+                hasJsonInNotifier && !notifier.isStreaming;
             final cleanMessage = notifier.displayMessage;
             final contextualActions = _buildContextualMessageActions(
-              message: cleanMessage,
+              rawMessage: notifier.message,
               isUser: isUser,
               isStreaming: notifier.isStreaming,
             );
@@ -2280,8 +2341,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
                     bottomSpacing:
                         hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
                   ),
-                if (contextualActions != null) contextualActions,
-                if (hasJsonInNotifier && !notifier.isStreaming)
+                if (showsMealCard)
                   Consumer<DailyMealsProvider>(
                     builder: (context, mealsProvider, _) {
                       return FoodJsonDisplay(
@@ -2295,6 +2355,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
                       );
                     },
                   ),
+                if (contextualActions != null) contextualActions,
               ],
             );
           },
@@ -2305,8 +2366,9 @@ class NutroChatScreenState extends State<NutroChatScreen>
       // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
       final bool showMessageBubble =
           displayMessage.trim().isNotEmpty || isStreaming;
+      final bool showsMealCard = hasFoodJson && !isStreaming;
       final contextualActions = _buildContextualMessageActions(
-        message: displayMessage,
+        rawMessage: message,
         isUser: isUser,
         isStreaming: isStreaming,
       );
@@ -2326,8 +2388,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
               imageBytes: imageBytes,
               bottomSpacing: hasFoodJson && !isStreaming ? 4 : 8,
             ),
-          if (contextualActions != null) contextualActions,
-          if (hasFoodJson && !isStreaming) ...[
+          if (showsMealCard) ...[
             Consumer<DailyMealsProvider>(
               builder: (context, mealsProvider, _) {
                 return FoodJsonDisplay(
@@ -2342,6 +2403,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
               },
             ),
           ],
+          if (contextualActions != null) contextualActions,
         ],
       );
     }
@@ -2427,7 +2489,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
   void _carregarAnuncioIntersticial() {
     // Não carregar anúncios na web
     if (kIsWeb) {
-      print("NutroChatScreen: Pulando carregamento de anúncios na versão web");
+      print("NutritionAssistantScreen: Pulando carregamento de anúncios na versão web");
       return;
     }
 
@@ -2451,7 +2513,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
   // Método público que pode ser chamado de fora para simular o comportamento do deactivate
   // Este método contém a mesma lógica que o método deactivate() original
   void handleTabChanged() {
-    print('NutroChatScreen - handleTabChanged chamado ao trocar de aba');
+    print('NutritionAssistantScreen - handleTabChanged chamado ao trocar de aba');
 
     // Não mostrar anúncios na web
     if (kIsWeb) {
@@ -2776,6 +2838,207 @@ class NutroChatScreenState extends State<NutroChatScreen>
     }
   }
 
+  // Header minimalista estilo ChatGPT: ☰  Hoje ▾  🔍
+  Widget _buildMinimalHeader(
+    BuildContext context, {
+    required bool isDarkMode,
+    required DateTime selectedDate,
+    required VoidCallback? onDateTap,
+    required VoidCallback? onSearchTap,
+  }) {
+    final now = DateTime.now();
+    final isToday = selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day == now.day;
+    final yesterday = now.subtract(const Duration(days: 1));
+    final isYesterday = selectedDate.year == yesterday.year &&
+        selectedDate.month == yesterday.month &&
+        selectedDate.day == yesterday.day;
+    String label;
+    if (isToday) {
+      label = context.tr.translate('today');
+    } else if (isYesterday) {
+      label = context.tr.translate('yesterday');
+    } else {
+      label =
+          '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}';
+    }
+    return SizedBox(
+      height: 52,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            IconButton(
+              icon: Icon(
+                  widget.isFreeChat ? Icons.arrow_back : Icons.menu,
+                  color: isDarkMode ? Colors.white : Colors.black87),
+              onPressed: widget.onOpenDrawer,
+              tooltip: widget.isFreeChat ? 'Voltar' : 'Menu',
+            ),
+            Expanded(
+              child: Center(
+                child: widget.isFreeChat
+                    ? Builder(builder: (ctx) {
+                        final provider = Provider.of<FreeChatProvider>(ctx);
+                        String? title;
+                        if (_currentFreeChatId != null) {
+                          title = provider
+                              .getConversation(_currentFreeChatId!)
+                              ?.title;
+                        }
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Conversa livre',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDarkMode
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
+                            ),
+                            if (title != null &&
+                                title.isNotEmpty &&
+                                title != 'Nova conversa')
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDarkMode
+                                      ? Colors.white60
+                                      : Colors.black54,
+                                ),
+                              ),
+                          ],
+                        );
+                      })
+                    : InkWell(
+                        onTap: onDateTap,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black87,
+                                ),
+                              ),
+                              if (onDateTap != null) ...[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 20,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.search,
+                  color: isDarkMode ? Colors.white : Colors.black87),
+              onPressed: onSearchTap,
+              tooltip: 'Pesquisar alimentos',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Bottom sheet com o calendário semanal para trocar de data
+  void _showDatePickerSheet(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor:
+          isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Consumer<DailyMealsProvider>(
+          builder: (context, mealsProvider, child) {
+            return MonthCalendarSheet(
+              selectedDate: mealsProvider.selectedDate,
+              hasMeals: mealsProvider.hasMealsOn,
+              onDaySelected: (date) async {
+                Navigator.of(sheetContext).pop();
+                _clearSuggestions();
+                _showHeader();
+                mealsProvider.setSelectedDate(date);
+                await _chatController.changeSelectedDate(date);
+                _scrollToLastAiResponse();
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Chip de ação compacto estilo ChatGPT (pill shape)
+  Widget _buildActionChip({
+    required IconData icon,
+    required String label,
+    required bool isDarkMode,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(100),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF3F3F3),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+            color: isDarkMode ? Colors.white12 : Colors.black12,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Card de ação para o grid (estilo moderno)
   Widget _buildActionCard({
     required IconData icon,
@@ -2807,7 +3070,7 @@ class NutroChatScreenState extends State<NutroChatScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(10),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isPrimary
                     ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
@@ -2816,18 +3079,18 @@ class NutroChatScreenState extends State<NutroChatScreen>
               ),
               child: Icon(
                 icon,
-                size: 24,
+                size: 32,
                 color: isPrimary
                     ? Theme.of(context).primaryColor
                     : (isDarkMode ? Colors.white70 : Colors.black54),
               ),
             ),
-            SizedBox(height: 12),
+            SizedBox(height: 14),
             Text(
               title,
               style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
                 color: isDarkMode ? Colors.white : Colors.black87,
               ),
             ),
@@ -2835,8 +3098,8 @@ class NutroChatScreenState extends State<NutroChatScreen>
             Text(
               subtitle,
               style: TextStyle(
-                fontSize: 12,
-                color: isDarkMode ? Colors.white54 : Colors.black45,
+                fontSize: 14,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
               ),
             ),
           ],
@@ -2846,9 +3109,9 @@ class NutroChatScreenState extends State<NutroChatScreen>
   }
 }
 
-// Implementação de NutroChatSpeechMixinRef que delega para o mixin
-class _SpeechMixinRefImpl implements NutroChatSpeechMixinRef {
-  final NutroChatSpeechMixin _mixin;
+// Implementação de NutritionAssistantSpeechMixinRef que delega para o mixin
+class _SpeechMixinRefImpl implements NutritionAssistantSpeechMixinRef {
+  final NutritionAssistantSpeechMixin _mixin;
 
   _SpeechMixinRefImpl(this._mixin);
 

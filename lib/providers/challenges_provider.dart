@@ -20,11 +20,15 @@ class ChallengesProvider extends ChangeNotifier {
   Challenge? get selectedChallenge => _selectedChallenge;
   List<LeaderboardItem> get leaderboard => _leaderboard;
   bool get hasActiveChallenges => _myChallenges.isNotEmpty;
+  List<Challenge> get previewChallenges => _myChallenges.take(3).toList();
+  List<Challenge> get previewPublicChallenges => _publicChallenges.take(2).toList();
+  int get activeChallengeCount => _myChallenges.length;
+  int get publicChallengeCount => _publicChallenges.length;
 
   /// Configura o token
   void setToken(String token) {
     _token = token;
-    loadMyChallenges();
+    loadOverview();
   }
 
   /// Limpa os dados
@@ -134,7 +138,7 @@ class ChallengesProvider extends ChangeNotifier {
       );
 
       if (challenge != null) {
-        await loadMyChallenges();
+        await loadOverview();
       }
 
       return challenge;
@@ -157,8 +161,7 @@ class ChallengesProvider extends ChangeNotifier {
     );
 
     if (success) {
-      await loadMyChallenges();
-      await loadPublicChallenges();
+      await loadOverview();
     }
 
     return success;
@@ -174,7 +177,7 @@ class ChallengesProvider extends ChangeNotifier {
     );
 
     if (success) {
-      await loadMyChallenges();
+      await loadOverview();
     }
 
     return success;
@@ -190,7 +193,7 @@ class ChallengesProvider extends ChangeNotifier {
     );
 
     if (success) {
-      await loadMyChallenges();
+      await loadOverview();
       _selectedChallenge = null;
     }
 
@@ -200,21 +203,16 @@ class ChallengesProvider extends ChangeNotifier {
   /// Registrar progresso
   Future<DayPoints?> recordProgress({
     required int challengeId,
-    required bool logged,
-    required bool hitProtein,
-    required bool hitGoal,
   }) async {
     if (_token == null) return null;
 
     final points = await ChallengeService.recordProgress(
       token: _token!,
       challengeId: challengeId,
-      logged: logged,
-      hitProtein: hitProtein,
-      hitGoal: hitGoal,
     );
 
     if (points != null) {
+      await loadOverview();
       await loadChallengeDetails(challengeId);
     }
 
@@ -230,6 +228,29 @@ class ChallengesProvider extends ChangeNotifier {
 
   /// Refresh
   Future<void> refresh() async {
-    await loadMyChallenges();
+    await loadOverview();
+  }
+
+  /// Carrega desafios para resumo e cards sociais
+  Future<void> loadOverview() async {
+    if (_token == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait([
+        ChallengeService.getMyChallenges(token: _token!),
+        ChallengeService.getPublicChallenges(token: _token!),
+      ]);
+      _myChallenges = results[0];
+      _publicChallenges = results[1];
+      _error = null;
+    } catch (e) {
+      _error = 'Erro ao carregar desafios: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

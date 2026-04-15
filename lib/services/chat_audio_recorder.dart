@@ -20,6 +20,18 @@ class RecordedAudioData {
 }
 
 class ChatAudioRecorder {
+  static const record.RecordConfig _speechRecordConfig = record.RecordConfig(
+    encoder: record.AudioEncoder.wav,
+    sampleRate: 16000,
+    numChannels: 1,
+    autoGain: true,
+    echoCancel: true,
+    noiseSuppress: true,
+    androidConfig: record.AndroidRecordConfig(
+      audioSource: record.AndroidAudioSource.voiceRecognition,
+    ),
+  );
+
   record.AudioRecorder? _audioRecorder;
 
   String? _recordedFilePath;
@@ -69,11 +81,7 @@ class ChatAudioRecorder {
     }
 
     await recorder.start(
-      const record.RecordConfig(
-        encoder: record.AudioEncoder.wav,
-        sampleRate: 16000,
-        numChannels: 1,
-      ),
+      _speechRecordConfig,
       path: _recordedFilePath ?? '',
     );
   }

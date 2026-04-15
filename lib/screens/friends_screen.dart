@@ -60,7 +60,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         final showLoadingState = friendsProvider.isLoading && !hasAnyData;
         final showErrorState = friendsProvider.error != null && !hasAnyData;
 
-        return RefreshIndicator(
+        final content = RefreshIndicator(
           onRefresh: friendsProvider.refresh,
           color: primaryColor,
           child: CustomScrollView(
@@ -330,6 +330,29 @@ class _FriendsScreenState extends State<FriendsScreen> {
               ],
             ],
           ),
+        );
+
+        if (widget.isEmbedded) return content;
+
+        return Scaffold(
+          backgroundColor: isDarkMode
+              ? AppTheme.darkBackgroundColor
+              : AppTheme.backgroundColor,
+          appBar: AppBar(
+            backgroundColor: isDarkMode
+                ? AppTheme.darkBackgroundColor
+                : AppTheme.backgroundColor,
+            elevation: 0,
+            title: const Text(
+              'Amigos',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          body: content,
         );
       },
     );

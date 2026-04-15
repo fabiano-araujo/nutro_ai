@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/essay_progress_model.dart';
 import '../utils/date_time_utils.dart';
+import 'state_animation.dart';
 
 /// Widget para exibir gráfico de linha do progresso temporal
 class ProgressLineChart extends StatelessWidget {
@@ -33,8 +34,8 @@ class ProgressLineChart extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -64,10 +65,10 @@ class ProgressLineChart extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.show_chart,
-              size: 48,
-              color: Colors.grey[400],
+            StateAnimation(
+              fallbackIcon: Icons.show_chart,
+              size: 120,
+              accentColor: primaryColor,
             ),
             const SizedBox(height: 16),
             Text(
@@ -93,9 +94,14 @@ class ProgressLineChart extends StatelessWidget {
   }
 
   Widget _buildLegend(BuildContext context) {
-    final minScore = progressHistory.map((p) => p.totalScore).reduce((a, b) => a < b ? a : b);
-    final maxScore = progressHistory.map((p) => p.totalScore).reduce((a, b) => a > b ? a : b);
-    final avgScore = progressHistory.fold(0, (sum, p) => sum + p.totalScore) / progressHistory.length;
+    final minScore = progressHistory
+        .map((p) => p.totalScore)
+        .reduce((a, b) => a < b ? a : b);
+    final maxScore = progressHistory
+        .map((p) => p.totalScore)
+        .reduce((a, b) => a > b ? a : b);
+    final avgScore = progressHistory.fold(0, (sum, p) => sum + p.totalScore) /
+        progressHistory.length;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -164,8 +170,8 @@ class CompetencyBarChart extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -193,10 +199,10 @@ class CompetencyBarChart extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.bar_chart,
-              size: 48,
-              color: Colors.grey[400],
+            StateAnimation(
+              fallbackIcon: Icons.bar_chart,
+              size: 120,
+              accentColor: Colors.orange,
             ),
             const SizedBox(height: 16),
             Text(
@@ -212,7 +218,8 @@ class CompetencyBarChart extends StatelessWidget {
     );
   }
 
-  Widget _buildCompetencyBar(BuildContext context, String competency, CompetencyProgress progress) {
+  Widget _buildCompetencyBar(
+      BuildContext context, String competency, CompetencyProgress progress) {
     final percentage = progress.averageScore / 200.0; // Máximo 200 pontos
     final color = _getColorForScore(progress.averageScore);
     final trendIcon = _getTrendIcon(progress.trend);
@@ -233,7 +240,8 @@ class CompetencyBarChart extends StatelessWidget {
               ),
               Row(
                 children: [
-                  Icon(trendIcon, size: 16, color: _getTrendColor(progress.trend)),
+                  Icon(trendIcon,
+                      size: 16, color: _getTrendColor(progress.trend)),
                   const SizedBox(width: 4),
                   Text(
                     progress.averageScore.toStringAsFixed(0),
@@ -320,8 +328,8 @@ class ActivityHeatmap extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -362,14 +370,15 @@ class ActivityHeatmap extends StatelessWidget {
         final date = startDate.add(Duration(days: index));
         final dateKey = DateTimeUtils.formatDate(date, 'yyyy-MM-dd');
         final activity = activityMap[dateKey] ?? 0;
-        
+
         return Container(
           decoration: BoxDecoration(
             color: _getHeatmapColor(activity),
             borderRadius: BorderRadius.circular(2),
           ),
           child: Tooltip(
-            message: '${DateTimeUtils.formatDate(date, 'dd/MM')}: $activity redação(ões)',
+            message:
+                '${DateTimeUtils.formatDate(date, 'dd/MM')}: $activity redação(ões)',
             child: Container(),
           ),
         );
@@ -383,15 +392,17 @@ class ActivityHeatmap extends StatelessWidget {
       children: [
         const Text('Menos', style: TextStyle(fontSize: 12)),
         const SizedBox(width: 8),
-        ...List.generate(5, (index) => Container(
-          width: 12,
-          height: 12,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(
-            color: _getHeatmapColor(index),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        )),
+        ...List.generate(
+            5,
+            (index) => Container(
+                  width: 12,
+                  height: 12,
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  decoration: BoxDecoration(
+                    color: _getHeatmapColor(index),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                )),
         const SizedBox(width: 8),
         const Text('Mais', style: TextStyle(fontSize: 12)),
       ],
@@ -472,21 +483,24 @@ class _LineChartPainter extends CustomPainter {
   }
 
   List<Offset> _calculatePoints(Size size) {
-    final minScore = progressHistory.map((p) => p.totalScore).reduce((a, b) => a < b ? a : b);
-    final maxScore = progressHistory.map((p) => p.totalScore).reduce((a, b) => a > b ? a : b);
+    final minScore = progressHistory
+        .map((p) => p.totalScore)
+        .reduce((a, b) => a < b ? a : b);
+    final maxScore = progressHistory
+        .map((p) => p.totalScore)
+        .reduce((a, b) => a > b ? a : b);
     final scoreRange = maxScore - minScore;
 
     return progressHistory.asMap().entries.map((entry) {
       final index = entry.key;
       final point = entry.value;
 
-      final x = progressHistory.length > 1 
+      final x = progressHistory.length > 1
           ? size.width * index / (progressHistory.length - 1)
           : size.width / 2;
 
-      final normalizedScore = scoreRange > 0 
-          ? (point.totalScore - minScore) / scoreRange
-          : 0.5;
+      final normalizedScore =
+          scoreRange > 0 ? (point.totalScore - minScore) / scoreRange : 0.5;
       final y = size.height * (1 - normalizedScore);
 
       return Offset(x, y);

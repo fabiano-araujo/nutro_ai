@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 
 /// Card compacto de macros que aparece quando o card principal está escondido
 class MiniNutritionCard extends StatelessWidget {
@@ -72,21 +73,21 @@ class MiniNutritionCard extends StatelessWidget {
                   _buildCompactMacro(
                     value: proteinConsumed,
                     label: 'P',
-                    color: Color(0xFF9575CD),
+                    color: MacroTheme.proteinColor,
                     isDarkMode: isDarkMode,
                     isExceeded: proteinExceeded,
                   ),
                   _buildCompactMacro(
                     value: carbsConsumed,
                     label: 'C',
-                    color: Color(0xFFFFB74D),
+                    color: MacroTheme.carbsColor,
                     isDarkMode: isDarkMode,
                     isExceeded: carbsExceeded,
                   ),
                   _buildCompactMacro(
                     value: fatsConsumed,
                     label: 'G',
-                    color: Color(0xFF4DB6AC),
+                    color: MacroTheme.fatColor,
                     isDarkMode: isDarkMode,
                     isExceeded: fatsExceeded,
                   ),
@@ -107,7 +108,7 @@ class MiniNutritionCard extends StatelessWidget {
   }) {
     final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final exceededColor = Color(0xFFE57373);
-    final color = Color(0xFFFF6B9D);
+    final color = MacroTheme.caloriesColor;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import '../widgets/macro_edit_bottom_sheet.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'diet_type_selection_screen.dart';
 import '../i18n/app_localizations.dart';
+import '../utils/ui_utils.dart';
 
 class NutritionGoalsScreen extends StatefulWidget {
   const NutritionGoalsScreen({Key? key}) : super(key: key);
@@ -67,7 +69,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         (isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor)
             .withValues(alpha: isDarkMode ? 0.12 : 0.08);
     final secondaryGlow =
-        const Color(0xFFFFB74D).withValues(alpha: isDarkMode ? 0.08 : 0.06);
+        MacroTheme.carbsColor.withValues(alpha: isDarkMode ? 0.08 : 0.06);
 
     return IgnorePointer(
       child: Stack(
@@ -457,41 +459,41 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             _buildMacroCard(
-              icon: Icons.local_fire_department,
+              icon: MacroTheme.caloriesIcon,
               label: AppLocalizations.of(context).translate('calories'),
               value: '${provider.caloriesGoal}',
               unit: 'kcal',
-              accentColor: const Color(0xFFFF8A65),
+              accentColor: MacroTheme.caloriesColor,
               theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
             _buildMacroCard(
-              icon: Icons.fitness_center,
+              icon: MacroTheme.proteinIcon,
               label: AppLocalizations.of(context).translate('protein_full'),
               value: '${provider.proteinGoal}',
               unit: 'g',
-              accentColor: const Color(0xFF9575CD),
+              accentColor: MacroTheme.proteinColor,
               theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
             _buildMacroCard(
-              icon: Icons.grain,
+              icon: MacroTheme.carbsIcon,
               label: AppLocalizations.of(context).translate('carbohydrates'),
               value: '${provider.carbsGoal}',
               unit: 'g',
-              accentColor: const Color(0xFFFFB74D),
+              accentColor: MacroTheme.carbsColor,
               theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
             _buildMacroCard(
-              icon: Icons.opacity,
+              icon: MacroTheme.fatIcon,
               label: AppLocalizations.of(context).translate('fats'),
               value: '${provider.fatGoal}',
               unit: 'g',
-              accentColor: const Color(0xFF4DB6AC),
+              accentColor: MacroTheme.fatColor,
               theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
@@ -924,8 +926,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 controller: proteinController,
                 label:
                     AppLocalizations.of(screenContext).translate('protein_g'),
-                icon: Icons.fitness_center,
-                iconColor: const Color(0xFF9575CD),
+                icon: MacroTheme.proteinIcon,
+                iconColor: MacroTheme.proteinColor,
                 textColor: textColor,
                 isDarkMode: isDarkMode,
               ),
@@ -934,8 +936,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 controller: carbsController,
                 label: AppLocalizations.of(screenContext)
                     .translate('carbohydrates_g'),
-                icon: Icons.grain,
-                iconColor: const Color(0xFFFFB74D),
+                icon: MacroTheme.carbsIcon,
+                iconColor: MacroTheme.carbsColor,
                 textColor: textColor,
                 isDarkMode: isDarkMode,
               ),
@@ -943,8 +945,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               _buildManualGoalField(
                 controller: fatController,
                 label: AppLocalizations.of(screenContext).translate('fats_g'),
-                icon: Icons.opacity,
-                iconColor: const Color(0xFF4DB6AC),
+                icon: MacroTheme.fatIcon,
+                iconColor: MacroTheme.fatColor,
                 textColor: textColor,
                 isDarkMode: isDarkMode,
               ),
@@ -977,23 +979,17 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               );
 
               Navigator.pop(dialogContext);
-
-              ScaffoldMessenger.of(screenContext).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    AppLocalizations.of(screenContext)
-                        .translate('goals_updated_successfully'),
-                  ),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 2),
-                ),
+              UIUtils.showPrimarySnackBar(
+                screenContext,
+                AppLocalizations.of(screenContext)
+                    .translate('goals_updated_successfully'),
               );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: isDarkMode
                   ? AppTheme.primaryColorDarkMode
                   : AppTheme.primaryColor,
-              foregroundColor: Colors.white,
+              foregroundColor: AppTheme.onPrimaryFor(isDarkMode),
             ),
             child: Text(AppLocalizations.of(screenContext).translate('save')),
           ),

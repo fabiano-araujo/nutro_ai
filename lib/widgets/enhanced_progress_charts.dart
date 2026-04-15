@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../models/essay_progress.dart';
 import '../services/enhanced_progress_tracker.dart';
 import '../utils/date_time_utils.dart';
+import 'state_animation.dart';
 
 /// Enhanced temporal progress chart with multiple visualization options
 class EnhancedTemporalChart extends StatefulWidget {
@@ -92,8 +93,8 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
         Text(
           widget.title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -123,10 +124,10 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.show_chart,
-              size: 48,
-              color: Colors.grey[400],
+            StateAnimation(
+              fallbackIcon: Icons.show_chart,
+              size: 120,
+              accentColor: widget.primaryColor,
             ),
             const SizedBox(height: 16),
             Text(
@@ -312,14 +313,16 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
     final minValue = values.reduce((a, b) => a < b ? a : b);
     final maxValue = values.reduce((a, b) => a > b ? a : b);
     final avgValue = values.reduce((a, b) => a + b) / values.length;
-    final totalEssays = widget.chartData.map((d) => d.count).reduce((a, b) => a + b);
+    final totalEssays =
+        widget.chartData.map((d) => d.count).reduce((a, b) => a + b);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         _buildStatItem('Mín', minValue.toStringAsFixed(0), Colors.red),
         _buildStatItem('Máx', maxValue.toStringAsFixed(0), Colors.green),
-        _buildStatItem('Média', avgValue.toStringAsFixed(0), widget.primaryColor),
+        _buildStatItem(
+            'Média', avgValue.toStringAsFixed(0), widget.primaryColor),
         _buildStatItem('Total', totalEssays.toString(), Colors.orange),
       ],
     );
@@ -372,7 +375,8 @@ class CompetencyAnalysisChart extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CompetencyAnalysisChart> createState() => _CompetencyAnalysisChartState();
+  State<CompetencyAnalysisChart> createState() =>
+      _CompetencyAnalysisChartState();
 }
 
 class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
@@ -418,8 +422,8 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
             Text(
               widget.title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -431,7 +435,8 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
                     itemCount: sortedCompetencies.length,
                     itemBuilder: (context, index) {
                       final entry = sortedCompetencies[index];
-                      return _buildCompetencyItem(entry.key, entry.value, index);
+                      return _buildCompetencyItem(
+                          entry.key, entry.value, index);
                     },
                   );
                 },
@@ -452,10 +457,10 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.analytics,
-              size: 48,
-              color: Colors.grey[400],
+            StateAnimation(
+              fallbackIcon: Icons.analytics,
+              size: 120,
+              accentColor: Colors.blueGrey,
             ),
             const SizedBox(height: 16),
             Text(
@@ -472,7 +477,8 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
     );
   }
 
-  Widget _buildCompetencyItem(String competencyKey, CompetencyAnalysis analysis, int index) {
+  Widget _buildCompetencyItem(
+      String competencyKey, CompetencyAnalysis analysis, int index) {
     final percentage = (analysis.averageScore / 200.0).clamp(0.0, 1.0);
     final color = _getCompetencyColor(index);
     final trendIcon = _getTrendIcon(analysis.trend);
@@ -550,10 +556,10 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
   }
 
   Widget _buildConsistencyIndicator(double consistency) {
-    final consistencyColor = consistency > 0.8 
-        ? Colors.green 
-        : consistency > 0.6 
-            ? Colors.orange 
+    final consistencyColor = consistency > 0.8
+        ? Colors.green
+        : consistency > 0.6
+            ? Colors.orange
             : Colors.red;
 
     return Row(
@@ -669,8 +675,8 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
                 Text(
                   widget.title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 _buildActivitySummary(),
               ],
@@ -695,10 +701,12 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
 
   Widget _buildActivitySummary() {
     final now = DateTime.now();
-    final thisWeek = widget.progressHistory.where((p) => 
-        DateTimeUtils.isThisWeek(p.date)).length;
-    final thisMonth = widget.progressHistory.where((p) => 
-        DateTimeUtils.isThisMonth(p.date)).length;
+    final thisWeek = widget.progressHistory
+        .where((p) => DateTimeUtils.isThisWeek(p.date))
+        .length;
+    final thisMonth = widget.progressHistory
+        .where((p) => DateTimeUtils.isThisMonth(p.date))
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -729,7 +737,7 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
     }
 
     final weeks = (widget.daysToShow / 7).ceil();
-    
+
     return GridView.builder(
       scrollDirection: Axis.horizontal,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -743,7 +751,7 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
         final date = startDate.add(Duration(days: index));
         final dateKey = DateTimeUtils.formatDate(date, 'yyyy-MM-dd');
         final activity = activityMap[dateKey] ?? 0;
-        
+
         return AnimatedContainer(
           duration: Duration(milliseconds: 100 + (index * 10)),
           curve: Curves.easeOutCubic,
@@ -752,7 +760,8 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
             borderRadius: BorderRadius.circular(2),
           ),
           child: Tooltip(
-            message: '${DateTimeUtils.formatDisplayDate(date)}: $activity redação${activity != 1 ? 'ões' : ''}',
+            message:
+                '${DateTimeUtils.formatDisplayDate(date)}: $activity redação${activity != 1 ? 'ões' : ''}',
             child: Container(),
           ),
         );
@@ -766,15 +775,17 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
       children: [
         const Text('Menos', style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(width: 8),
-        ...List.generate(5, (index) => Container(
-          width: 12,
-          height: 12,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(
-            color: _getHeatmapColor(index),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        )),
+        ...List.generate(
+            5,
+            (index) => Container(
+                  width: 12,
+                  height: 12,
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  decoration: BoxDecoration(
+                    color: _getHeatmapColor(index),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                )),
         const SizedBox(width: 8),
         const Text('Mais', style: TextStyle(fontSize: 12, color: Colors.grey)),
       ],

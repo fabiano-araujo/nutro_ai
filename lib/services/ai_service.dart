@@ -100,6 +100,15 @@ class AIService {
     }
   }
 
+  String _normalizeLanguageHint(String languageCode) {
+    final normalized = languageCode.replaceAll('_', '-').trim();
+    if (normalized.isEmpty || normalized.toLowerCase() == 'und') {
+      return 'pt-BR';
+    }
+
+    return normalized;
+  }
+
   // Get answer to a text question with streaming
   Stream<String> getAnswerStream(String question,
       {String subject = '',
@@ -109,7 +118,8 @@ class AIService {
       String agentType = 'nutrition',
       String provider = '',
       List<Map<String, String>>? mealTypes}) async* {
-    print('🔴🔴🔴 AIService.getAnswerStream CHAMADO - agentType=$agentType, provider=$provider');
+    print(
+        '🔴🔴🔴 AIService.getAnswerStream CHAMADO - agentType=$agentType, provider=$provider');
     print('\n🚀 Iniciando nova solicitação de resposta');
     try {
       // When agentType is specified, backend handles system prompt via agent config
@@ -140,13 +150,15 @@ class AIService {
 
       // Novo formato de corpo da requisição
       final requestBody = {
-        'prompt': finalPrompt, // Just user's prompt, backend adds agent system prompt
+        'prompt':
+            finalPrompt, // Just user's prompt, backend adds agent system prompt
         'temperature': 0.5,
         'model': quality, // Usar o parâmetro de qualidade passado
         'streaming': true,
         'userId': userId, // Adicionando o userId na requisição
         'agentType': agentType, // Tipo de agent a ser usado
-        'language': languageCode, // Backend uses this for dynamic language injection
+        'language':
+            languageCode, // Backend uses this for dynamic language injection
       };
 
       // Adicionar provider se especificado
@@ -188,20 +200,25 @@ class AIService {
             // Adicionar o novo chunk ao buffer
             buffer += chunk;
 
-            print('📥 AIService - Stream recebeu RAW chunk #$rawChunkCount: ${chunk.length} caracteres');
+            print(
+                '📥 AIService - Stream recebeu RAW chunk #$rawChunkCount: ${chunk.length} caracteres');
             if (chunk.length < 300) {
               print('📥 AIService - Conteúdo COMPLETO do chunk: <<<$chunk>>>');
             } else {
-              print('📥 AIService - Primeiros 300 caracteres: ${chunk.substring(0, 300)}');
+              print(
+                  '📥 AIService - Primeiros 300 caracteres: ${chunk.substring(0, 300)}');
             }
 
-            print('📦 AIService - Buffer atual tem ${buffer.length} caracteres');
-            print('📦 AIService - Buffer contém \\n\\n? ${buffer.contains('\n\n')}');
+            print(
+                '📦 AIService - Buffer atual tem ${buffer.length} caracteres');
+            print(
+                '📦 AIService - Buffer contém \\n\\n? ${buffer.contains('\n\n')}');
             // Processar linhas completas (eventos SSE)
             while (buffer.contains('\n\n')) {
               final parts = buffer.split('\n\n');
               final event = parts[0];
-              print('🔍 AIService - Evento SSE detectado: ${event.substring(0, event.length > 100 ? 100 : event.length)}...');
+              print(
+                  '🔍 AIService - Evento SSE detectado: ${event.substring(0, event.length > 100 ? 100 : event.length)}...');
 
               // Atualizar o buffer com o restante
               buffer = parts.sublist(1).join('\n\n');
@@ -230,7 +247,8 @@ class AIService {
                       jsonData['done'] == true) {
                     // Evento de conclusão
                     print('✅ Servidor indicou conclusão do streaming');
-                    print('🏁 Total de conteúdo acumulado: ${allContent.length} caracteres');
+                    print(
+                        '🏁 Total de conteúdo acumulado: ${allContent.length} caracteres');
                   } else if (jsonData.containsKey('error')) {
                     // Evento de erro
                     print(
@@ -279,8 +297,7 @@ class AIService {
 
             // Registrar custos estimados
             // Note: System content is handled by backend when using agentType, so we pass empty string
-            _logTokensAndCost(
-                question, '', outputTokens, 'getAnswerStream');
+            _logTokensAndCost(question, '', outputTokens, 'getAnswerStream');
 
             // Fechar o controlador
             streamController.close();
@@ -296,8 +313,10 @@ class AIService {
         yield* streamController.stream;
       } else {
         final responseBody = await response.stream.bytesToString();
-        final errorMsg =
-            'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.';
+        final errorMsg = _buildTextRequestErrorMessage(
+          statusCode: response.statusCode,
+          responseBody: responseBody,
+        );
         print('❌ $errorMsg');
         yield errorMsg;
       }
@@ -307,6 +326,38 @@ class AIService {
       print('❌ Erro ao processar a solicitação (getAnswer): $e');
       yield errorMsg;
     }
+  }
+
+  String _buildTextRequestErrorMessage({
+    required int statusCode,
+    required String responseBody,
+  }) {
+    String? serverMessage;
+
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map<String, dynamic>) {
+        final rawMessage = decoded['message'] ?? decoded['error'];
+        if (rawMessage is String && rawMessage.trim().isNotEmpty) {
+          serverMessage = rawMessage.trim();
+        }
+      }
+    } catch (_) {
+      // Ignore malformed error bodies and fallback to generic text below.
+    }
+
+    if (statusCode == 403 &&
+        serverMessage != null &&
+        serverMessage.toLowerCase().contains('créditos insuficientes')) {
+      return 'Você está sem créditos para continuar agora. '
+          'Ganhe mais créditos no app e tente novamente.';
+    }
+
+    if (serverMessage != null && serverMessage.isNotEmpty) {
+      return serverMessage;
+    }
+
+    return 'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.';
   }
 
   // Método de processamento de imagem com streaming
@@ -521,10 +572,20 @@ class AIService {
 
   // Process audio and transcribe it on the server
   Future<String> processAudio(Uint8List audioBytes,
-      {String mimeType = 'audio/wav', String languageCode = 'pt_BR'}) async {
+      {String mimeType = 'audio/wav',
+      String languageCode = 'pt-BR',
+      String? appLanguageCode,
+      String contextHint = 'nutrition_chat',
+      int? audioDurationMs}) async {
     try {
+      final normalizedLanguageCode = _normalizeLanguageHint(languageCode);
+      final normalizedAppLanguageCode =
+          appLanguageCode == null || appLanguageCode.trim().isEmpty
+              ? null
+              : _normalizeLanguageHint(appLanguageCode);
+
       print(
-          '🎙️ AIService.processAudio - enviando áudio: bytes=${audioBytes.length}, mimeType=$mimeType, language=$languageCode');
+          '🎙️ AIService.processAudio - enviando áudio: bytes=${audioBytes.length}, mimeType=$mimeType, language=$normalizedLanguageCode, appLanguage=${normalizedAppLanguageCode ?? '-'}, context=$contextHint, durationMs=${audioDurationMs ?? 0}');
       final audioBase64 = base64Encode(audioBytes);
       final endpoint = '${AppConstants.API_BASE_URL}/ai/transcribe-audio';
       final response = await _httpClient.post(
@@ -535,7 +596,12 @@ class AIService {
         body: jsonEncode({
           'audioBase64': audioBase64,
           'mimeType': mimeType,
-          'language': languageCode,
+          'language': normalizedLanguageCode,
+          if (normalizedAppLanguageCode != null)
+            'appLanguage': normalizedAppLanguageCode,
+          if (contextHint.trim().isNotEmpty) 'contextHint': contextHint.trim(),
+          if (audioDurationMs != null && audioDurationMs > 0)
+            'audioDurationMs': audioDurationMs,
         }),
       );
 
@@ -1703,4 +1769,3 @@ $transcript
     }
   }
 }
-

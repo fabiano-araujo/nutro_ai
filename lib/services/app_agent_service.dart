@@ -1,16 +1,15 @@
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../i18n/app_localizations.dart';
 import '../models/diet_plan_model.dart';
-import '../providers/daily_meals_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import 'auth_service.dart';
+import 'server_chat_state_service.dart';
 
 class AppAgentCommand {
   const AppAgentCommand({
@@ -38,7 +37,30 @@ class AppAgentCommand {
     }
 
     try {
-      final decoded = jsonDecode(jsonString);
+      final decoded = _decodeCommandJson(jsonString);
+      if (decoded is List) {
+        final commands = <AppAgentCommand>[];
+        for (final item in decoded) {
+          if (item is! Map) {
+            continue;
+          }
+
+          final command = _buildCommandFromMap(
+            Map<String, dynamic>.from(item),
+            jsonEncode(item),
+          );
+          if (command != null) {
+            commands.add(command);
+          }
+        }
+
+        if (commands.isEmpty) {
+          return null;
+        }
+
+        return AppAgentCommandBatch(commands: commands, rawJson: jsonString);
+      }
+
       if (decoded is! Map) {
         return null;
       }
@@ -46,8 +68,9 @@ class AppAgentCommand {
       final root = Map<String, dynamic>.from(decoded);
       final commands = <AppAgentCommand>[];
 
-      if (root['app_commands'] is List) {
-        for (final item in root['app_commands'] as List) {
+      final batchNode = root['app_commands'] ?? root['appcommands'];
+      if (batchNode is List) {
+        for (final item in batchNode) {
           if (item is! Map) {
             continue;
           }
@@ -62,7 +85,8 @@ class AppAgentCommand {
         }
       }
 
-      final commandNode = root['app_command'] ?? root['appCommand'];
+      final commandNode =
+          root['app_command'] ?? root['appCommand'] ?? root['appcommand'];
       if (commandNode is Map) {
         final command = _buildCommandFromMap(
           Map<String, dynamic>.from(commandNode),
@@ -86,11 +110,26 @@ class AppAgentCommand {
     }
   }
 
+  static dynamic _decodeCommandJson(String jsonString) {
+    try {
+      return jsonDecode(jsonString);
+    } catch (_) {
+      final normalized = jsonString
+          .replaceAll(r'\"', '"')
+          .replaceAll(r"\'", "'")
+          .replaceAll(r'\n', '\n')
+          .replaceAll(r'\t', '\t');
+      return jsonDecode(normalized);
+    }
+  }
+
   static bool containsCommandCandidate(String responseContent) {
     final normalized = responseContent.toLowerCase();
     return normalized.contains('"app_command"') ||
         normalized.contains('"appcommand"') ||
-        normalized.contains('"app_commands"');
+        normalized.contains('"app_commands"') ||
+        normalized.contains('"appcommands"') ||
+        normalized.contains('"commandname"');
   }
 
   static String removeCommandJson(String responseContent) {
@@ -124,23 +163,44 @@ class AppAgentCommand {
     if (trimmedStart.startsWith('{') &&
         (trimmedStart.contains('"app_command"') ||
             trimmedStart.contains('"appCommand"') ||
+            trimmedStart.contains('"appcommand"') ||
+            trimmedStart.contains('"appcommands"') ||
             trimmedStart.contains('"app') ||
             trimmedStart.contains('\\"app'))) {
       return firstNonWhitespace;
     }
 
+    if (trimmedStart.startsWith('[') &&
+        (trimmedStart.contains('"commandName"') ||
+            trimmedStart.contains('"name"'))) {
+      return firstNonWhitespace;
+    }
+
     final inlineMatch = RegExp(r'\{\s*\\?"app').firstMatch(responseContent);
-    return inlineMatch?.start;
+    if (inlineMatch != null) {
+      return inlineMatch.start;
+    }
+
+    final arrayInlineMatch =
+        RegExp(r'\[\s*\{\s*\\?"(?:commandName|name)"').firstMatch(
+      responseContent,
+    );
+    return arrayInlineMatch?.start;
   }
 
   static String? _extractCommandJson(String responseContent) {
     final sanitized =
         responseContent.replaceAll('```json', '').replaceAll('```', '').trim();
+    final firstNonWhitespace = sanitized.indexOf(RegExp(r'\S'));
+    final trimmedStart =
+        firstNonWhitespace == -1 ? '' : sanitized.substring(firstNonWhitespace);
 
     final candidatePatterns = [
-      RegExp(r'\{\s*"app_commands"', dotAll: true),
-      RegExp(r'\{\s*"app_command"', dotAll: true),
-      RegExp(r'\{\s*"appCommand"', dotAll: true),
+      RegExp(r'\{\s*\\?"app_commands\\?"', dotAll: true),
+      RegExp(r'\{\s*\\?"appcommands\\?"', dotAll: true),
+      RegExp(r'\{\s*\\?"app_command\\?"', dotAll: true),
+      RegExp(r'\{\s*\\?"appcommand\\?"', dotAll: true),
+      RegExp(r'\{\s*\\?"appCommand\\?"', dotAll: true),
     ];
 
     int? startIndex;
@@ -152,16 +212,59 @@ class AppAgentCommand {
       }
     }
 
+    if (startIndex == null && trimmedStart.startsWith('[')) {
+      final rootArrayMatch =
+          RegExp(r'^\[\s*\{\s*\\?"(commandName|name)\\?"', dotAll: true)
+              .firstMatch(trimmedStart);
+      if (rootArrayMatch != null) {
+        startIndex = firstNonWhitespace;
+      }
+    }
+
     if (startIndex == null) {
+      final looseBatchMatch = RegExp(
+        r'\\?"?app_commands\\?"?\s*:\s*\[',
+        caseSensitive: false,
+      ).firstMatch(sanitized);
+      if (looseBatchMatch != null) {
+        final arrayStart = sanitized.indexOf('[', looseBatchMatch.start);
+        final arrayJson = _extractBalancedJsonBlock(sanitized, arrayStart);
+        if (arrayJson != null) {
+          return '{"app_commands":$arrayJson}';
+        }
+      }
+
+      final looseSingleMatch = RegExp(
+        r'\\?"?app_command\\?"?\s*:\s*\{',
+        caseSensitive: false,
+      ).firstMatch(sanitized);
+      if (looseSingleMatch != null) {
+        final objectStart = sanitized.indexOf('{', looseSingleMatch.start);
+        final objectJson = _extractBalancedJsonBlock(sanitized, objectStart);
+        if (objectJson != null) {
+          return '{"app_command":$objectJson}';
+        }
+      }
+
       return null;
     }
 
+    return _extractBalancedJsonBlock(sanitized, startIndex);
+  }
+
+  static String? _extractBalancedJsonBlock(String content, int startIndex) {
+    if (startIndex < 0 || startIndex >= content.length) {
+      return null;
+    }
+
+    final openingChar = content[startIndex];
+    final closingChar = openingChar == '[' ? ']' : '}';
     var depth = 0;
     var inString = false;
     var escaped = false;
 
-    for (var i = startIndex; i < sanitized.length; i++) {
-      final char = sanitized[i];
+    for (var i = startIndex; i < content.length; i++) {
+      final char = content[i];
 
       if (escaped) {
         escaped = false;
@@ -182,12 +285,12 @@ class AppAgentCommand {
         continue;
       }
 
-      if (char == '{') {
+      if (char == openingChar) {
         depth++;
-      } else if (char == '}') {
+      } else if (char == closingChar) {
         depth--;
         if (depth == 0) {
-          return sanitized.substring(startIndex, i + 1);
+          return content.substring(startIndex, i + 1);
         }
       }
     }
@@ -199,17 +302,249 @@ class AppAgentCommand {
     Map<String, dynamic> commandMap,
     String rawJson,
   ) {
-    final name = commandMap['name']?.toString().trim();
+    final rawName = commandMap['name']?.toString().trim() ??
+        commandMap['commandName']?.toString().trim() ??
+        commandMap['command_name']?.toString().trim() ??
+        (commandMap['app_command'] is String
+            ? commandMap['app_command']?.toString().trim()
+            : null);
+    final name = _canonicalCommandName(rawName);
     if (name == null || name.isEmpty) {
       return null;
     }
 
-    final args = commandMap['arguments'];
+    final args = _extractArguments(commandMap, name);
     return AppAgentCommand(
       name: name,
-      arguments: args is Map ? Map<String, dynamic>.from(args) : const {},
+      arguments: args,
       rawJson: rawJson,
     );
+  }
+
+  static Map<String, dynamic> _extractArguments(
+    Map<String, dynamic> commandMap,
+    String commandName,
+  ) {
+    final argsNode = commandMap['arguments'] ?? commandMap['args'];
+    Map<String, dynamic> args;
+    if (argsNode is Map) {
+      args = Map<String, dynamic>.from(argsNode);
+    } else {
+      args = Map<String, dynamic>.from(commandMap)
+        ..remove('name')
+        ..remove('commandName')
+        ..remove('command_name')
+        ..remove('app_command')
+        ..remove('appCommand')
+        ..remove('appcommand')
+        ..remove('arguments')
+        ..remove('args');
+    }
+
+    return _normalizeCommandArguments(commandName, args);
+  }
+
+  static Map<String, dynamic> _normalizeCommandArguments(
+    String commandName,
+    Map<String, dynamic> args,
+  ) {
+    final normalized = Map<String, dynamic>.from(args)
+      ..removeWhere((key, value) => value == null);
+
+    switch (commandName) {
+      case AppAgentService.updateGoalSetupProfile:
+        final sex = AppAgentService._normalizeSex(
+          AppAgentService._readFirstValue(
+            normalized,
+            const ['sex', 'gender', 'sexo'],
+          ),
+        );
+        final age = AppAgentService._tryParseInt(
+          AppAgentService._readFirstValue(normalized, const ['age', 'idade']),
+        );
+        final weight = AppAgentService._tryParseDouble(
+          AppAgentService._readFirstValue(
+            normalized,
+            const ['weightKg', 'weight_kg', 'weight', 'peso', 'peso_kg'],
+          ),
+        );
+        final height = AppAgentService._tryParseDouble(
+          AppAgentService._readFirstValue(
+            normalized,
+            const ['heightCm', 'height_cm', 'height', 'altura', 'altura_cm'],
+          ),
+        );
+        final bodyFat = AppAgentService._tryParseDouble(
+          AppAgentService._readFirstValue(
+            normalized,
+            const ['bodyFat', 'body_fat'],
+          ),
+        );
+
+        return {
+          if (sex != null) 'sex': sex,
+          if (age != null) 'age': age,
+          if (weight != null) 'weightKg': weight,
+          if (height != null) 'heightCm': height,
+          if (bodyFat != null) 'bodyFat': bodyFat,
+        };
+
+      case AppAgentService.updateGoalSetupPreferences:
+        final activityLevel = AppAgentService._parseActivityLevel(
+          AppAgentService._readFirstValue(
+            normalized,
+            const [
+              'activityLevel',
+              'activity_level',
+              'activity',
+              'activityLevelName',
+              'nivel_atividade',
+            ],
+          ),
+        );
+        final fitnessGoal = AppAgentService._parseFitnessGoal(
+          AppAgentService._readFirstValue(
+            normalized,
+            const [
+              'fitnessGoal',
+              'fitness_goal',
+              'goal',
+              'objective',
+              'objetivo',
+            ],
+          ),
+        );
+
+        return {
+          if (activityLevel != null) 'activityLevel': activityLevel.name,
+          if (fitnessGoal != null) 'fitnessGoal': fitnessGoal.name,
+        };
+
+      case AppAgentService.updateDietGenerationPreferences:
+        final mealsPerDay = AppAgentService._tryParseInt(
+          AppAgentService._readFirstValue(
+            normalized,
+            const ['mealsPerDay', 'meals_per_day'],
+          ),
+        );
+        final skipPreferenceStep = AppAgentService._tryParseBool(
+          AppAgentService._readFirstValue(
+            normalized,
+            const [
+              'skipPreferenceStep',
+              'skip_preference_step',
+              'markAllReviewed',
+              'mark_all_reviewed',
+              'noExtraPreferences',
+              'no_extra_preferences',
+            ],
+          ),
+        );
+        final mealWindow = AppAgentService._normalizeMealWindow(
+          AppAgentService._readFirstValue(
+            normalized,
+            const ['hungriestMealTime', 'hungriest_meal_time', 'hungriestMeal'],
+          ),
+        );
+
+        return {
+          if (skipPreferenceStep == true) 'skipPreferenceStep': true,
+          if (mealsPerDay != null) 'mealsPerDay': mealsPerDay,
+          if (AppAgentService._hasAnyKey(normalized, const [
+            'foodRestrictions',
+            'restrictions',
+            'dietaryRestrictions',
+            'allergies',
+          ]))
+            'foodRestrictions': AppAgentService._extractStringList(
+              AppAgentService._readFirstValue(
+                normalized,
+                const [
+                  'foodRestrictions',
+                  'restrictions',
+                  'dietaryRestrictions',
+                  'allergies',
+                ],
+              ),
+            ),
+          if (AppAgentService._hasAnyKey(normalized, const [
+            'favoriteFoods',
+            'preferredFoods',
+            'likedFoods',
+            'foodPreferences',
+          ]))
+            'favoriteFoods': AppAgentService._extractStringList(
+              AppAgentService._readFirstValue(
+                normalized,
+                const [
+                  'favoriteFoods',
+                  'preferredFoods',
+                  'likedFoods',
+                  'foodPreferences',
+                ],
+              ),
+            ),
+          if (AppAgentService._hasAnyKey(normalized, const [
+            'avoidedFoods',
+            'dislikedFoods',
+            'foodsToAvoid',
+          ]))
+            'avoidedFoods': AppAgentService._extractStringList(
+              AppAgentService._readFirstValue(
+                normalized,
+                const ['avoidedFoods', 'dislikedFoods', 'foodsToAvoid'],
+              ),
+            ),
+          if (AppAgentService._hasAnyKey(normalized, const [
+            'routineConsiderations',
+            'routineNotes',
+            'appetiteNotes',
+          ]))
+            'routineConsiderations': AppAgentService._extractStringList(
+              AppAgentService._readFirstValue(
+                normalized,
+                const [
+                  'routineConsiderations',
+                  'routineNotes',
+                  'appetiteNotes',
+                ],
+              ),
+            ),
+          if (mealWindow != null) 'hungriestMealTime': mealWindow,
+        };
+
+      default:
+        return normalized;
+    }
+  }
+
+  static String? _canonicalCommandName(String? rawName) {
+    final trimmed = rawName?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    final normalized =
+        trimmed.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    const aliases = <String, String>{
+      'getdailynutritionstatus': 'get_daily_nutrition_status',
+      'getweeklynutritionsummary': 'get_weekly_nutrition_summary',
+      'getweightstatus': 'get_weight_status',
+      'recalculatenutritiongoals': 'recalculate_nutrition_goals',
+      'generatenewdietplan': 'generate_new_diet_plan',
+      'getgoalsetupstatus': 'get_goal_setup_status',
+      'updategoalsetupprofile': 'update_goal_setup_profile',
+      'updategoalsetuppreferences': 'update_goal_setup_preferences',
+      'getdietgenerationpreferencesstatus':
+          'get_diet_generation_preferences_status',
+      'updatedietgenerationpreferences': 'update_diet_generation_preferences',
+      'getmacrotargetsstatus': 'get_macro_targets_status',
+      'updatemacrotargetspercentage': 'update_macro_targets_percentage',
+      'updatemacrotargetsgrams': 'update_macro_targets_grams',
+      'updatemacrotargetsgramsperkg': 'update_macro_targets_grams_per_kg',
+    };
+
+    return aliases[normalized];
   }
 }
 
@@ -221,6 +556,134 @@ class AppAgentCommandBatch {
 
   final List<AppAgentCommand> commands;
   final String rawJson;
+}
+
+class AppAgentUiHint {
+  const AppAgentUiHint({
+    required this.actions,
+    required this.rawBlock,
+  });
+
+  static const actionLogin = 'login';
+  static const actionConfigureGoalsUi = 'configure_goals_ui';
+  static const actionEditMacrosUi = 'edit_macros_ui';
+
+  final List<String> actions;
+  final String rawBlock;
+
+  static AppAgentUiHint? tryParse(String responseContent) {
+    final rawBlock = _extractBlock(responseContent);
+    if (rawBlock == null) {
+      return null;
+    }
+
+    final jsonStart = rawBlock.indexOf('{');
+    final jsonEnd = rawBlock.lastIndexOf('}');
+    if (jsonStart == -1 || jsonEnd == -1 || jsonEnd < jsonStart) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(rawBlock.substring(jsonStart, jsonEnd + 1));
+      if (decoded is! Map) {
+        return null;
+      }
+
+      final actionsNode = decoded['actions'];
+      if (actionsNode is! List) {
+        return null;
+      }
+
+      final actions = actionsNode
+          .map((item) => _canonicalAction(item?.toString()))
+          .whereType<String>()
+          .toSet()
+          .toList();
+      if (actions.isEmpty) {
+        return null;
+      }
+
+      return AppAgentUiHint(
+        actions: actions,
+        rawBlock: rawBlock,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool containsHint(String responseContent) {
+    return _extractBlock(responseContent) != null ||
+        responseContent.contains(
+          RegExp(r'\[APP_UI_HINT_BEGIN\]', caseSensitive: false),
+        );
+  }
+
+  static String removeHintBlock(String responseContent) {
+    var sanitized = responseContent.replaceAll(
+      RegExp(
+        r'\[APP_UI_HINT_BEGIN\][\s\S]*?\[APP_UI_HINT_END\]',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    sanitized = sanitized.replaceAll(
+      RegExp(
+        r'\[APP_UI_HINT_BEGIN\][\s\S]*$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    sanitized = sanitized.replaceAll(
+      RegExp(
+        r'\[APP_UI(?:_[A-Z]+)*[\s\S]*$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    return sanitized.trim();
+  }
+
+  static String? _extractBlock(String responseContent) {
+    final completeMatch = RegExp(
+      r'\[APP_UI_HINT_BEGIN\][\s\S]*?\[APP_UI_HINT_END\]',
+      caseSensitive: false,
+    ).firstMatch(responseContent);
+    if (completeMatch != null) {
+      return completeMatch.group(0);
+    }
+
+    return null;
+  }
+
+  static String? _canonicalAction(String? rawAction) {
+    final trimmed = rawAction?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    final normalized =
+        trimmed.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    switch (normalized) {
+      case 'login':
+      case 'signin':
+      case 'logintocontinue':
+        return actionLogin;
+      case 'configuregoalsui':
+      case 'configuregoals':
+      case 'goalsetupui':
+        return actionConfigureGoalsUi;
+      case 'editmacrosui':
+      case 'editmacros':
+      case 'macroeditorui':
+        return actionEditMacrosUi;
+      default:
+        return null;
+    }
+  }
 }
 
 class AppAgentExecutionResult {
@@ -261,6 +724,10 @@ class _ResolvedMacroTargets {
 }
 
 class AppAgentService {
+  static final ServerChatStateService _serverChatStateService =
+      ServerChatStateService();
+  static Map<String, dynamic>? _cachedServerState;
+
   static const getDailyNutritionStatus = 'get_daily_nutrition_status';
   static const getWeeklyNutritionSummary = 'get_weekly_nutrition_summary';
   static const getWeightStatus = 'get_weight_status';
@@ -380,202 +847,853 @@ class AppAgentService {
     required bool autoRegisterFoods,
     required String Function(String rawContent) fallbackSanitizer,
   }) {
-    if (AppAgentCommand.containsCommandCandidate(rawContent)) {
-      return AppAgentCommand.removeCommandJson(rawContent);
+    final sanitizedAgentArtifacts = _removeAgentArtifacts(rawContent);
+    if (sanitizedAgentArtifacts != rawContent) {
+      return fallbackSanitizer(sanitizedAgentArtifacts).trim();
     }
 
-    return fallbackSanitizer(rawContent);
+    if (AppAgentCommand.containsCommandCandidate(rawContent)) {
+      return fallbackSanitizer(AppAgentCommand.removeCommandJson(rawContent))
+          .trim();
+    }
+
+    return fallbackSanitizer(rawContent).trim();
   }
 
-  static String buildFollowUpPrompt({
+  static String _removeAgentArtifacts(String rawContent) {
+    var sanitized = AppAgentUiHint.removeHintBlock(rawContent);
+
+    sanitized = sanitized.replaceAll(
+      RegExp(
+        r'\[APP_COMMAND_RESULTS?_BEGIN\][\s\S]*?\[APP_COMMAND_RESULTS?_END\]',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    sanitized = sanitized.replaceAll(
+      RegExp(
+        r'\[APP_COMMAND_RESULTS?_BEGIN\][\s\S]*$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    if (AppAgentCommand.containsCommandCandidate(sanitized)) {
+      sanitized = AppAgentCommand.removeCommandJson(sanitized);
+    }
+
+    sanitized = sanitized.replaceAll(
+      RegExp(
+        r'^\s*\{\s*"?app_?commands?"?[\s\S]*$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    sanitized = sanitized.replaceAll(
+      RegExp(
+        r'^\s*\[\s*\{\s*"(commandName|name)"[\s\S]*\]\s*$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    return sanitized.trim();
+  }
+
+  static String? buildCreditExhaustedFallbackMessage({
+    required BuildContext context,
+    required List<AppAgentExecutionResult> executionResults,
+    required String responseContent,
+  }) {
+    if (!_isCreditExhaustedResponse(responseContent)) {
+      return null;
+    }
+
+    final successfulResults =
+        executionResults.where((result) => result.success).toList();
+    if (successfulResults.isEmpty) {
+      return null;
+    }
+
+    final lastResult = successfulResults.last;
+    final isPortuguese =
+        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
+              'pt',
+            );
+
+    switch (lastResult.commandName) {
+      case generateNewDietPlan:
+        final mealCount = _tryParseInt(lastResult.payload['mealCount']) ?? 0;
+        final totalCalories =
+            _tryParseInt(lastResult.payload['totalCalories']) ?? 0;
+        final totalProtein =
+            _tryParseDouble(lastResult.payload['totalProtein']) ?? 0;
+        final totalCarbs =
+            _tryParseDouble(lastResult.payload['totalCarbs']) ?? 0;
+        final totalFat = _tryParseDouble(lastResult.payload['totalFat']) ?? 0;
+        final meals =
+            (lastResult.payload['meals'] as List<dynamic>? ?? const [])
+                .cast<dynamic>();
+        final mealNames = meals
+            .map((meal) => meal is Map ? meal['name']?.toString() : null)
+            .whereType<String>()
+            .where((name) => name.trim().isNotEmpty)
+            .take(3)
+            .toList();
+        final preview = mealNames.isEmpty ? '' : mealNames.join(', ');
+
+        if (isPortuguese) {
+          final previewLine =
+              preview.isEmpty ? '' : '\n\nPrimeiras refeições: $preview.';
+          return 'Seu novo plano de dieta foi gerado com sucesso. '
+              'Ele tem $mealCount refeições e cerca de $totalCalories kcal no dia '
+              '(${_formatOneDecimal(totalProtein)}g de proteína, '
+              '${_formatOneDecimal(totalCarbs)}g de carboidratos e '
+              '${_formatOneDecimal(totalFat)}g de gorduras). '
+              'Você já pode ver a dieta na aba Minha Dieta.$previewLine'
+              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
+        }
+
+        final previewLine = preview.isEmpty ? '' : '\n\nFirst meals: $preview.';
+        return 'Your new diet plan was generated successfully. '
+            'It has $mealCount meals and about $totalCalories kcal for the day '
+            '(${_formatOneDecimal(totalProtein)}g protein, '
+            '${_formatOneDecimal(totalCarbs)}g carbs, '
+            '${_formatOneDecimal(totalFat)}g fat). '
+            'You can already view it in the My Diet tab.$previewLine'
+            '\n\nI could not finish the chat reply because you ran out of credits.';
+      case getDailyNutritionStatus:
+        final caloriesRemaining =
+            _tryParseInt(lastResult.payload['caloriesRemaining']) ?? 0;
+        final proteinRemaining =
+            _tryParseDouble(lastResult.payload['proteinRemaining']) ?? 0;
+        final carbsRemaining =
+            _tryParseDouble(lastResult.payload['carbsRemaining']) ?? 0;
+        final fatRemaining =
+            _tryParseDouble(lastResult.payload['fatRemaining']) ?? 0;
+        if (isPortuguese) {
+          return 'Consultei seu status de hoje: você ainda pode consumir '
+              '$caloriesRemaining kcal, ${_formatOneDecimal(proteinRemaining)}g de proteína, '
+              '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
+              '${_formatOneDecimal(fatRemaining)}g de gorduras.'
+              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
+        }
+        return 'I checked your status for today: you still have '
+            '$caloriesRemaining kcal, ${_formatOneDecimal(proteinRemaining)}g protein, '
+            '${_formatOneDecimal(carbsRemaining)}g carbs, and '
+            '${_formatOneDecimal(fatRemaining)}g fat remaining.'
+            '\n\nI could not finish the chat reply because you ran out of credits.';
+      case updateGoalSetupProfile:
+      case updateGoalSetupPreferences:
+      case getGoalSetupStatus:
+        final missingFields =
+            (lastResult.payload['requiredFieldsForInitialSetup']
+                        as List<dynamic>? ??
+                    const [])
+                .map((field) => field.toString())
+                .toList();
+        if (isPortuguese) {
+          if (missingFields.isEmpty) {
+            return 'Suas informações iniciais já estão completas no app.'
+                '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
+          }
+          return 'Atualizei suas informações iniciais. Ainda faltam: ${missingFields.join(', ')}.'
+              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
+        }
+        if (missingFields.isEmpty) {
+          return 'Your initial setup is already complete in the app.'
+              '\n\nI could not finish the chat reply because you ran out of credits.';
+        }
+        return 'I updated your initial setup. Still missing: ${missingFields.join(', ')}.'
+            '\n\nI could not finish the chat reply because you ran out of credits.';
+      case updateMacroTargetsPercentage:
+      case updateMacroTargetsGrams:
+      case updateMacroTargetsGramsPerKg:
+      case getMacroTargetsStatus:
+      case recalculateNutritionGoals:
+        final caloriesGoal =
+            _tryParseInt(lastResult.payload['caloriesGoal']) ?? 0;
+        final grams =
+            (lastResult.payload['grams'] as Map?)?.cast<String, dynamic>() ??
+                const <String, dynamic>{};
+        final protein = _tryParseDouble(grams['protein']) ??
+            _tryParseDouble(lastResult.payload['proteinGoal']) ??
+            0;
+        final carbs = _tryParseDouble(grams['carbs']) ??
+            _tryParseDouble(lastResult.payload['carbsGoal']) ??
+            0;
+        final fat = _tryParseDouble(grams['fat']) ??
+            _tryParseDouble(lastResult.payload['fatGoal']) ??
+            0;
+        if (isPortuguese) {
+          return 'Seus alvos nutricionais atuais são $caloriesGoal kcal, '
+              '${_formatOneDecimal(protein)}g de proteína, '
+              '${_formatOneDecimal(carbs)}g de carboidratos e '
+              '${_formatOneDecimal(fat)}g de gorduras.'
+              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
+        }
+        return 'Your current nutrition targets are $caloriesGoal kcal, '
+            '${_formatOneDecimal(protein)}g protein, '
+            '${_formatOneDecimal(carbs)}g carbs, and '
+            '${_formatOneDecimal(fat)}g fat.'
+            '\n\nI could not finish the chat reply because you ran out of credits.';
+      default:
+        return isPortuguese
+            ? 'Consegui concluir a ação no app, mas não consegui completar a resposta do chat porque seus créditos acabaram.'
+            : 'I completed the action in the app, but I could not finish the chat reply because you ran out of credits.';
+    }
+  }
+
+  static Future<String> buildFollowUpPrompt({
     required String originalUserMessage,
     required List<AppAgentExecutionResult> executionResults,
+    required BuildContext context,
     String conversationContext = '',
-  }) {
-    final resultJson =
-        jsonEncode(executionResults.map((result) => result.toJson()).toList());
+  }) async {
+    final resultJson = jsonEncode(
+      executionResults.map(_summarizeExecutionResultForPrompt).toList(),
+    );
+    final sanitizedConversationContext =
+        shouldIncludeConversationContext(originalUserMessage)
+            ? compactConversationContext(
+                conversationContext,
+                maxBlocks: 2,
+                maxChars: 260,
+              )
+            : '';
+    final currentAppStateJson = jsonEncode(
+      _buildPromptStatePayload(await _getCurrentAppStatePayload(context)),
+    );
 
     return '''
 [APP_COMMAND_RESULTS_BEGIN]
 $resultJson
 [APP_COMMAND_RESULTS_END]
 
-${conversationContext.trim().isEmpty ? '' : 'Contexto recente da conversa:\n$conversationContext\n'}
+[APP_CURRENT_STATE_BEGIN]
+$currentAppStateJson
+[APP_CURRENT_STATE_END]
 
-Pedido original do usuário:
+${sanitizedConversationContext.isEmpty ? '' : 'Contexto recente da conversa:\n$sanitizedConversationContext\n'}
+
+Pedido do usuário:
 $originalUserMessage
 
-Use os resultados do app acima para responder ao usuário em linguagem natural. Não revele nomes internos de comandos, não use JSON na resposta final e não peça os mesmos dados novamente se eles já vieram no resultado.
-Se o resultado indicar que ainda faltam preferências para gerar a dieta, faça exatamente uma pergunta curta sobre o próximo tópico que falta.
+Use APP_COMMAND_RESULTS e APP_CURRENT_STATE como fonte de verdade. Se outra ação de app ainda for necessária para concluir o pedido, retorne somente app_command/app_commands válidos. Caso contrário, responda naturalmente sem JSON nem nomes internos de comando.
 Responda no mesmo idioma do pedido original do usuário.
 ''';
+  }
+
+  static Future<String> buildPromptWithCurrentAppState({
+    required BuildContext context,
+    required String basePrompt,
+  }) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (!authService.isAuthenticated || authService.token == null) {
+      return basePrompt;
+    }
+
+    final currentAppStateJson = jsonEncode(
+      _buildPromptStatePayload(await _getCurrentAppStatePayload(context)),
+    );
+
+    return '''
+[APP_CURRENT_STATE_BEGIN]
+$currentAppStateJson
+[APP_CURRENT_STATE_END]
+
+$basePrompt
+''';
+  }
+
+  static Map<String, dynamic> _buildPromptStatePayload(
+    Map<String, dynamic> state,
+  ) {
+    final auth = (state['auth'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    final goalSetup = (state['goalSetup'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    final setupCompletionStatus =
+        (goalSetup['setupCompletionStatus'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final profile = (goalSetup['profile'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    final goalSetupMacroTargets =
+        (goalSetup['macroTargets'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final goalSetupMacroGrams =
+        (goalSetupMacroTargets['grams'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final macroTargets =
+        (state['macroTargets'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final macroPercentages =
+        (macroTargets['percentages'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final dietPreferences =
+        (state['dietGenerationPreferences'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+
+    return _pruneNullEntries({
+      'auth': {
+        'isAuthenticated': auth['isAuthenticated'] == true,
+        'userId': auth['userId'],
+      },
+      'goalSetup': _pruneNullEntries({
+        'configurationStatus': goalSetup['configurationStatus'],
+        'defaultMacroTargetsApplied': goalSetup['defaultMacroTargetsApplied'],
+        'missingSetupFields': _limitStringList(goalSetup['missingSetupFields']),
+        'requiredFieldsForInitialSetup':
+            _limitStringList(goalSetup['requiredFieldsForInitialSetup']) ??
+                _limitStringList(goalSetup['missingSetupFields']),
+        'setupCompletionStatus': _pruneNullEntries({
+          'sex': setupCompletionStatus['sex'],
+          'age': setupCompletionStatus['age'],
+          'weight_kg': setupCompletionStatus['weight_kg'],
+          'height_cm': setupCompletionStatus['height_cm'],
+          'activity_level': setupCompletionStatus['activity_level'],
+          'fitness_goal': setupCompletionStatus['fitness_goal'],
+        }),
+        'profile': _pruneNullEntries({
+          'sex': profile['sex'],
+          'age': profile['age'],
+          'weightKg': profile['weightKg'],
+          'heightCm': profile['heightCm'],
+          'activityLevel': profile['activityLevel'],
+          'fitnessGoal': profile['fitnessGoal'],
+        }),
+        'macroSummary': _pruneNullEntries({
+          'goalMode':
+              goalSetupMacroTargets['goalMode'] ?? macroTargets['goalMode'],
+          'caloriesGoal': goalSetupMacroTargets['caloriesGoal'] ??
+              macroTargets['caloriesGoal'],
+          'proteinGoal':
+              goalSetupMacroGrams['protein'] ?? macroTargets['proteinGoal'],
+          'carbsGoal':
+              goalSetupMacroGrams['carbs'] ?? macroTargets['carbsGoal'],
+          'fatGoal': goalSetupMacroGrams['fat'] ?? macroTargets['fatGoal'],
+          'percentages': _pruneNullEntries({
+            'carbs': macroPercentages['carbs'],
+            'protein': macroPercentages['protein'],
+            'fat': macroPercentages['fat'],
+          }),
+        }),
+      }),
+      'dietGenerationPreferences': _pruneNullEntries({
+        'isPreferenceStepOptional':
+            dietPreferences['isPreferenceStepOptional'] == true,
+        'hasReviewedAnyDietPreference':
+            dietPreferences['hasReviewedAnyDietPreference'] == true,
+        'isReadyForDietGeneration':
+            dietPreferences['isReadyForDietGeneration'] == true,
+        'missingPreferenceTopics':
+            _limitStringList(dietPreferences['missingPreferenceTopics']),
+        'reviewedTopics': _limitStringList(dietPreferences['reviewedTopics']),
+      }),
+    });
+  }
+
+  static Map<String, dynamic> _summarizeExecutionResultForPrompt(
+    AppAgentExecutionResult result,
+  ) {
+    final payload = result.payload;
+
+    Map<String, dynamic> summarizedPayload() {
+      switch (result.commandName) {
+        case getGoalSetupStatus:
+        case updateGoalSetupProfile:
+        case updateGoalSetupPreferences:
+          final setupCompletion = (payload['setupCompletionStatus'] as Map?)
+                  ?.cast<String, dynamic>() ??
+              const <String, dynamic>{};
+          return _pruneNullEntries({
+            'updatedFields': _limitStringList(payload['updatedFields']),
+            'configurationStatus': payload['configurationStatus'],
+            'missingSetupFields':
+                _limitStringList(payload['missingSetupFields']),
+            'requiredFieldsForInitialSetup':
+                _limitStringList(payload['requiredFieldsForInitialSetup']) ??
+                    _limitStringList(payload['missingSetupFields']),
+            'setupCompletionStatus': _pruneNullEntries({
+              'sex': setupCompletion['sex'],
+              'age': setupCompletion['age'],
+              'weight_kg': setupCompletion['weight_kg'],
+              'height_cm': setupCompletion['height_cm'],
+              'activity_level': setupCompletion['activity_level'],
+              'fitness_goal': setupCompletion['fitness_goal'],
+            }),
+          });
+        case getDietGenerationPreferencesStatus:
+        case updateDietGenerationPreferences:
+          return _pruneNullEntries({
+            'updatedFields': _limitStringList(payload['updatedFields']),
+            'isPreferenceStepOptional':
+                payload['isPreferenceStepOptional'] == true,
+            'hasReviewedAnyDietPreference':
+                payload['hasReviewedAnyDietPreference'] == true,
+            'isReadyForDietGeneration':
+                payload['isReadyForDietGeneration'] == true,
+            'missingPreferenceTopics':
+                _limitStringList(payload['missingPreferenceTopics']),
+          });
+        case getMacroTargetsStatus:
+        case updateMacroTargetsPercentage:
+        case updateMacroTargetsGrams:
+        case updateMacroTargetsGramsPerKg:
+          final percentages =
+              (payload['percentages'] as Map?)?.cast<String, dynamic>() ??
+                  const <String, dynamic>{};
+          final grams = (payload['grams'] as Map?)?.cast<String, dynamic>() ??
+              const <String, dynamic>{};
+          return _pruneNullEntries({
+            'updatedByMode': payload['updatedByMode'],
+            'autoFilledFields': _limitStringList(payload['autoFilledFields']),
+            'goalMode': payload['goalMode'],
+            'caloriesGoal': payload['caloriesGoal'],
+            'grams': _pruneNullEntries({
+              'protein': grams['protein'],
+              'carbs': grams['carbs'],
+              'fat': grams['fat'],
+            }),
+            'percentages': _pruneNullEntries({
+              'protein': percentages['protein'],
+              'carbs': percentages['carbs'],
+              'fat': percentages['fat'],
+            }),
+          });
+        case getDailyNutritionStatus:
+          return _pruneNullEntries({
+            'selectedDate': payload['selectedDate'],
+            'caloriesGoal': payload['caloriesGoal'],
+            'caloriesConsumed': payload['caloriesConsumed'],
+            'caloriesRemaining': payload['caloriesRemaining'],
+            'proteinRemaining': payload['proteinRemaining'],
+            'carbsRemaining': payload['carbsRemaining'],
+            'fatRemaining': payload['fatRemaining'],
+            'waterRemaining': payload['waterRemaining'],
+            'mealCount': (payload['meals'] as List?)?.length,
+          });
+        case getWeeklyNutritionSummary:
+          return _pruneNullEntries({
+            'daysTracked': payload['daysTracked'],
+            'averageCalories': payload['averageCalories'],
+            'averageProtein': payload['averageProtein'],
+            'averageCarbs': payload['averageCarbs'],
+            'averageFat': payload['averageFat'],
+            'weeklyGoalCalories': payload['weeklyGoalCalories'],
+          });
+        case getWeightStatus:
+          return _pruneNullEntries({
+            'weightKg': payload['weightKg'],
+            'heightCm': payload['heightCm'],
+            'sex': payload['sex'],
+            'age': payload['age'],
+            'bmi': payload['bmi'],
+            'bodyFat': payload['bodyFat'],
+          });
+        case recalculateNutritionGoals:
+          return _pruneNullEntries({
+            'caloriesGoal': payload['caloriesGoal'],
+            'proteinGoal': payload['proteinGoal'],
+            'carbsGoal': payload['carbsGoal'],
+            'fatGoal': payload['fatGoal'],
+            'activityLevel': payload['activityLevel'],
+            'fitnessGoal': payload['fitnessGoal'],
+            'dietType': payload['dietType'],
+          });
+        case generateNewDietPlan:
+          final personalization = (payload['dietPersonalization'] as Map?)
+                  ?.cast<String, dynamic>() ??
+              const <String, dynamic>{};
+          final meals = (payload['meals'] as List?)?.cast<Map>() ?? const [];
+          return _pruneNullEntries({
+            'dietMode': payload['dietMode'],
+            'selectedDate': payload['selectedDate'],
+            'totalCalories': payload['totalCalories'],
+            'totalProtein': payload['totalProtein'],
+            'totalCarbs': payload['totalCarbs'],
+            'totalFat': payload['totalFat'],
+            'mealCount': payload['mealCount'],
+            'mealTitles': meals
+                .map((meal) => meal['mealType']?.toString())
+                .whereType<String>()
+                .take(4)
+                .toList(),
+            'dietPersonalization': _pruneNullEntries({
+              'mealsPerDay': personalization['mealsPerDay'],
+              'hungriestMealTime': personalization['hungriestMealTime'],
+              'foodRestrictions': _limitStringList(
+                personalization['foodRestrictions'],
+              ),
+              'favoriteFoods':
+                  _limitStringList(personalization['favoriteFoods']),
+              'avoidedFoods': _limitStringList(personalization['avoidedFoods']),
+              'routineConsiderations': _limitStringList(
+                personalization['routineConsiderations'],
+              ),
+            }),
+          });
+        default:
+          return _pruneNullEntries(payload);
+      }
+    }
+
+    return _pruneNullEntries({
+      'commandName': result.commandName,
+      'success': result.success,
+      if (result.errorMessage != null) 'errorMessage': result.errorMessage,
+      'payload': summarizedPayload(),
+    });
+  }
+
+  static Map<String, dynamic> _pruneNullEntries(Map<String, dynamic> value) {
+    final pruned = <String, dynamic>{};
+    for (final entry in value.entries) {
+      final currentValue = entry.value;
+      if (currentValue == null) {
+        continue;
+      }
+      if (currentValue is Map<String, dynamic>) {
+        final nested = _pruneNullEntries(currentValue);
+        if (nested.isEmpty) {
+          continue;
+        }
+        pruned[entry.key] = nested;
+        continue;
+      }
+      if (currentValue is List) {
+        final nested = currentValue.where((item) => item != null).toList();
+        if (nested.isEmpty) {
+          continue;
+        }
+        pruned[entry.key] = nested;
+        continue;
+      }
+      pruned[entry.key] = currentValue;
+    }
+    return pruned;
+  }
+
+  static List<String>? _limitStringList(
+    dynamic value, {
+    int maxItems = 4,
+  }) {
+    if (value is! List) {
+      return null;
+    }
+
+    final items = value
+        .map((item) => item?.toString().trim())
+        .whereType<String>()
+        .where((item) => item.isNotEmpty)
+        .take(maxItems)
+        .toList();
+
+    return items.isEmpty ? null : items;
+  }
+
+  static bool _isCreditExhaustedResponse(String responseContent) {
+    final normalized = responseContent.toLowerCase();
+    return normalized.contains('sem créditos') ||
+        normalized.contains('sem creditos') ||
+        normalized.contains('créditos acabaram') ||
+        normalized.contains('creditos acabaram') ||
+        normalized.contains('créditos insuficientes') ||
+        normalized.contains('creditos insuficientes') ||
+        normalized.contains('out of credits') ||
+        normalized.contains('insufficient credits');
+  }
+
+  static String compactConversationContext(
+    String conversationContext, {
+    int maxBlocks = 3,
+    int maxChars = 420,
+  }) {
+    final trimmed = conversationContext.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+
+    final blocks = RegExp(
+      r'^(?:Humano|IA):\s[\s\S]*?(?=^(?:Humano|IA):\s|\z)',
+      multiLine: true,
+    ).allMatches(trimmed).map((match) => match.group(0)!.trim()).toList();
+
+    if (blocks.isEmpty) {
+      final sanitized = _removeAgentArtifacts(trimmed);
+      if (sanitized.length <= maxChars) {
+        return sanitized;
+      }
+      return sanitized.substring(sanitized.length - maxChars).trimLeft();
+    }
+
+    final sanitizedBlocks = blocks
+        .map(_sanitizeConversationBlock)
+        .where((block) => block.isNotEmpty)
+        .toList();
+    if (sanitizedBlocks.isEmpty) {
+      return '';
+    }
+
+    final recentBlocks = sanitizedBlocks.length <= maxBlocks
+        ? sanitizedBlocks
+        : sanitizedBlocks.sublist(sanitizedBlocks.length - maxBlocks);
+    final compacted = recentBlocks.join('\n');
+    if (compacted.length <= maxChars) {
+      return compacted;
+    }
+
+    final overflow =
+        compacted.substring(compacted.length - maxChars).trimLeft();
+    final firstBreak = overflow.indexOf('\n');
+    if (firstBreak == -1) {
+      return overflow;
+    }
+    return overflow.substring(firstBreak + 1).trimLeft();
+  }
+
+  static String _sanitizeConversationBlock(String block) {
+    final separatorIndex = block.indexOf(':');
+    if (separatorIndex == -1) {
+      return _removeAgentArtifacts(block);
+    }
+
+    final speaker = block.substring(0, separatorIndex).trim();
+    final content = block.substring(separatorIndex + 1).trim();
+    final sanitizedContent =
+        _removeAgentArtifacts(content).replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    if (sanitizedContent.isEmpty) {
+      return '';
+    }
+
+    return '$speaker: $sanitizedContent';
+  }
+
+  static bool shouldIncludeConversationContext(String userMessage) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    if (_containsAnyTerm(normalized, const [
+      'pode seguir',
+      'pode continuar',
+      'segue',
+      'continue',
+      'go ahead',
+      'qualquer uma',
+      'qualquer um',
+      'tanto faz',
+      'sem preferencia',
+      'sem preferências',
+      'sem restricoes',
+      'sem restrições',
+      'sim',
+      'nao',
+      'não',
+      'ok',
+      'certo',
+      'e agora',
+      'e ai',
+      'e aí',
+    ])) {
+      return true;
+    }
+
+    final words = normalized
+        .split(RegExp(r'\s+'))
+        .where((word) => word.trim().isNotEmpty)
+        .toList();
+    if (words.length > 6) {
+      return false;
+    }
+
+    final firstWord = words.first;
+    return {
+      'e',
+      'entao',
+      'então',
+      'isso',
+      'essa',
+      'esse',
+      'essas',
+      'esses',
+      'agora',
+      'depois',
+    }.contains(firstWord);
+  }
+
+  static Future<Map<String, dynamic>> _getCurrentAppStatePayload(
+    BuildContext context,
+  ) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    if (!authService.isAuthenticated || authService.token == null) {
+      _cachedServerState = null;
+      return _buildUnauthenticatedCurrentStatePayload();
+    }
+
+    final currentUserId = authService.currentUser?.id;
+    if (_cachedServerState != null &&
+        _cachedServerState!['auth'] is Map &&
+        (_cachedServerState!['auth'] as Map)['userId'] == currentUserId) {
+      return _cachedServerState!;
+    }
+
+    try {
+      final remoteState = await _serverChatStateService.fetchState(
+        token: authService.token!,
+      );
+      await _cacheAndApplyServerState(context, remoteState);
+      return remoteState;
+    } catch (error) {
+      debugPrint('AppAgentService - erro ao buscar chat-state: $error');
+      if (_cachedServerState != null) {
+        return _cachedServerState!;
+      }
+      return {
+        ..._buildUnauthenticatedCurrentStatePayload(),
+        'auth': {
+          'isAuthenticated': true,
+          'userId': currentUserId,
+        },
+        'serverState': {
+          'available': false,
+        },
+      };
+    }
+  }
+
+  static Map<String, dynamic> _buildUnauthenticatedCurrentStatePayload() {
+    return {
+      'auth': {
+        'isAuthenticated': false,
+        'userId': null,
+      },
+    };
+  }
+
+  static Future<void> _cacheAndApplyServerState(
+    BuildContext context,
+    Map<String, dynamic> state,
+  ) async {
+    _cachedServerState = Map<String, dynamic>.from(state);
+    await _applyServerStateToProviders(context, _cachedServerState!);
+  }
+
+  static Future<void> _applyServerStateToProviders(
+    BuildContext context,
+    Map<String, dynamic> state,
+  ) async {
+    final goalSetup = (state['goalSetup'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    final macroTargets =
+        (state['macroTargets'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final dietPreferences =
+        (state['dietGenerationPreferences'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+
+    await goalsProvider.ensureLoaded();
+    await dietProvider.ensureLoaded();
+
+    if (goalSetup.isNotEmpty) {
+      await goalsProvider.applyServerSnapshot(
+        goalSetup: goalSetup,
+        macroTargets: macroTargets,
+      );
+    }
+
+    if (dietPreferences.isNotEmpty) {
+      await dietProvider.applyServerPreferencesSnapshot(dietPreferences);
+    }
+  }
+
+  static Future<AppAgentExecutionResult> _executeServerStateCommand(
+    AppAgentCommand command,
+    BuildContext context,
+  ) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (!authService.isAuthenticated || authService.token == null) {
+      return AppAgentExecutionResult(
+        commandName: command.name,
+        success: false,
+        errorMessage: 'login_required',
+        payload: const {
+          'reason': 'login_required',
+        },
+      );
+    }
+
+    try {
+      final response = await _serverChatStateService.executeCommand(
+        token: authService.token!,
+        commandName: command.name,
+        arguments: command.arguments,
+      );
+      final state = (response['state'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
+      if (state.isNotEmpty) {
+        await _cacheAndApplyServerState(context, state);
+      }
+
+      final payload = (response['payload'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
+      final commandName = response['commandName']?.toString() ?? command.name;
+      final success = response['success'] == true;
+      final errorMessage = response['errorMessage']?.toString();
+
+      return AppAgentExecutionResult(
+        commandName: commandName,
+        success: success,
+        errorMessage: errorMessage,
+        payload: payload,
+      );
+    } catch (error) {
+      return AppAgentExecutionResult(
+        commandName: command.name,
+        success: false,
+        errorMessage: error.toString(),
+        payload: const {
+          'reason': 'server_chat_state_error',
+        },
+      );
+    }
   }
 
   static Future<AppAgentExecutionResult> _getDailyNutritionStatus(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final mealsProvider =
-        Provider.of<DailyMealsProvider>(context, listen: false);
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final meals = mealsProvider.todayMeals
-        .map((meal) => {
-              'type': meal.type.name,
-              'foods': meal.foods.map((food) => food.name).toList(),
-              'calories': meal.totalCalories,
-              'protein': meal.totalProtein,
-              'carbs': meal.totalCarbs,
-              'fat': meal.totalFat,
-            })
-        .toList();
-
-    final payload = {
-      'selectedDate': mealsProvider.selectedDate.toIso8601String(),
-      'hasConfiguredGoals': goalsProvider.hasConfiguredGoals,
-      'caloriesGoal': goalsProvider.caloriesGoal,
-      'caloriesConsumed': mealsProvider.totalCalories,
-      'caloriesRemaining':
-          goalsProvider.caloriesGoal - mealsProvider.totalCalories,
-      'proteinGoal': goalsProvider.proteinGoal,
-      'proteinConsumed': _round1(mealsProvider.totalProtein),
-      'proteinRemaining':
-          goalsProvider.proteinGoal - _round1(mealsProvider.totalProtein),
-      'carbsGoal': goalsProvider.carbsGoal,
-      'carbsConsumed': _round1(mealsProvider.totalCarbs),
-      'carbsRemaining':
-          goalsProvider.carbsGoal - _round1(mealsProvider.totalCarbs),
-      'fatGoal': goalsProvider.fatGoal,
-      'fatConsumed': _round1(mealsProvider.totalFat),
-      'fatRemaining': goalsProvider.fatGoal - _round1(mealsProvider.totalFat),
-      'waterGoal': mealsProvider.waterGoal,
-      'waterConsumed': mealsProvider.todayWaterGlasses,
-      'meals': meals,
-    };
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: payload,
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _getWeeklyNutritionSummary(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final mealsProvider =
-        Provider.of<DailyMealsProvider>(context, listen: false);
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final history = mealsProvider.getCaloriesHistory(7);
-    final macrosHistory = mealsProvider.getMacrosHistory(7);
-    final averageMacros = mealsProvider.getAverageMacros(7);
-    final daysWithinGoal = history
-        .where((day) =>
-            (day['calories'] as int) > 0 &&
-            ((day['calories'] as int) - goalsProvider.caloriesGoal).abs() <=
-                150)
-        .length;
-
-    final payload = {
-      'caloriesGoal': goalsProvider.caloriesGoal,
-      'averageCalories': mealsProvider.getAverageCalories(7).round(),
-      'averageMacros': {
-        'protein': _round1(averageMacros['protein'] ?? 0),
-        'carbs': _round1(averageMacros['carbs'] ?? 0),
-        'fat': _round1(averageMacros['fat'] ?? 0),
-        'fiber': _round1(averageMacros['fiber'] ?? 0),
-      },
-      'currentStreak': mealsProvider.getCurrentStreak(),
-      'totalDaysLogged': mealsProvider.getTotalDaysLogged(),
-      'totalMealsLogged': mealsProvider.getTotalMealsLogged(),
-      'daysWithinGoal': daysWithinGoal,
-      'history': List.generate(history.length, (index) {
-        final day = history[index];
-        final macros = macrosHistory[index];
-        return {
-          'date': (day['date'] as DateTime).toIso8601String(),
-          'calories': day['calories'],
-          'hasData': day['hasData'],
-          'protein': _round1(macros['protein'] as double? ?? 0),
-          'carbs': _round1(macros['carbs'] as double? ?? 0),
-          'fat': _round1(macros['fat'] as double? ?? 0),
-          'fiber': _round1(macros['fiber'] as double? ?? 0),
-        };
-      }),
-    };
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: payload,
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _getWeightStatus(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final heightInMeters = goalsProvider.height / 100;
-    final bmi = heightInMeters > 0
-        ? goalsProvider.weight / math.pow(heightInMeters, 2)
-        : 0.0;
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'hasConfiguredGoals': goalsProvider.hasConfiguredGoals,
-        'weightKg': goalsProvider.weight,
-        'formattedWeight': goalsProvider.getFormattedWeight(),
-        'heightCm': goalsProvider.height,
-        'formattedHeight': goalsProvider.getFormattedHeight(),
-        'bmi': _round2(bmi),
-        'goal': goalsProvider.fitnessGoal.name,
-        'dietType': goalsProvider.dietType.name,
-        'caloriesGoal': goalsProvider.caloriesGoal,
-        'proteinGoal': goalsProvider.proteinGoal,
-        'carbsGoal': goalsProvider.carbsGoal,
-        'fatGoal': goalsProvider.fatGoal,
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _recalculateNutritionGoals(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final previousMode = goalsProvider.useCalculatedGoals;
-    goalsProvider.setUseCalculatedGoals(true);
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'switchedToCalculatedGoals': !previousMode,
-        'caloriesGoal': goalsProvider.caloriesGoal,
-        'proteinGoal': goalsProvider.proteinGoal,
-        'carbsGoal': goalsProvider.carbsGoal,
-        'fatGoal': goalsProvider.fatGoal,
-        'formula': goalsProvider.formula.name,
-        'activityLevel': goalsProvider.activityLevel.name,
-        'fitnessGoal': goalsProvider.fitnessGoal.name,
-        'dietType': goalsProvider.dietType.name,
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _generateNewDietPlan(
@@ -615,6 +1733,8 @@ Responda no mesmo idioma do pedido original do usuário.
       );
     }
 
+    await _getCurrentAppStatePayload(context);
+
     if (!dietProvider.isAuthenticated) {
       await dietProvider.setAuth(
         authService.token ?? '',
@@ -630,18 +1750,6 @@ Responda no mesmo idioma do pedido original do usuário.
         payload: {
           'reason': 'daily_diet_premium_required',
           'dietMode': dietProvider.dietMode.name,
-        },
-      );
-    }
-
-    if (!dietProvider.hasCompletedDietPersonalization) {
-      return AppAgentExecutionResult(
-        commandName: command.name,
-        success: false,
-        errorMessage: 'diet_generation_preferences_required',
-        payload: {
-          'reason': 'diet_generation_preferences_required',
-          ..._buildDietGenerationPreferencesPayload(dietProvider),
         },
       );
     }
@@ -695,541 +1803,63 @@ Responda no mesmo idioma do pedido original do usuário.
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
-    await dietProvider.ensureLoaded();
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: _buildDietGenerationPreferencesPayload(dietProvider),
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _getGoalSetupStatus(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: _buildGoalSetupPayload(goalsProvider),
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _updateGoalSetupProfile(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final normalizedSex = _normalizeSex(
-      command.arguments['sex'] ?? command.arguments['gender'],
-    );
-    final age = _tryParseInt(command.arguments['age']);
-    final weight = _tryParseDouble(
-      command.arguments['weightKg'] ??
-          command.arguments['weight_kg'] ??
-          command.arguments['weight'],
-    );
-    final height = _tryParseDouble(
-      command.arguments['heightCm'] ??
-          command.arguments['height_cm'] ??
-          command.arguments['height'],
-    );
-    final bodyFat = _tryParseDouble(
-      command.arguments['bodyFat'] ?? command.arguments['body_fat'],
-    );
-
-    final updatedFields = <String>[];
-    if (normalizedSex != null) {
-      updatedFields.add('sex');
-    }
-    if (age != null) {
-      updatedFields.add('age');
-    }
-    if (weight != null) {
-      updatedFields.add('weightKg');
-    }
-    if (height != null) {
-      updatedFields.add('heightCm');
-    }
-    if (bodyFat != null) {
-      updatedFields.add('bodyFat');
-    }
-
-    if (updatedFields.isEmpty) {
-      return AppAgentExecutionResult(
-        commandName: command.name,
-        success: false,
-        errorMessage: 'missing_profile_arguments',
-        payload: {
-          'acceptedArguments': const [
-            'sex',
-            'gender',
-            'age',
-            'weightKg',
-            'weight_kg',
-            'heightCm',
-            'height_cm',
-            'bodyFat',
-          ],
-        },
-      );
-    }
-
-    goalsProvider.updatePersonalInfo(
-      sex: normalizedSex,
-      age: age,
-      weight: weight,
-      height: height,
-      bodyFat: bodyFat,
-    );
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'updatedFields': updatedFields,
-        ..._buildGoalSetupPayload(goalsProvider),
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _updateGoalSetupPreferences(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final activityLevel = _parseActivityLevel(
-      command.arguments['activityLevel'] ?? command.arguments['activity_level'],
-    );
-    final fitnessGoal = _parseFitnessGoal(
-      command.arguments['fitnessGoal'] ?? command.arguments['fitness_goal'],
-    );
-    final formula = _parseCalculationFormula(command.arguments['formula']);
-
-    final updatedFields = <String>[];
-    if (activityLevel != null) {
-      updatedFields.add('activityLevel');
-    }
-    if (fitnessGoal != null) {
-      updatedFields.add('fitnessGoal');
-    }
-    if (formula != null) {
-      updatedFields.add('formula');
-    }
-
-    if (updatedFields.isEmpty) {
-      return AppAgentExecutionResult(
-        commandName: command.name,
-        success: false,
-        errorMessage: 'missing_goal_preference_arguments',
-        payload: {
-          'acceptedArguments': const [
-            'activityLevel',
-            'activity_level',
-            'fitnessGoal',
-            'fitness_goal',
-            'formula',
-          ],
-        },
-      );
-    }
-
-    goalsProvider.updateActivityAndGoals(
-      activityLevel: activityLevel,
-      fitnessGoal: fitnessGoal,
-      formula: formula,
-    );
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'updatedFields': updatedFields,
-        ..._buildGoalSetupPayload(goalsProvider),
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _updateDietGenerationPreferences(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
-    await dietProvider.ensureLoaded();
-    final args = command.arguments;
-
-    final hasRestrictionsKey = _hasAnyKey(args, const [
-      'foodRestrictions',
-      'restrictions',
-      'dietaryRestrictions',
-      'allergies',
-    ]);
-    final hasFavoriteFoodsKey = _hasAnyKey(args, const [
-      'favoriteFoods',
-      'preferredFoods',
-      'likedFoods',
-      'foodPreferences',
-    ]);
-    final hasAvoidedFoodsKey = _hasAnyKey(args, const [
-      'avoidedFoods',
-      'dislikedFoods',
-      'foodsToAvoid',
-    ]);
-    final hasRoutineKey = _hasAnyKey(args, const [
-      'routineConsiderations',
-      'routineNotes',
-      'specialConsiderations',
-      'dietNotes',
-      'appetiteTraits',
-      'appetiteNotes',
-      'lifestyleConsiderations',
-    ]);
-    final hasHungriestMealTimeKey = _hasAnyKey(args, const [
-      'hungriestMealTime',
-      'hungriestMeal',
-      'hungerWindow',
-    ]);
-    final mealsPerDay = _tryParseInt(args['mealsPerDay']);
-
-    final clearRestrictions = _tryParseBool(
-          args['clearRestrictions'] ?? args['noRestrictions'],
-        ) ??
-        false;
-    final clearFoodPreferences = _tryParseBool(
-          args['clearFoodPreferences'] ?? args['noFoodPreferences'],
-        ) ??
-        false;
-    final clearRoutineNeeds = _tryParseBool(
-          args['clearRoutineNeeds'] ?? args['noRoutineNeeds'],
-        ) ??
-        false;
-
-    final foodRestrictions = _extractStringList(_readFirstValue(args, const [
-      'foodRestrictions',
-      'restrictions',
-      'dietaryRestrictions',
-      'allergies',
-    ]));
-    final favoriteFoods = _extractStringList(_readFirstValue(args, const [
-      'favoriteFoods',
-      'preferredFoods',
-      'likedFoods',
-      'foodPreferences',
-    ]));
-    final avoidedFoods = _extractStringList(_readFirstValue(args, const [
-      'avoidedFoods',
-      'dislikedFoods',
-      'foodsToAvoid',
-    ]));
-    final routineConsiderations = _extractStringList(_readFirstValue(
-      args,
-      const [
-        'routineConsiderations',
-        'routineNotes',
-        'specialConsiderations',
-        'dietNotes',
-        'appetiteTraits',
-        'appetiteNotes',
-        'lifestyleConsiderations',
-      ],
-    ));
-    final hungriestMealTime = _normalizeMealWindow(_readFirstValue(args, const [
-      'hungriestMealTime',
-      'hungriestMeal',
-      'hungerWindow',
-    ]));
-
-    final updatedFields = <String>[];
-    if (hasRestrictionsKey || clearRestrictions) {
-      updatedFields.add('foodRestrictions');
-    }
-    if (hasFavoriteFoodsKey || clearFoodPreferences) {
-      updatedFields.add('favoriteFoods');
-    }
-    if (hasAvoidedFoodsKey || clearFoodPreferences) {
-      updatedFields.add('avoidedFoods');
-    }
-    if (hasRoutineKey || clearRoutineNeeds) {
-      updatedFields.add('routineConsiderations');
-    }
-    if (hasHungriestMealTimeKey) {
-      updatedFields.add('hungriestMealTime');
-    }
-    if (mealsPerDay != null) {
-      updatedFields.add('mealsPerDay');
-    }
-
-    if (updatedFields.isEmpty) {
-      return AppAgentExecutionResult(
-        commandName: command.name,
-        success: false,
-        errorMessage: 'missing_diet_preferences_arguments',
-        payload: {
-          'acceptedArguments': const [
-            'foodRestrictions',
-            'favoriteFoods',
-            'avoidedFoods',
-            'routineConsiderations',
-            'hungriestMealTime',
-            'mealsPerDay',
-          ],
-        },
-      );
-    }
-
-    dietProvider.updateDietGenerationPreferences(
-      mealsPerDay: mealsPerDay,
-      hungriestMealTime: hungriestMealTime,
-      foodRestrictions: hasRestrictionsKey || clearRestrictions
-          ? (clearRestrictions ? const [] : foodRestrictions)
-          : null,
-      favoriteFoods: hasFavoriteFoodsKey || clearFoodPreferences
-          ? (clearFoodPreferences ? const [] : favoriteFoods)
-          : null,
-      avoidedFoods: hasAvoidedFoodsKey || clearFoodPreferences
-          ? (clearFoodPreferences ? const [] : avoidedFoods)
-          : null,
-      routineConsiderations: hasRoutineKey || clearRoutineNeeds
-          ? (clearRoutineNeeds ? const [] : routineConsiderations)
-          : null,
-      reviewedRestrictions:
-          hasRestrictionsKey || clearRestrictions ? true : null,
-      reviewedFoodPreferences:
-          hasFavoriteFoodsKey || hasAvoidedFoodsKey || clearFoodPreferences
-              ? true
-              : null,
-      reviewedRoutineNeeds:
-          hasRoutineKey || hasHungriestMealTimeKey || clearRoutineNeeds
-              ? true
-              : null,
-      mergeRestrictions: !_isReplaceRequested(
-        args,
-        const ['replaceRestrictions', 'setRestrictions'],
-      ),
-      mergeFoodPreferences: !_isReplaceRequested(
-        args,
-        const ['replaceFoodPreferences', 'setFoodPreferences'],
-      ),
-      mergeRoutineConsiderations: !_isReplaceRequested(
-        args,
-        const ['replaceRoutineConsiderations', 'setRoutineConsiderations'],
-      ),
-    );
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'updatedFields': updatedFields,
-        ..._buildDietGenerationPreferencesPayload(dietProvider),
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _getMacroTargetsStatus(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: goalsProvider.getMacroSnapshot(),
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _updateMacroTargetsPercentage(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final resolved = _resolvePercentageTargets(
-      carbs: _tryParseDouble(
-        command.arguments['carbsPercentage'] ??
-            command.arguments['carbs_percentage'] ??
-            command.arguments['carbs'],
-      ),
-      protein: _tryParseDouble(
-        command.arguments['proteinPercentage'] ??
-            command.arguments['protein_percentage'] ??
-            command.arguments['protein'],
-      ),
-      fat: _tryParseDouble(
-        command.arguments['fatPercentage'] ??
-            command.arguments['fat_percentage'] ??
-            command.arguments['fat'],
-      ),
-    );
-
-    if (resolved == null) {
-      return AppAgentExecutionResult(
-        commandName: command.name,
-        success: false,
-        errorMessage: 'invalid_macro_percentage_arguments',
-        payload: {
-          'acceptedArguments': const [
-            'carbsPercentage',
-            'proteinPercentage',
-            'fatPercentage',
-          ],
-          'rule':
-              'Informe os 3 percentuais ou pelo menos 2 para completar o terceiro automaticamente.',
-        },
-      );
-    }
-
-    goalsProvider.updateMacroTargetsFromPercentages(
-      carbsPercentage: resolved.carbs,
-      proteinPercentage: resolved.protein,
-      fatPercentage: resolved.fat,
-    );
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'updatedByMode': 'percentage',
-        'autoFilledFields': resolved.autoFilledFields,
-        ...goalsProvider.getMacroSnapshot(),
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _updateMacroTargetsGrams(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final resolved = _resolveGramTargets(
-      carbs: _tryParseDouble(
-        command.arguments['carbsGrams'] ??
-            command.arguments['carbs_grams'] ??
-            command.arguments['carbs'],
-      ),
-      protein: _tryParseDouble(
-        command.arguments['proteinGrams'] ??
-            command.arguments['protein_grams'] ??
-            command.arguments['protein'],
-      ),
-      fat: _tryParseDouble(
-        command.arguments['fatGrams'] ??
-            command.arguments['fat_grams'] ??
-            command.arguments['fat'],
-      ),
-      calorieTarget: goalsProvider.caloriesGoal.toDouble(),
-    );
-
-    if (resolved == null) {
-      return AppAgentExecutionResult(
-        commandName: command.name,
-        success: false,
-        errorMessage: 'invalid_macro_gram_arguments',
-        payload: {
-          'acceptedArguments': const [
-            'carbsGrams',
-            'proteinGrams',
-            'fatGrams',
-          ],
-          'rule':
-              'Informe os 3 macros em gramas ou pelo menos 2 para completar o restante com base na meta atual.',
-        },
-      );
-    }
-
-    goalsProvider.updateMacroTargetsFromGrams(
-      carbsGrams: resolved.carbs,
-      proteinGrams: resolved.protein,
-      fatGrams: resolved.fat,
-    );
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'updatedByMode': 'grams',
-        'autoFilledFields': resolved.autoFilledFields,
-        ...goalsProvider.getMacroSnapshot(),
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Future<AppAgentExecutionResult> _updateMacroTargetsGramsPerKg(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    final goalsProvider =
-        Provider.of<NutritionGoalsProvider>(context, listen: false);
-    await goalsProvider.ensureLoaded();
-
-    final weight = goalsProvider.weight <= 0 ? 1.0 : goalsProvider.weight;
-    final carbsPerKg = _tryParseDouble(
-      command.arguments['carbsPerKg'] ?? command.arguments['carbs_per_kg'],
-    );
-    final proteinPerKg = _tryParseDouble(
-      command.arguments['proteinPerKg'] ?? command.arguments['protein_per_kg'],
-    );
-    final fatPerKg = _tryParseDouble(
-      command.arguments['fatPerKg'] ?? command.arguments['fat_per_kg'],
-    );
-    final resolvedInGrams = _resolveGramTargets(
-      carbs: carbsPerKg == null ? null : carbsPerKg * weight,
-      protein: proteinPerKg == null ? null : proteinPerKg * weight,
-      fat: fatPerKg == null ? null : fatPerKg * weight,
-      calorieTarget: goalsProvider.caloriesGoal.toDouble(),
-    );
-
-    if (resolvedInGrams == null) {
-      return AppAgentExecutionResult(
-        commandName: command.name,
-        success: false,
-        errorMessage: 'invalid_macro_per_kg_arguments',
-        payload: {
-          'acceptedArguments': const [
-            'carbsPerKg',
-            'proteinPerKg',
-            'fatPerKg',
-          ],
-          'rule':
-              'Informe os 3 macros em g/kg ou pelo menos 2 para completar o restante com base na meta atual.',
-        },
-      );
-    }
-
-    goalsProvider.updateMacroTargetsFromGrams(
-      carbsGrams: resolvedInGrams.carbs,
-      proteinGrams: resolvedInGrams.protein,
-      fatGrams: resolvedInGrams.fat,
-    );
-
-    return AppAgentExecutionResult(
-      commandName: command.name,
-      success: true,
-      payload: {
-        'updatedByMode': 'grams_per_kg',
-        'autoFilledFields': resolvedInGrams.autoFilledFields,
-        ...goalsProvider.getMacroSnapshot(),
-      },
-    );
+    return _executeServerStateCommand(command, context);
   }
 
   static Map<String, dynamic> _serializePlannedMeal(PlannedMeal meal) {
@@ -1253,26 +1883,39 @@ Responda no mesmo idioma do pedido original do usuário.
     NutritionGoalsProvider goalsProvider,
   ) {
     final missingFields = goalsProvider.missingSetupFields;
+    final isConfigured = missingFields.isEmpty;
+    final explicitProfile = <String, dynamic>{
+      'sex': goalsProvider.explicitSex,
+      'age': goalsProvider.explicitAge,
+      'weightKg': goalsProvider.explicitWeight == null
+          ? null
+          : _round1(goalsProvider.explicitWeight!),
+      'heightCm': goalsProvider.explicitHeight == null
+          ? null
+          : _round1(goalsProvider.explicitHeight!),
+      'activityLevel': goalsProvider.explicitActivityLevel?.name,
+      'fitnessGoal': goalsProvider.explicitFitnessGoal?.name,
+    }..removeWhere((_, value) => value == null);
+
     return {
-      'hasConfiguredGoals': goalsProvider.hasConfiguredGoals,
       'configurationStatus':
-          missingFields.isEmpty ? 'configured' : 'needs_initial_setup',
-      'requiredFieldsForInitialSetup': missingFields,
+          isConfigured ? 'configured' : 'needs_initial_setup',
+      'defaultMacroTargetsApplied': !goalsProvider.hasConfiguredGoals,
+      'missingSetupFields': missingFields,
       'setupCompletionStatus': goalsProvider.setupCompletionStatus,
-      'sex': goalsProvider.sex,
-      'age': goalsProvider.age,
-      'weightKg': _round1(goalsProvider.weight),
-      'heightCm': _round1(goalsProvider.height),
-      'activityLevel': goalsProvider.activityLevel.name,
-      'fitnessGoal': goalsProvider.fitnessGoal.name,
-      'formula': goalsProvider.formula.name,
+      'profile': explicitProfile,
       'dietType': goalsProvider.dietType.name,
-      'caloriesGoal': goalsProvider.caloriesGoal,
-      'proteinGoal': goalsProvider.proteinGoal,
-      'carbsGoal': goalsProvider.carbsGoal,
-      'fatGoal': goalsProvider.fatGoal,
-      'macroEditingAvailable': goalsProvider.hasConfiguredGoals,
-      'macroTargets': goalsProvider.getMacroSnapshot(),
+      'macroTargets': {
+        'goalMode': goalsProvider.hasConfiguredGoals
+            ? 'configured'
+            : 'default_template',
+        'caloriesGoal': goalsProvider.caloriesGoal,
+        'grams': {
+          'protein': goalsProvider.proteinGoal,
+          'carbs': goalsProvider.carbsGoal,
+          'fat': goalsProvider.fatGoal,
+        },
+      },
     };
   }
 
@@ -1282,23 +1925,47 @@ Responda no mesmo idioma do pedido original do usuário.
     final preferences = dietProvider.preferences;
     final missingTopics = dietProvider.missingDietPersonalizationTopics;
     return {
-      'isReadyForDietGeneration': missingTopics.isEmpty,
-      'dietPersonalizationStatus':
-          missingTopics.isEmpty ? 'ready_for_generation' : 'needs_more_context',
+      'isReadyForDietGeneration': dietProvider.hasCompletedDietPersonalization,
+      'isPreferenceStepOptional': true,
+      'hasReviewedAnyDietPreference':
+          dietProvider.hasReviewedDietGenerationPreferences,
       'missingTopics': missingTopics,
-      'reviewedTopics': {
-        'dietary_restrictions': preferences.hasReviewedRestrictions,
-        'food_preferences': preferences.hasReviewedFoodPreferences,
-        'routine_and_appetite': preferences.hasReviewedRoutineNeeds,
-      },
       'mealsPerDay': preferences.mealsPerDay,
       'hungriestMealTime': preferences.hungriestMealTime,
       'foodRestrictions': preferences.foodRestrictions,
       'favoriteFoods': preferences.favoriteFoods,
       'avoidedFoods': preferences.avoidedFoods,
       'routineConsiderations': preferences.routineConsiderations,
-      'nextSuggestedTopic': missingTopics.isEmpty ? null : missingTopics.first,
     };
+  }
+
+  static bool shouldSkipCommand(AppAgentCommand command) {
+    final arguments = command.arguments;
+    final hasArguments = arguments.isNotEmpty;
+
+    switch (command.name) {
+      case updateGoalSetupProfile:
+      case updateGoalSetupPreferences:
+      case updateMacroTargetsPercentage:
+      case updateMacroTargetsGrams:
+      case updateMacroTargetsGramsPerKg:
+        return !hasArguments;
+      case updateDietGenerationPreferences:
+        if (arguments['skipPreferenceStep'] == true) {
+          return false;
+        }
+        return !hasArguments;
+      default:
+        return false;
+    }
+  }
+
+  static String _formatOneDecimal(double value) {
+    final rounded = _round1(value);
+    if (rounded == rounded.roundToDouble()) {
+      return rounded.round().toString();
+    }
+    return rounded.toStringAsFixed(1);
   }
 
   static _ResolvedMacroTargets? _resolvePercentageTargets({
@@ -1439,7 +2106,7 @@ Responda no mesmo idioma do pedido original do usuário.
   }
 
   static ActivityLevel? _parseActivityLevel(dynamic value) {
-    final normalized = value?.toString().trim().toLowerCase();
+    final normalized = _normalizeLooseText(value);
     switch (normalized) {
       case 'sedentary':
       case 'sedentario':
@@ -1447,6 +2114,7 @@ Responda no mesmo idioma do pedido original do usuário.
         return ActivityLevel.sedentary;
       case 'lightlyactive':
       case 'lightly_active':
+      case 'lightly active':
       case 'light':
       case 'leve':
       case 'levemente ativo':
@@ -1454,6 +2122,7 @@ Responda no mesmo idioma do pedido original do usuário.
         return ActivityLevel.lightlyActive;
       case 'moderatelyactive':
       case 'moderately_active':
+      case 'moderately active':
       case 'moderate':
       case 'moderado':
       case 'moderadamente ativo':
@@ -1461,6 +2130,7 @@ Responda no mesmo idioma do pedido original do usuário.
         return ActivityLevel.moderatelyActive;
       case 'veryactive':
       case 'very_active':
+      case 'very active':
       case 'very':
       case 'muito ativo':
       case 'muito_ativo':
@@ -1468,18 +2138,66 @@ Responda no mesmo idioma do pedido original do usuário.
         return ActivityLevel.veryActive;
       case 'extremelyactive':
       case 'extremely_active':
+      case 'extremely active':
       case 'extreme':
       case 'extremo':
       case 'extremamente ativo':
       case 'extremamente_ativo':
         return ActivityLevel.extremelyActive;
       default:
+        if (normalized.isEmpty) {
+          return null;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'extremamente ativo',
+          'atividade extrema',
+          'muito intenso',
+          'trabalho fisico pesado',
+          'treino muito intenso',
+        ])) {
+          return ActivityLevel.extremelyActive;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'muito ativo',
+          'atividade intensa',
+          'intenso',
+          'treino pesado',
+          'ativo bastante',
+        ])) {
+          return ActivityLevel.veryActive;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'moderadamente ativo',
+          'atividade moderada',
+          'moderado',
+          'moderadamente',
+          'ativo moderadamente',
+        ])) {
+          return ActivityLevel.moderatelyActive;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'levemente ativo',
+          'atividade leve',
+          'leve',
+          'pouco ativo',
+        ])) {
+          return ActivityLevel.lightlyActive;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'sedentario',
+          'parado',
+          'sem exercicio',
+          'sem atividade',
+          'inativo',
+        ])) {
+          return ActivityLevel.sedentary;
+        }
         return null;
     }
   }
 
   static FitnessGoal? _parseFitnessGoal(dynamic value) {
-    final normalized = value?.toString().trim().toLowerCase();
+    final normalized = _normalizeLooseText(value);
     switch (normalized) {
       case 'loseweight':
       case 'lose_weight':
@@ -1500,36 +2218,98 @@ Responda no mesmo idioma do pedido original do usuário.
         return FitnessGoal.maintainWeight;
       case 'gainweightslowly':
       case 'gain_weight_slowly':
+      case 'weight gain slowly':
+      case 'weight_gain_slowly':
+      case 'slow weight gain':
+      case 'slow_weight_gain':
       case 'ganhar peso lentamente':
       case 'ganhar_peso_lentamente':
         return FitnessGoal.gainWeightSlowly;
       case 'gainweight':
       case 'gain_weight':
+      case 'weight gain':
+      case 'weight_gain':
       case 'bulk':
       case 'ganhar peso':
       case 'ganhar_peso':
         return FitnessGoal.gainWeight;
       default:
-        return null;
-    }
-  }
-
-  static CalculationFormula? _parseCalculationFormula(dynamic value) {
-    final normalized = value?.toString().trim().toLowerCase();
-    switch (normalized) {
-      case 'mifflinstjeor':
-      case 'mifflin_st_jeor':
-      case 'mifflin-st-jeor':
-        return CalculationFormula.mifflinStJeor;
-      case 'harrisbenedict':
-      case 'harris_benedict':
-      case 'harris-benedict':
-        return CalculationFormula.harrisBenedict;
-      case 'katchmcardle':
-      case 'katch_mcardle':
-      case 'katch-mcardle':
-        return CalculationFormula.katchMcArdle;
-      default:
+        if (normalized.isEmpty) {
+          return null;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'ganhar massa',
+          'ganhar massa muscular',
+          'hipertrofia',
+          'crescer',
+          'bulk limpo',
+          'aumentar massa',
+        ])) {
+          return FitnessGoal.gainWeightSlowly;
+        }
+        if (_containsAnyTerm(normalized, const [
+              'ganhar peso',
+              'aumentar peso',
+              'subir peso',
+              'engordar',
+              'weight gain',
+              'gain weight',
+            ]) &&
+            _containsAnyTerm(normalized, const [
+              'devagar',
+              'lentamente',
+              'aos poucos',
+              'de leve',
+              'pouco a pouco',
+              'slowly',
+            ])) {
+          return FitnessGoal.gainWeightSlowly;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'ganhar peso',
+          'aumentar peso',
+          'subir peso',
+          'engordar',
+          'bulk',
+          'weight gain',
+          'gain weight',
+        ])) {
+          return FitnessGoal.gainWeight;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'manter peso',
+          'manutencao',
+          'manutenção',
+          'recomposicao',
+          'recomp',
+          'ficar como estou',
+        ])) {
+          return FitnessGoal.maintainWeight;
+        }
+        if (_containsAnyTerm(normalized, const [
+              'perder peso',
+              'emagrecer',
+              'secar',
+              'perder gordura',
+            ]) &&
+            _containsAnyTerm(normalized, const [
+              'devagar',
+              'lentamente',
+              'aos poucos',
+              'leve',
+            ])) {
+          return FitnessGoal.loseWeightSlowly;
+        }
+        if (_containsAnyTerm(normalized, const [
+          'perder peso',
+          'emagrecer',
+          'secar',
+          'perder gordura',
+          'cut',
+          'definir',
+        ])) {
+          return FitnessGoal.loseWeight;
+        }
         return null;
     }
   }
@@ -1552,6 +2332,47 @@ Responda no mesmo idioma do pedido original do usuário.
     return null;
   }
 
+  static String _normalizeLooseText(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase() ?? '';
+    if (raw.isEmpty) {
+      return '';
+    }
+
+    const replacements = {
+      'á': 'a',
+      'à': 'a',
+      'ã': 'a',
+      'â': 'a',
+      'é': 'e',
+      'ê': 'e',
+      'í': 'i',
+      'ó': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ú': 'u',
+      'ç': 'c',
+      '_': ' ',
+      '-': ' ',
+    };
+
+    var normalized = raw;
+    replacements.forEach((from, to) {
+      normalized = normalized.replaceAll(from, to);
+    });
+    normalized = normalized.replaceAll(RegExp(r'[^\w\s]'), ' ');
+    normalized = normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return normalized;
+  }
+
+  static bool _containsAnyTerm(String normalized, List<String> candidates) {
+    for (final candidate in candidates) {
+      if (normalized.contains(_normalizeLooseText(candidate))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static List<String> _extractStringList(dynamic value) {
     if (value == null) {
       return const [];
@@ -1571,6 +2392,51 @@ Responda no mesmo idioma do pedido original do usuário.
     final separatorPattern = RegExp(r'\s*(?:,|;|\n)\s*');
     final parts = normalized.split(separatorPattern);
     return parts.where((item) => item.trim().isNotEmpty).toList();
+  }
+
+  static List<String> _extractListAfterKeywords(
+    String normalizedMessage, {
+    required List<String> keywords,
+    required List<String> stopKeywords,
+  }) {
+    for (final keyword in keywords) {
+      final normalizedKeyword = _normalizeLooseText(keyword);
+      final keywordIndex = normalizedMessage.indexOf(normalizedKeyword);
+      if (keywordIndex == -1) {
+        continue;
+      }
+
+      var slice = normalizedMessage.substring(
+        keywordIndex + normalizedKeyword.length,
+      );
+      var stopIndex = slice.length;
+
+      for (final stopKeyword in stopKeywords) {
+        final normalizedStop = _normalizeLooseText(stopKeyword);
+        final currentIndex = slice.indexOf(' $normalizedStop');
+        if (currentIndex != -1 && currentIndex < stopIndex) {
+          stopIndex = currentIndex;
+        }
+      }
+
+      slice = slice.substring(0, stopIndex).trim();
+      if (slice.isEmpty) {
+        continue;
+      }
+
+      final items = slice
+          .split(RegExp(r'\s*(?:,| e | ou |/|;)\s*'))
+          .map((item) => item.trim())
+          .where((item) =>
+              item.isNotEmpty && item != 'de' && item != 'do' && item != 'da')
+          .toList();
+
+      if (items.isNotEmpty) {
+        return items;
+      }
+    }
+
+    return const [];
   }
 
   static String? _normalizeMealWindow(dynamic value) {

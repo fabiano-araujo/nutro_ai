@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../utils/ui_utils.dart';
 
 class NutritionGoalsWizardScreen extends StatefulWidget {
   final int startStep;
@@ -15,10 +16,12 @@ class NutritionGoalsWizardScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<NutritionGoalsWizardScreen> createState() => _NutritionGoalsWizardScreenState();
+  State<NutritionGoalsWizardScreen> createState() =>
+      _NutritionGoalsWizardScreenState();
 }
 
-class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen> {
+class _NutritionGoalsWizardScreenState
+    extends State<NutritionGoalsWizardScreen> {
   late int _currentStep;
   late PageController _pageController;
 
@@ -39,6 +42,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   ActivityLevel _selectedActivityLevel = ActivityLevel.moderatelyActive;
   FitnessGoal _selectedFitnessGoal = FitnessGoal.maintainWeight;
 
+  Color _accentColor(ThemeData theme) => theme.colorScheme.primary;
+  Color _onAccentColor(ThemeData theme) => theme.colorScheme.onPrimary;
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +53,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
 
     // Load current values from provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+      final provider =
+          Provider.of<NutritionGoalsProvider>(context, listen: false);
       setState(() {
         _selectedSex = provider.sex;
         _age = provider.age;
@@ -127,7 +134,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   }
 
   void _saveCurrentStep() {
-    final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final provider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
 
     switch (_currentStep) {
       case 0:
@@ -167,27 +175,27 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   }
 
   void _saveAndFinish() {
-    final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final provider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final navigatorContext = Navigator.of(context).context;
+    final successMessage =
+        context.tr.translate('goals_configured_successfully');
 
     // Ensure calculated mode is enabled
     provider.setUseCalculatedGoals(true);
 
     Navigator.pop(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr.translate('goals_configured_successfully')),
-        backgroundColor: Colors.green,
-      ),
-    );
+    UIUtils.showPrimarySnackBar(navigatorContext, successMessage);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
-    final backgroundColor = isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final backgroundColor =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -234,7 +242,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildProgressIndicator(ThemeData theme, bool isDarkMode, Color textColor) {
+  Widget _buildProgressIndicator(
+      ThemeData theme, bool isDarkMode, Color textColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Row(
@@ -250,7 +259,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     height: 4,
                     decoration: BoxDecoration(
                       color: isCompleted || isCurrent
-                          ? AppTheme.primaryColor
+                          ? _accentColor(theme)
                           : textColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
@@ -265,7 +274,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildPersonalInfoStep(ThemeData theme, bool isDarkMode, Color textColor) {
+  Widget _buildPersonalInfoStep(
+      ThemeData theme, bool isDarkMode, Color textColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -342,7 +352,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildActivityLevelStep(ThemeData theme, bool isDarkMode, Color textColor) {
+  Widget _buildActivityLevelStep(
+      ThemeData theme, bool isDarkMode, Color textColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -356,9 +367,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
             textColor: textColor,
           ),
           const SizedBox(height: 32),
-
           ...ActivityLevel.values.map((level) {
-            final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+            final provider =
+                Provider.of<NutritionGoalsProvider>(context, listen: false);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildOptionCard(
@@ -377,7 +388,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildFitnessGoalStep(ThemeData theme, bool isDarkMode, Color textColor) {
+  Widget _buildFitnessGoalStep(
+      ThemeData theme, bool isDarkMode, Color textColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -391,9 +403,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
             textColor: textColor,
           ),
           const SizedBox(height: 32),
-
           ...FitnessGoal.values.map((goal) {
-            final provider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+            final provider =
+                Provider.of<NutritionGoalsProvider>(context, listen: false);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildOptionCard(
@@ -411,6 +423,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
       ),
     );
   }
+
   Widget _buildStepHeader({
     required IconData icon,
     required String title,
@@ -418,16 +431,17 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     required ThemeData theme,
     required Color textColor,
   }) {
+    final accentColor = _accentColor(theme);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withValues(alpha: 0.15),
+            color: accentColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(icon, color: AppTheme.primaryColor, size: 32),
+          child: Icon(icon, color: accentColor, size: 32),
         ),
         const SizedBox(height: 16),
         Text(
@@ -457,6 +471,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     required bool isDarkMode,
     required Color textColor,
   }) {
+    final accentColor = _accentColor(theme);
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
 
     return InkWell(
@@ -469,8 +484,10 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? AppTheme.primaryColor
-                : (isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor),
+                ? accentColor
+                : (isDarkMode
+                    ? AppTheme.darkBorderColor
+                    : AppTheme.dividerColor),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -478,14 +495,14 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
           children: [
             Icon(
               icon,
-              color: isSelected ? AppTheme.primaryColor : textColor,
+              color: isSelected ? accentColor : textColor,
               size: 32,
             ),
             const SizedBox(height: 8),
             Text(
               label,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: isSelected ? AppTheme.primaryColor : textColor,
+                color: isSelected ? accentColor : textColor,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -496,6 +513,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
   }
 
   Widget _buildAgeInput(ThemeData theme, Color textColor, bool isDarkMode) {
+    final accentColor = _accentColor(theme);
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
 
     return Container(
@@ -534,13 +552,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                        color: isDarkMode
+                            ? AppTheme.darkBorderColor
+                            : AppTheme.dividerColor,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.primaryColor,
+                        color: accentColor,
                         width: 2,
                       ),
                     ),
@@ -568,7 +588,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildHeightInput(ThemeData theme, Color textColor, bool isDarkMode, NutritionGoalsProvider provider) {
+  Widget _buildHeightInput(ThemeData theme, Color textColor, bool isDarkMode,
+      NutritionGoalsProvider provider) {
+    final accentColor = _accentColor(theme);
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
     final isCm = provider.heightUnit == HeightUnit.cm;
 
@@ -609,13 +631,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                          color: isDarkMode
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.dividerColor,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: AppTheme.primaryColor,
+                          color: accentColor,
                           width: 2,
                         ),
                       ),
@@ -644,13 +668,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                          color: isDarkMode
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.dividerColor,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: AppTheme.primaryColor,
+                          color: accentColor,
                           width: 2,
                         ),
                       ),
@@ -662,8 +688,10 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     ),
                     onChanged: (value) {
                       final feet = int.tryParse(value) ?? 0;
-                      final inches = int.tryParse(_heightInchesController.text) ?? 0;
-                      final heightCm = NutritionGoalsProvider.heightToCm(feet, inches);
+                      final inches =
+                          int.tryParse(_heightInchesController.text) ?? 0;
+                      final heightCm =
+                          NutritionGoalsProvider.heightToCm(feet, inches);
                       if (heightCm >= 100 && heightCm <= 250) {
                         setState(() => _height = heightCm);
                       }
@@ -685,13 +713,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                          color: isDarkMode
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.dividerColor,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: AppTheme.primaryColor,
+                          color: accentColor,
                           width: 2,
                         ),
                       ),
@@ -704,7 +734,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     onChanged: (value) {
                       final feet = int.tryParse(_heightController.text) ?? 0;
                       final inches = int.tryParse(value) ?? 0;
-                      final heightCm = NutritionGoalsProvider.heightToCm(feet, inches);
+                      final heightCm =
+                          NutritionGoalsProvider.heightToCm(feet, inches);
                       if (heightCm >= 100 && heightCm <= 250) {
                         setState(() => _height = heightCm);
                       }
@@ -719,15 +750,16 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                   _updateHeightController(provider);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     isCm ? 'cm' : 'ft',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.primaryColor,
+                      color: accentColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -740,7 +772,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildWeightInput(ThemeData theme, Color textColor, bool isDarkMode, NutritionGoalsProvider provider) {
+  Widget _buildWeightInput(ThemeData theme, Color textColor, bool isDarkMode,
+      NutritionGoalsProvider provider) {
+    final accentColor = _accentColor(theme);
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
     final String unitLabel;
     final bool showSecondField = provider.weightUnit == WeightUnit.stLbs;
@@ -784,7 +818,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 Expanded(
                   child: TextField(
                     controller: _weightController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.bold,
@@ -794,13 +829,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                          color: isDarkMode
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.dividerColor,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: AppTheme.primaryColor,
+                          color: accentColor,
                           width: 2,
                         ),
                       ),
@@ -814,7 +851,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                             setState(() => _weight = weight);
                           }
                         } else if (provider.weightUnit == WeightUnit.lbs) {
-                          final weightKg = NutritionGoalsProvider.weightToKg(weight);
+                          final weightKg =
+                              NutritionGoalsProvider.weightToKg(weight);
                           if (weightKg >= 30 && weightKg <= 200) {
                             setState(() => _weight = weightKg);
                           }
@@ -838,13 +876,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                          color: isDarkMode
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.dividerColor,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: AppTheme.primaryColor,
+                          color: accentColor,
                           width: 2,
                         ),
                       ),
@@ -856,8 +896,10 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     ),
                     onChanged: (value) {
                       final stone = int.tryParse(value) ?? 0;
-                      final pounds = int.tryParse(_weightPoundsController.text) ?? 0;
-                      final weightKg = NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
+                      final pounds =
+                          int.tryParse(_weightPoundsController.text) ?? 0;
+                      final weightKg =
+                          NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
                       if (weightKg >= 30 && weightKg <= 200) {
                         setState(() => _weight = weightKg);
                       }
@@ -879,13 +921,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+                          color: isDarkMode
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.dividerColor,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: AppTheme.primaryColor,
+                          color: accentColor,
                           width: 2,
                         ),
                       ),
@@ -898,7 +942,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                     onChanged: (value) {
                       final stone = int.tryParse(_weightController.text) ?? 0;
                       final pounds = int.tryParse(value) ?? 0;
-                      final weightKg = NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
+                      final weightKg =
+                          NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
                       if (weightKg >= 30 && weightKg <= 200) {
                         setState(() => _weight = weightKg);
                       }
@@ -913,15 +958,16 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                   _updateWeightController(provider);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     unitLabel,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.primaryColor,
+                      color: accentColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -943,6 +989,7 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     required bool isDarkMode,
     required Color textColor,
   }) {
+    final accentColor = _accentColor(theme);
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
 
     return InkWell(
@@ -955,8 +1002,10 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? AppTheme.primaryColor
-                : (isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor),
+                ? accentColor
+                : (isDarkMode
+                    ? AppTheme.darkBorderColor
+                    : AppTheme.dividerColor),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -969,8 +1018,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                   Text(
                     title,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: isSelected ? AppTheme.primaryColor : textColor,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected ? accentColor : textColor,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -984,9 +1034,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               ),
             ),
             if (isSelected)
-              const Icon(
+              Icon(
                 Icons.check_circle,
-                color: AppTheme.primaryColor,
+                color: accentColor,
                 size: 24,
               ),
           ],
@@ -995,7 +1045,8 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
     );
   }
 
-  Widget _buildNavigationButtons(ThemeData theme, bool isDarkMode, Color textColor) {
+  Widget _buildNavigationButtons(
+      ThemeData theme, bool isDarkMode, Color textColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1027,14 +1078,15 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
                 ),
               ),
             ),
-          if (_currentStep > 0 && !widget.fromProfile) const SizedBox(width: 12),
+          if (_currentStep > 0 && !widget.fromProfile)
+            const SizedBox(width: 12),
           Expanded(
             flex: (_currentStep == 0 || widget.fromProfile) ? 1 : 2,
             child: ElevatedButton(
               onPressed: _nextStep,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
+                backgroundColor: _accentColor(theme),
+                foregroundColor: _onAccentColor(theme),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1043,7 +1095,9 @@ class _NutritionGoalsWizardScreenState extends State<NutritionGoalsWizardScreen>
               child: Text(
                 widget.fromProfile
                     ? context.tr.translate('save')
-                    : (_currentStep == 2 ? context.tr.translate('finish') : context.tr.translate('next')),
+                    : (_currentStep == 2
+                        ? context.tr.translate('finish')
+                        : context.tr.translate('next')),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),

@@ -19,6 +19,7 @@ import '../providers/daily_meals_provider.dart';
 import '../util/app_constants.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
+import '../utils/ui_utils.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   final MealType? selectedMealType;
@@ -60,19 +61,29 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     try {
       final token = Provider.of<AuthService>(context, listen: false).token;
       if (token == null || token.isEmpty) {
-        if (mounted) setState(() { _loadingServerRecents = false; _loadingServerFrequents = false; });
+        if (mounted)
+          setState(() {
+            _loadingServerRecents = false;
+            _loadingServerFrequents = false;
+          });
         return;
       }
       final svc = FavoriteFoodService(token: token);
-      final results = await Future.wait([svc.getRecents(limit: 30), svc.getFrequents(limit: 30)]);
-      if (mounted) setState(() {
-        _serverRecents = results[0];
-        _loadingServerRecents = false;
-        _serverFrequents = results[1];
-        _loadingServerFrequents = false;
-      });
+      final results = await Future.wait(
+          [svc.getRecents(limit: 30), svc.getFrequents(limit: 30)]);
+      if (mounted)
+        setState(() {
+          _serverRecents = results[0];
+          _loadingServerRecents = false;
+          _serverFrequents = results[1];
+          _loadingServerFrequents = false;
+        });
     } catch (_) {
-      if (mounted) setState(() { _loadingServerRecents = false; _loadingServerFrequents = false; });
+      if (mounted)
+        setState(() {
+          _loadingServerRecents = false;
+          _loadingServerFrequents = false;
+        });
     }
   }
 
@@ -112,7 +123,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       // Get device locale
       final locale = Localizations.localeOf(context);
       final languageCode = locale.languageCode; // e.g., "pt", "en", "es"
-      final regionCode = locale.countryCode ?? languageCode.toUpperCase(); // e.g., "BR", "US"
+      final regionCode =
+          locale.countryCode ?? languageCode.toUpperCase(); // e.g., "BR", "US"
 
       final uri = Uri.parse(
           '${AppConstants.DIET_API_BASE_URL}/food/search?q=${Uri.encodeComponent(query)}&region=$regionCode&language=&limit=${kIsWeb ? 20 : 3}&index=0');
@@ -120,12 +132,14 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       print('Searching API: $uri');
       final response = await http.get(uri);
       print('API response status: ${response.statusCode}');
-      print('API response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+      print(
+          'API response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         print('Parsed ${data.length} items from API');
-        final List<Food> foods = data.map((item) => _convertApiResultToFood(item)).toList();
+        final List<Food> foods =
+            data.map((item) => _convertApiResultToFood(item)).toList();
 
         setState(() {
           _apiResults = foods;
@@ -155,12 +169,23 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     final foodData = data['food'] as Map<String, dynamic>?;
     final portions = data['portion'] as List<dynamic>? ?? [];
     final nutrientList = foodData?['nutrient'] as List<dynamic>? ?? [];
-    final nutrientData = nutrientList.isNotEmpty ? nutrientList.first as Map<String, dynamic>? : null;
+    final nutrientData = nutrientList.isNotEmpty
+        ? nutrientList.first as Map<String, dynamic>?
+        : null;
 
-    final calories = nutrientData != null ? (double.tryParse(nutrientData['calories']?.toString() ?? '0') ?? 0.0) : 0.0;
-    final protein = nutrientData != null ? (double.tryParse(nutrientData['protein']?.toString() ?? '0') ?? 0.0) : 0.0;
-    final carbs = nutrientData != null ? (double.tryParse(nutrientData['carbohydrate']?.toString() ?? '0') ?? 0.0) : 0.0;
-    final fat = nutrientData != null ? (double.tryParse(nutrientData['fat']?.toString() ?? '0') ?? 0.0) : 0.0;
+    final calories = nutrientData != null
+        ? (double.tryParse(nutrientData['calories']?.toString() ?? '0') ?? 0.0)
+        : 0.0;
+    final protein = nutrientData != null
+        ? (double.tryParse(nutrientData['protein']?.toString() ?? '0') ?? 0.0)
+        : 0.0;
+    final carbs = nutrientData != null
+        ? (double.tryParse(nutrientData['carbohydrate']?.toString() ?? '0') ??
+            0.0)
+        : 0.0;
+    final fat = nutrientData != null
+        ? (double.tryParse(nutrientData['fat']?.toString() ?? '0') ?? 0.0)
+        : 0.0;
 
     return Food(
       id: foodData?['id'],
@@ -186,11 +211,15 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           languageCode: languageCode,
           idFood: foodData?['id'] ?? 0,
           translation: data['translation'] ?? foodData?['name'] ?? 'Unknown',
-          portions: portions.map((p) => Portion(
-            idFoodRegion: 0,
-            description: p['description'] ?? '',
-            proportion: double.tryParse(p['proportion']?.toString() ?? '1') ?? 1.0,
-          )).toList(),
+          portions: portions
+              .map((p) => Portion(
+                    idFoodRegion: 0,
+                    description: p['description'] ?? '',
+                    proportion:
+                        double.tryParse(p['proportion']?.toString() ?? '1') ??
+                            1.0,
+                  ))
+              .toList(),
         ),
       ],
     );
@@ -375,15 +404,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 decoration: InputDecoration(
                   hintText: context.tr.translate('what_did_you_eat'),
                   hintStyle: TextStyle(
-                    color: isDarkMode
-                        ? AppTheme.primaryColor.withValues(alpha: 1)
-                        : AppTheme.primaryColor.withValues(alpha: 1),
+                    color: Theme.of(context).colorScheme.primary,
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
                   ),
                   prefixIcon: Icon(
                     Icons.search,
-                    color: AppTheme.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 22,
                   ),
                   filled: false,
@@ -472,16 +499,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                               return TabBarView(
                                 controller: _tabController,
                                 children: [
-                                  _buildServerFrequentList(
-                                      isDarkMode,
-                                      textColor,
-                                      secondaryTextColor,
-                                      cardColor),
-                                  _buildServerRecentList(
-                                      isDarkMode,
-                                      textColor,
-                                      secondaryTextColor,
-                                      cardColor),
+                                  _buildServerFrequentList(isDarkMode,
+                                      textColor, secondaryTextColor, cardColor),
+                                  _buildServerRecentList(isDarkMode, textColor,
+                                      secondaryTextColor, cardColor),
                                   _buildFavoritesList(
                                       historyProvider.favorites,
                                       isDarkMode,
@@ -588,7 +609,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                     ),
                   ),
                   SizedBox(width: 12),
@@ -631,7 +653,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                     ),
                   ),
                   SizedBox(width: 12),
@@ -653,7 +676,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppTheme.primaryColor),
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
           SizedBox(width: 8),
           Text(
             title,
@@ -754,8 +777,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, size: 64,
-                color: secondaryTextColor.withValues(alpha: 0.5)),
+            Icon(Icons.history,
+                size: 64, color: secondaryTextColor.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
             Text(
               context.tr.translate('no_recent_searches'),
@@ -786,7 +809,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           ],
           foodRegions: [],
         );
-        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
+        return _buildFoodCard(
+            food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
@@ -837,8 +861,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.trending_up, size: 64,
-                color: secondaryTextColor.withValues(alpha: 0.5)),
+            Icon(Icons.trending_up,
+                size: 64, color: secondaryTextColor.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
             Text(
               'Nenhum alimento frequente',
@@ -869,7 +893,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           ],
           foodRegions: [],
         );
-        return _buildFoodCard(food, isDarkMode, textColor, secondaryTextColor, cardColor);
+        return _buildFoodCard(
+            food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
     );
   }
@@ -918,7 +943,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         .addFoodToMeal(mealType, food);
 
     // Add to history (recents and frequency)
-    final historyProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
+    final historyProvider =
+        Provider.of<FoodHistoryProvider>(context, listen: false);
     historyProvider.addToRecents(food);
     historyProvider.incrementFrequency(food);
 
@@ -926,19 +952,17 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     final option = DailyMealsProvider.getMealTypeOption(mealType);
 
     // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${food.name} adicionado ao ${option.name}'),
-        duration: Duration(seconds: 2),
-        backgroundColor: AppTheme.primaryColor,
-      ),
+    UIUtils.showPrimarySnackBar(
+      context,
+      '${food.name} adicionado ao ${option.name}',
     );
   }
 
   void _showMealTypeSelector(Food food) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final textColor = isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
     showModalBottomSheet(
       context: context,
@@ -1074,7 +1098,7 @@ class _FoodListItem extends StatelessWidget {
                   padding: EdgeInsets.all(8),
                   child: Icon(
                     Icons.add_circle,
-                    color: AppTheme.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 28,
                   ),
                 ),

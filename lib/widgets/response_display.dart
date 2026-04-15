@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import 'message_notifier.dart';
 import '../utils/message_formatter.dart';
+import 'state_animation.dart';
 
 class ResponseDisplay extends StatefulWidget {
   final String? response;
@@ -317,10 +318,10 @@ class _ResponseDisplayState extends State<ResponseDisplay>
         padding: EdgeInsets.all(20),
         child: Column(
           children: [
-            Icon(
-              Icons.error_outline,
-              color: AppTheme.errorColor,
-              size: 40,
+            StateAnimation(
+              fallbackIcon: Icons.error_outline,
+              size: 120,
+              accentColor: AppTheme.errorColor,
             ),
             SizedBox(height: 16),
             Text(
@@ -374,10 +375,10 @@ class _ResponseDisplayState extends State<ResponseDisplay>
         padding: EdgeInsets.all(40),
         child: Column(
           children: [
-            Icon(
-              Icons.lightbulb_outline,
-              color: AppTheme.warningColor,
-              size: 40,
+            StateAnimation(
+              fallbackIcon: Icons.lightbulb_outline,
+              size: 120,
+              accentColor: AppTheme.warningColor,
             ),
             SizedBox(height: 16),
             Text(

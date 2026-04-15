@@ -144,7 +144,12 @@ class _StreakItem extends StatelessWidget {
 
 /// Card expandido com mais detalhes sobre os streaks
 class StreakDetailCard extends StatelessWidget {
-  const StreakDetailCard({Key? key}) : super(key: key);
+  final bool showCheckInAction;
+
+  const StreakDetailCard({
+    Key? key,
+    this.showCheckInAction = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +157,9 @@ class StreakDetailCard extends StatelessWidget {
 
     return Consumer<StreakProvider>(
       builder: (context, streakProvider, child) {
+        final mainStreak = streakProvider.registrationStreak;
+        final bestStreak = streakProvider.bestOverallStreak;
+
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -168,16 +176,18 @@ class StreakDetailCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Hero: título + badge freeze (só quando ativo)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    context.tr.translate('your_streaks'),
+                    context.tr.translate('streak_hero_title'),
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: isDarkMode
+                          ? Colors.white70
+                          : AppTheme.textSecondaryColor,
                     ),
                   ),
                   if (streakProvider.isFreezeActive)
@@ -187,17 +197,17 @@ class StreakDetailCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.2),
+                        color: Colors.blue.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('❄️', style: TextStyle(fontSize: 12)),
-                          SizedBox(width: 4),
+                          const Text('❄️', style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 4),
                           Text(
                             context.tr.translate('streak_freeze_active'),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               color: Colors.blue,
                               fontWeight: FontWeight.w500,
@@ -208,30 +218,122 @@ class StreakDetailCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
-              const StreakDisplay(showLabels: true),
-              const SizedBox(height: 16),
-              Divider(
-                color:
-                    isDarkMode ? Colors.white12 : Colors.grey.withValues(alpha: 0.2),
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              // Hero big number + description
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _StatItem(
-                    label: context.tr.translate('best_streak'),
-                    value: streakProvider.bestOverallStreak.toString(),
-                    emoji: '🏆',
-                    isDarkMode: isDarkMode,
+                  Text(
+                    '🔥',
+                    style: TextStyle(fontSize: mainStreak > 0 ? 44 : 36),
                   ),
-                  _StatItem(
-                    label: context.tr.translate('freezes'),
-                    value: '${streakProvider.freezesAvailable}/1',
-                    emoji: '❄️',
-                    isDarkMode: isDarkMode,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '$mainStreak',
+                              style: TextStyle(
+                                fontSize: 38,
+                                fontWeight: FontWeight.bold,
+                                color: isDarkMode
+                                    ? Colors.white
+                                    : AppTheme.textPrimaryColor,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                mainStreak == 1
+                                    ? context.tr
+                                        .translate('streak_hero_day_singular')
+                                    : context.tr
+                                        .translate('streak_hero_day_plural'),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : AppTheme.textSecondaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          mainStreak == 0
+                              ? context.tr.translate('streak_hero_start_hint')
+                              : context.tr
+                                  .translate('streak_hero_record')
+                                  .replaceAll(
+                                      '{count}', bestStreak.toString()),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode
+                                ? Colors.white54
+                                : AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
+              ),
+              if (showCheckInAction) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: streakProvider.isLoading
+                        ? null
+                        : () async {
+                            final success =
+                                await streakProvider.performCheckIn();
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  success
+                                      ? context.tr
+                                          .translate('streak_checkin_success')
+                                      : context.tr
+                                          .translate('streak_checkin_error'),
+                                ),
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.check_circle_outline_rounded),
+                    label:
+                        Text(context.tr.translate('streak_checkin_action')),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              // Secondary streaks as subtle rows
+              _SecondaryStreakRow(
+                emoji: '💪',
+                label: context.tr.translate('streak_secondary_protein'),
+                count: streakProvider.proteinStreak,
+                suffix:
+                    context.tr.translate('streak_secondary_days_suffix'),
+                isDarkMode: isDarkMode,
+              ),
+              const SizedBox(height: 8),
+              _SecondaryStreakRow(
+                emoji: '🎯',
+                label: context.tr.translate('streak_secondary_goal'),
+                count: streakProvider.goalStreak,
+                suffix:
+                    context.tr.translate('streak_secondary_days_suffix'),
+                isDarkMode: isDarkMode,
               ),
               if (streakProvider.isStreakInDanger) ...[
                 const SizedBox(height: 12),
@@ -310,44 +412,54 @@ class StreakDetailCard extends StatelessWidget {
   }
 }
 
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
+class _SecondaryStreakRow extends StatelessWidget {
   final String emoji;
+  final String label;
+  final int count;
+  final String suffix;
   final bool isDarkMode;
 
-  const _StatItem({
-    required this.label,
-    required this.value,
+  const _SecondaryStreakRow({
     required this.emoji,
+    required this.label,
+    required this.count,
+    required this.suffix,
     required this.isDarkMode,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final textPrimary =
+        isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+    final textSecondary =
+        isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor;
+
+    return Row(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(emoji, style: TextStyle(fontSize: 16)),
-            const SizedBox(width: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-              ),
+        Text(emoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: textSecondary,
             ),
-          ],
+          ),
         ),
-        const SizedBox(height: 2),
         Text(
-          label,
+          '$count ',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: textPrimary,
+          ),
+        ),
+        Text(
+          suffix,
           style: TextStyle(
             fontSize: 12,
-            color: isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor,
+            color: textSecondary,
           ),
         ),
       ],

@@ -25,6 +25,9 @@ class FriendsProvider extends ChangeNotifier {
   int get unseenPingsCount => _unseenPingsCount;
   bool get hasPendingRequests => _receivedRequests.isNotEmpty;
   bool get hasSentRequests => _sentRequests.isNotEmpty;
+  List<DuoStreak> get previewDuoStreaks => _duoStreaks.take(3).toList();
+  int get duoStreakCount => _duoStreaks.length;
+  int get friendCount => _friends.length;
 
   /// Configura o token de autenticação
   void setToken(String token) {

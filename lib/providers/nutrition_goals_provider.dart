@@ -68,9 +68,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int _fatPercentage = 30;
 
   // Calculated or manual goals
-  bool _useCalculatedGoals = true;
+  bool _useCalculatedGoals = false;
   int _manualCaloriesGoal = 2000;
-  int _manualProteinGoal = 150;
+  int _manualProteinGoal = 100;
   int _manualCarbsGoal = 250;
   int _manualFatGoal = 67;
 
@@ -82,6 +82,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
   bool _hasExplicitHeight = false;
   bool _hasExplicitActivityLevel = false;
   bool _hasExplicitFitnessGoal = false;
+  int _stateRevision = 0;
   late final Future<void> _loadFuture;
 
   // Getters
@@ -101,6 +102,20 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int get fatPercentage => _fatPercentage;
   bool get useCalculatedGoals => _useCalculatedGoals;
   bool get hasConfiguredGoals => _hasConfiguredGoals;
+  bool get hasExplicitSex => _hasExplicitSex;
+  bool get hasExplicitAge => _hasExplicitAge;
+  bool get hasExplicitWeight => _hasExplicitWeight;
+  bool get hasExplicitHeight => _hasExplicitHeight;
+  bool get hasExplicitActivityLevel => _hasExplicitActivityLevel;
+  bool get hasExplicitFitnessGoal => _hasExplicitFitnessGoal;
+  String? get explicitSex => _hasExplicitSex ? _sex : null;
+  int? get explicitAge => _hasExplicitAge ? _age : null;
+  double? get explicitWeight => _hasExplicitWeight ? _weight : null;
+  double? get explicitHeight => _hasExplicitHeight ? _height : null;
+  ActivityLevel? get explicitActivityLevel =>
+      _hasExplicitActivityLevel ? _activityLevel : null;
+  FitnessGoal? get explicitFitnessGoal =>
+      _hasExplicitFitnessGoal ? _fitnessGoal : null;
   List<String> get missingSetupFields {
     final missing = <String>[];
     if (!_hasExplicitSex) missing.add('sex');
@@ -154,26 +169,142 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   Future<void> ensureLoaded() => _loadFuture;
 
+  Future<void> applyServerSnapshot({
+    required Map<String, dynamic> goalSetup,
+    Map<String, dynamic>? macroTargets,
+  }) async {
+    _markStateMutation();
+
+    final completion =
+        (goalSetup['setupCompletionStatus'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final profile =
+        (goalSetup['profile'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final goalSetupMacroTargets =
+        (goalSetup['macroTargets'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final mergedMacroTargets = <String, dynamic>{
+      ...goalSetupMacroTargets,
+      if (macroTargets != null) ...macroTargets,
+    };
+    final grams =
+        (mergedMacroTargets['grams'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final percentages =
+        (mergedMacroTargets['percentages'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+
+    _hasExplicitSex = completion['sex'] == true;
+    _hasExplicitAge = completion['age'] == true;
+    _hasExplicitWeight = completion['weight_kg'] == true;
+    _hasExplicitHeight = completion['height_cm'] == true;
+    _hasExplicitActivityLevel = completion['activity_level'] == true;
+    _hasExplicitFitnessGoal = completion['fitness_goal'] == true;
+
+    _sex = _hasExplicitSex
+        ? _normalizeServerSex(profile['sex']) ?? 'male'
+        : 'male';
+    _age = _hasExplicitAge ? _parseServerInt(profile['age']) ?? 30 : 30;
+    _weight = _hasExplicitWeight
+        ? _parseServerDouble(profile['weightKg']) ?? 70.0
+        : 70.0;
+    _height = _hasExplicitHeight
+        ? _parseServerDouble(profile['heightCm']) ?? 170.0
+        : 170.0;
+    _activityLevel = _hasExplicitActivityLevel
+        ? _parseServerActivityLevel(profile['activityLevel']) ??
+            ActivityLevel.moderatelyActive
+        : ActivityLevel.moderatelyActive;
+    _fitnessGoal = _hasExplicitFitnessGoal
+        ? _parseServerFitnessGoal(profile['fitnessGoal']) ??
+            FitnessGoal.maintainWeight
+        : FitnessGoal.maintainWeight;
+    _formula = _parseServerFormula(goalSetup['formula']) ??
+        CalculationFormula.mifflinStJeor;
+    _dietType =
+        _parseServerDietType(goalSetup['dietType']) ?? DietType.balanced;
+
+    _carbsPercentage = _parseServerInt(percentages['carbs']) ?? 50;
+    _proteinPercentage = _parseServerInt(percentages['protein']) ?? 20;
+    _fatPercentage = _parseServerInt(percentages['fat']) ?? 30;
+
+    _manualCaloriesGoal =
+        _parseServerInt(mergedMacroTargets['caloriesGoal']) ?? 2000;
+    _manualCarbsGoal = _parseServerInt(grams['carbs']) ?? 250;
+    _manualProteinGoal = _parseServerInt(grams['protein']) ?? 100;
+    _manualFatGoal = _parseServerInt(grams['fat']) ?? 67;
+
+    final goalMode = mergedMacroTargets['goalMode']?.toString() ??
+        goalSetup['configurationStatus']?.toString() ??
+        'default_template';
+    _useCalculatedGoals = goalMode == 'calculated';
+    _hasConfiguredGoals = _computeHasConfiguredGoals();
+
+    await _saveToPreferences(markConfigured: _hasConfiguredGoals);
+    notifyListeners();
+  }
+
   // Load saved preferences
   Future<void> _loadFromPreferences() async {
+    final loadRevision = _stateRevision;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final legacyConfigured = prefs.getBool('nutrition_hasConfiguredGoals') ??
-          prefs.containsKey('nutrition_fitnessGoal');
+      if (loadRevision != _stateRevision) {
+        return;
+      }
+      final hasStoredExplicitFlags = const [
+        'nutrition_hasExplicitSex',
+        'nutrition_hasExplicitAge',
+        'nutrition_hasExplicitWeight',
+        'nutrition_hasExplicitHeight',
+        'nutrition_hasExplicitActivityLevel',
+        'nutrition_hasExplicitFitnessGoal',
+      ].any(prefs.containsKey);
+      final legacyConfigured =
+          (prefs.getBool('nutrition_hasConfiguredGoals') ?? false) ||
+              (prefs.getBool('nutrition_useCalculated') ?? false);
+      final storedExplicitSex =
+          prefs.getBool('nutrition_hasExplicitSex') ?? false;
+      final storedExplicitAge =
+          prefs.getBool('nutrition_hasExplicitAge') ?? false;
+      final storedExplicitWeight =
+          prefs.getBool('nutrition_hasExplicitWeight') ?? false;
+      final storedExplicitHeight =
+          prefs.getBool('nutrition_hasExplicitHeight') ?? false;
+      final storedExplicitActivityLevel =
+          prefs.getBool('nutrition_hasExplicitActivityLevel') ?? false;
+      final storedExplicitFitnessGoal =
+          prefs.getBool('nutrition_hasExplicitFitnessGoal') ?? false;
+      final hasBrokenExplicitMigration = hasStoredExplicitFlags &&
+          legacyConfigured &&
+          !storedExplicitSex &&
+          !storedExplicitAge &&
+          !storedExplicitWeight &&
+          !storedExplicitHeight &&
+          !storedExplicitActivityLevel &&
+          !storedExplicitFitnessGoal;
+      final shouldPersistExplicitMigration = legacyConfigured &&
+          (!hasStoredExplicitFlags || hasBrokenExplicitMigration);
 
-      _hasExplicitSex =
-          prefs.getBool('nutrition_hasExplicitSex') ?? legacyConfigured;
-      _hasExplicitAge =
-          prefs.getBool('nutrition_hasExplicitAge') ?? legacyConfigured;
-      _hasExplicitWeight =
-          prefs.getBool('nutrition_hasExplicitWeight') ?? legacyConfigured;
-      _hasExplicitHeight =
-          prefs.getBool('nutrition_hasExplicitHeight') ?? legacyConfigured;
-      _hasExplicitActivityLevel =
-          prefs.getBool('nutrition_hasExplicitActivityLevel') ??
-              legacyConfigured;
-      _hasExplicitFitnessGoal =
-          prefs.getBool('nutrition_hasExplicitFitnessGoal') ?? legacyConfigured;
+      _hasExplicitSex = hasStoredExplicitFlags
+          ? (hasBrokenExplicitMigration ? true : storedExplicitSex)
+          : legacyConfigured;
+      _hasExplicitAge = hasStoredExplicitFlags
+          ? (hasBrokenExplicitMigration ? true : storedExplicitAge)
+          : legacyConfigured;
+      _hasExplicitWeight = hasStoredExplicitFlags
+          ? (hasBrokenExplicitMigration ? true : storedExplicitWeight)
+          : legacyConfigured;
+      _hasExplicitHeight = hasStoredExplicitFlags
+          ? (hasBrokenExplicitMigration ? true : storedExplicitHeight)
+          : legacyConfigured;
+      _hasExplicitActivityLevel = hasStoredExplicitFlags
+          ? (hasBrokenExplicitMigration ? true : storedExplicitActivityLevel)
+          : legacyConfigured;
+      _hasExplicitFitnessGoal = hasStoredExplicitFlags
+          ? (hasBrokenExplicitMigration ? true : storedExplicitFitnessGoal)
+          : legacyConfigured;
 
       _sex = prefs.getString('nutrition_sex') ?? 'male';
       _age = prefs.getInt('nutrition_age') ?? 30;
@@ -197,9 +328,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
       _proteinPercentage = prefs.getInt('nutrition_proteinPercentage') ?? 20;
       _fatPercentage = prefs.getInt('nutrition_fatPercentage') ?? 30;
 
-      _useCalculatedGoals = prefs.getBool('nutrition_useCalculated') ?? true;
+      _useCalculatedGoals = prefs.getBool('nutrition_useCalculated') ?? false;
       _manualCaloriesGoal = prefs.getInt('nutrition_manualCalories') ?? 2000;
-      _manualProteinGoal = prefs.getInt('nutrition_manualProtein') ?? 150;
+      _manualProteinGoal = prefs.getInt('nutrition_manualProtein') ?? 100;
       _manualCarbsGoal = prefs.getInt('nutrition_manualCarbs') ?? 250;
       _manualFatGoal = prefs.getInt('nutrition_manualFat') ?? 67;
 
@@ -210,10 +341,15 @@ class NutritionGoalsProvider extends ChangeNotifier {
       final weightUnitIndex = prefs.getInt('nutrition_weightUnit') ?? 0;
       _weightUnit = WeightUnit.values[weightUnitIndex];
       _hasConfiguredGoals = _computeHasConfiguredGoals();
+      if (shouldPersistExplicitMigration) {
+        _saveToPreferences();
+      }
     } catch (e) {
       print('Error loading nutrition goals: $e');
     } finally {
-      notifyListeners();
+      if (loadRevision == _stateRevision) {
+        notifyListeners();
+      }
     }
   }
 
@@ -221,12 +357,16 @@ class NutritionGoalsProvider extends ChangeNotifier {
   Future<void> _saveToPreferences({bool? markConfigured}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final wasConfigured = _hasConfiguredGoals;
 
       if (markConfigured != null) {
         _hasConfiguredGoals = markConfigured;
       }
 
       _hasConfiguredGoals = _computeHasConfiguredGoals();
+      if (!wasConfigured && _hasConfiguredGoals) {
+        _useCalculatedGoals = true;
+      }
 
       await prefs.setString('nutrition_sex', _sex);
       await prefs.setInt('nutrition_age', _age);
@@ -282,6 +422,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     double? height,
     double? bodyFat,
   }) {
+    _markStateMutation();
     if (sex != null) {
       _sex = sex;
       _hasExplicitSex = true;
@@ -310,6 +451,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     FitnessGoal? fitnessGoal,
     CalculationFormula? formula,
   }) {
+    _markStateMutation();
     if (activityLevel != null) {
       _activityLevel = activityLevel;
       _hasExplicitActivityLevel = true;
@@ -326,6 +468,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   // Update diet type and macros
   void updateDietType(DietType dietType) {
+    _markStateMutation();
     _dietType = dietType;
 
     // Set default macro percentages for each diet type
@@ -370,6 +513,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     required int protein,
     required int fat,
   }) {
+    _markStateMutation();
     // Ensure they add up to 100%
     final total = carbs + protein + fat;
     if (total != 100) {
@@ -400,6 +544,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   // Toggle between calculated and manual goals
   void setUseCalculatedGoals(bool value) {
+    _markStateMutation();
     _useCalculatedGoals = value;
     _saveToPreferences();
     notifyListeners();
@@ -413,6 +558,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     int? fat,
     bool activateManualMode = true,
   }) {
+    _markStateMutation();
     if (calories != null) _manualCaloriesGoal = calories;
     if (protein != null) _manualProteinGoal = protein;
     if (carbs != null) _manualCarbsGoal = carbs;
@@ -494,10 +640,15 @@ class NutritionGoalsProvider extends ChangeNotifier {
   Map<String, dynamic> getMacroSnapshot() {
     final grams = macroGramTargets;
     final perKg = macroPerKgTargets;
+    final goalMode = !_hasConfiguredGoals
+        ? 'default_template'
+        : (_useCalculatedGoals ? 'calculated' : 'manual');
 
     return {
       'hasConfiguredGoals': _hasConfiguredGoals,
-      'goalMode': _useCalculatedGoals ? 'calculated' : 'manual',
+      'goalMode': goalMode,
+      'defaultMacroTargetsApplied': !_hasConfiguredGoals,
+      'setupMissingFields': missingSetupFields,
       'dietType': _dietType.name,
       'caloriesGoal': caloriesGoal,
       'macroCalories':
@@ -505,7 +656,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
       'percentages': macroPercentages,
       'grams': grams,
       'gramsPerKg': perKg,
-      'weightKg': _round1(_weight),
+      'weightKg': _hasExplicitWeight ? _round1(_weight) : null,
       'availableEditModes': const [
         'percentage',
         'grams_per_kg',
@@ -667,24 +818,28 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   // Unit conversion methods
   void setHeightUnit(HeightUnit unit) {
+    _markStateMutation();
     _heightUnit = unit;
     _saveToPreferences();
     notifyListeners();
   }
 
   void setWeightUnit(WeightUnit unit) {
+    _markStateMutation();
     _weightUnit = unit;
     _saveToPreferences();
     notifyListeners();
   }
 
   void toggleHeightUnit() {
+    _markStateMutation();
     _heightUnit = _heightUnit == HeightUnit.cm ? HeightUnit.ft : HeightUnit.cm;
     _saveToPreferences();
     notifyListeners();
   }
 
   void toggleWeightUnit() {
+    _markStateMutation();
     switch (_weightUnit) {
       case WeightUnit.kg:
         _weightUnit = WeightUnit.lbs;
@@ -863,6 +1018,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
   Future<void> clearAllData() async {
     print(
         '[🔄 AUTH_DATA] NutritionGoalsProvider.clearAllData() - Iniciando limpeza...');
+    _markStateMutation();
 
     // Resetar para valores padrão
     _sex = 'male';
@@ -879,9 +1035,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _carbsPercentage = 50;
     _proteinPercentage = 20;
     _fatPercentage = 30;
-    _useCalculatedGoals = true;
+    _useCalculatedGoals = false;
     _manualCaloriesGoal = 2000;
-    _manualProteinGoal = 150;
+    _manualProteinGoal = 100;
     _manualCarbsGoal = 250;
     _manualFatGoal = 67;
     _hasConfiguredGoals = false;
@@ -912,6 +1068,10 @@ class NutritionGoalsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _markStateMutation() {
+    _stateRevision++;
+  }
+
   double _round1(double value) {
     return (value * 10).roundToDouble() / 10;
   }
@@ -923,6 +1083,78 @@ class NutritionGoalsProvider extends ChangeNotifier {
         _hasExplicitHeight &&
         _hasExplicitActivityLevel &&
         _hasExplicitFitnessGoal;
+  }
+
+  String? _normalizeServerSex(dynamic value) {
+    final normalized = value?.toString().trim().toLowerCase();
+    switch (normalized) {
+      case 'male':
+      case 'masculino':
+      case 'homem':
+        return 'male';
+      case 'female':
+      case 'feminino':
+      case 'mulher':
+        return 'female';
+      default:
+        return null;
+    }
+  }
+
+  int? _parseServerInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.round();
+    }
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  double? _parseServerDouble(dynamic value) {
+    if (value is double) {
+      return value;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  ActivityLevel? _parseServerActivityLevel(dynamic value) {
+    for (final entry in ActivityLevel.values) {
+      if (entry.name == value) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  FitnessGoal? _parseServerFitnessGoal(dynamic value) {
+    for (final entry in FitnessGoal.values) {
+      if (entry.name == value) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  CalculationFormula? _parseServerFormula(dynamic value) {
+    for (final entry in CalculationFormula.values) {
+      if (entry.name == value) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  DietType? _parseServerDietType(dynamic value) {
+    for (final entry in DietType.values) {
+      if (entry.name == value) {
+        return entry;
+      }
+    }
+    return null;
   }
 
   Map<String, int> _normalizePercentagesToHundred({

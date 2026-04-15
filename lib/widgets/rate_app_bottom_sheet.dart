@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../services/rate_app_service.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import '../theme/app_theme.dart';
+
+enum _RateAppStep { prompt, feedback }
 
 class RateAppBottomSheet extends StatefulWidget {
   const RateAppBottomSheet({Key? key}) : super(key: key);
 
-  // Método para mostrar o bottom sheet
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet(
       context: context,
@@ -22,15 +21,18 @@ class RateAppBottomSheet extends StatefulWidget {
   }
 
   @override
-  _RateAppBottomSheetState createState() => _RateAppBottomSheetState();
+  State<RateAppBottomSheet> createState() => _RateAppBottomSheetState();
 }
 
 class _RateAppBottomSheetState extends State<RateAppBottomSheet>
     with SingleTickerProviderStateMixin {
-  int _rating = 0;
-  bool _submitted = false;
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
+  static const String _feedbackEmailAddress = 'suporte@snapdark.com';
+
+  _RateAppStep _currentStep = _RateAppStep.prompt;
+  bool _isHandlingPrimaryAction = false;
+  bool _isOpeningFeedbackEmail = false;
+  late final AnimationController _animationController;
+  late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -54,40 +56,65 @@ class _RateAppBottomSheetState extends State<RateAppBottomSheet>
     super.dispose();
   }
 
-  void _submitRating() async {
-    setState(() {
-      _submitted = true;
-    });
-
-    if (_rating >= 4) {
-      // Marcar que o usuário avaliou o app
-      await RateAppService.markAsRated();
-      // Buscar o applicationId conforme a plataforma
-      String appId;
-      if (kIsWeb) {
-        appId = 'br.com.snapdark.apps.studyai';
-      } else {
-        final packageInfo = await PackageInfo.fromPlatform();
-        appId = packageInfo.packageName;
-      }
-      final url =
-          Uri.parse('https://play.google.com/store/apps/details?id=$appId');
-      try {
-        await launchUrl(
-          url,
-          mode: LaunchMode.externalApplication,
-        );
-        // Fechar o bottom sheet após abrir a loja
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
-      } catch (e) {
-        print('Não foi possível abrir a Play Store: $e');
-      }
+  Future<void> _handlePositiveAction() async {
+    if (_isHandlingPrimaryAction) {
       return;
     }
-    // Para avaliações baixas, apenas mostramos uma mensagem de agradecimento
-    // e deixamos o usuário voltar manualmente
+
+    setState(() {
+      _isHandlingPrimaryAction = true;
+    });
+
+    Navigator.of(context).pop();
+    await Future.delayed(const Duration(milliseconds: 220));
+    await RateAppService.launchReviewFlow();
+  }
+
+  Future<void> _openFeedbackEmail() async {
+    if (_isOpeningFeedbackEmail) {
+      return;
+    }
+
+    setState(() {
+      _isOpeningFeedbackEmail = true;
+    });
+
+    final emailUri = Uri(
+      scheme: 'mailto',
+      path: _feedbackEmailAddress,
+      query: _encodeQueryParameters({
+        'subject': context.tr.translate('rate_app_email_subject'),
+        'body': context.tr.translate('rate_app_email_body'),
+      }),
+    );
+
+    try {
+      final opened = await launchUrl(
+        emailUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (opened && mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('Não foi possível abrir o e-mail de feedback: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isOpeningFeedbackEmail = false;
+        });
+      }
+    }
+  }
+
+  String _encodeQueryParameters(Map<String, String> parameters) {
+    return parameters.entries
+        .map(
+          (entry) =>
+              '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}',
+        )
+        .join('&');
   }
 
   @override
@@ -96,89 +123,86 @@ class _RateAppBottomSheetState extends State<RateAppBottomSheet>
     final primaryColor = Theme.of(context).primaryColor;
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : Colors.white;
-
-    // Obter a altura da tela para dimensionar o bottom sheet
     final screenHeight = MediaQuery.of(context).size.height;
-    final bottomSheetHeight = screenHeight * 0.6; // 60% da altura da tela
+    final bottomSheetHeight = screenHeight * 0.55;
 
     return AnimatedBuilder(
-        animation: _animationController,
-        builder: (context, child) {
-          return Container(
-            height: bottomSheetHeight,
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
+      animation: _animationController,
+      builder: (context, child) {
+        return Container(
+          height: bottomSheetHeight,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Barra de arraste
-                Padding(
-                  padding: const EdgeInsets.only(top: 12, bottom: 8),
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 8),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                // Botão fechar
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.close,
-                        color: isDarkMode ? Colors.white : Colors.black54,
+              ),
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      color: isDarkMode ? Colors.white : Colors.black54,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
                       ),
-                      onPressed: () => Navigator.of(context).pop(),
+                      child: _currentStep == _RateAppStep.prompt
+                          ? _buildPromptContent(isDarkMode, primaryColor)
+                          : _buildFeedbackContent(isDarkMode, primaryColor),
                     ),
                   ),
                 ),
-                // Conteúdo principal
-                Expanded(
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0, vertical: 8.0),
-                        child: _submitted && _rating < 4
-                            ? _buildThankYouContent(isDarkMode, primaryColor)
-                            : _buildRatingContent(isDarkMode, primaryColor),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        });
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildRatingContent(bool isDarkMode, Color primaryColor) {
+  Widget _buildPromptContent(bool isDarkMode, Color primaryColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: primaryColor.withOpacity(0.1),
+            color: primaryColor.withValues(alpha: 0.1),
           ),
           child: Icon(
             Icons.emoji_emotions,
@@ -186,7 +210,7 @@ class _RateAppBottomSheetState extends State<RateAppBottomSheet>
             color: primaryColor,
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         Text(
           context.tr.translate('enjoying_app'),
           textAlign: TextAlign.center,
@@ -196,7 +220,7 @@ class _RateAppBottomSheetState extends State<RateAppBottomSheet>
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           context.tr.translate('rate_app_description'),
           textAlign: TextAlign.center,
@@ -205,104 +229,97 @@ class _RateAppBottomSheetState extends State<RateAppBottomSheet>
             color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
           ),
         ),
-        SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(5, (index) {
-            final starValue = index + 1;
-            final isSelected = starValue <= _rating;
-
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _rating = starValue;
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(
-                    begin: 1.0,
-                    end: isSelected ? 1.2 : 1.0,
-                  ),
-                  duration: Duration(milliseconds: 200),
-                  builder: (context, scale, child) {
-                    return Transform.scale(
-                      scale: scale,
-                      child: Icon(
-                        isSelected ? Icons.star : Icons.star_border,
-                        color: isSelected ? Colors.amber : Colors.grey,
-                        size: 36,
-                      ),
-                    );
-                  },
-                ),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isHandlingPrimaryAction ? null : _handlePositiveAction,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
               ),
-            );
-          }),
-        ),
-        SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: _rating > 0 ? _submitRating : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primaryColor,
-            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+              elevation: 1,
+              shadowColor: primaryColor.withValues(alpha: 0.5),
             ),
-            elevation: 1,
-            shadowColor: primaryColor.withOpacity(0.5),
+            child: Text(
+              context.tr.translate('rate_app_yes'),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () {
+              setState(() {
+                _currentStep = _RateAppStep.feedback;
+              });
+            },
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: isDarkMode ? Colors.white24 : Colors.black12,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: Text(
+              context.tr.translate('rate_app_no'),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
           child: Text(
-            context.tr.translate('submit'),
+            context.tr.translate('rate_app_not_now'),
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
             ),
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
 
-  Widget _buildThankYouContent(bool isDarkMode, Color primaryColor) {
-    String titleText;
-    String messageText;
-    IconData iconData;
-
-    if (_rating >= 4) {
-      titleText = context.tr.translate('thank_you_positive');
-      messageText = context.tr.translate('redirection_message');
-      iconData = Icons.celebration;
-    } else {
-      titleText = context.tr.translate('thank_you');
-      messageText = context.tr.translate('feedback_message');
-      iconData = Icons.thumb_up;
-    }
-
+  Widget _buildFeedbackContent(bool isDarkMode, Color primaryColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         AnimatedContainer(
-          duration: Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 500),
           curve: Curves.elasticOut,
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: primaryColor.withOpacity(0.1),
+            color: primaryColor.withValues(alpha: 0.1),
           ),
           child: Icon(
-            iconData,
+            Icons.mail_outline,
             size: 60,
             color: primaryColor,
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         Text(
-          titleText,
+          context.tr.translate('thank_you'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -310,40 +327,52 @@ class _RateAppBottomSheetState extends State<RateAppBottomSheet>
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Text(
-          messageText,
+          context.tr.translate('feedback_message'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
             color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
           ),
         ),
-        SizedBox(height: 24),
-        if (_rating < 4)
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isOpeningFeedbackEmail ? null : _openFeedbackEmail,
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),
               elevation: 1,
-              shadowColor: primaryColor.withOpacity(0.5),
+              shadowColor: primaryColor.withValues(alpha: 0.5),
             ),
             child: Text(
-              context.tr.translate('ok'),
-              style: TextStyle(
+              context.tr.translate('rate_app_send_email'),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
           ),
-        SizedBox(height: 16),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            context.tr.translate('ok'),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
       ],
     );
   }

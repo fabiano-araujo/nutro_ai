@@ -3,16 +3,15 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Primary Colors
-  static const Color primaryColor = Color(0xFFC5B5E3);
-  static const Color primaryLightColor = Color(0xFFE0D7F0);
-  static const Color primaryDarkColor = Color(0xFFB39DDB);
-  // Versão mais escura para dark mode - roxo vibrante que combina com preto
-  static const Color primaryColorDarkMode = Color(0xFF7E57C2);
+  static const Color primaryColor = Color(0xFF111111);
+  static const Color primaryLightColor = Color(0xFF2B2B2B);
+  static const Color primaryDarkColor = Color(0xFF4A4A4A);
+  static const Color primaryColorDarkMode = Color(0xFFF5F5F5);
 
   // Secondary Colors
-  static const Color secondaryColor = Color(0xFFDDB9E8);
-  static const Color secondaryLightColor = Color(0xFFF0DCFA);
-  static const Color secondaryDarkColor = Color(0xFFCE93D8);
+  static const Color secondaryColor = Color(0xFF2A2A2A);
+  static const Color secondaryLightColor = Color(0xFF5A5A5A);
+  static const Color secondaryDarkColor = Color(0xFFE6E6E6);
 
   // Neutral Colors
   static const Color backgroundColor = Color(0xFFF7F9FC);
@@ -49,6 +48,16 @@ class AppTheme {
   // Helper method to get soft text color based on theme
   static Color getSoftTextColor(bool isDarkMode) {
     return isDarkMode ? darkTextColorSoft : textPrimaryColorSoft;
+  }
+
+  static Color onPrimaryFor(bool isDarkMode) {
+    return isDarkMode ? Colors.black : Colors.white;
+  }
+
+  static Color onColor(Color color) {
+    return ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
   }
 
   // Gradients
@@ -145,6 +154,8 @@ class AppTheme {
       error: errorColor,
       background: backgroundColor,
       surface: surfaceColor,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -155,6 +166,12 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
         ),
         elevation: 0,
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -172,6 +189,10 @@ class AppTheme {
         foregroundColor: primaryColor,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: primaryColor,
+      foregroundColor: Colors.white,
     ),
     cardTheme: CardThemeData(
       color: cardColor,
@@ -237,25 +258,33 @@ class AppTheme {
       bodyLarge: bodyLarge.copyWith(color: darkTextColor),
       bodyMedium: bodyMedium.copyWith(color: darkTextColor),
       bodySmall: bodySmall.copyWith(color: darkTextColor),
-      labelLarge: buttonText.copyWith(color: Colors.white),
+      labelLarge: buttonText.copyWith(color: Colors.black),
       labelSmall: captionText.copyWith(color: Color(0xFFAEB7CE)),
     ),
     colorScheme: ColorScheme.dark(
       primary: primaryColorDarkMode,
-      secondary: secondaryColor,
+      secondary: secondaryDarkColor,
       error: errorColor,
       background: darkBackgroundColor,
       surface: darkComponentColor,
+      onPrimary: Colors.black,
+      onSecondary: Colors.black,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColorDarkMode,
-        foregroundColor: Colors.white,
+        foregroundColor: Colors.black,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
         elevation: 0,
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: primaryColorDarkMode,
+        foregroundColor: Colors.black,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -273,6 +302,10 @@ class AppTheme {
         foregroundColor: primaryColorDarkMode,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: primaryColorDarkMode,
+      foregroundColor: Colors.black,
     ),
     cardTheme: CardThemeData(
       color: darkCardColor,

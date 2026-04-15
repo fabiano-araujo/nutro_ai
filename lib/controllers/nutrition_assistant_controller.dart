@@ -18,17 +18,19 @@ import '../providers/credit_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/screen_utils.dart';
 import '../mixins/text_to_speech_mixin.dart';
-import '../mixins/ai_tutor_speech_mixin.dart';
+import '../mixins/nutrition_assistant_speech_mixin.dart';
 import '../services/rate_app_service.dart';
 import '../widgets/reward_ad_dialog.dart';
 import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../providers/meal_types_provider.dart';
+import '../providers/nutrition_goals_provider.dart';
+import '../providers/diet_plan_provider.dart';
 import '../services/app_agent_service.dart';
 import '../utils/food_json_parser.dart';
 
 /// Controller para gerenciar o estado e a lógica do Assistente de Nutrição
-class NutroChatController with ChangeNotifier {
+class NutritionAssistantController with ChangeNotifier {
   // Serviços
   final AIService _aiService = AIService();
   final StorageService _storageService = StorageService();
@@ -61,7 +63,7 @@ class NutroChatController with ChangeNotifier {
   int _androidUpdateCounter = 0;
 
   // Referências aos mixins
-  final NutroChatSpeechMixinRef speechMixin;
+  final NutritionAssistantSpeechMixinRef speechMixin;
   final TextToSpeechMixinRef ttsRef;
 
   // Contador de interações bem-sucedidas
@@ -73,13 +75,14 @@ class NutroChatController with ChangeNotifier {
 
   // Tipo de ferramenta que está usando o controlador
   final String toolType;
+  final String storageScope;
   final String?
       rawInitialPromptJson; // NOVO: Para armazenar o JSON bruto da ferramenta
 
   // Salvar o último contexto usado em sendMessage
   BuildContext? _lastContext;
   int _agenticCommandExecutions = 0;
-  static const int _maxAgenticCommandExecutions = 1;
+  static const int _maxAgenticCommandExecutions = 4;
 
   // Getters
   List<Map<String, dynamic>> get messages => _messages;
@@ -92,12 +95,13 @@ class NutroChatController with ChangeNotifier {
   int? get currentlySpeakingMessageIndex => _currentlySpeakingMessageIndex;
   DateTime get selectedDate => _selectedDate;
 
-  NutroChatController({
+  NutritionAssistantController({
     required this.speechMixin,
     required this.ttsRef,
     String? conversationId,
     bool showWelcomeMessage = true,
     this.toolType = 'chat',
+    this.storageScope = 'guest',
     this.rawInitialPromptJson,
     List<Map<String, dynamic>>? initialMessages,
     DateTime? initialDate,
@@ -109,7 +113,7 @@ class NutroChatController with ChangeNotifier {
     }
 
     print(
-        '🤖 NutroChatController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}, selectedDate: ${_formatDateKey(_selectedDate)}');
+        '🤖 NutritionAssistantController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, storageScope: $storageScope, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}, selectedDate: ${_formatDateKey(_selectedDate)}');
     if (initialMessages != null && initialMessages.isNotEmpty) {
       // Prioridade máxima: se mensagens iniciais são fornecidas, usá-las.
       _messages = initialMessages;
@@ -192,7 +196,7 @@ class NutroChatController with ChangeNotifier {
           '📊 ==============================================================================\n');
 
       print(
-          '✅ NutroChatController: Inicializado com ${initialMessages.length} mensagens fornecidas via initialMessages.');
+          '✅ NutritionAssistantController: Inicializado com ${initialMessages.length} mensagens fornecidas via initialMessages.');
       // Se estamos usando initialMessages, geralmente não queremos carregar uma conversationId separadamente,
       // a menos que seja um caso de uso específico para mesclar/continuar.
       // Por agora, se initialMessages é provido, ele é a fonte da verdade para o estado inicial.
@@ -202,24 +206,24 @@ class NutroChatController with ChangeNotifier {
         print(
             '   ➡️ conversationId ($conversationId) também foi fornecido e será mantido.');
       }
-      // Não chamar notifyListeners() aqui; a NutroChatScreen o fará após a configuração completa se necessário.
+      // Não chamar notifyListeners() aqui; a NutritionAssistantScreen o fará após a configuração completa se necessário.
     } else if (conversationId != null) {
       // Se não há initialMessages, mas há um conversationId, carregar a conversa.
       print(
-          '📂 NutroChatController: Carregando conversa por ID: $conversationId');
+          '📂 NutritionAssistantController: Carregando conversa por ID: $conversationId');
       _loadConversation(conversationId);
       _currentConversationId = conversationId;
     } else if (showWelcomeMessage) {
       // Nenhuma mensagem inicial e nenhum ID de conversa, e showWelcomeMessage é true.
       // Esta é a única condição em que a mensagem de boas-vindas deve ser adicionada.
-      print('👋 NutroChatController: Adicionando mensagem de boas-vindas.');
+      print('👋 NutritionAssistantController: Adicionando mensagem de boas-vindas.');
       _addWelcomeMessage(); // _addWelcomeMessage já chama notifyListeners
     } else {
       print(
-          '🤷 NutroChatController: Nenhuma mensagem inicial, nenhum ID de conversa, e showWelcomeMessage é false.');
+          '🤷 NutritionAssistantController: Nenhuma mensagem inicial, nenhum ID de conversa, e showWelcomeMessage é false.');
       // Carregar mensagens da data inicial (se houver)
       print(
-          '📅 NutroChatController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
+          '📅 NutritionAssistantController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
       _loadMessagesForDate(_selectedDate);
       // notifyListeners será chamado por _loadMessagesForDate após o carregamento
     }
@@ -229,7 +233,7 @@ class NutroChatController with ChangeNotifier {
   void _addWelcomeMessage() {
     _messages.add({
       'isUser': false,
-      'message': 'Olá! Sou seu assistente de nutrição. O que você comeu hoje?',
+      'message': 'Olá! Sou Nutro AI, seu assistente de nutrição. Como posso te ajudar hoje?',
       'timestamp': DateTime.now(),
     });
     notifyListeners();
@@ -252,16 +256,31 @@ class NutroChatController with ChangeNotifier {
         switch (locale) {
           case 'pt_BR':
             welcomeMessage =
-                'Olá! Sou seu assistente de nutrição. O que você comeu hoje?';
+                'Olá! Sou Nutro AI, seu assistente de nutrição. Como posso te ajudar hoje?';
             break;
           case 'en_US':
             welcomeMessage =
-                'Hi! I\'m your nutrition assistant. What did you eat today?';
+                'Hi! I\'m Nutro AI, your nutrition assistant. How can I help you today?';
             break;
-          // ... outros casos
+          case 'es_ES':
+            welcomeMessage =
+                '¡Hola! Soy Nutro AI, tu asistente de nutrición. ¿Cómo puedo ayudarte hoy?';
+            break;
+          case 'de_DE':
+            welcomeMessage =
+                'Hallo! Ich bin Nutro AI, dein Ernährungsassistent. Wie kann ich dir heute helfen?';
+            break;
+          case 'fr_FR':
+            welcomeMessage =
+                'Bonjour ! Je suis Nutro AI, votre assistant nutritionnel. Comment puis-je vous aider aujourd\'hui ?';
+            break;
+          case 'it_IT':
+            welcomeMessage =
+                'Ciao! Sono Nutro AI, il tuo assistente nutrizionale. Come posso aiutarti oggi?';
+            break;
           default:
             welcomeMessage =
-                'Olá! Sou seu assistente de nutrição. O que você comeu hoje?';
+                'Hi! I\'m Nutro AI, your nutrition assistant. How can I help you today?';
         }
       }
 
@@ -271,14 +290,14 @@ class NutroChatController with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('⚠️ NutroChatController - Erro ao obter tradução: $e');
+      print('⚠️ NutritionAssistantController - Erro ao obter tradução: $e');
     }
   }
 
   /// Carrega uma conversa pelo ID
   Future<void> _loadConversation(String conversationId) async {
     print(
-        '📂 NutroChatController - Iniciando carregamento da conversa ID: $conversationId');
+        '📂 NutritionAssistantController - Iniciando carregamento da conversa ID: $conversationId');
     _isLoading = true;
     _messages = []; // Limpar mensagens antigas enquanto carrega
     notifyListeners();
@@ -294,16 +313,16 @@ class NutroChatController with ChangeNotifier {
         _isLoading = false;
         notifyListeners();
         print(
-            '✅ NutroChatController - Conversa carregada com sucesso via Helper');
+            '✅ NutritionAssistantController - Conversa carregada com sucesso via Helper');
       } else {
         print(
-            '⚠️ NutroChatController - Conversa não encontrada ou erro no Helper, mostrando mensagem padrão');
+            '⚠️ NutritionAssistantController - Conversa não encontrada ou erro no Helper, mostrando mensagem padrão');
         _addWelcomeMessage();
         _isLoading = false;
         notifyListeners();
       }
     } catch (e) {
-      print('❌ NutroChatController - Erro inesperado ao carregar conversa: $e');
+      print('❌ NutritionAssistantController - Erro inesperado ao carregar conversa: $e');
       _addWelcomeMessage();
       _isLoading = false;
       notifyListeners();
@@ -551,7 +570,7 @@ class NutroChatController with ChangeNotifier {
       String message, BuildContext context) async {
     if (_messageNotifier == null || _streamingMessageIndex == null) {
       print(
-          '❌ NutroChatController - _messageNotifier ou _streamingMessageIndex nulo antes de processar texto.');
+          '❌ NutritionAssistantController - _messageNotifier ou _streamingMessageIndex nulo antes de processar texto.');
       _isLoading = false;
       notifyListeners();
       return;
@@ -567,24 +586,47 @@ class NutroChatController with ChangeNotifier {
       // Usar uma cópia da lista para evitar modificação concorrente durante a compilação do prompt
       final currentMessagesForPrompt =
           List<Map<String, dynamic>>.from(_messages);
-      if (currentMessagesForPrompt.length > 2) {
+      if (currentMessagesForPrompt.length > 2 &&
+          AppAgentService.shouldIncludeConversationContext(message)) {
         // Obter o histórico exceto a mensagem do usuário atual e a mensagem de resposta da IA
         // que está sendo gerada (as duas últimas mensagens)
         final messageHistory = currentMessagesForPrompt.sublist(
             0, currentMessagesForPrompt.length - 2);
-        contextPrompt = await _aiService
-            .limitConversationHistory(messageHistory, maxTokenLimit: 1900);
+        final recentMessageHistory = messageHistory.length <= 4
+            ? messageHistory
+            : messageHistory.sublist(messageHistory.length - 4);
+        contextPrompt = await _aiService.limitConversationHistory(
+          recentMessageHistory,
+          maxTokenLimit: 260,
+        );
+        contextPrompt = AppAgentService.compactConversationContext(
+          contextPrompt,
+          maxBlocks: 3,
+          maxChars: 420,
+        );
       }
 
       // Registrar tempo
       final prepDuration = DateTime.now().difference(startPrepTime);
       print(
-          '⏱️ NutroChatController - Tempo de preparação do contexto: ${prepDuration.inMilliseconds}ms');
+          '⏱️ NutritionAssistantController - Tempo de preparação do contexto: ${prepDuration.inMilliseconds}ms');
 
       // Montar o prompt com contexto da conversa e mensagem do usuário
       // O system prompt de nutrição agora vem da API através do agentType='nutrition'
-      final prompt =
-          contextPrompt.isNotEmpty ? "$contextPrompt\n\n$message" : message;
+      final goalsProvider =
+          Provider.of<NutritionGoalsProvider>(context, listen: false);
+      final dietProvider =
+          Provider.of<DietPlanProvider>(context, listen: false);
+      await goalsProvider.ensureLoaded();
+      await dietProvider.ensureLoaded();
+
+      final basePrompt = contextPrompt.isNotEmpty
+          ? 'Contexto recente da conversa:\n$contextPrompt\n\nPedido do usuário:\n$message'
+          : 'Pedido do usuário:\n$message';
+      final prompt = await AppAgentService.buildPromptWithCurrentAppState(
+        context: context,
+        basePrompt: basePrompt,
+      );
 
       // Obter o controlador de idioma
       final languageController =
@@ -596,8 +638,12 @@ class NutroChatController with ChangeNotifier {
       String quality = '';
       String provider = 'Hyperbolic';
 
-      // Para 'my_diet', usar o modelo Gemini Flash
-      if (toolType == 'my_diet') {
+      // Para fluxos principais do app, usar Gemini Flash Lite com provider automático
+      if (toolType == 'chat') {
+        quality = 'google/gemini-2.5-flash-lite-preview-09-2025';
+        provider = '';
+        print('📱 Usando modelo Gemini 2.5 Flash Lite para o chat inicial');
+      } else if (toolType == 'my_diet') {
         quality = 'google/gemini-3-flash-preview';
         provider = ''; // Deixar o OpenRouter escolher o provider
         print('📱 Usando modelo Gemini Flash para Minha Dieta');
@@ -627,10 +673,10 @@ class NutroChatController with ChangeNotifier {
       if (authService.isAuthenticated && authService.currentUser != null) {
         userId = authService.currentUser!.id.toString();
         print(
-            '👤 NutroChatController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
+            '👤 NutritionAssistantController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
       } else {
         print(
-            '⚠️ NutroChatController - Nenhum usuário autenticado, usando ID vazio');
+            '⚠️ NutritionAssistantController - Nenhum usuário autenticado, usando ID vazio');
       }
 
       // Obter tipos de refeição do usuário para classificação pela IA
@@ -641,10 +687,10 @@ class NutroChatController with ChangeNotifier {
         mealTypesForAI = mealTypesProvider.mealTypes
             .map((mt) => {'id': mt.id, 'name': mt.name})
             .toList();
-        print('🍽️ NutroChatController - Tipos de refeição: $mealTypesForAI');
+        print('🍽️ NutritionAssistantController - Tipos de refeição: $mealTypesForAI');
       } catch (e) {
         print(
-            '⚠️ NutroChatController - Não foi possível obter tipos de refeição: $e');
+            '⚠️ NutritionAssistantController - Não foi possível obter tipos de refeição: $e');
       }
 
       // Obter o stream da IA
@@ -664,7 +710,7 @@ class NutroChatController with ChangeNotifier {
       if (rawInitialPromptJson != null) {
         toolDataForHistory = rawInitialPromptJson;
         print(
-            '📝 NutroChatController: Passando toolDataJson (rawInitialPromptJson) para histórico (mensagem de texto)');
+            '📝 NutritionAssistantController: Passando toolDataJson (rawInitialPromptJson) para histórico (mensagem de texto)');
       }
 
       _aiStreamSubscription = AIInteractionHelper.handleAIStream(
@@ -724,7 +770,7 @@ class NutroChatController with ChangeNotifier {
       );
     } catch (e) {
       print(
-          '❌ NutroChatController - Exceção ao preparar/iniciar stream de texto: $e');
+          '❌ NutritionAssistantController - Exceção ao preparar/iniciar stream de texto: $e');
       if (_messageNotifier != null) {
         // Mensagem de erro genérica para o usuário
         _messageNotifier!.setError(true,
@@ -764,9 +810,21 @@ class NutroChatController with ChangeNotifier {
     required String userId,
     required List<Map<String, String>>? mealTypesForAI,
     required String? toolDataForHistory,
+    List<AppAgentExecutionResult>? priorExecutionResults,
   }) async {
     final commandBatch = AppAgentCommand.tryParseBatch(responseContent);
     if (commandBatch == null || commandBatch.commands.isEmpty) {
+      final fallbackMessage = priorExecutionResults == null
+          ? null
+          : AppAgentService.buildCreditExhaustedFallbackMessage(
+              context: context,
+              executionResults: priorExecutionResults,
+              responseContent: responseContent,
+            );
+      if (fallbackMessage != null && fallbackMessage.trim().isNotEmpty) {
+        _finalizeInterceptedMessage(notifier, fallbackMessage);
+        return true;
+      }
       return false;
     }
 
@@ -792,18 +850,30 @@ class NutroChatController with ChangeNotifier {
     try {
       final executionResults = <AppAgentExecutionResult>[];
       for (final command in commandBatch.commands) {
+        if (AppAgentService.shouldSkipCommand(command)) {
+          print(
+              '⚠️ NutritionAssistantController - Ignorando comando agêntico sem argumentos úteis: ${command.name}');
+          continue;
+        }
+
         final executionResult =
             await AppAgentService.executeCommand(command, context);
         executionResults.add(executionResult);
-
-        if (!executionResult.success) {
-          break;
-        }
       }
 
-      final followUpPrompt = AppAgentService.buildFollowUpPrompt(
+      if (executionResults.isEmpty) {
+        _finalizeInterceptedMessage(
+          notifier,
+          AppLocalizations.of(context)
+              .translate('agent_command_invalid_response'),
+        );
+        return true;
+      }
+
+      final followUpPrompt = await AppAgentService.buildFollowUpPrompt(
         originalUserMessage: originalUserMessage,
         executionResults: executionResults,
+        context: context,
         conversationContext: conversationContext,
       );
 
@@ -850,13 +920,29 @@ class NutroChatController with ChangeNotifier {
           rawContent,
           autoRegisterFoods: toolType != 'free_chat',
         ),
+        interceptFinalResponse: (responseContent, followUpNotifier) =>
+            _handleAgenticCommandResponse(
+          responseContent: responseContent,
+          notifier: followUpNotifier,
+          originalUserMessage: originalUserMessage,
+          conversationContext: conversationContext,
+          context: context,
+          languageCode: languageCode,
+          quality: quality,
+          provider: provider,
+          agentType: agentType,
+          userId: userId,
+          mealTypesForAI: mealTypesForAI,
+          toolDataForHistory: toolDataForHistory,
+          priorExecutionResults: executionResults,
+        ),
         onStreamComplete: () {
           _agenticCommandExecutions = 0;
           _saveMessagesForCurrentDate();
         },
       );
     } catch (e) {
-      print('❌ NutroChatController - Erro ao executar comando agêntico: $e');
+      print('❌ NutritionAssistantController - Erro ao executar comando agêntico: $e');
       _finalizeInterceptedMessage(
         notifier,
         'Desculpe, ocorreu um erro ao acessar seus dados no app. Tente novamente.',
@@ -895,7 +981,7 @@ class NutroChatController with ChangeNotifier {
       Uint8List imageBytes, String prompt, BuildContext context) async {
     if (_messageNotifier == null || _streamingMessageIndex == null) {
       print(
-          '❌ NutroChatController - _messageNotifier ou _streamingMessageIndex nulo antes de processar imagem.');
+          '❌ NutritionAssistantController - _messageNotifier ou _streamingMessageIndex nulo antes de processar imagem.');
       _isLoading = false;
       _isProcessingMedia = false;
       notifyListeners();
@@ -917,10 +1003,10 @@ class NutroChatController with ChangeNotifier {
       if (authService.isAuthenticated && authService.currentUser != null) {
         userId = authService.currentUser!.id.toString();
         print(
-            '👤 NutroChatController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
+            '👤 NutritionAssistantController - Usuário logado: ${authService.currentUser!.name}, ID: $userId');
       } else {
         print(
-            '⚠️ NutroChatController - Nenhum usuário autenticado, usando ID vazio');
+            '⚠️ NutritionAssistantController - Nenhum usuário autenticado, usando ID vazio');
       }
 
       // Para imagens, usar modelo específico e agent free-image
@@ -949,7 +1035,7 @@ class NutroChatController with ChangeNotifier {
       if (rawInitialPromptJson != null) {
         toolDataForHistory = rawInitialPromptJson;
         print(
-            '📝 NutroChatController: Passando toolDataJson (rawInitialPromptJson) para histórico (imagem)');
+            '📝 NutritionAssistantController: Passando toolDataJson (rawInitialPromptJson) para histórico (imagem)');
       }
 
       _aiStreamSubscription = AIInteractionHelper.handleAIStream(
@@ -992,7 +1078,7 @@ class NutroChatController with ChangeNotifier {
       );
     } catch (e) {
       print(
-          '❌ NutroChatController - Exceção ao preparar/iniciar stream de imagem: $e');
+          '❌ NutritionAssistantController - Exceção ao preparar/iniciar stream de imagem: $e');
       if (_messageNotifier != null) {
         // Mensagem de erro genérica para o usuário
         _messageNotifier!.setError(true,
@@ -1490,7 +1576,7 @@ class NutroChatController with ChangeNotifier {
             .toList();
       } catch (e) {
         print(
-            '⚠️ NutroChatController (processSilently) - Não foi possível obter tipos de refeição: $e');
+            '⚠️ NutritionAssistantController (processSilently) - Não foi possível obter tipos de refeição: $e');
       }
 
       // Obter stream da IA para texto
@@ -1506,7 +1592,7 @@ class NutroChatController with ChangeNotifier {
         if (rawInitialPromptJson != null) {
           toolDataForHistory = rawInitialPromptJson;
           print(
-              '📝 NutroChatController (processSilently): Passando toolDataJson (rawInitialPromptJson) para histórico (texto)');
+              '📝 NutritionAssistantController (processSilently): Passando toolDataJson (rawInitialPromptJson) para histórico (texto)');
         }
 
         _aiStreamSubscription = AIInteractionHelper.handleAIStream(
@@ -1554,7 +1640,7 @@ class NutroChatController with ChangeNotifier {
         }
       } catch (e) {
         print(
-            '❌ NutroChatController - Erro ao processar texto silenciosamente: $e');
+            '❌ NutritionAssistantController - Erro ao processar texto silenciosamente: $e');
         if (_messageNotifier != null) {
           _messageNotifier!.setError(true,
               'Erro ao processar sua solicitação. Por favor, tente novamente.');
@@ -1803,7 +1889,7 @@ class NutroChatController with ChangeNotifier {
       });
       notifyListeners();
       print(
-          '💬 NutroChatController: Resposta histórica da ferramenta adicionada às mensagens.');
+          '💬 NutritionAssistantController: Resposta histórica da ferramenta adicionada às mensagens.');
     } else if (_messages.first['isUser'] == false &&
         _messages.first['message'] == null &&
         _messages.first['notifier'] != null) {
@@ -1817,7 +1903,7 @@ class NutroChatController with ChangeNotifier {
       };
       notifyListeners();
       print(
-          '💬 NutroChatController: Resposta histórica da ferramenta substituiu notifier vazio.');
+          '💬 NutritionAssistantController: Resposta histórica da ferramenta substituiu notifier vazio.');
     }
   }
 
@@ -1847,7 +1933,7 @@ class NutroChatController with ChangeNotifier {
     notifyListeners();
     _saveMessagesForCurrentDate();
     print(
-        '🗑️ NutroChatController - Par de mensagens deletado no índice $messageIndex');
+        '🗑️ NutritionAssistantController - Par de mensagens deletado no índice $messageIndex');
   }
 
   /// Formata a data para usar como chave de armazenamento (yyyy-MM-dd)
@@ -1855,10 +1941,14 @@ class NutroChatController with ChangeNotifier {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  String _buildStorageKey(String dateKey) {
+    return 'nutrition_chat_${storageScope}_$dateKey';
+  }
+
   /// Muda a data selecionada e carrega as mensagens dessa data
   Future<void> changeSelectedDate(DateTime newDate) async {
     print(
-        '📅 NutroChatController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
+        '📅 NutritionAssistantController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
 
     // Salvar mensagens da data atual antes de mudar
     await _saveMessagesForCurrentDate();
@@ -1876,13 +1966,13 @@ class NutroChatController with ChangeNotifier {
   Future<void> _saveMessagesForCurrentDate() async {
     if (_messages.isEmpty) {
       print(
-          '💾 NutroChatController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
+          '💾 NutritionAssistantController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
       return;
     }
 
     try {
       final dateKey = _formatDateKey(_selectedDate);
-      final storageKey = 'nutrition_chat_$dateKey';
+      final storageKey = _buildStorageKey(dateKey);
 
       // Converter mensagens para formato serializável
       final messagesData = _messages.map((msg) {
@@ -1918,10 +2008,10 @@ class NutroChatController with ChangeNotifier {
 
       await _storageService.saveData(storageKey, {'messages': messagesData});
       print(
-          '✅ NutroChatController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
+          '✅ NutritionAssistantController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
     } catch (e) {
       print(
-          '❌ NutroChatController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
+          '❌ NutritionAssistantController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
     }
   }
 
@@ -1929,13 +2019,13 @@ class NutroChatController with ChangeNotifier {
   Future<void> _loadMessagesForDate(DateTime date) async {
     try {
       final dateKey = _formatDateKey(date);
-      final storageKey = 'nutrition_chat_$dateKey';
+      final storageKey = _buildStorageKey(dateKey);
 
       final data = await _storageService.getData(storageKey);
 
       if (data == null || data.isEmpty) {
         print(
-            '📭 NutroChatController - Nenhuma mensagem encontrada para data $dateKey');
+            '📭 NutritionAssistantController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
         notifyListeners();
         return;
@@ -1962,19 +2052,19 @@ class NutroChatController with ChangeNotifier {
       }).toList();
 
       print(
-          '✅ NutroChatController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
+          '✅ NutritionAssistantController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
       notifyListeners();
     } catch (e) {
       print(
-          '❌ NutroChatController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
+          '❌ NutritionAssistantController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
       _messages = [];
       notifyListeners();
     }
   }
 }
 
-/// Interface para acessar os métodos necessários do NutroChatSpeechMixin
-abstract class NutroChatSpeechMixinRef {
+/// Interface para acessar os métodos necessários do NutritionAssistantSpeechMixin
+abstract class NutritionAssistantSpeechMixinRef {
   bool get isListening;
   Future<void> releaseAudioResources();
   Future<void> stopListening();

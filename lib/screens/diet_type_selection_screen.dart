@@ -11,6 +11,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final accentColor = theme.colorScheme.primary;
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final backgroundColor =
@@ -44,11 +45,11 @@ class DietTypeSelectionScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(Icons.restaurant_menu,
-                      color: AppTheme.primaryColor, size: 32),
+                      color: accentColor, size: 32),
                 ),
               ),
               const SizedBox(height: 16),
@@ -98,7 +99,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
-                              ? AppTheme.primaryColor
+                              ? accentColor
                               : (isDarkMode
                                   ? AppTheme.darkBorderColor
                                   : AppTheme.dividerColor),
@@ -115,7 +116,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
                                   provider.getDietTypeName(dietType, context),
                                   style: theme.textTheme.bodyLarge?.copyWith(
                                     color: isSelected
-                                        ? AppTheme.primaryColor
+                                        ? accentColor
                                         : textColor,
                                     fontWeight: isSelected
                                         ? FontWeight.w600
@@ -134,9 +135,9 @@ class DietTypeSelectionScreen extends StatelessWidget {
                             ),
                           ),
                           if (isSelected)
-                            const Icon(
+                            Icon(
                               Icons.check_circle,
-                              color: AppTheme.primaryColor,
+                              color: accentColor,
                               size: 24,
                             ),
                         ],

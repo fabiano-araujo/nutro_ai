@@ -122,9 +122,9 @@ class NotificationService {
         type == 'buddy_ping') {
       // Aba Social = index 2 do navbar
       navigationController.changeTab(2);
-      // Aba Amigos = index 2 do TabBar interno (com delay para garantir que a tela carregou)
+      // Aba Amigos = index 3 do TabBar interno (com delay para garantir que a tela carregou)
       Future.delayed(const Duration(milliseconds: 300), () {
-        socialTabController.changeTab(2);
+        socialTabController.changeTab(3);
       });
     } else if (type == 'streak_risk') {
       // Aba Dieta = index 1

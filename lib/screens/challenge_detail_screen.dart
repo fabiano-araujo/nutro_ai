@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../providers/challenges_provider.dart';
 import '../services/challenge_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/challenge_progress_widgets.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final int challengeId;
@@ -86,6 +88,10 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                 children: [
                   _ChallengeHeader(challenge: challenge),
                   const SizedBox(height: 16),
+                  if (challenge.progress != null || challenge.objective != null) ...[
+                    ChallengeProgressPanel(challenge: challenge),
+                    const SizedBox(height: 16),
+                  ],
                   if (challenge.myParticipation != null)
                     _MyProgressCard(
                       participation: challenge.myParticipation!,
@@ -96,6 +102,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                   const SizedBox(height: 24),
                   _ActionButtons(
                     challenge: challenge,
+                    onRefreshProgress: challenge.myParticipation == null
+                        ? null
+                        : () => _refreshProgress(provider),
                     onLeave: () => _confirmLeave(context, provider),
                   ),
                   const SizedBox(height: 40),
@@ -149,6 +158,24 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
             child: const Text('Sair', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _refreshProgress(ChallengesProvider provider) async {
+    final points = await provider.recordProgress(
+      challengeId: widget.challengeId,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          points != null
+              ? context.tr.translate('challenge_progress_updated')
+              : context.tr.translate('challenge_progress_unavailable'),
+        ),
       ),
     );
   }
@@ -370,7 +397,7 @@ class _MyProgressCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            _PointsBreakdown(),
+            _PointsBreakdown(challenge: challenge),
           ],
         ),
       ),
@@ -427,9 +454,18 @@ class _ProgressItem extends StatelessWidget {
 }
 
 class _PointsBreakdown extends StatelessWidget {
+  final Challenge challenge;
+
+  const _PointsBreakdown({
+    required this.challenge,
+  });
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final goalRuleText = challenge.type.toUpperCase() == 'FIBER_TARGET'
+        ? 'Bater meta de fibra'
+        : 'Bater meta calorica';
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -451,7 +487,7 @@ class _PointsBreakdown extends StatelessWidget {
           const SizedBox(height: 8),
           _PointRule(emoji: '📝', text: 'Registrar refeicao', points: '+1'),
           _PointRule(emoji: '💪', text: 'Bater meta de proteina', points: '+1'),
-          _PointRule(emoji: '🎯', text: 'Bater meta calorica', points: '+1'),
+          _PointRule(emoji: '🎯', text: goalRuleText, points: '+1'),
           _PointRule(emoji: '🔥', text: '3 dias seguidos', points: '+3 bonus'),
         ],
       ),
@@ -677,21 +713,49 @@ class _LeaderboardRow extends StatelessWidget {
 
 class _ActionButtons extends StatelessWidget {
   final Challenge challenge;
+  final VoidCallback? onRefreshProgress;
   final VoidCallback onLeave;
 
   const _ActionButtons({
     required this.challenge,
+    this.onRefreshProgress,
     required this.onLeave,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: TextButton.icon(
-        onPressed: onLeave,
-        icon: const Icon(Icons.exit_to_app, color: Colors.red),
-        label: const Text('Sair do Desafio', style: TextStyle(color: Colors.red)),
-      ),
+    final canRefresh = challenge.progress?.canCheckInToday ?? false;
+
+    return Column(
+      children: [
+        if (onRefreshProgress != null)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: canRefresh ? onRefreshProgress : null,
+              icon: const Icon(Icons.sync_rounded),
+              label: Text(
+                canRefresh
+                    ? context.tr.translate('challenge_update_progress')
+                    : ((challenge.progress?.currentValue ?? 0) > 0
+                        ? context.tr.translate('challenge_progress_done_today')
+                        : context.tr.translate('challenge_progress_pending_today')),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        if (onRefreshProgress != null) const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: onLeave,
+          icon: const Icon(Icons.exit_to_app, color: Colors.red),
+          label: const Text('Sair do Desafio', style: TextStyle(color: Colors.red)),
+        ),
+      ],
     );
   }
 }

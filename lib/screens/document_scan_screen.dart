@@ -15,6 +15,7 @@ import '../utils/code_detector.dart';
 import '../providers/credit_provider.dart';
 import '../widgets/credit_indicator.dart';
 import '../i18n/language_controller.dart';
+import '../widgets/state_animation.dart';
 
 class DocumentScanScreen extends StatefulWidget {
   final bool showScanOptions;
@@ -839,10 +840,10 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.error_outline,
-            color: AppTheme.errorColor,
-            size: 40,
+          StateAnimation(
+            fallbackIcon: Icons.error_outline,
+            size: 120,
+            accentColor: AppTheme.errorColor,
           ),
           SizedBox(height: 16),
           Text(
@@ -883,10 +884,10 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.info_outline,
-            color: AppTheme.warningColor,
-            size: 40,
+          StateAnimation(
+            fallbackIcon: Icons.info_outline,
+            size: 120,
+            accentColor: AppTheme.warningColor,
           ),
           SizedBox(height: 16),
           Text(

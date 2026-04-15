@@ -100,7 +100,14 @@ final Map<String, String> ptBRTranslations = {
   'rate_app': 'Avalie o aplicativo',
   'enjoying_app': 'Você está gostando do app?',
   'rate_app_description':
-      'Sua opinião é muito importante para nós! Avalie nossa aplicação:',
+      'Se estiver gostando, podemos abrir a avaliação agora mesmo. Se ainda não, queremos saber como melhorar.',
+  'rate_app_yes': 'Sim, avaliar',
+  'rate_app_no': 'Não',
+  'rate_app_not_now': 'Agora não',
+  'rate_app_send_email': 'Enviar e-mail',
+  'rate_app_email_subject': 'Sugestões de melhoria do Nutro AI',
+  'rate_app_email_body':
+      'Olá, equipe do Nutro AI!\n\nGostaria de sugerir estas melhorias:\n',
   'submit': 'Enviar',
   'thank_you_positive': 'Ótimo!',
   'redirection_message':
@@ -202,11 +209,16 @@ final Map<String, String> ptBRTranslations = {
   'agent_loading_generic': 'Consultando seus dados no app...',
   'agent_command_limit_reached':
       'Nao consegui concluir a acao interna. Tente novamente.',
+  'agent_command_invalid_response':
+      'Nao consegui interpretar a acao interna solicitada. Tente novamente.',
   'chat_action_login': 'Fazer login',
   'chat_action_configure_goals_ui': 'Configurar na interface',
   'chat_action_continue_goals_chat': 'Continuar no chat',
   'chat_action_edit_macros_ui': 'Editar macros na interface',
   'chat_action_continue_macros_chat': 'Ajustar macros no chat',
+  'chat_setup_reminder_prefix': 'Vamos terminar de configurar suas informações',
+  'chat_setup_reminder_with_fields':
+      'Vamos terminar de configurar suas informações. Ainda faltam: {fields}.',
   'chat_goal_setup_chat_prompt':
       'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faca uma pergunta por vez e comece pela idade, altura, peso e genero.',
   'chat_macro_edit_chat_prompt':
@@ -316,7 +328,7 @@ final Map<String, String> ptBRTranslations = {
   'ai_tutor_welcome':
       'O que você comeu hoje? Eu calculo as calorias e os nutrientes para você.',
   'ai_tutor_short_welcome':
-      'O que você comeu hoje? Eu calculo as calorias e os nutrientes para você.',
+      'Olá! Sou Nutro AI, seu assistente de nutrição. Como posso te ajudar hoje?',
   'ask_question': 'Faça uma pergunta...',
   'reset_conversation': 'Reiniciar conversa?',
   'reset_conversation_message':
@@ -629,7 +641,7 @@ final Map<String, String> ptBRTranslations = {
   'quotes': 'Citações',
 
   // Assistente de aprendizagem
-  'ask_anything': 'O que você comeu?',
+  'ask_anything': 'Ex: comi 2 ovos e um pão',
   'explain_concepts': 'Explique conceitos',
   'explique_conceitos': 'Explique conceitos',
   'quiz_generator': 'Gerador de quiz',
@@ -791,12 +803,17 @@ final Map<String, String> ptBRTranslations = {
 
   // Tela AI Tutor
   'ai_tutor_title': 'Assistente de Nutrição',
-  'ask_anything': 'O que você comeu?',
+  'ask_anything': 'Ex: comi 2 ovos e um pão',
 
   // Tela de Assinatura
   'premium_plans': 'Planos Premium',
   'unlock_potential':
       'Desbloqueie todo o potencial do Nutro AI com nossos planos premium',
+  'subscription_headline': 'Alcance seus objetivos {highlight} mais rápido',
+  'show_more_plans': 'Mostrar mais planos',
+  'hide_other_plans': 'Mostrar menos planos',
+  'secure_google_play': 'Seguro com Google Play. Cancele quando quiser.',
+  'free_plan': 'Grátis',
   'monthly': 'Mensal',
   'yearly': 'Anual',
   'lifetime': 'Vitalício',
@@ -842,8 +859,12 @@ final Map<String, String> ptBRTranslations = {
   'remaining': 'restantes',
   'exceeded': 'excesso',
   'protein': 'Proteínas',
+  'protein_short': 'Prot',
   'carbs': 'Carboidratos',
+  'carbs_short': 'Carb',
   'fats': 'Gorduras',
+  'fats_short': 'Gord',
+  'change_goal': 'alterar meta',
 
   // Weekly Calendar - Days
   'mon': 'SEG',
@@ -885,6 +906,29 @@ final Map<String, String> ptBRTranslations = {
   'add_more_foods': 'Adicionar mais alimentos',
   'no_meals_configured': 'Nenhuma refeição configurada',
   'configure_meals_in_settings': 'Configure suas refeições nas configurações',
+  'meal_overview': 'Visão geral da refeição',
+  'nutritional_score': 'Pontuação nutricional',
+  'meal_quality': 'Categoria',
+  'meal_quality_needs_improvement': 'Precisa melhorar',
+  'meal_quality_good': 'Boa',
+  'meal_quality_great': 'Ótima',
+  'protein_level': 'Nível de proteína',
+  'fiber_level': 'Nível de fibra',
+  'low': 'Baixo',
+  'moderate': 'Médio',
+  'high': 'Alto',
+  'meal_foods_title': 'Alimentos da refeição',
+  'foods_count_label': 'alimentos',
+  'estimated': 'estimado',
+  'nutrition_tips': 'Dicas de nutrição',
+  'nutrition_tips_description':
+      'Use IA para receber um resumo da refeição, os pontos positivos e o que pode melhorar.',
+  'get_ai_tips': 'Obter dicas',
+  'refresh_tips': 'Gerar novamente',
+  'positive_points': 'Pontos positivos',
+  'can_improve': 'Pode melhorar',
+  'analyzing_meal': 'Analisando a refeição com IA...',
+  'meal_tips_error': 'Não foi possível gerar as dicas agora.',
 
   // Nutrients
   'calories': 'Calorias',
@@ -1314,6 +1358,14 @@ final Map<String, String> ptBRTranslations = {
   'day_sat_short': 'Sáb',
 
   // Streaks
+  'streak_hero_title': 'Sua sequência',
+  'streak_hero_day_singular': 'dia registrando refeições',
+  'streak_hero_day_plural': 'dias registrando refeições',
+  'streak_hero_start_hint': 'Registre uma refeição hoje para começar.',
+  'streak_hero_record': 'Seu recorde: {count} dias',
+  'streak_secondary_protein': 'Meta de proteína',
+  'streak_secondary_goal': 'Meta de calorias',
+  'streak_secondary_days_suffix': 'dias seguidos',
   'your_streaks': 'Dias Consecutivos',
   'streak_registration': 'Registro',
   'streak_protein': 'Proteína',
@@ -1328,4 +1380,39 @@ final Map<String, String> ptBRTranslations = {
   'activate_freeze_description':
       'A proteção congela sua sequência por 24 horas, mesmo que você não registre nada. Você tem {count} proteção(ões) disponível(is).',
   'activate': 'Ativar',
+  'streak_checkin_action': 'Atualizar sequência',
+  'streak_checkin_success': 'Sequência atualizada com sucesso.',
+  'streak_checkin_error': 'Não foi possível atualizar sua sequência agora.',
+  'social_open_hub': 'Abrir central social',
+  'social_summary_title': 'Resumo social',
+  'social_summary_subtitle':
+      'Acompanhe streaks, amigos e desafios em um só lugar.',
+  'social_summary_streak': 'Sequência',
+  'social_summary_duo': 'Duos',
+  'social_summary_challenges': 'Desafios',
+  'social_summary_friends': 'amigos',
+  'social_summary_duo_preview': 'Sequências com amigos',
+  'social_summary_duo_empty':
+      'Você ainda não tem sequências com amigos. Convide alguém para registrar refeições junto com você.',
+  'social_summary_challenge_preview': 'Desafios que você está fazendo',
+  'social_summary_challenge_empty':
+      'Você ainda não entrou em nenhum desafio. Escolha um e comece.',
+  'social_view_friends': 'Ver todos',
+  'social_view_challenges': 'Ver todos',
+  'social_public_challenges': 'Desafios abertos para participar',
+  'streak_in_danger_short': 'Em risco',
+  'challenge_objective_label': 'Objetivo',
+  'challenge_days_completed': 'dias',
+  'challenge_today_metric': 'Hoje',
+  'challenge_target_metric': 'Meta',
+  'challenge_join_to_track': 'Entre para acompanhar',
+  'challenge_checkin_available': 'Pode atualizar',
+  'challenge_updated_today': 'Atualizado hoje',
+  'challenge_waiting_today': 'Aguardando hoje',
+  'challenge_progress_updated': 'Progresso do desafio atualizado.',
+  'challenge_progress_unavailable':
+      'Ainda não foi possível atualizar o progresso.',
+  'challenge_update_progress': 'Atualizar progresso',
+  'challenge_progress_done_today': 'Progresso já atualizado hoje',
+  'challenge_progress_pending_today': 'Registre algo hoje para atualizar',
 };

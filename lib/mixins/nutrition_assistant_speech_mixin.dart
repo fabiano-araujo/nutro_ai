@@ -5,13 +5,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../screens/ai_tutor_screen.dart';
+import '../screens/nutrition_assistant_screen.dart';
 import '../services/ai_service.dart';
 import '../services/chat_audio_recorder.dart';
+import '../utils/audio_transcript_sanitizer.dart';
 import '../utils/ui_utils.dart';
 
 // Mixin para encapsular a lógica de gravação e transcrição de voz do chat
-mixin NutroChatSpeechMixin on State<NutroChatScreen> {
+mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
   static const Duration _audioCaptureTimeout = Duration(minutes: 5);
 
   final ChatAudioRecorder _audioRecorder = ChatAudioRecorder();
@@ -41,23 +42,23 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
   int get androidUpdateCounter;
 
   Future<void> initSpeechRecognition() async {
-    print('🎤 NutroChatSpeechMixin - Inicializando captura de áudio');
+    print('🎤 NutritionAssistantSpeechMixin - Inicializando captura de áudio');
 
     try {
       if (!kIsWeb && Platform.isAndroid) {
         final status = await Permission.microphone.status;
         if (status.isDenied) {
           print(
-              '🎤 NutroChatSpeechMixin - Permissão de microfone ainda não concedida');
+              '🎤 NutritionAssistantSpeechMixin - Permissão de microfone ainda não concedida');
         }
       }
 
       await _audioRecorder.init();
       print(
-          '✅ NutroChatSpeechMixin - Captura de áudio inicializada com sucesso');
+          '✅ NutritionAssistantSpeechMixin - Captura de áudio inicializada com sucesso');
     } catch (e) {
       print(
-          '❌ NutroChatSpeechMixin - Erro ao inicializar captura de áudio: $e');
+          '❌ NutritionAssistantSpeechMixin - Erro ao inicializar captura de áudio: $e');
     }
   }
 
@@ -78,7 +79,7 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
         final currentText = messageController.text;
         if (mounted) {
           setState(() {
-            _committedRecognizedText = _preprocessRecognizedText(currentText);
+            _committedRecognizedText = normalizeTranscriptSpacing(currentText);
             _recognizedText = _committedRecognizedText;
           });
         }
@@ -124,11 +125,11 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
         });
       }
 
-      print('🎤 NutroChatSpeechMixin - Captura de áudio iniciada' +
+      print('🎤 NutritionAssistantSpeechMixin - Captura de áudio iniciada' +
           (preserveCurrentText ? ' (preservando texto anterior)' : '') +
           (lowLatencyMode ? ' (modo baixa latência)' : ''));
     } catch (e) {
-      print('❌ NutroChatSpeechMixin - Erro ao iniciar gravação de áudio: $e');
+      print('❌ NutritionAssistantSpeechMixin - Erro ao iniciar gravação de áudio: $e');
       UIUtils.showSimpleToast(context, 'Erro ao iniciar a gravação de áudio');
       keepScreenOn(false);
       if (mounted) {
@@ -170,16 +171,30 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
         return;
       }
 
-      final locale = Localizations.localeOf(context);
-      final languageCode = locale.toString().replaceAll('-', '_').trim().isEmpty
-          ? 'pt_BR'
-          : locale.toString().replaceAll('-', '_');
+      final deviceLanguageCode = _localeToSpeechLanguageTag(
+        WidgetsBinding.instance.platformDispatcher.locale,
+      );
+      final appLanguageCode = _localeToSpeechLanguageTag(
+        Localizations.localeOf(context),
+      );
 
-      final transcription = await _aiService.processAudio(
+      final rawTranscription = await _aiService.processAudio(
         recordedAudio.bytes,
         mimeType: recordedAudio.mimeType,
-        languageCode: languageCode,
+        languageCode: deviceLanguageCode,
+        appLanguageCode: appLanguageCode,
+        contextHint: 'nutrition_chat',
+        audioDurationMs: _recordingDuration.inMilliseconds,
       );
+      final transcription = sanitizeAudioTranscript(rawTranscription);
+
+      if (transcription != rawTranscription) {
+        final rawPreview = rawTranscription.length > 120
+            ? '${rawTranscription.substring(0, 120)}...'
+            : rawTranscription;
+        print(
+            '⚠️ NutritionAssistantSpeechMixin - Transcrição repetitiva detectada e colapsada: "$rawPreview" -> "$transcription"');
+      }
 
       if (transcription.startsWith('Desculpe, ocorreu um erro')) {
         UIUtils.showSimpleToast(context, transcription);
@@ -192,7 +207,7 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
       }
     } catch (e) {
       print(
-          '❌ NutroChatSpeechMixin - Erro ao finalizar gravação/transcrição: $e');
+          '❌ NutritionAssistantSpeechMixin - Erro ao finalizar gravação/transcrição: $e');
       UIUtils.showSimpleToast(context, 'Erro ao transcrever o áudio');
     } finally {
       if (mounted) {
@@ -204,7 +219,7 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
   }
 
   void _updateRecognizedText(String text) {
-    final processedText = _preprocessRecognizedText(text);
+    final processedText = normalizeTranscriptSpacing(text);
     _recognizedText = processedText;
     messageController.value = messageController.value.copyWith(
       text: processedText,
@@ -214,8 +229,8 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
   }
 
   String _mergeRecognizedText(String baseText, String newText) {
-    final normalizedBase = _preprocessRecognizedText(baseText);
-    final normalizedNew = _preprocessRecognizedText(newText);
+    final normalizedBase = normalizeTranscriptSpacing(baseText);
+    final normalizedNew = normalizeTranscriptSpacing(newText);
 
     if (normalizedBase.isEmpty) {
       return normalizedNew;
@@ -237,23 +252,22 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
       return normalizedBase;
     }
 
-    return _preprocessRecognizedText('$normalizedBase $normalizedNew');
+    return normalizeTranscriptSpacing('$normalizedBase $normalizedNew');
   }
 
-  String _preprocessRecognizedText(String newText) {
-    try {
-      return newText
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .replaceAll(',.', '.')
-          .replaceAll(' ,', ',')
-          .replaceAll(' .', '.')
-          .replaceAll(' ?', '?')
-          .replaceAll(' !', '!')
-          .trim();
-    } catch (e) {
-      print('⚠️ Erro no processamento de texto transcrito: $e');
-      return newText;
+  String _localeToSpeechLanguageTag(Locale locale) {
+    final languageCode = locale.languageCode.trim();
+    final countryCode = locale.countryCode?.trim();
+
+    if (languageCode.isEmpty || languageCode.toLowerCase() == 'und') {
+      return 'pt-BR';
     }
+
+    if (countryCode == null || countryCode.isEmpty) {
+      return languageCode;
+    }
+
+    return '$languageCode-${countryCode.toUpperCase()}';
   }
 
   Future<void> releaseAudioResources() async {
@@ -273,7 +287,7 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
         });
       }
     } catch (e) {
-      print('⚠️ NutroChatSpeechMixin - Erro ao liberar áudio: $e');
+      print('⚠️ NutritionAssistantSpeechMixin - Erro ao liberar áudio: $e');
     }
   }
 
@@ -316,7 +330,7 @@ mixin NutroChatSpeechMixin on State<NutroChatScreen> {
       },
       onError: (error) {
         print(
-            '⚠️ NutroChatSpeechMixin - Erro ao ler amplitude do áudio: $error');
+            '⚠️ NutritionAssistantSpeechMixin - Erro ao ler amplitude do áudio: $error');
       },
     );
   }

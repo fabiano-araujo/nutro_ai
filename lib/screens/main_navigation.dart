@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'ai_tutor_screen.dart';
+import 'nutrition_assistant_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'personalized_diet_screen.dart';
 import 'food_search_screen.dart';
+import 'camera_scan_screen.dart';
+import 'unified_search_screen.dart';
+import 'free_chat_screen.dart';
 import 'social_hub_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
@@ -19,6 +22,7 @@ import '../providers/challenges_provider.dart';
 import '../providers/feed_provider.dart';
 import '../providers/credit_provider.dart';
 import '../providers/diet_plan_provider.dart';
+import '../providers/nutrition_goals_provider.dart';
 
 // Controlador global para gerenciar a navegação entre abas
 class NavigationController {
@@ -45,15 +49,23 @@ final navigationController = NavigationController();
 // Wrapper para a tela de perfil que decide qual tela mostrar
 class ProfileTabWrapper extends StatelessWidget {
   final VoidCallback? onOpenDrawer;
+  final VoidCallback? onOpenSocialHub;
 
-  const ProfileTabWrapper({Key? key, this.onOpenDrawer}) : super(key: key);
+  const ProfileTabWrapper({
+    Key? key,
+    this.onOpenDrawer,
+    this.onOpenSocialHub,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthService>(
       builder: (context, authService, child) {
         return authService.isAuthenticated
-            ? ProfileScreen(onOpenDrawer: onOpenDrawer)
+            ? ProfileScreen(
+                onOpenDrawer: onOpenDrawer,
+                onOpenSocialHub: onOpenSocialHub,
+              )
             : LoginScreen(onOpenDrawer: onOpenDrawer);
       },
     );
@@ -70,7 +82,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Chave para reiniciar o NutroChatScreen
+  // Chave para reiniciar o NutritionAssistantScreen
   Key _nutritionAssistantKey = UniqueKey();
 
   // Modo atual: 'diary' para diário (com JSON/calendário), 'free_chat' para conversa livre
@@ -130,6 +142,7 @@ class _MainNavigationState extends State<MainNavigation> {
     final feedProvider = context.read<FeedProvider>();
     final creditProvider = context.read<CreditProvider>();
     final dietPlanProvider = context.read<DietPlanProvider>();
+    final nutritionGoalsProvider = context.read<NutritionGoalsProvider>();
     final freeChatProvider = context.read<FreeChatProvider>();
 
     if (authService.isAuthenticated && authService.currentUser != null) {
@@ -168,15 +181,15 @@ class _MainNavigationState extends State<MainNavigation> {
         _loadUserDataFromServer(
             token, authService.currentUser!.id, creditProvider);
 
-        // Forçar recriação do NutroChatScreen para carregar dados do usuário
+        // Forçar recriação do NutritionAssistantScreen para carregar dados do usuário
         print(
-            '[🔄 AUTH_DATA] Forçando recriação do NutroChatScreen para login...');
+            '[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen para login...');
         setState(() {
           _nutritionAssistantKey = UniqueKey();
           _currentMode = 'diary';
           _currentFreeChatId = null;
         });
-        print('[🔄 AUTH_DATA] ✅ NutroChatScreen será recriado');
+        print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
 
         print(
             '[🔄 AUTH_DATA] ========== LOGIN CONFIGURAÇÃO CONCLUÍDA ==========');
@@ -203,14 +216,17 @@ class _MainNavigationState extends State<MainNavigation> {
       dietPlanProvider.clearAuth();
       print('[🔄 AUTH_DATA] ✅ DietPlanProvider limpo');
 
-      // Forçar recriação do NutroChatScreen para limpar estado visual
-      print('[🔄 AUTH_DATA] Forçando recriação do NutroChatScreen...');
+      nutritionGoalsProvider.clearAllData();
+      print('[🔄 AUTH_DATA] ✅ NutritionGoalsProvider limpo');
+
+      // Forçar recriação do NutritionAssistantScreen para limpar estado visual
+      print('[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen...');
       setState(() {
         _nutritionAssistantKey = UniqueKey();
         _currentMode = 'diary';
         _currentFreeChatId = null;
       });
-      print('[🔄 AUTH_DATA] ✅ NutroChatScreen será recriado');
+      print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
 
       print(
           '[🔄 AUTH_DATA] ========== LOGOUT AUTH LIMPEZA CONCLUÍDA ==========');
@@ -244,13 +260,20 @@ class _MainNavigationState extends State<MainNavigation> {
     _scaffoldKey.currentState?.openDrawer();
   }
 
+  void _openSocialOverview() {
+    setState(() {
+      _selectedIndex = 2;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      socialTabController.changeTab(0);
+    });
+  }
+
   void _startNewFreeChat() {
     Navigator.pop(context); // Fechar drawer
-    setState(() {
-      _currentMode = 'free_chat';
-      _currentFreeChatId = null;
-      _nutritionAssistantKey = UniqueKey(); // Forçar recriação do widget
-    });
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const FreeChatScreen()),
+    );
   }
 
   void _switchToDiary() {
@@ -264,10 +287,28 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _openFreeChat(String chatId, String title) {
     Navigator.pop(context); // Fechar drawer
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FreeChatScreen(freeChatId: chatId)),
+    );
+  }
+
+  void _openFreeChatFromSearch(String chatId, String title) {
+    // Chamada depois que a search screen já fez pop
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FreeChatScreen(freeChatId: chatId)),
+    );
+  }
+
+  void _openDiaryForDate(DateTime date) {
+    // Muda pra diário e seta data selecionada
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
+    mealsProvider.setSelectedDate(date);
     setState(() {
-      _currentMode = 'free_chat';
-      _currentFreeChatId = chatId;
-      _nutritionAssistantKey = UniqueKey(); // Forçar recriação do widget
+      _selectedIndex = 0;
+      _currentMode = 'diary';
+      _currentFreeChatId = null;
+      _nutritionAssistantKey = UniqueKey();
     });
   }
 
@@ -292,7 +333,7 @@ class _MainNavigationState extends State<MainNavigation> {
           index: _selectedIndex,
           children: [
             // Aba 0: Início / Chat
-            NutroChatScreen(
+            NutritionAssistantScreen(
               key: _nutritionAssistantKey,
               isFreeChat: _currentMode == 'free_chat',
               freeChatId: _currentFreeChatId,
@@ -316,7 +357,10 @@ class _MainNavigationState extends State<MainNavigation> {
             SocialHubScreen(onOpenDrawer: _openDrawer),
 
             // Aba 3: Perfil
-            ProfileTabWrapper(onOpenDrawer: _openDrawer),
+            ProfileTabWrapper(
+              onOpenDrawer: _openDrawer,
+              onOpenSocialHub: _openSocialOverview,
+            ),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
@@ -333,12 +377,12 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline),
               activeIcon: Icon(Icons.chat_bubble),
-              label: context.tr.translate('home') ?? 'Início',
+              label: context.tr.translate('home'),
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.restaurant_menu_outlined),
               activeIcon: Icon(Icons.restaurant_menu),
-              label: context.tr.translate('my_diet') ?? 'Minha Dieta',
+              label: context.tr.translate('my_diet'),
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.people_outline),
@@ -348,7 +392,7 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
               activeIcon: Icon(Icons.person),
-              label: context.tr.translate('profile') ?? 'Perfil',
+              label: context.tr.translate('profile'),
             ),
           ],
         ),
@@ -358,182 +402,273 @@ class _MainNavigationState extends State<MainNavigation> {
 
   Widget _buildDrawer(bool isDarkMode) {
     return Drawer(
-      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
+      backgroundColor:
+          isDarkMode ? const Color(0xFF171717) : Colors.white,
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Header do Drawer
-            Container(
-              padding: EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.restaurant_menu,
-                    color: Theme.of(context).primaryColor,
-                    size: 32,
-                  ),
-                  SizedBox(width: 12),
-                  Text(
-                    'Nutro IA',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Divider(height: 1),
-
-            // Nova conversa (primeira opção)
-            ListTile(
-              leading: Icon(
-                Icons.add_comment_outlined,
-                color:
-                    isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
-              ),
-              title: Text(
-                context.tr.translate('new_conversation'),
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onTap: _startNewFreeChat,
-            ),
-
-            // Diário (tela de chat com calendário)
-            ListTile(
-              leading: Icon(
-                Icons.calendar_today,
-                color: _currentMode == 'diary'
-                    ? Theme.of(context).primaryColor
-                    : isDarkMode
-                        ? Colors.white70
-                        : AppTheme.textSecondaryColor,
-              ),
-              title: Text(
-                context.tr.translate('diary'),
-                style: TextStyle(
-                  color: _currentMode == 'diary'
-                      ? Theme.of(context).primaryColor
-                      : isDarkMode
-                          ? Colors.white
-                          : AppTheme.textPrimaryColor,
-                  fontWeight: _currentMode == 'diary'
-                      ? FontWeight.bold
-                      : FontWeight.w500,
-                ),
-              ),
-              selected: _currentMode == 'diary',
-              selectedTileColor:
-                  Theme.of(context).primaryColor.withOpacity(0.1),
-              onTap: _switchToDiary,
-            ),
-
-            SizedBox(height: 16),
-
-            // Subtítulo Conversas
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                context.tr.translate('conversations'),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color:
-                      isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-
-            // Lista de conversas livres
-            Expanded(
-              child: Consumer<FreeChatProvider>(
-                builder: (context, freeChatProvider, child) {
-                  final conversations = freeChatProvider.conversations;
-
-                  if (conversations.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text(
-                          context.tr.translate('no_conversations'),
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white38 : Colors.grey,
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: Nutro + search (sem avatar)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Nutro',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isDarkMode ? Colors.white : Colors.black87,
                         ),
                       ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: conversations.length,
-                    itemBuilder: (context, index) {
-                      final chat = conversations[index];
-                      final isSelected = _currentMode == 'free_chat' &&
-                          _currentFreeChatId == chat.id;
-
-                      return ListTile(
-                        leading: Icon(
-                          Icons.chat_bubble_outline,
-                          size: 20,
-                          color: isSelected
-                              ? Theme.of(context).primaryColor
-                              : isDarkMode
-                                  ? Colors.white54
-                                  : Colors.grey,
+                      const Spacer(),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? const Color(0xFF2A2A2A)
+                              : const Color(0xFFEFEFEF),
+                          shape: BoxShape.circle,
                         ),
-                        title: Text(
-                          chat.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isSelected
-                                ? Theme.of(context).primaryColor
-                                : isDarkMode
-                                    ? Colors.white
-                                    : AppTheme.textPrimaryColor,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _formatDate(chat.lastUpdated),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDarkMode ? Colors.white38 : Colors.grey,
-                          ),
-                        ),
-                        selected: isSelected,
-                        selectedTileColor:
-                            Theme.of(context).primaryColor.withOpacity(0.1),
-                        onTap: () => _openFreeChat(chat.id, chat.title),
-                        trailing: IconButton(
+                        child: IconButton(
                           icon: Icon(
-                            Icons.delete_outline,
-                            size: 18,
-                            color: isDarkMode ? Colors.white38 : Colors.grey,
+                            Icons.search,
+                            size: 20,
+                            color: isDarkMode
+                                ? Colors.white70
+                                : Colors.black54,
                           ),
                           onPressed: () {
-                            _showDeleteConfirmation(
-                                chat.id, chat.title, freeChatProvider);
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => UnifiedSearchScreen(
+                                  onOpenFreeChat: (id, title) =>
+                                      _openFreeChatFromSearch(id, title),
+                                  onOpenDiaryDate: (date) =>
+                                      _openDiaryForDate(date),
+                                ),
+                              ),
+                            );
                           },
+                          tooltip: 'Buscar',
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                ),
+
+                // Cards de acesso rápido: Diário + Conversa livre
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _drawerQuickCard(
+                          icon: Icons.calendar_today,
+                          label: context.tr.translate('diary'),
+                          isDarkMode: isDarkMode,
+                          isSelected: _currentMode == 'diary',
+                          onTap: _switchToDiary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _drawerQuickCard(
+                          icon: Icons.chat_bubble_outline,
+                          label: 'Conversa livre',
+                          isDarkMode: isDarkMode,
+                          isSelected: _currentMode == 'free_chat' &&
+                              _currentFreeChatId == null,
+                          onTap: _startNewFreeChat,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Subtítulo Recentes (conversas livres)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  child: Text(
+                    'Recentes',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode
+                          ? Colors.white54
+                          : Colors.black54,
+                    ),
+                  ),
+                ),
+
+                // Lista de conversas livres (estilo ChatGPT: título puro)
+                Expanded(
+                  child: Consumer<FreeChatProvider>(
+                    builder: (context, freeChatProvider, child) {
+                      final conversations = freeChatProvider.conversations;
+
+                      if (conversations.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 8),
+                          child: Text(
+                            context.tr.translate('no_conversations'),
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white38
+                                  : Colors.grey,
+                              fontSize: 13,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 90),
+                        itemCount: conversations.length,
+                        itemBuilder: (context, index) {
+                          final chat = conversations[index];
+                          final isSelected =
+                              _currentMode == 'free_chat' &&
+                                  _currentFreeChatId == chat.id;
+                          return InkWell(
+                            onTap: () =>
+                                _openFreeChat(chat.id, chat.title),
+                            onLongPress: () =>
+                                _showDeleteConfirmation(chat.id,
+                                    chat.title, freeChatProvider),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              color: isSelected
+                                  ? Theme.of(context)
+                                      .primaryColor
+                                      .withValues(alpha: 0.12)
+                                  : null,
+                              child: Text(
+                                chat.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black87,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
+                  ),
+                ),
+              ],
+            ),
+
+            // Botão flutuante "+ Chat" (nova conversa livre)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(100),
+                color: isDarkMode ? Colors.white : Colors.black,
+                child: InkWell(
+                  onTap: _startNewFreeChat,
+                  borderRadius: BorderRadius.circular(100),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: isDarkMode
+                              ? Colors.black
+                              : Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Conversa livre',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode
+                                ? Colors.black
+                                : Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerQuickCard({
+    required IconData icon,
+    required String label,
+    required bool isDarkMode,
+    required VoidCallback onTap,
+    bool isSelected = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isDarkMode
+              ? const Color(0xFF212121)
+              : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(16),
+          border: isSelected
+              ? Border.all(
+                  color: Theme.of(context).primaryColor, width: 1.5)
+              : null,
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? const Color(0xFF2A2A2A)
+                    : const Color(0xFFE0E0E0),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.white : Colors.black87,
               ),
             ),
           ],
@@ -595,4 +730,3 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
-

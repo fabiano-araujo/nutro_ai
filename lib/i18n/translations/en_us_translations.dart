@@ -97,7 +97,14 @@ final Map<String, String> enUSTranslations = {
   'rate_app': 'Rate the app',
   'enjoying_app': 'Are you enjoying the app?',
   'rate_app_description':
-      'Your opinion is very important to us! Rate our application:',
+      'If you are enjoying it, we can open the rating flow right now. If not, we want to know how to improve.',
+  'rate_app_yes': 'Yes, rate it',
+  'rate_app_no': 'No',
+  'rate_app_not_now': 'Not now',
+  'rate_app_send_email': 'Send email',
+  'rate_app_email_subject': 'Nutro AI improvement suggestions',
+  'rate_app_email_body':
+      'Hello, Nutro AI team!\n\nI would like to suggest these improvements:\n',
   'submit': 'Submit',
   'thank_you_positive': 'Great!',
   'redirection_message':
@@ -194,11 +201,16 @@ final Map<String, String> enUSTranslations = {
   'agent_loading_generic': 'Fetching your in-app data...',
   'agent_command_limit_reached':
       'I could not complete the in-app action. Please try again.',
+  'agent_command_invalid_response':
+      'I could not interpret the requested in-app action. Please try again.',
   'chat_action_login': 'Log in',
   'chat_action_configure_goals_ui': 'Set up in the app',
   'chat_action_continue_goals_chat': 'Continue in chat',
   'chat_action_edit_macros_ui': 'Edit macros in the app',
   'chat_action_continue_macros_chat': 'Adjust macros in chat',
+  'chat_setup_reminder_prefix': 'Let’s finish setting up your information',
+  'chat_setup_reminder_with_fields':
+      'Let’s finish setting up your information. Still missing: {fields}.',
   'chat_goal_setup_chat_prompt':
       'I want to set up my nutrition goals through chat. Use the app commands when needed, ask one question at a time, and start with my age, height, weight, and gender.',
   'chat_macro_edit_chat_prompt':
@@ -304,7 +316,7 @@ final Map<String, String> enUSTranslations = {
   'ai_tutor_welcome':
       'What did you eat today? I calculate the calories and nutrients for you.',
   'ai_tutor_short_welcome':
-      'What did you eat today? I calculate the calories and nutrients for you.',
+      'Hi! I\'m Nutro AI, your nutrition assistant. How can I help you today?',
   'ask_question': 'Ask a question...',
   'reset_conversation': 'Reset conversation?',
   'reset_conversation_message':
@@ -616,6 +628,11 @@ final Map<String, String> enUSTranslations = {
   'premium_plans': 'Premium Plans',
   'unlock_potential':
       'Unlock the full potential of Nutro AI with our premium plans',
+  'subscription_headline': 'Reach your goals {highlight} faster',
+  'show_more_plans': 'Show more plans',
+  'hide_other_plans': 'Show fewer plans',
+  'secure_google_play': 'Secure with Google Play. Cancel anytime.',
+  'free_plan': 'Free',
   'monthly': 'Monthly',
   'yearly': 'Yearly',
   'lifetime': 'Lifetime',
@@ -652,8 +669,12 @@ final Map<String, String> enUSTranslations = {
   'remaining': 'remaining',
   'exceeded': 'over',
   'protein': 'Proteins',
+  'protein_short': 'Prot',
   'carbs': 'Carbs',
+  'carbs_short': 'Carb',
   'fats': 'Fats',
+  'fats_short': 'Fat',
+  'change_goal': 'change goal',
 
   // Weekly Calendar - Days
   'mon': 'MON',
@@ -695,6 +716,29 @@ final Map<String, String> enUSTranslations = {
   'add_more_foods': 'Add more foods',
   'no_meals_configured': 'No meals configured',
   'configure_meals_in_settings': 'Configure your meals in settings',
+  'meal_overview': 'Meal overview',
+  'nutritional_score': 'Nutrition score',
+  'meal_quality': 'Category',
+  'meal_quality_needs_improvement': 'Needs improvement',
+  'meal_quality_good': 'Good',
+  'meal_quality_great': 'Great',
+  'protein_level': 'Protein level',
+  'fiber_level': 'Fiber level',
+  'low': 'Low',
+  'moderate': 'Moderate',
+  'high': 'High',
+  'meal_foods_title': 'Foods in this meal',
+  'foods_count_label': 'foods',
+  'estimated': 'estimated',
+  'nutrition_tips': 'Nutrition tips',
+  'nutrition_tips_description':
+      'Use AI to get a short meal summary, positive points, and what could be improved.',
+  'get_ai_tips': 'Get tips',
+  'refresh_tips': 'Generate again',
+  'positive_points': 'Positive points',
+  'can_improve': 'Can improve',
+  'analyzing_meal': 'Analyzing meal with AI...',
+  'meal_tips_error': 'Could not generate meal tips right now.',
 
   // Nutrients
   'calories': 'Calories',
@@ -1112,6 +1156,14 @@ final Map<String, String> enUSTranslations = {
   'day_sat_short': 'Sat',
 
   // Streaks
+  'streak_hero_title': 'Your streak',
+  'streak_hero_day_singular': 'day logging meals',
+  'streak_hero_day_plural': 'days logging meals',
+  'streak_hero_start_hint': 'Log a meal today to get started.',
+  'streak_hero_record': 'Your record: {count} days',
+  'streak_secondary_protein': 'Protein goal',
+  'streak_secondary_goal': 'Calorie goal',
+  'streak_secondary_days_suffix': 'days in a row',
   'your_streaks': 'Daily Streaks',
   'streak_registration': 'Logging',
   'streak_protein': 'Protein',
@@ -1126,4 +1178,36 @@ final Map<String, String> enUSTranslations = {
   'activate_freeze_description':
       'The protection freezes your streak for 24 hours, even if you don\'t log anything. You have {count} protection(s) available.',
   'activate': 'Activate',
+  'streak_checkin_action': 'Update streak',
+  'streak_checkin_success': 'Streak updated successfully.',
+  'streak_checkin_error': 'Unable to update your streak right now.',
+  'social_open_hub': 'Open social hub',
+  'social_summary_title': 'Social summary',
+  'social_summary_subtitle':
+      'Track streaks, friends, and challenges in one place.',
+  'social_summary_streak': 'Streak',
+  'social_summary_duo': 'Duos',
+  'social_summary_challenges': 'Challenges',
+  'social_summary_friends': 'friends',
+  'social_summary_duo_preview': 'Duo streaks',
+  'social_summary_duo_empty': 'No active duo streaks right now.',
+  'social_summary_challenge_preview': 'Your active challenges',
+  'social_summary_challenge_empty': 'No active challenges here yet.',
+  'social_view_friends': 'View friends',
+  'social_view_challenges': 'View challenges',
+  'social_public_challenges': 'Public challenges',
+  'streak_in_danger_short': 'At risk',
+  'challenge_objective_label': 'Objective',
+  'challenge_days_completed': 'days',
+  'challenge_today_metric': 'Today',
+  'challenge_target_metric': 'Target',
+  'challenge_join_to_track': 'Join to track',
+  'challenge_checkin_available': 'Ready to update',
+  'challenge_updated_today': 'Updated today',
+  'challenge_waiting_today': 'Waiting today',
+  'challenge_progress_updated': 'Challenge progress updated.',
+  'challenge_progress_unavailable': 'Challenge progress is not available yet.',
+  'challenge_update_progress': 'Update progress',
+  'challenge_progress_done_today': 'Progress already updated today',
+  'challenge_progress_pending_today': 'Log something today to update',
 };

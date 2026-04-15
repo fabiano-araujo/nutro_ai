@@ -58,8 +58,27 @@ class UIUtils {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        duration: Duration(seconds: 2), // Aumentei um pouco a duração
+        duration: const Duration(seconds: 2), // Aumentei um pouco a duração
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // Mostrar o feedback de sucesso padrão usado nos fluxos principais do app
+  static void showPrimarySnackBar(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: duration,
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }

@@ -23,8 +23,13 @@ import '../widgets/streak_display.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
+  final VoidCallback? onOpenSocialHub;
 
-  const ProfileScreen({Key? key, this.onOpenDrawer}) : super(key: key);
+  const ProfileScreen({
+    Key? key,
+    this.onOpenDrawer,
+    this.onOpenSocialHub,
+  }) : super(key: key);
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -131,6 +136,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.hub_rounded,
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+            ),
+            onPressed: widget.onOpenSocialHub,
+            tooltip: context.tr.translate('social_open_hub'),
+          ),
+        ],
         centerTitle: true,
         scrolledUnderElevation: 0,
         elevation: 0,
@@ -764,7 +779,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case FitnessGoal.gainWeightSlowly:
         return context.tr.translate('goal_gain_weight_slowly');
       case FitnessGoal.maintainWeight:
-        return context.tr.translate('goal_maintain');
+        return context.tr.translate('goal_maintain_weight');
     }
   }
 }

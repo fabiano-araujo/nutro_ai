@@ -6,9 +6,11 @@ import '../providers/nutrition_goals_provider.dart';
 import '../models/meal_model.dart';
 import '../models/food_model.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import '../widgets/nutrition_card.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/water_tracker.dart';
+import 'meal_page.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
 import 'food_search_screen.dart';
@@ -44,8 +46,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           data: Theme.of(context).copyWith(
             colorScheme: isDarkMode
                 ? ColorScheme.dark(
-                    primary: AppTheme.primaryColor,
-                    onPrimary: Colors.white,
+                    primary: AppTheme.primaryColorDarkMode,
+                    onPrimary: Colors.black,
                     surface: AppTheme.darkCardColor,
                     onSurface: AppTheme.darkTextColor,
                   )
@@ -171,8 +173,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        AppLocalizations.of(context).translate('daily_goals') ??
-                            'Metas Diárias',
+                        AppLocalizations.of(context).translate('daily_goals'),
                         style: AppTheme.headingMedium.copyWith(
                           color: textColor.withValues(alpha: 0.85),
                           fontSize: 18,
@@ -313,14 +314,19 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     decoration: BoxDecoration(
                       color: isDarkMode
                           ? Colors.white.withAlpha(20)
-                          : AppTheme.primaryColor.withAlpha(20),
+                          : Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withAlpha(20),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.restaurant_menu,
                       size: 48,
                       color:
-                          isDarkMode ? Colors.white70 : AppTheme.primaryColor,
+                          isDarkMode
+                              ? Colors.white70
+                              : Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   SizedBox(height: 24),
@@ -337,8 +343,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                   SizedBox(height: 12),
                   Text(
                     AppLocalizations.of(context)
-                            .translate('configure_meals_description') ??
-                        'Crie suas refeições (café, almoço...) para começar a registrar sua dieta.',
+                        .translate('configure_meals_description'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -357,12 +362,12 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                       );
                     },
                     icon: Icon(Icons.add),
-                    label: Text(AppLocalizations.of(context)
-                            .translate('configure_meals') ??
-                        'Configurar Refeições'),
+                    label: Text(
+                      AppLocalizations.of(context).translate('configure_meals'),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       padding:
                           EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -408,6 +413,16 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 },
                 onAddFood: () {
                   _showAddFoodDialog(type);
+                },
+                onOpenDetails: () {
+                  if (meal != null && meal.foods.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MealPage.fromMeal(meal: meal),
+                      ),
+                    );
+                  }
                 },
               ),
             );
@@ -509,8 +524,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             children: [
               // Macronutrients Section Header
               Text(
-                AppLocalizations.of(context).translate('daily_summary') ??
-                    'Resumo Diário',
+                AppLocalizations.of(context).translate('daily_summary'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -589,7 +603,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 decoration: BoxDecoration(
                   border: Border(
                     left: BorderSide(
-                      color: Color(0xFF9575CD).withValues(alpha: 0.3),
+                      color: MacroTheme.proteinColor.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -716,6 +730,7 @@ class _MealCard extends StatelessWidget {
   final Color textColor;
   final VoidCallback onExpand;
   final VoidCallback onAddFood;
+  final VoidCallback onOpenDetails;
 
   const _MealCard({
     Key? key,
@@ -727,6 +742,7 @@ class _MealCard extends StatelessWidget {
     required this.textColor,
     required this.onExpand,
     required this.onAddFood,
+    required this.onOpenDetails,
   }) : super(key: key);
 
   @override
@@ -741,13 +757,14 @@ class _MealCard extends StatelessWidget {
       elevation: 2,
       shadowColor: Colors.black.withValues(alpha: 0.1),
       child: InkWell(
-        onTap: hasFoods ? onExpand : null,
+        onTap: hasFoods ? onOpenDetails : null,
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
+              color:
+                  isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
             ),
           ),
           child: Column(
@@ -761,7 +778,10 @@ class _MealCard extends StatelessWidget {
                       height: 48,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -796,13 +816,16 @@ class _MealCard extends StatelessWidget {
                       ),
                     ),
                     if (hasFoods)
-                      AnimatedRotation(
-                        turns: isExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          Icons.keyboard_arrow_down,
-                          size: 24,
-                          color: secondaryTextColor.withValues(alpha: 0.7),
+                      IconButton(
+                        onPressed: onExpand,
+                        icon: AnimatedRotation(
+                          turns: isExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 24,
+                            color: secondaryTextColor.withValues(alpha: 0.7),
+                          ),
                         ),
                       ),
                     IconButton(
@@ -810,7 +833,7 @@ class _MealCard extends StatelessWidget {
                       icon: Icon(
                         Icons.add_circle_outline,
                         size: 20,
-                        color: AppTheme.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
@@ -818,8 +841,12 @@ class _MealCard extends StatelessWidget {
               ),
               AnimatedCrossFade(
                 firstChild: const SizedBox.shrink(),
-                secondChild: hasFoods ? _buildExpandedFoodList(context, secondaryTextColor) : const SizedBox.shrink(),
-                crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                secondChild: hasFoods
+                    ? _buildExpandedFoodList(context, secondaryTextColor)
+                    : const SizedBox.shrink(),
+                crossFadeState: isExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
                 duration: const Duration(milliseconds: 200),
               ),
             ],
@@ -829,7 +856,8 @@ class _MealCard extends StatelessWidget {
     );
   }
 
-  Widget _buildExpandedFoodList(BuildContext context, Color secondaryTextColor) {
+  Widget _buildExpandedFoodList(
+      BuildContext context, Color secondaryTextColor) {
     return Column(
       children: [
         Container(
@@ -839,7 +867,8 @@ class _MealCard extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 Colors.transparent,
-                (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                (isDarkMode ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.08),
                 Colors.transparent,
               ],
             ),
@@ -848,7 +877,10 @@ class _MealCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Column(
-            children: meal!.foods.map((food) => _buildFoodItem(food, context, secondaryTextColor)).toList(),
+            children: meal!.foods
+                .map(
+                    (food) => _buildFoodItem(food, context, secondaryTextColor))
+                .toList(),
           ),
         ),
         Padding(
@@ -857,37 +889,37 @@ class _MealCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildMacroCardCompact(
-                  emoji: '🔥',
+                  icon: MacroTheme.caloriesIcon,
                   value: meal!.totalCalories.toStringAsFixed(0),
                   unit: 'kcal',
-                  color: const Color(0xFFFF6B9D),
+                  color: MacroTheme.caloriesColor,
                 ),
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: _buildMacroCardCompact(
-                  emoji: '💪',
+                  icon: MacroTheme.proteinIcon,
                   value: meal!.totalProtein.toStringAsFixed(1),
                   unit: 'g prot',
-                  color: const Color(0xFF9575CD),
+                  color: MacroTheme.proteinColor,
                 ),
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: _buildMacroCardCompact(
-                  emoji: '🌾',
+                  icon: MacroTheme.carbsIcon,
                   value: meal!.totalCarbs.toStringAsFixed(1),
                   unit: 'g carb',
-                  color: const Color(0xFFFFB74D),
+                  color: MacroTheme.carbsColor,
                 ),
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: _buildMacroCardCompact(
-                  emoji: '🥑',
+                  icon: MacroTheme.fatIcon,
                   value: meal!.totalFat.toStringAsFixed(1),
                   unit: 'g gord',
-                  color: const Color(0xFF4DB6AC),
+                  color: MacroTheme.fatColor,
                 ),
               ),
             ],
@@ -898,41 +930,24 @@ class _MealCard extends StatelessWidget {
   }
 
   Widget _buildMacroCardCompact({
-    required String emoji,
+    required IconData icon,
     required String value,
     required String unit,
     required Color color,
   }) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 14)),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
           Text(
             unit,
             style: TextStyle(
@@ -941,11 +956,11 @@ class _MealCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
-  Widget _buildFoodItem(Food food, BuildContext context, Color secondaryTextColor) {
+  Widget _buildFoodItem(
+      Food food, BuildContext context, Color secondaryTextColor) {
     return Material(
       color: Colors.transparent,
       child: InkWell(

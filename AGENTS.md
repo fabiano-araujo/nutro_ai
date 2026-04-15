@@ -32,6 +32,8 @@ This file guides coding agents working in this repository.
 - Route registry: `dieta_api/src/routes/index.ts`.
 - AI endpoints: `dieta_api/src/routes/ai.routes.ts`.
   - Includes `POST /ai/transcribe-audio` for chat audio transcription on the server.
+- Subscription purchase confirmation: `POST /subscription/google-play/confirm`
+  - Validates the Google Play `purchaseToken` on the backend and upserts the user subscription as premium.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.
@@ -52,6 +54,8 @@ This file guides coding agents working in this repository.
 7. Chat voice input now records raw audio client-side and sends it to `POST /ai/transcribe-audio`; the server transcribes with `google/gemini-2.5-flash-lite-preview-09-2025`.
 8. Agentic chat may emit app commands that the Flutter app executes locally before asking the backend for a final natural-language reply. Current command families include nutrition status, weekly summary, weight status, diet generation, diet-generation preference setup/status, and nutrition-goal setup/status updates.
 9. Agentic chat requests can return `{"app_command": {...}}` or `{"app_commands":[...]}` from the backend for app-scoped actions/data. The Flutter chat executes the command(s) via providers, sends the result back to the server in a second request, and only the final natural-language answer should remain visible to the user.
+10. Agentic follow-up prompts now include `[APP_CURRENT_STATE_BEGIN]... [APP_CURRENT_STATE_END]` with the latest structured app state so the backend can decide the next step without relying on fragile local heuristics.
+10. Natural-language chat responses may append a hidden UI hint block such as `[APP_UI_HINT_BEGIN]{"actions":["login","configure_goals_ui","edit_macros_ui"]}[APP_UI_HINT_END]`. The Flutter app must strip that block from the visible message and use it only to render native action buttons.
 
 ## 4) Main Commands
 
@@ -94,8 +98,8 @@ npx prisma studio
 
 ### AI chat and streaming
 
-- `lib/screens/ai_tutor_screen.dart` (`NutritionAssistantScreen`)
-- `lib/controllers/ai_tutor_controller.dart`
+- `lib/screens/nutrition_assistant_screen.dart` (`NutritionAssistantScreen`)
+- `lib/controllers/nutrition_assistant_controller.dart`
 - `lib/services/ai_service.dart`
 - `lib/services/app_agent_service.dart`
 - `lib/widgets/streaming_response_display.dart`
@@ -108,9 +112,12 @@ npx prisma studio
 ### Auth and credits
 
 - `lib/services/auth_service.dart`
+- `lib/services/purchase_service.dart`
 - `lib/providers/credit_provider.dart`
 - `dieta_api/src/routes/auth.routes.ts`
 - `dieta_api/src/routes/credits.routes.ts`
+- `dieta_api/src/services/google.play.service.ts`
+- `dieta_api/src/routes/subscription.routes.ts`
 
 ### Diet, meals, and nutrition flow
 

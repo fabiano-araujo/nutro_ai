@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/ui_utils.dart';
 
 enum _MacroInputMode {
   percentage,
@@ -326,14 +327,11 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
       );
     }
 
+    final navigatorContext = Navigator.of(context).context;
+    final successMessage = context.tr.translate('macro_editor_saved');
+
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr.translate('macro_editor_saved')),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    UIUtils.showPrimarySnackBar(navigatorContext, successMessage);
   }
 
   @override
@@ -346,6 +344,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     final accentColor = widget.isDarkMode
         ? AppTheme.primaryColorDarkMode
         : AppTheme.primaryColor;
+    final accentForegroundColor = AppTheme.onColor(accentColor);
 
     return Container(
       decoration: BoxDecoration(
@@ -492,7 +491,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
                         onPressed: _canSave() ? _saveChanges : null,
                         style: FilledButton.styleFrom(
                           backgroundColor: accentColor,
-                          foregroundColor: Colors.white,
+                          foregroundColor: accentForegroundColor,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18),

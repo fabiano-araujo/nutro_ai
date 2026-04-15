@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'dart:io';
@@ -10,7 +9,6 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
-import 'screens/home_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/subscription_screen.dart';
 import 'screens/essay_history_screen.dart';
@@ -193,8 +191,13 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(
           value: _authService,
         ),
-        ChangeNotifierProvider(
+        ChangeNotifierProxyProvider<AuthService, PurchaseService>(
           create: (_) => PurchaseService(),
+          update: (_, authService, purchaseService) {
+            final service = purchaseService ?? PurchaseService();
+            service.bindAuthService(authService);
+            return service;
+          },
         ),
         ChangeNotifierProvider(
           create: (_) => EssayProvider(),
@@ -237,9 +240,9 @@ class _MyAppState extends State<MyApp> {
             navigatorKey: navigatorKey,
             theme: AppTheme.lightTheme.copyWith(
               navigationBarTheme: NavigationBarThemeData(
-                indicatorColor: const Color(0xFF66BB9A).withOpacity(0.2),
-                labelTextStyle: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                indicatorColor: const Color(0xFF66BB9A).withValues(alpha: 0.2),
+                labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -254,9 +257,9 @@ class _MyAppState extends State<MyApp> {
               scaffoldBackgroundColor: AppTheme.darkBackgroundColor,
               cardColor: const Color(0xFF1E1D23),
               navigationBarTheme: NavigationBarThemeData(
-                indicatorColor: const Color(0xFF66BB9A).withOpacity(0.2),
-                labelTextStyle: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                indicatorColor: const Color(0xFF66BB9A).withValues(alpha: 0.2),
+                labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -296,7 +299,6 @@ class _MyAppState extends State<MyApp> {
       case ThemeMode.dark:
         return 'dark';
       case ThemeMode.system:
-      default:
         return 'system';
     }
   }

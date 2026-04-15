@@ -154,42 +154,62 @@ class MessageUIHelper {
       );
     }
 
-    // Mensagem do usuário: simples, sem card, alinhado à direita
+    // Mensagem do usuário: balão cinza arredondado, alinhado à direita
     if (isUser) {
       return GestureDetector(
         onLongPress: onLongPress,
         child: Align(
           alignment: Alignment.centerRight,
-          child: Container(
-            margin: EdgeInsets.only(bottom: safeBottomSpacing),
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: messageContent,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.78,
+            ),
+            child: Container(
+              margin: EdgeInsets.only(bottom: safeBottomSpacing, left: 48),
+              padding:
+                  EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? AppTheme.darkCardColor
+                    : const Color(0xFFEFEFEF),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: DefaultTextStyle.merge(
+                style: TextStyle(
+                  color: isDarkMode
+                      ? Colors.white
+                      : AppTheme.textPrimaryColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                ),
+                child: messageContent,
+              ),
+            ),
           ),
         ),
       );
     }
 
-    // Mensagem da IA: card estilizado similar ao MealCard
-    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    // Mensagem da IA: sem balão, estilo ChatGPT
     final errorBackgroundColor = isDarkMode ? Color(0xFF3B2532) : Color(0xFFFFF0F0);
 
     return GestureDetector(
       onLongPress: onLongPress,
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Card(
+        child: Container(
           margin: EdgeInsets.only(bottom: safeBottomSpacing),
-          elevation: 1.5,
-          shadowColor: isDarkMode
-              ? Colors.black.withValues(alpha: 0.3)
-              : Colors.black.withValues(alpha: 0.08),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          color: isError ? errorBackgroundColor : backgroundColor,
+          decoration: isError
+              ? BoxDecoration(
+                  color: errorBackgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                )
+              : null,
           child: Container(
             width: double.infinity,
-            padding: EdgeInsets.all(16),
+            padding: isError
+                ? EdgeInsets.all(12)
+                : EdgeInsets.symmetric(vertical: 4),
             child: messageContent,
           ),
         ),

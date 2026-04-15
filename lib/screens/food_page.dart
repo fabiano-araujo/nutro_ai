@@ -14,10 +14,12 @@ import '../providers/food_history_provider.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import '../helpers/webview_helper.dart';
 import '../widgets/macro_nutrient_row.dart';
 import '../widgets/sub_nutrient_row.dart';
 import '../widgets/micro_nutrient_row.dart';
+import '../utils/ui_utils.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
@@ -70,7 +72,9 @@ class _FoodPageState extends State<FoodPage> {
 
       // Calculate the size for 1 unit of this portion
       // actualServingSize is for parsedSize units, so divide to get single unit size
-      final singleUnitSize = parsedSize > 0 ? (baseServingSize * firstPortion.proportion) / parsedSize : baseServingSize * firstPortion.proportion;
+      final singleUnitSize = parsedSize > 0
+          ? (baseServingSize * firstPortion.proportion) / parsedSize
+          : baseServingSize * firstPortion.proportion;
 
       print('===== INIT FIRST PORTION =====');
       print('Description: ${firstPortion.description}');
@@ -130,10 +134,13 @@ class _FoodPageState extends State<FoodPage> {
     }
 
     // Check for "100 g" or "100 ml" format
-    final mlGPattern = RegExp(r'^(\d+(?:[.,]\d+)?)\s*(g|ml)$', caseSensitive: false);
+    final mlGPattern =
+        RegExp(r'^(\d+(?:[.,]\d+)?)\s*(g|ml)$', caseSensitive: false);
     final mlGMatch = mlGPattern.firstMatch(trimmed);
     if (mlGMatch != null) {
-      final size = double.tryParse(mlGMatch.group(1)?.replaceAll(',', '.') ?? '100') ?? 100.0;
+      final size =
+          double.tryParse(mlGMatch.group(1)?.replaceAll(',', '.') ?? '100') ??
+              100.0;
       final unit = mlGMatch.group(2) ?? 'g';
       print('Rule 2: Number + g/ml format');
       print('Result: size=$size, unit=$unit, display=$unit');
@@ -175,10 +182,12 @@ class _FoodPageState extends State<FoodPage> {
       print('Starting food data extraction...');
 
       // Load the JavaScript file
-      final script = await rootBundle.loadString('assets/nutrition_script_mobile_br.js');
+      final script =
+          await rootBundle.loadString('assets/nutrition_script_mobile_br.js');
 
       // Remove the main() call at the end to avoid sending to server
-      final scriptWithoutMain = script.replaceAll(RegExp(r'main\(\);?\s*$'), '');
+      final scriptWithoutMain =
+          script.replaceAll(RegExp(r'main\(\);?\s*$'), '');
 
       // Modify the script to use the handler instead of calling main()
       final modifiedScript = '''
@@ -257,7 +266,8 @@ class _FoodPageState extends State<FoodPage> {
     print('Data is null: ${data == null}');
     if (data != null) {
       print('Data length: ${data.toString().length}');
-      print('Data preview: ${data.toString().substring(0, data.toString().length > 200 ? 200 : data.toString().length)}');
+      print(
+          'Data preview: ${data.toString().substring(0, data.toString().length > 200 ? 200 : data.toString().length)}');
     }
     print('============================');
 
@@ -275,7 +285,8 @@ class _FoodPageState extends State<FoodPage> {
           _isLoading = false; // Stop loading on success
 
           // Update serving size and portions if available
-          final baseServingSize = fullFood.nutrients?.first.servingSize ?? 100.0;
+          final baseServingSize =
+              fullFood.nutrients?.first.servingSize ?? 100.0;
           final portions = fullFood.foodRegions?.first.portions;
 
           if (portions != null && portions.isNotEmpty) {
@@ -299,7 +310,8 @@ class _FoodPageState extends State<FoodPage> {
             print('Proportion: ${firstPortion.proportion}');
             print('Base serving: $baseServingSize');
             print('Single unit size: $singleUnitSize');
-            print('Actual serving size (for macros): ${singleUnitSize * parsedSize}');
+            print(
+                'Actual serving size (for macros): ${singleUnitSize * parsedSize}');
             print('================================');
 
             _singlePortionSize = singleUnitSize;
@@ -340,7 +352,6 @@ class _FoodPageState extends State<FoodPage> {
     }
   }
 
-
   Food _convertToFullFood(Map<String, dynamic> data) {
     final foodData = data['food'] as Map<String, dynamic>?;
     final nutrientList = data['nutrient'] as List<dynamic>?;
@@ -358,8 +369,10 @@ class _FoodPageState extends State<FoodPage> {
         final nutrient = n as Map<String, dynamic>;
 
         // Parse serving size and unit
-        double servingSize = (nutrient['serving_size'] as num?)?.toDouble() ?? 100.0;
-        String servingUnit = (nutrient['serving_unit'] as String? ?? 'g').trim();
+        double servingSize =
+            (nutrient['serving_size'] as num?)?.toDouble() ?? 100.0;
+        String servingUnit =
+            (nutrient['serving_unit'] as String? ?? 'g').trim();
 
         print('===== PROCESSANDO NUTRIENT =====');
         print('Original serving_size: ${nutrient['serving_size']}');
@@ -368,12 +381,14 @@ class _FoodPageState extends State<FoodPage> {
         // Process serving unit according to rules:
         // 1. If unit is "g" or "ml", set servingSize to 100
         // 2. If unit has a number (e.g., "1 xícara"), extract number to servingSize and remove it from unit
-        if (servingUnit.toLowerCase() == 'g' || servingUnit.toLowerCase() == 'ml') {
+        if (servingUnit.toLowerCase() == 'g' ||
+            servingUnit.toLowerCase() == 'ml') {
           servingSize = 100.0;
           print('Rule 1 applied: Unit is g/ml, setting servingSize to 100');
         } else {
           // Try to extract number from beginning of unit
-          final match = RegExp(r'^(\d+(?:[.,]\d+)?)\s*(.*)$').firstMatch(servingUnit);
+          final match =
+              RegExp(r'^(\d+(?:[.,]\d+)?)\s*(.*)$').firstMatch(servingUnit);
           if (match != null) {
             final numberStr = match.group(1)?.replaceAll(',', '.');
             final unitPart = match.group(2)?.trim();
@@ -381,7 +396,8 @@ class _FoodPageState extends State<FoodPage> {
             if (numberStr != null && unitPart != null && unitPart.isNotEmpty) {
               servingSize = double.tryParse(numberStr) ?? servingSize;
               servingUnit = unitPart;
-              print('Rule 2 applied: Extracted number $numberStr, unit is now "$servingUnit"');
+              print(
+                  'Rule 2 applied: Extracted number $numberStr, unit is now "$servingUnit"');
             }
           }
         }
@@ -420,7 +436,8 @@ class _FoodPageState extends State<FoodPage> {
       print('===== PROCESSANDO PORTIONS =====');
       portions = portionList.map((p) {
         final portion = p as Map<String, dynamic>;
-        print('Portion original - proportion: ${portion['proportion']}, description: ${portion['description']}');
+        print(
+            'Portion original - proportion: ${portion['proportion']}, description: ${portion['description']}');
 
         return Portion(
           idFoodRegion: 0, // This will be set by the database
@@ -470,51 +487,32 @@ class _FoodPageState extends State<FoodPage> {
   }
 
   Widget _buildMacroCardCompact({
-    required String emoji,
+    required IconData icon,
     required String value,
     required String unit,
     required Color color,
     required bool isDarkMode,
   }) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
+        Text(
+          unit,
+          style: TextStyle(
+            fontSize: 10,
+            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            unit,
-            style: TextStyle(
-              fontSize: 10,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -529,27 +527,43 @@ class _FoodPageState extends State<FoodPage> {
 
     // Create a new Food with scaled nutrients
     final scaledFood = currentFood.copyWith(
-      nutrients: currentFood.nutrients?.map((n) => n.copyWith(
-        servingSize: _currentServingSize,
-        calories: (n.calories ?? 0) * scaleFactor,
-        protein: (n.protein ?? 0) * scaleFactor,
-        carbohydrate: (n.carbohydrate ?? 0) * scaleFactor,
-        fat: (n.fat ?? 0) * scaleFactor,
-        saturatedFat: n.saturatedFat != null ? n.saturatedFat! * scaleFactor : null,
-        transFat: n.transFat != null ? n.transFat! * scaleFactor : null,
-        cholesterol: n.cholesterol != null ? (n.cholesterol! * scaleFactor).toDouble() : null,
-        sodium: n.sodium != null ? (n.sodium! * scaleFactor).toDouble() : null,
-        potassium: n.potassium != null ? (n.potassium! * scaleFactor).toDouble() : null,
-        dietaryFiber: n.dietaryFiber != null ? n.dietaryFiber! * scaleFactor : null,
-        sugars: n.sugars != null ? n.sugars! * scaleFactor : null,
-        vitaminA: n.vitaminA != null ? n.vitaminA! * scaleFactor : null,
-        vitaminC: n.vitaminC != null ? n.vitaminC! * scaleFactor : null,
-        vitaminD: n.vitaminD != null ? n.vitaminD! * scaleFactor : null,
-        vitaminB6: n.vitaminB6 != null ? n.vitaminB6! * scaleFactor : null,
-        vitaminB12: n.vitaminB12 != null ? n.vitaminB12! * scaleFactor : null,
-        calcium: n.calcium != null ? (n.calcium! * scaleFactor).toDouble() : null,
-        iron: n.iron != null ? n.iron! * scaleFactor : null,
-      )).toList(),
+      nutrients: currentFood.nutrients
+          ?.map((n) => n.copyWith(
+                servingSize: _currentServingSize,
+                calories: (n.calories ?? 0) * scaleFactor,
+                protein: (n.protein ?? 0) * scaleFactor,
+                carbohydrate: (n.carbohydrate ?? 0) * scaleFactor,
+                fat: (n.fat ?? 0) * scaleFactor,
+                saturatedFat: n.saturatedFat != null
+                    ? n.saturatedFat! * scaleFactor
+                    : null,
+                transFat: n.transFat != null ? n.transFat! * scaleFactor : null,
+                cholesterol: n.cholesterol != null
+                    ? (n.cholesterol! * scaleFactor).toDouble()
+                    : null,
+                sodium: n.sodium != null
+                    ? (n.sodium! * scaleFactor).toDouble()
+                    : null,
+                potassium: n.potassium != null
+                    ? (n.potassium! * scaleFactor).toDouble()
+                    : null,
+                dietaryFiber: n.dietaryFiber != null
+                    ? n.dietaryFiber! * scaleFactor
+                    : null,
+                sugars: n.sugars != null ? n.sugars! * scaleFactor : null,
+                vitaminA: n.vitaminA != null ? n.vitaminA! * scaleFactor : null,
+                vitaminC: n.vitaminC != null ? n.vitaminC! * scaleFactor : null,
+                vitaminD: n.vitaminD != null ? n.vitaminD! * scaleFactor : null,
+                vitaminB6:
+                    n.vitaminB6 != null ? n.vitaminB6! * scaleFactor : null,
+                vitaminB12:
+                    n.vitaminB12 != null ? n.vitaminB12! * scaleFactor : null,
+                calcium: n.calcium != null
+                    ? (n.calcium! * scaleFactor).toDouble()
+                    : null,
+                iron: n.iron != null ? n.iron! * scaleFactor : null,
+              ))
+          .toList(),
     );
 
     // Add to meal
@@ -557,32 +571,28 @@ class _FoodPageState extends State<FoodPage> {
         .addFoodToMeal(mealType, scaledFood);
 
     // Add to history (recents and frequency)
-    final historyProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
+    final historyProvider =
+        Provider.of<FoodHistoryProvider>(context, listen: false);
     historyProvider.addToRecents(scaledFood);
     historyProvider.incrementFrequency(scaledFood);
 
     // Get meal name
     final option = DailyMealsProvider.getMealTypeOption(mealType);
+    final navigatorContext = Navigator.of(context).context;
+    final successMessage = '${currentFood.name} added to ${option.name}';
 
     // Close food page
     Navigator.pop(context);
 
     // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${currentFood.name} added to ${option.name}'),
-        duration: Duration(seconds: 2),
-        backgroundColor: AppTheme.primaryColor,
-      ),
-    );
+    UIUtils.showPrimarySnackBar(navigatorContext, successMessage);
   }
 
   void _showMealTypeSelector(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
     showModalBottomSheet(
       context: context,
@@ -625,49 +635,50 @@ class _FoodPageState extends State<FoodPage> {
                 SizedBox(height: 16),
                 // Meal types list
                 ...MealType.values.map((mealType) {
-                final option = DailyMealsProvider.getMealTypeOption(mealType);
+                  final option = DailyMealsProvider.getMealTypeOption(mealType);
 
-                return InkWell(
-                  onTap: () {
-                    Navigator.pop(context); // Close meal type selector
-                    _addToMeal(mealType);
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                    margin: EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDarkMode
-                            ? AppTheme.darkBorderColor
-                            : AppTheme.dividerColor,
-                        width: 1,
+                  return InkWell(
+                    onTap: () {
+                      Navigator.pop(context); // Close meal type selector
+                      _addToMeal(mealType);
+                    },
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      margin: EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDarkMode
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.dividerColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            option.emoji,
+                            style: TextStyle(fontSize: 24),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            option.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: textColor.withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Text(
-                          option.emoji,
-                          style: TextStyle(fontSize: 24),
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          option.name,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: textColor.withValues(alpha: 0.85),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-              SizedBox(height: 16),
-            ],
-          ),
+                  );
+                }).toList(),
+                SizedBox(height: 16),
+              ],
+            ),
           ),
         );
       },
@@ -691,9 +702,8 @@ class _FoodPageState extends State<FoodPage> {
       builder: (context) {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-        final textColor = isDarkMode
-            ? AppTheme.darkTextColor
-            : AppTheme.textPrimaryColor;
+        final textColor =
+            isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
         return Container(
           padding: EdgeInsets.all(20),
@@ -726,7 +736,8 @@ class _FoodPageState extends State<FoodPage> {
               SizedBox(height: 16),
               // Portions list
               ...portions.map((portion) {
-                final isSelected = _selectedPortionDescription == portion.description;
+                final isSelected =
+                    _selectedPortionDescription == portion.description;
 
                 // Parse the portion description
                 final parsed = _parsePortionDescription(portion.description);
@@ -751,14 +762,16 @@ class _FoodPageState extends State<FoodPage> {
                       print('Proportion: ${portion.proportion}');
                       print('Base serving: $baseServingSize');
                       print('Single unit size: $singleUnitSize');
-                      print('Actual serving size (for macros): ${singleUnitSize * parsedSize}');
+                      print(
+                          'Actual serving size (for macros): ${singleUnitSize * parsedSize}');
                       print('============================');
 
                       _singlePortionSize = singleUnitSize;
                       _currentServingSize = singleUnitSize * parsedSize;
                       _currentServingUnit = parsedUnit;
                       _selectedPortionDescription = portion.description;
-                      _servingSizeController.text = parsedSize.toStringAsFixed(0);
+                      _servingSizeController.text =
+                          parsedSize.toStringAsFixed(0);
                     });
                     Navigator.pop(context);
                   },
@@ -767,12 +780,15 @@ class _FoodPageState extends State<FoodPage> {
                     margin: EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.1)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
-                            ? AppTheme.primaryColor
+                            ? Theme.of(context).colorScheme.primary
                             : (isDarkMode
                                 ? AppTheme.darkBorderColor
                                 : AppTheme.dividerColor),
@@ -787,7 +803,9 @@ class _FoodPageState extends State<FoodPage> {
                             displayText,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
                               color: textColor.withValues(alpha: 0.85),
                             ),
                             maxLines: 2,
@@ -799,7 +817,7 @@ class _FoodPageState extends State<FoodPage> {
                             padding: EdgeInsets.only(left: 8),
                             child: Icon(
                               Icons.check_circle,
-                              color: AppTheme.primaryColor,
+                              color: Theme.of(context).colorScheme.primary,
                               size: 24,
                             ),
                           ),
@@ -819,18 +837,13 @@ class _FoodPageState extends State<FoodPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode
-        ? AppTheme.darkBackgroundColor
-        : AppTheme.backgroundColor;
-    final cardColor = isDarkMode
-        ? AppTheme.darkCardColor
-        : Colors.white;
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
-    final secondaryTextColor = isDarkMode
-        ? Color(0xFFAEB7CE)
-        : AppTheme.textSecondaryColor;
+    final backgroundColor =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryTextColor =
+        isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
     // Use full data if loaded, otherwise use initial data
     final currentFood = _fullFoodData ?? widget.food;
@@ -852,49 +865,55 @@ class _FoodPageState extends State<FoodPage> {
                 child: InAppWebView(
                   initialUrlRequest: URLRequest(url: WebUri(_foodUrlToLoad!)),
                   initialSettings: WebViewHelper.getOptimizedSettings(),
-                onWebViewCreated: (controller) {
-                  _webViewController = controller;
-                  print('WebView created for food details');
+                  onWebViewCreated: (controller) {
+                    _webViewController = controller;
+                    print('WebView created for food details');
 
-                  // Register handler for JavaScript communication
-                  controller.addJavaScriptHandler(
-                    handlerName: 'NUTRITION_DATA_HANDLER',
-                    callback: (args) {
-                      print('JavaScript handler called with ${args.length} args');
-                      if (args.isNotEmpty) {
-                        _handleNutritionData(args[0]);
+                    // Register handler for JavaScript communication
+                    controller.addJavaScriptHandler(
+                      handlerName: 'NUTRITION_DATA_HANDLER',
+                      callback: (args) {
+                        print(
+                            'JavaScript handler called with ${args.length} args');
+                        if (args.isNotEmpty) {
+                          _handleNutritionData(args[0]);
+                        }
+                      },
+                    );
+                  },
+                  onLoadStop: (controller, url) async {
+                    print('===== PAGE LOADED =====');
+                    print('URL: $url');
+
+                    // Check if page is ready
+                    try {
+                      final hasNutritionFacts = await controller.evaluateJavascript(
+                          source:
+                              'document.querySelector(".nutrition_facts") !== null');
+                      print('Has nutrition_facts element: $hasNutritionFacts');
+
+                      if (hasNutritionFacts == true) {
+                        final nfClass = await controller.evaluateJavascript(
+                            source:
+                                'document.querySelector(".nutrition_facts").className');
+                        print('Nutrition facts class: $nfClass');
                       }
-                    },
-                  );
-                },
-                onLoadStop: (controller, url) async {
-                  print('===== PAGE LOADED =====');
-                  print('URL: $url');
-
-                  // Check if page is ready
-                  try {
-                    final hasNutritionFacts = await controller.evaluateJavascript(source: 'document.querySelector(".nutrition_facts") !== null');
-                    print('Has nutrition_facts element: $hasNutritionFacts');
-
-                    if (hasNutritionFacts == true) {
-                      final nfClass = await controller.evaluateJavascript(source: 'document.querySelector(".nutrition_facts").className');
-                      print('Nutrition facts class: $nfClass');
+                    } catch (e) {
+                      print('Error checking page: $e');
                     }
-                  } catch (e) {
-                    print('Error checking page: $e');
-                  }
 
-                  await _extractFullFoodData();
-                },
-                onConsoleMessage: (controller, consoleMessage) {
-                  print('[WebView Console] ${consoleMessage.messageLevel}: ${consoleMessage.message}');
-                },
-                onReceivedError: (controller, request, error) {
-                  print('WebView error: ${error.description}');
-                  setState(() {
-                    _isLoading = false; // Stop loading on WebView error
-                  });
-                },
+                    await _extractFullFoodData();
+                  },
+                  onConsoleMessage: (controller, consoleMessage) {
+                    print(
+                        '[WebView Console] ${consoleMessage.messageLevel}: ${consoleMessage.message}');
+                  },
+                  onReceivedError: (controller, request, error) {
+                    print('WebView error: ${error.description}');
+                    setState(() {
+                      _isLoading = false; // Stop loading on WebView error
+                    });
+                  },
                 ),
               ),
             ),
@@ -904,631 +923,697 @@ class _FoodPageState extends State<FoodPage> {
             child: Container(
               color: backgroundColor,
               child: CustomScrollView(
-            slivers: [
-              // Top App Bar
-              SliverAppBar(
-                expandedHeight: 0,
-                floating: false,
-                pinned: true,
-                backgroundColor: backgroundColor,
-                elevation: 0,
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back, color: textColor),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                title: widget.selectedMealType != null
-                    ? DropdownButton<MealType>(
-                        value: _selectedMealType,
-                        underline: SizedBox.shrink(),
-                        isDense: true,
-                        dropdownColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-                        icon: Icon(Icons.arrow_drop_down, color: textColor, size: 24),
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        items: MealType.values.map((mealType) {
-                          final option = DailyMealsProvider.getMealTypeOption(mealType);
-                          return DropdownMenuItem<MealType>(
-                            value: mealType,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(option.emoji, style: TextStyle(fontSize: 20)),
-                                SizedBox(width: 8),
-                                Text(option.name, style: TextStyle(fontSize: 20)),
-                              ],
+                slivers: [
+                  // Top App Bar
+                  SliverAppBar(
+                    expandedHeight: 0,
+                    floating: false,
+                    pinned: true,
+                    backgroundColor: backgroundColor,
+                    elevation: 0,
+                    leading: IconButton(
+                      icon: Icon(Icons.arrow_back, color: textColor),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    title: widget.selectedMealType != null
+                        ? DropdownButton<MealType>(
+                            value: _selectedMealType,
+                            underline: SizedBox.shrink(),
+                            isDense: true,
+                            dropdownColor: isDarkMode
+                                ? AppTheme.darkCardColor
+                                : Colors.white,
+                            icon: Icon(Icons.arrow_drop_down,
+                                color: textColor, size: 24),
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
                             ),
+                            items: MealType.values.map((mealType) {
+                              final option =
+                                  DailyMealsProvider.getMealTypeOption(
+                                      mealType);
+                              return DropdownMenuItem<MealType>(
+                                value: mealType,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(option.emoji,
+                                        style: TextStyle(fontSize: 20)),
+                                    SizedBox(width: 8),
+                                    Text(option.name,
+                                        style: TextStyle(fontSize: 20)),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (MealType? newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  _selectedMealType = newValue;
+                                });
+                              }
+                            },
+                          )
+                        : null,
+                    actions: [
+                      Consumer<FoodHistoryProvider>(
+                        builder: (context, historyProvider, child) {
+                          final currentFood = _fullFoodData ?? widget.food;
+                          final isFavorited =
+                              historyProvider.isFavorite(currentFood);
+
+                          return IconButton(
+                            icon: Icon(
+                              isFavorited
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isFavorited ? Colors.red : textColor,
+                            ),
+                            onPressed: () async {
+                              historyProvider.toggleFavorite(currentFood);
+
+                              // Sincroniza com o servidor
+                              final token = Provider.of<AuthService>(context,
+                                      listen: false)
+                                  .token;
+                              if (token == null || token.isEmpty) return;
+                              final svc = FavoriteFoodService(token: token);
+
+                              if (!isFavorited) {
+                                // Estava desfavoritado → agora favoritando
+                                final nutrient =
+                                    currentFood.nutrients?.isNotEmpty == true
+                                        ? currentFood.nutrients!.first
+                                        : null;
+                                await svc.addFavorite(FavoriteFood(
+                                  id: 0,
+                                  name: currentFood.name,
+                                  emoji: currentFood.emoji,
+                                  calories: currentFood.calories,
+                                  protein: currentFood.protein,
+                                  carbs: currentFood.carbs,
+                                  fat: currentFood.fat,
+                                  fiber: nutrient?.dietaryFiber ?? 0,
+                                  baseAmount: nutrient?.servingSize ?? 100,
+                                  baseUnit: nutrient?.servingUnit ?? 'g',
+                                ));
+                              } else {
+                                // Estava favoritado → desfavoritando
+                                final results =
+                                    await svc.searchFavorites(currentFood.name);
+                                if (results.isNotEmpty) {
+                                  await svc.deleteFavorite(results.first.id);
+                                }
+                              }
+                            },
                           );
-                        }).toList(),
-                        onChanged: (MealType? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _selectedMealType = newValue;
-                            });
-                          }
                         },
-                      )
-                    : null,
-                actions: [
-                  Consumer<FoodHistoryProvider>(
-                    builder: (context, historyProvider, child) {
-                      final currentFood = _fullFoodData ?? widget.food;
-                      final isFavorited = historyProvider.isFavorite(currentFood);
-
-                      return IconButton(
-                        icon: Icon(
-                          isFavorited ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorited ? Colors.red : textColor,
-                        ),
-                        onPressed: () async {
-                          historyProvider.toggleFavorite(currentFood);
-
-                          // Sincroniza com o servidor
-                          final token = Provider.of<AuthService>(context, listen: false).token;
-                          if (token == null || token.isEmpty) return;
-                          final svc = FavoriteFoodService(token: token);
-
-                          if (!isFavorited) {
-                            // Estava desfavoritado → agora favoritando
-                            final nutrient = currentFood.nutrients?.isNotEmpty == true
-                                ? currentFood.nutrients!.first
-                                : null;
-                            await svc.addFavorite(FavoriteFood(
-                              id: 0,
-                              name: currentFood.name,
-                              emoji: currentFood.emoji,
-                              calories: currentFood.calories,
-                              protein: currentFood.protein,
-                              carbs: currentFood.carbs,
-                              fat: currentFood.fat,
-                              fiber: nutrient?.dietaryFiber ?? 0,
-                              baseAmount: nutrient?.servingSize ?? 100,
-                              baseUnit: nutrient?.servingUnit ?? 'g',
-                            ));
-                          } else {
-                            // Estava favoritado → desfavoritando
-                            final results = await svc.searchFavorites(currentFood.name);
-                            if (results.isNotEmpty) {
-                              await svc.deleteFavorite(results.first.id);
-                            }
-                          }
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-
-              // Loading or Content
-              if (_isLoading)
-                SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                )
-              else
-
-              SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header with circular image and title
-                    Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Square food image with rounded corners
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: currentFood.imageUrl != null
-                                  ? CachedNetworkImage(
-                                      imageUrl: currentFood.imageUrl!,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Center(
-                                        child: Text(
-                                          currentFood.emoji,
-                                          style: TextStyle(fontSize: 40),
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) => Center(
-                                        child: Text(
-                                          currentFood.emoji,
-                                          style: TextStyle(fontSize: 40),
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        currentFood.emoji,
-                                        style: TextStyle(fontSize: 40),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          // Food name and brand
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  currentFood.name,
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor.withValues(alpha: 0.85),
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (currentFood.brand != null) ...[
-                                  SizedBox(height: 4),
-                                  Text(
-                                    currentFood.brand!,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: secondaryTextColor,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
-                    ),
+                    ],
+                  ),
 
-                    SizedBox(height: 8),
-
-                    // Serving Size Selector
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
+                  // Loading or Content
+                  if (_isLoading)
+                    SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Serving Size field
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          // Header with circular image and title
+                          Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Padding(
-                                  padding: EdgeInsets.only(left: 12, bottom: 8),
-                                  child: Text(
-                                    'Serving Size',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: secondaryTextColor,
-                                    ),
-                                  ),
-                                ),
-                                TextField(
-                                  controller: _servingSizeController,
-                                  keyboardType: TextInputType.number,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor.withValues(alpha: 0.85),
-                                  ),
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.transparent,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                        color: isDarkMode
-                                            ? AppTheme.darkBorderColor
-                                            : AppTheme.dividerColor,
-                                        width: 2,
+                                // Square food image with rounded corners
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    color: isDarkMode
+                                        ? Color(0xFF2E2E2E)
+                                        : Color(0xFFF3F4F6),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.1),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
                                       ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                        color: isDarkMode
-                                            ? AppTheme.darkBorderColor
-                                            : AppTheme.dividerColor,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                        color: AppTheme.primaryColor,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
-                                    ),
+                                    ],
                                   ),
-                                  onChanged: _updateServingSize,
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          // Unit field
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: EdgeInsets.only(left: 12, bottom: 8),
-                                  child: Text(
-                                    'Unit',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: secondaryTextColor,
-                                    ),
-                                  ),
-                                ),
-                                InkWell(
-                                  onTap: _showPortionPicker,
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: isDarkMode
-                                            ? AppTheme.darkBorderColor
-                                            : AppTheme.dividerColor,
-                                        width: 2,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            _currentServingUnit ?? (_selectedPortionDescription != null
-                                                ? _parsePortionDescription(_selectedPortionDescription!)['displayText'] as String
-                                                : '${_currentServingSize.toStringAsFixed(0)} ${nutrient?.servingUnit ?? 'g'}'),
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
-                                              color: textColor.withValues(alpha: 0.85),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: currentFood.imageUrl != null
+                                        ? CachedNetworkImage(
+                                            imageUrl: currentFood.imageUrl!,
+                                            fit: BoxFit.cover,
+                                            placeholder: (context, url) =>
+                                                Center(
+                                              child: Text(
+                                                currentFood.emoji,
+                                                style: TextStyle(fontSize: 40),
+                                              ),
                                             ),
-                                            overflow: TextOverflow.ellipsis,
+                                            errorWidget:
+                                                (context, url, error) => Center(
+                                              child: Text(
+                                                currentFood.emoji,
+                                                style: TextStyle(fontSize: 40),
+                                              ),
+                                            ),
+                                          )
+                                        : Center(
+                                            child: Text(
+                                              currentFood.emoji,
+                                              style: TextStyle(fontSize: 40),
+                                            ),
                                           ),
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                // Food name and brand
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        currentFood.name,
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color:
+                                              textColor.withValues(alpha: 0.85),
                                         ),
-                                        Icon(
-                                          Icons.unfold_more,
-                                          color: secondaryTextColor,
-                                          size: 20,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (currentFood.brand != null) ...[
+                                        SizedBox(height: 4),
+                                        Text(
+                                          currentFood.brand!,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: secondaryTextColor,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
 
-                    SizedBox(height: 24),
+                          SizedBox(height: 8),
 
-                    // Nutrition Facts - Macro Summary Card
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildMacroCardCompact(
-                              emoji: '🔥',
-                              value: calories.toStringAsFixed(0),
-                              unit: 'kcal',
-                              color: const Color(0xFFFF6B9D),
-                              isDarkMode: isDarkMode,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildMacroCardCompact(
-                              emoji: '💪',
-                              value: protein.toStringAsFixed(1),
-                              unit: 'g prot',
-                              color: const Color(0xFF9575CD),
-                              isDarkMode: isDarkMode,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildMacroCardCompact(
-                              emoji: '🌾',
-                              value: carbs.toStringAsFixed(1),
-                              unit: 'g carb',
-                              color: const Color(0xFFFFB74D),
-                              isDarkMode: isDarkMode,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildMacroCardCompact(
-                              emoji: '🥑',
-                              value: fat.toStringAsFixed(1),
-                              unit: 'g gord',
-                              color: const Color(0xFF4DB6AC),
-                              isDarkMode: isDarkMode,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    SizedBox(height: 24),
-
-                    // Detailed Nutrition Facts Card
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        elevation: 1.5,
-                        shadowColor: isDarkMode
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : Colors.black.withValues(alpha: 0.08),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        color: cardColor,
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                            // Macronutrients Section
-                            Text(
-                              'Macronutrients',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textColor.withValues(alpha: 0.85),
-                              ),
-                            ),
-
-                            Divider(
-                              color: isDarkMode ? Colors.white24 : Colors.black12,
-                              height: 24,
-                              thickness: 1,
-                            ),
-
-                            // Calories
-                            MacroNutrientRow(
-                              label: 'Calories',
-                              value: '${calories.toStringAsFixed(0)} kcal',
-                              isDarkMode: isDarkMode,
-                            ),
-
-                            SizedBox(height: 12),
-
-                            // Protein
-                            MacroNutrientRow(
-                              label: 'Protein',
-                              value: '${protein.toStringAsFixed(0)} g',
-                              isDarkMode: isDarkMode,
-                            ),
-
-                            SizedBox(height: 12),
-
-                            // Total Carbohydrates Group
-                            MacroNutrientRow(
-                              label: 'Total Carbohydrates',
-                              value: '${carbs.toStringAsFixed(0)} g',
-                              isDarkMode: isDarkMode,
-                            ),
-                            if (nutrient?.dietaryFiber != null || nutrient?.sugars != null)
-                              Container(
-                                margin: EdgeInsets.only(left: 0, top: 8),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: Color(0xFFA1887F).withValues(alpha: 0.3),
-                                      width: 2,
-                                    ),
+                          // Serving Size Selector
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                // Serving Size field
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                            left: 12, bottom: 8),
+                                        child: Text(
+                                          'Serving Size',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: secondaryTextColor,
+                                          ),
+                                        ),
+                                      ),
+                                      TextField(
+                                        controller: _servingSizeController,
+                                        keyboardType: TextInputType.number,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color:
+                                              textColor.withValues(alpha: 0.85),
+                                        ),
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: Colors.transparent,
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                              color: isDarkMode
+                                                  ? AppTheme.darkBorderColor
+                                                  : AppTheme.dividerColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                              color: isDarkMode
+                                                  ? AppTheme.darkBorderColor
+                                                  : AppTheme.dividerColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 16,
+                                          ),
+                                        ),
+                                        onChanged: _updateServingSize,
+                                      ),
+                                    ],
                                   ),
                                 ),
+                                SizedBox(width: 12),
+                                // Unit field
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                            left: 12, bottom: 8),
+                                        child: Text(
+                                          'Unit',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: secondaryTextColor,
+                                          ),
+                                        ),
+                                      ),
+                                      InkWell(
+                                        onTap: _showPortionPicker,
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 16,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: isDarkMode
+                                                  ? AppTheme.darkBorderColor
+                                                  : AppTheme.dividerColor,
+                                              width: 2,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  _currentServingUnit ??
+                                                      (_selectedPortionDescription !=
+                                                              null
+                                                          ? _parsePortionDescription(
+                                                                      _selectedPortionDescription!)[
+                                                                  'displayText']
+                                                              as String
+                                                          : '${_currentServingSize.toStringAsFixed(0)} ${nutrient?.servingUnit ?? 'g'}'),
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: textColor.withValues(
+                                                        alpha: 0.85),
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.unfold_more,
+                                                color: secondaryTextColor,
+                                                size: 20,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: 24),
+
+                          // Nutrition Facts - Macro Summary Card
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildMacroCardCompact(
+                                    icon: MacroTheme.caloriesIcon,
+                                    value: calories.toStringAsFixed(0),
+                                    unit: 'kcal',
+                                    color: MacroTheme.caloriesColor,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildMacroCardCompact(
+                                    icon: MacroTheme.proteinIcon,
+                                    value: protein.toStringAsFixed(1),
+                                    unit: 'g prot',
+                                    color: MacroTheme.proteinColor,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildMacroCardCompact(
+                                    icon: MacroTheme.carbsIcon,
+                                    value: carbs.toStringAsFixed(1),
+                                    unit: 'g carb',
+                                    color: MacroTheme.carbsColor,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildMacroCardCompact(
+                                    icon: MacroTheme.fatIcon,
+                                    value: fat.toStringAsFixed(1),
+                                    unit: 'g gord',
+                                    color: MacroTheme.fatColor,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: 24),
+
+                          // Detailed Nutrition Facts Card
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Card(
+                              margin: EdgeInsets.zero,
+                              elevation: 1.5,
+                              shadowColor: isDarkMode
+                                  ? Colors.black.withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.08),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              color: cardColor,
+                              child: Padding(
+                                padding: EdgeInsets.all(20),
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (nutrient?.dietaryFiber != null)
-                                      SubNutrientRow(
-                                        label: 'Dietary Fiber',
-                                        value: '${_getScaledValue(nutrient?.dietaryFiber).toStringAsFixed(0)} g',
+                                    // Macronutrients Section
+                                    Text(
+                                      'Macronutrients',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            textColor.withValues(alpha: 0.85),
+                                      ),
+                                    ),
+
+                                    Divider(
+                                      color: isDarkMode
+                                          ? Colors.white24
+                                          : Colors.black12,
+                                      height: 24,
+                                      thickness: 1,
+                                    ),
+
+                                    // Calories
+                                    MacroNutrientRow(
+                                      label: 'Calories',
+                                      value:
+                                          '${calories.toStringAsFixed(0)} kcal',
+                                      isDarkMode: isDarkMode,
+                                    ),
+
+                                    SizedBox(height: 12),
+
+                                    // Protein
+                                    MacroNutrientRow(
+                                      label: 'Protein',
+                                      value: '${protein.toStringAsFixed(0)} g',
+                                      isDarkMode: isDarkMode,
+                                    ),
+
+                                    SizedBox(height: 12),
+
+                                    // Total Carbohydrates Group
+                                    MacroNutrientRow(
+                                      label: 'Total Carbohydrates',
+                                      value: '${carbs.toStringAsFixed(0)} g',
+                                      isDarkMode: isDarkMode,
+                                    ),
+                                    if (nutrient?.dietaryFiber != null ||
+                                        nutrient?.sugars != null)
+                                      Container(
+                                        margin:
+                                            EdgeInsets.only(left: 0, top: 8),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            left: BorderSide(
+                                              color: Color(0xFFA1887F)
+                                                  .withValues(alpha: 0.3),
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            if (nutrient?.dietaryFiber != null)
+                                              SubNutrientRow(
+                                                label: 'Dietary Fiber',
+                                                value:
+                                                    '${_getScaledValue(nutrient?.dietaryFiber).toStringAsFixed(0)} g',
+                                                isDarkMode: isDarkMode,
+                                              ),
+                                            if (nutrient?.sugars != null)
+                                              SubNutrientRow(
+                                                label: 'Sugars',
+                                                value:
+                                                    '${_getScaledValue(nutrient?.sugars).toStringAsFixed(0)} g',
+                                                isDarkMode: isDarkMode,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    SizedBox(height: 12),
+
+                                    // Total Fat Group
+                                    MacroNutrientRow(
+                                      label: 'Total Fat',
+                                      value: '${fat.toStringAsFixed(0)} g',
+                                      isDarkMode: isDarkMode,
+                                    ),
+                                    if (nutrient?.saturatedFat != null ||
+                                        nutrient?.transFat != null)
+                                      Container(
+                                        margin:
+                                            EdgeInsets.only(left: 0, top: 8),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            left: BorderSide(
+                                              color: MacroTheme.proteinColor
+                                                  .withValues(alpha: 0.3),
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            if (nutrient?.saturatedFat != null)
+                                              SubNutrientRow(
+                                                label: 'Saturated Fat',
+                                                value:
+                                                    '${_getScaledValue(nutrient?.saturatedFat).toStringAsFixed(1)} g',
+                                                isDarkMode: isDarkMode,
+                                              ),
+                                            if (nutrient?.transFat != null)
+                                              SubNutrientRow(
+                                                label: 'Trans Fat',
+                                                value:
+                                                    '${_getScaledValue(nutrient?.transFat).toStringAsFixed(0)} g',
+                                                isDarkMode: isDarkMode,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    SizedBox(height: 24),
+
+                                    // Micronutrients Section
+                                    Text(
+                                      'Micronutrients',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            textColor.withValues(alpha: 0.85),
+                                      ),
+                                    ),
+
+                                    Divider(
+                                      color: isDarkMode
+                                          ? Colors.white24
+                                          : Colors.black12,
+                                      height: 24,
+                                      thickness: 1,
+                                    ),
+
+                                    // Micronutrients List
+                                    if (nutrient?.cholesterol != null)
+                                      MicroNutrientRow(
+                                        label: 'Cholesterol',
+                                        value:
+                                            '${_getScaledValue(nutrient?.cholesterol).toStringAsFixed(0)} mg',
                                         isDarkMode: isDarkMode,
                                       ),
-                                    if (nutrient?.sugars != null)
-                                      SubNutrientRow(
-                                        label: 'Sugars',
-                                        value: '${_getScaledValue(nutrient?.sugars).toStringAsFixed(0)} g',
+                                    if (nutrient?.cholesterol != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.sodium != null)
+                                      MicroNutrientRow(
+                                        label: 'Sodium',
+                                        value:
+                                            '${_getScaledValue(nutrient?.sodium).toStringAsFixed(0)} mg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.sodium != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.potassium != null)
+                                      MicroNutrientRow(
+                                        label: 'Potassium',
+                                        value:
+                                            '${_getScaledValue(nutrient?.potassium).toStringAsFixed(0)} mg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.potassium != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.calcium != null)
+                                      MicroNutrientRow(
+                                        label: 'Calcium',
+                                        value:
+                                            '${_getScaledValue(nutrient?.calcium).toStringAsFixed(0)} mg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.calcium != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.iron != null)
+                                      MicroNutrientRow(
+                                        label: 'Iron',
+                                        value:
+                                            '${_getScaledValue(nutrient?.iron).toStringAsFixed(1)} mg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.iron != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.vitaminD != null)
+                                      MicroNutrientRow(
+                                        label: 'Vitamin D',
+                                        value:
+                                            '${_getScaledValue(nutrient?.vitaminD).toStringAsFixed(1)} mcg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.vitaminD != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.vitaminA != null)
+                                      MicroNutrientRow(
+                                        label: 'Vitamin A',
+                                        value:
+                                            '${_getScaledValue(nutrient?.vitaminA).toStringAsFixed(1)} mcg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.vitaminA != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.vitaminC != null)
+                                      MicroNutrientRow(
+                                        label: 'Vitamin C',
+                                        value:
+                                            '${_getScaledValue(nutrient?.vitaminC).toStringAsFixed(1)} mg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.vitaminC != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.vitaminB6 != null)
+                                      MicroNutrientRow(
+                                        label: 'Vitamin B6',
+                                        value:
+                                            '${_getScaledValue(nutrient?.vitaminB6).toStringAsFixed(1)} mg',
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    if (nutrient?.vitaminB6 != null)
+                                      SizedBox(height: 12),
+
+                                    if (nutrient?.vitaminB12 != null)
+                                      MicroNutrientRow(
+                                        label: 'Vitamin B12',
+                                        value:
+                                            '${_getScaledValue(nutrient?.vitaminB12).toStringAsFixed(1)} mcg',
                                         isDarkMode: isDarkMode,
                                       ),
                                   ],
                                 ),
                               ),
-
-                            SizedBox(height: 12),
-
-                            // Total Fat Group
-                            MacroNutrientRow(
-                              label: 'Total Fat',
-                              value: '${fat.toStringAsFixed(0)} g',
-                              isDarkMode: isDarkMode,
                             ),
-                            if (nutrient?.saturatedFat != null || nutrient?.transFat != null)
-                              Container(
-                                margin: EdgeInsets.only(left: 0, top: 8),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: Color(0xFF9575CD).withValues(alpha: 0.3),
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    if (nutrient?.saturatedFat != null)
-                                      SubNutrientRow(
-                                        label: 'Saturated Fat',
-                                        value: '${_getScaledValue(nutrient?.saturatedFat).toStringAsFixed(1)} g',
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                    if (nutrient?.transFat != null)
-                                      SubNutrientRow(
-                                        label: 'Trans Fat',
-                                        value: '${_getScaledValue(nutrient?.transFat).toStringAsFixed(0)} g',
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                  ],
-                                ),
-                              ),
-
-                            SizedBox(height: 24),
-
-                            // Micronutrients Section
-                            Text(
-                              'Micronutrients',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textColor.withValues(alpha: 0.85),
-                              ),
-                            ),
-
-                            Divider(
-                              color: isDarkMode ? Colors.white24 : Colors.black12,
-                              height: 24,
-                              thickness: 1,
-                            ),
-
-                            // Micronutrients List
-                            if (nutrient?.cholesterol != null)
-                              MicroNutrientRow(
-                                label: 'Cholesterol',
-                                value: '${_getScaledValue(nutrient?.cholesterol).toStringAsFixed(0)} mg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.cholesterol != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.sodium != null)
-                              MicroNutrientRow(
-                                label: 'Sodium',
-                                value: '${_getScaledValue(nutrient?.sodium).toStringAsFixed(0)} mg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.sodium != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.potassium != null)
-                              MicroNutrientRow(
-                                label: 'Potassium',
-                                value: '${_getScaledValue(nutrient?.potassium).toStringAsFixed(0)} mg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.potassium != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.calcium != null)
-                              MicroNutrientRow(
-                                label: 'Calcium',
-                                value: '${_getScaledValue(nutrient?.calcium).toStringAsFixed(0)} mg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.calcium != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.iron != null)
-                              MicroNutrientRow(
-                                label: 'Iron',
-                                value: '${_getScaledValue(nutrient?.iron).toStringAsFixed(1)} mg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.iron != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.vitaminD != null)
-                              MicroNutrientRow(
-                                label: 'Vitamin D',
-                                value: '${_getScaledValue(nutrient?.vitaminD).toStringAsFixed(1)} mcg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.vitaminD != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.vitaminA != null)
-                              MicroNutrientRow(
-                                label: 'Vitamin A',
-                                value: '${_getScaledValue(nutrient?.vitaminA).toStringAsFixed(1)} mcg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.vitaminA != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.vitaminC != null)
-                              MicroNutrientRow(
-                                label: 'Vitamin C',
-                                value: '${_getScaledValue(nutrient?.vitaminC).toStringAsFixed(1)} mg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.vitaminC != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.vitaminB6 != null)
-                              MicroNutrientRow(
-                                label: 'Vitamin B6',
-                                value: '${_getScaledValue(nutrient?.vitaminB6).toStringAsFixed(1)} mg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            if (nutrient?.vitaminB6 != null)
-                              SizedBox(height: 12),
-
-                            if (nutrient?.vitaminB12 != null)
-                              MicroNutrientRow(
-                                label: 'Vitamin B12',
-                                value: '${_getScaledValue(nutrient?.vitaminB12).toStringAsFixed(1)} mcg',
-                                isDarkMode: isDarkMode,
-                              ),
-                            ],
                           ),
-                        ),
+
+                          SizedBox(height: 120), // Space for FAB
+                        ],
                       ),
                     ),
-
-                    SizedBox(height: 120), // Space for FAB
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
             ),
           ),
 
@@ -1561,14 +1646,17 @@ class _FoodPageState extends State<FoodPage> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                     elevation: 1,
-                    shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+                    shadowColor: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.4),
                   ),
                   child: Text(
                     'Add to Meal',
@@ -1585,4 +1673,3 @@ class _FoodPageState extends State<FoodPage> {
     );
   }
 }
-

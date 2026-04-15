@@ -141,7 +141,7 @@ All routes registered in `servidor_do_app_nodejs/src/routes/index.ts`:
 - `/pix-payment` - PIX payment integration
 
 ### Important Files for AI Features
-- `lib/controllers/ai_tutor_controller.dart` - Manages AI tutor conversations with history limiting
+- `lib/controllers/nutrition_assistant_controller.dart` - Manages nutrition assistant conversations with history limiting
 - `lib/utils/ai_interaction_helper.dart` - Helper utilities for AI interactions
 - `lib/utils/conversation_helper.dart` - Conversation management utilities
 - `lib/widgets/streaming_response_display.dart` - Real-time display of streamed AI responses

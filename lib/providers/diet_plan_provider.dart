@@ -47,20 +47,16 @@ class DietPlanProvider extends ChangeNotifier {
   DietPlan? get partialDietPlan => _partialDietPlan;
   int get expectedMealsCount => _expectedMealsCount;
   DietMode get dietMode => _preferences.dietMode;
-  bool get hasCompletedDietPersonalization =>
-      missingDietPersonalizationTopics.isEmpty;
+  bool get hasCompletedDietPersonalization => hasReviewedDietGenerationPreferences;
+  bool get hasReviewedDietGenerationPreferences =>
+      _preferences.hasReviewedRestrictions ||
+      _preferences.hasReviewedFoodPreferences ||
+      _preferences.hasReviewedRoutineNeeds;
   List<String> get missingDietPersonalizationTopics {
-    final missing = <String>[];
-    if (!_preferences.hasReviewedRestrictions) {
-      missing.add('dietary_restrictions');
+    if (hasReviewedDietGenerationPreferences) {
+      return const [];
     }
-    if (!_preferences.hasReviewedFoodPreferences) {
-      missing.add('food_preferences');
-    }
-    if (!_preferences.hasReviewedRoutineNeeds) {
-      missing.add('routine_and_appetite');
-    }
-    return missing;
+    return const ['optional_food_preferences'];
   }
 
   // Check if has any diet plan (for any date or weekly)
@@ -124,7 +120,7 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       final response = await http.get(
-        Uri.parse('${AppConstants.API_BASE_URL}/diet/premium-status'),
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/premium-status'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -149,7 +145,7 @@ class DietPlanProvider extends ChangeNotifier {
       print('📥 DietPlanProvider: Carregando dietas do servidor...');
 
       final response = await http.get(
-        Uri.parse('${AppConstants.API_BASE_URL}/diet/plans'),
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plans'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -291,7 +287,7 @@ class DietPlanProvider extends ChangeNotifier {
       };
 
       final response = await http.post(
-        Uri.parse('${AppConstants.API_BASE_URL}/diet/plan'),
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plan'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -323,7 +319,7 @@ class DietPlanProvider extends ChangeNotifier {
 
     try {
       await http.delete(
-        Uri.parse('${AppConstants.API_BASE_URL}/diet/plan/$dateKey'),
+        Uri.parse('${AppConstants.DIET_API_BASE_URL}/diet/plan/$dateKey'),
         headers: {
           'Authorization': 'Bearer $_authToken',
           'Content-Type': 'application/json',
@@ -350,6 +346,14 @@ class DietPlanProvider extends ChangeNotifier {
   void updatePreferences(DietPreferences newPreferences) {
     _preferences = newPreferences;
     _saveToPreferences();
+    notifyListeners();
+  }
+
+  Future<void> applyServerPreferencesSnapshot(
+    Map<String, dynamic> payload,
+  ) async {
+    _preferences = DietPreferences.fromJson(payload);
+    await _saveToPreferences();
     notifyListeners();
   }
 
@@ -761,13 +765,62 @@ class DietPlanProvider extends ChangeNotifier {
     try {
       return jsonDecode(jsonString);
     } catch (_) {
-      final sanitized = jsonString
-          .replaceAll(RegExp(r',\s*([\]}])'), r'$1')
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
+      final sanitized = _repairAiJson(jsonString);
       return jsonDecode(sanitized);
     }
+  }
+
+  String _repairAiJson(String jsonString) {
+    final sanitized = jsonString
+        .replaceAll(RegExp(r',\s*([\]}])'), r'$1')
+        .replaceAll('```json', '')
+        .replaceAll('```', '')
+        .trim();
+
+    final stack = <String>[];
+    final buffer = StringBuffer(sanitized);
+    var inString = false;
+    var escaped = false;
+
+    for (final char in sanitized.split('')) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char == r'\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char == '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (char == '{' || char == '[') {
+        stack.add(char);
+        continue;
+      }
+
+      if ((char == '}' || char == ']') && stack.isNotEmpty) {
+        final expected = char == '}' ? '{' : '[';
+        if (stack.last == expected) {
+          stack.removeLast();
+        }
+      }
+    }
+
+    while (stack.isNotEmpty) {
+      final open = stack.removeLast();
+      buffer.write(open == '{' ? '}' : ']');
+    }
+
+    return buffer.toString();
   }
 
   String? _extractJsonPayload(String response) {

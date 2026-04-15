@@ -117,8 +117,19 @@ class FreeChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Cria uma nova conversa e retorna o ID
+  /// Cria uma nova conversa e retorna o ID.
+  /// Se já existir uma conversa vazia (sem mensagens do usuário), reutiliza ela
+  /// para evitar acumular "Nova conversa" duplicadas no histórico.
   String createConversation() {
+    try {
+      final empty = _conversations.firstWhere(
+        (c) => c.messages.where((m) => m['isUser'] == true).isEmpty,
+      );
+      print('♻️ FreeChatProvider: Reutilizando conversa vazia: ${empty.id}');
+      return empty.id;
+    } catch (_) {
+      // nenhuma vazia encontrada → cria nova abaixo
+    }
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final conversation = FreeChatConversation(
       id: id,
@@ -145,10 +156,24 @@ class FreeChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Obtém as mensagens de uma conversa
+  /// Obtém as mensagens de uma conversa (garante timestamp como DateTime)
   List<Map<String, dynamic>> getMessages(String id) {
     final conversation = getConversation(id);
-    return conversation?.messages ?? [];
+    final msgs = conversation?.messages ?? [];
+    return msgs.map((m) {
+      final copy = Map<String, dynamic>.from(m);
+      final ts = copy['timestamp'];
+      if (ts is String) {
+        try {
+          copy['timestamp'] = DateTime.parse(ts);
+        } catch (_) {
+          copy['timestamp'] = DateTime.now();
+        }
+      } else if (ts is! DateTime) {
+        copy['timestamp'] = DateTime.now();
+      }
+      return copy;
+    }).toList();
   }
 
   /// Atualiza o título de uma conversa

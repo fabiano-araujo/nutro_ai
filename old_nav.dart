@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'lib/screens/tools_screen.dart';
-import 'lib/screens/ai_tutor_screen.dart';
+import 'lib/screens/nutrition_assistant_screen.dart';
 import 'lib/theme/app_theme.dart';
 import 'lib/i18n/app_localizations_extension.dart';
 import 'lib/services/rate_app_service.dart';

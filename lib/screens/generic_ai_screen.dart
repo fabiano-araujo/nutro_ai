@@ -10,7 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../i18n/language_controller.dart';
 import 'package:provider/provider.dart';
-import '../screens/ai_tutor_screen.dart';
+import '../screens/nutrition_assistant_screen.dart';
 import 'dart:convert';
 
 enum ParameterType {
@@ -175,11 +175,11 @@ class _GenericAIScreenState extends State<GenericAIScreen>
     // Construir o prompt antes de navegar
     final prompt = _buildPrompt();
 
-    // Navegue para a tela NutroChatScreen e passe o prompt
+    // Navegue para a tela NutritionAssistantScreen e passe o prompt
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => NutroChatScreen(initialPrompt: prompt),
+        builder: (context) => NutritionAssistantScreen(initialPrompt: prompt),
       ),
     );
   }

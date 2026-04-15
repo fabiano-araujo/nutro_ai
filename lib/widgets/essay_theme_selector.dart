@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/essay_template_model.dart';
 import '../providers/essay_template_provider.dart';
+import 'state_animation.dart';
 
 /// Widget para seleção de temas de redação
 class EssayThemeSelector extends StatefulWidget {
@@ -28,7 +29,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  
+
   String _selectedCategory = '';
   List<EssayTheme> _filteredThemes = [];
   bool _isSearching = false;
@@ -36,9 +37,10 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: widget.showTrending ? 3 : 2, vsync: this);
+    _tabController =
+        TabController(length: widget.showTrending ? 3 : 2, vsync: this);
     _searchController.addListener(_onSearchChanged);
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialThemes();
     });
@@ -61,7 +63,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
   void _onSearchChanged() {
     final query = _searchController.text;
     final provider = Provider.of<EssayTemplateProvider>(context, listen: false);
-    
+
     setState(() {
       _isSearching = query.isNotEmpty;
       if (_isSearching) {
@@ -76,7 +78,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
   void _onCategorySelected(String category) {
     final provider = Provider.of<EssayTemplateProvider>(context, listen: false);
-    
+
     setState(() {
       _selectedCategory = category;
       _filteredThemes = category.isEmpty
@@ -98,7 +100,11 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const StateAnimation(
+                  fallbackIcon: Icons.error_outline,
+                  size: 120,
+                  accentColor: Colors.red,
+                ),
                 const SizedBox(height: 16),
                 Text(provider.error!),
                 const SizedBox(height: 16),
@@ -115,10 +121,10 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
           children: [
             // Barra de pesquisa
             if (widget.showSearch) _buildSearchBar(),
-            
+
             // Abas
             _buildTabBar(),
-            
+
             // Conteúdo das abas
             Expanded(
               child: TabBarView(
@@ -126,10 +132,10 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                 children: [
                   // Aba "Todos"
                   _buildAllThemesTab(provider),
-                  
+
                   // Aba "Categorias"
                   if (widget.showCategories) _buildCategoriesTab(provider),
-                  
+
                   // Aba "Em Alta"
                   if (widget.showTrending) _buildTrendingTab(provider),
                 ],
@@ -187,7 +193,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
   Widget _buildAllThemesTab(EssayTemplateProvider provider) {
     final themes = _isSearching ? _filteredThemes : provider.themes;
-    
+
     if (themes.isEmpty) {
       return _buildEmptyState(
         _isSearching ? 'Nenhum tema encontrado' : 'Nenhum tema disponível',
@@ -210,7 +216,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
       children: [
         // Filtro de categorias
         _buildCategoryFilter(provider),
-        
+
         // Lista de temas filtrados
         Expanded(
           child: _filteredThemes.isEmpty
@@ -230,7 +236,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
   Widget _buildTrendingTab(EssayTemplateProvider provider) {
     final trendingThemes = provider.getTrendingThemes();
-    
+
     if (trendingThemes.isEmpty) {
       return _buildEmptyState('Nenhum tema em alta', Icons.trending_up);
     }
@@ -247,7 +253,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
   Widget _buildCategoryFilter(EssayTemplateProvider provider) {
     final categories = provider.getAvailableCategories();
-    
+
     return Container(
       height: 50,
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -259,7 +265,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
           if (index == 0) {
             return _buildCategoryChip('Todos', '');
           }
-          
+
           final category = categories[index - 1];
           return _buildCategoryChip(category, category);
         },
@@ -269,7 +275,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
   Widget _buildCategoryChip(String label, String value) {
     final isSelected = _selectedCategory == value;
-    
+
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
@@ -286,13 +292,12 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
   Widget _buildThemeCard(EssayTheme theme, {bool showTrendingBadge = false}) {
     final isSelected = widget.initialTheme?.id == theme.id;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isSelected ? 4 : 1,
-      color: isSelected 
-          ? Theme.of(context).primaryColor.withOpacity(0.1)
-          : null,
+      color:
+          isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
       child: InkWell(
         onTap: () => widget.onThemeSelected(theme),
         borderRadius: BorderRadius.circular(8),
@@ -310,13 +315,15 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? Theme.of(context).primaryColor : null,
+                        color:
+                            isSelected ? Theme.of(context).primaryColor : null,
                       ),
                     ),
                   ),
                   if (showTrendingBadge)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.orange,
                         borderRadius: BorderRadius.circular(12),
@@ -324,7 +331,8 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.trending_up, size: 12, color: Colors.white),
+                          Icon(Icons.trending_up,
+                              size: 12, color: Colors.white),
                           const SizedBox(width: 4),
                           Text(
                             'Em Alta',
@@ -339,9 +347,9 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                     ),
                 ],
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               // Descrição
               Text(
                 theme.description,
@@ -352,9 +360,9 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Metadados
               Row(
                 children: [
@@ -379,7 +387,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                   ],
                 ],
               ),
-              
+
               // Keywords
               if (theme.keywords.isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -388,7 +396,8 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                   runSpacing: 4,
                   children: theme.keywords.take(3).map((keyword) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.grey.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
@@ -441,7 +450,11 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: Colors.grey),
+          StateAnimation(
+            fallbackIcon: icon,
+            size: 120,
+            accentColor: Colors.grey,
+          ),
           const SizedBox(height: 16),
           Text(
             message,

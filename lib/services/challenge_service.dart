@@ -20,6 +20,8 @@ class Challenge {
   final int participantCount;
   final List<ChallengeParticipant>? participants;
   final MyParticipation? myParticipation;
+  final ChallengeObjective? objective;
+  final ChallengeProgress? progress;
 
   Challenge({
     required this.id,
@@ -37,6 +39,8 @@ class Challenge {
     this.participantCount = 0,
     this.participants,
     this.myParticipation,
+    this.objective,
+    this.progress,
   });
 
   factory Challenge.fromJson(Map<String, dynamic> json) {
@@ -62,6 +66,12 @@ class Challenge {
       myParticipation: json['myParticipation'] != null
           ? MyParticipation.fromJson(json['myParticipation'])
           : null,
+      objective: json['objective'] != null
+          ? ChallengeObjective.fromJson(json['objective'])
+          : null,
+      progress: json['progress'] != null
+          ? ChallengeProgress.fromJson(json['progress'])
+          : null,
     );
   }
 
@@ -86,6 +96,10 @@ class Challenge {
         return 'Personalizado';
     }
   }
+
+  int get targetDays => progress?.targetDays ?? objective?.targetDays ?? durationDays;
+
+  double get completionPercent => progress?.percent ?? 0;
 }
 
 /// Participante de desafio
@@ -129,6 +143,70 @@ class MyParticipation {
     return MyParticipation(
       totalPoints: json['totalPoints'] ?? 0,
       currentStreak: json['currentStreak'] ?? 0,
+    );
+  }
+}
+
+class ChallengeObjective {
+  final String type;
+  final String label;
+  final int targetDays;
+  final double targetValue;
+
+  ChallengeObjective({
+    required this.type,
+    required this.label,
+    required this.targetDays,
+    required this.targetValue,
+  });
+
+  factory ChallengeObjective.fromJson(Map<String, dynamic> json) {
+    return ChallengeObjective(
+      type: json['type'] ?? 'LOGGING_STREAK',
+      label: json['label'] ?? '',
+      targetDays: json['targetDays'] ?? 0,
+      targetValue: (json['targetValue'] is String
+              ? double.tryParse(json['targetValue'])
+              : json['targetValue']?.toDouble()) ??
+          0,
+    );
+  }
+}
+
+class ChallengeProgress {
+  final int completedDays;
+  final int targetDays;
+  final double currentValue;
+  final double targetValue;
+  final double percent;
+  final bool canCheckInToday;
+
+  ChallengeProgress({
+    required this.completedDays,
+    required this.targetDays,
+    required this.currentValue,
+    required this.targetValue,
+    required this.percent,
+    required this.canCheckInToday,
+  });
+
+  factory ChallengeProgress.fromJson(Map<String, dynamic> json) {
+    return ChallengeProgress(
+      completedDays: json['completedDays'] ?? 0,
+      targetDays: json['targetDays'] ?? 0,
+      currentValue: (json['currentValue'] is String
+              ? double.tryParse(json['currentValue'])
+              : json['currentValue']?.toDouble()) ??
+          0,
+      targetValue: (json['targetValue'] is String
+              ? double.tryParse(json['targetValue'])
+              : json['targetValue']?.toDouble()) ??
+          0,
+      percent: (json['percent'] is String
+              ? double.tryParse(json['percent'])
+              : json['percent']?.toDouble()) ??
+          0,
+      canCheckInToday: json['canCheckInToday'] ?? false,
     );
   }
 }
@@ -410,9 +488,6 @@ class ChallengeService {
   static Future<DayPoints?> recordProgress({
     required String token,
     required int challengeId,
-    required bool logged,
-    required bool hitProtein,
-    required bool hitGoal,
   }) async {
     try {
       final response = await http.post(
@@ -421,11 +496,7 @@ class ChallengeService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'logged': logged,
-          'hitProtein': hitProtein,
-          'hitGoal': hitGoal,
-        }),
+        body: jsonEncode({}),
       );
 
       if (response.statusCode == 200) {

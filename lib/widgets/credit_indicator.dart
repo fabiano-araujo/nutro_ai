@@ -14,6 +14,9 @@ class CreditIndicator extends StatelessWidget {
     return Consumer<CreditProvider>(
       builder: (context, creditProvider, child) {
         final hasLowCredits = creditProvider.creditsRemaining <= 4;
+        final creditColor =
+            _getCreditColor(context, creditProvider.creditsRemaining);
+        final creditForegroundColor = _getCreditForegroundColor(creditColor);
 
         return Stack(
           clipBehavior: Clip.none,
@@ -28,20 +31,16 @@ class CreditIndicator extends StatelessWidget {
                     }
                   },
               child: Tooltip(
-                message: context.tr.translate('tap_for_premium') ??
-                    'Toque para obter Premium',
+                message: context.tr.translate('tap_for_premium'),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getCreditColor(
-                        context, creditProvider.creditsRemaining),
+                    color: creditColor,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: _getCreditColor(
-                                context, creditProvider.creditsRemaining)
-                            .withOpacity(0.3),
+                        color: creditColor.withValues(alpha: 0.3),
                         blurRadius: 4,
                         offset: Offset(0, 2),
                       ),
@@ -53,13 +52,13 @@ class CreditIndicator extends StatelessWidget {
                       Icon(
                         Icons.stars_rounded,
                         size: 14,
-                        color: Colors.white,
+                        color: creditForegroundColor,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${creditProvider.creditsRemaining}',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: creditForegroundColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -83,7 +82,7 @@ class CreditIndicator extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 2,
                         offset: Offset(0, 1),
                       ),
@@ -115,6 +114,13 @@ class CreditIndicator extends StatelessWidget {
     }
   }
 
+  Color _getCreditForegroundColor(Color backgroundColor) {
+    return ThemeData.estimateBrightnessForColor(backgroundColor) ==
+            Brightness.dark
+        ? Colors.white
+        : Colors.black;
+  }
+
   void _showWatchAdDialog(BuildContext context) {
     // Na web, apenas mostre mensagem
     if (kIsWeb) {
@@ -143,8 +149,8 @@ class CreditIndicator extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.redAccent.withOpacity(0.8),
-                  Colors.orangeAccent.withOpacity(0.9),
+                  Colors.redAccent.withValues(alpha: 0.8),
+                  Colors.orangeAccent.withValues(alpha: 0.9),
                 ],
               ),
             ),
@@ -155,7 +161,7 @@ class CreditIndicator extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -183,7 +189,7 @@ class CreditIndicator extends StatelessWidget {
                   'Assista a um anúncio curto e ganhe 7 créditos grátis para continuar usando o aplicativo.',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -227,7 +233,7 @@ class CreditIndicator extends StatelessWidget {
                         Navigator.of(context).pop();
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.white.withOpacity(0.8),
+                        foregroundColor: Colors.white.withValues(alpha: 0.8),
                       ),
                       child: Text('Não, obrigado'),
                     ),

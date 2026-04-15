@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../i18n/app_localizations_extension.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 
 class NutritionCard extends StatefulWidget {
   final int caloriesConsumed;
@@ -15,6 +16,7 @@ class NutritionCard extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onEditGoals;
   final VoidCallback? onMinimize;
+  final bool hasConfiguredGoals;
 
   const NutritionCard({
     Key? key,
@@ -29,6 +31,7 @@ class NutritionCard extends StatefulWidget {
     this.onTap,
     this.onEditGoals,
     this.onMinimize,
+    this.hasConfiguredGoals = true,
   }) : super(key: key);
 
   @override
@@ -40,6 +43,8 @@ class _NutritionCardState extends State<NutritionCard> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final isCaloriesExceeded = widget.caloriesConsumed > widget.caloriesGoal;
+    final borderColor =
+        isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
 
     // Cores para quando excede a meta
     final exceededColor = Color(0xFFE57373);
@@ -48,14 +53,16 @@ class _NutritionCardState extends State<NutritionCard> {
       onTap: widget.onTap,
       child: Card(
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-        elevation: 1.5,
-        shadowColor: isDarkMode
-            ? Colors.black.withValues(alpha: 0.3)
-            : Colors.black.withValues(alpha: 0.08),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: borderColor,
+          ),
         ),
-        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        color: Colors.transparent,
         child: Padding(
           padding: EdgeInsets.fromLTRB(8, 6, 8, 6),
           child: Row(
@@ -67,8 +74,8 @@ class _NutritionCardState extends State<NutritionCard> {
                       children: [
                         // Gráfico circular de calorias - simplificado
                         SizedBox(
-                          width: 70,
-                          height: 70,
+                          width: 64,
+                          height: 64,
                           child: CustomPaint(
                             painter: CalorieCirclePainter(
                               consumed: widget.caloriesConsumed,
@@ -106,17 +113,45 @@ class _NutritionCardState extends State<NutritionCard> {
                             ),
                           ),
                         ),
-                        // Meta de calorias
-                        Text(
-                          'de ${widget.caloriesGoal}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isCaloriesExceeded
-                                ? exceededColor
-                                : (isDarkMode
-                                    ? Color(0xFFAEB7CE)
-                                    : AppTheme.textSecondaryColor),
-                          ),
+                        // Meta de calorias (sempre visível) + botão alterar
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'de ${widget.caloriesGoal}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isCaloriesExceeded
+                                    ? exceededColor
+                                    : (isDarkMode
+                                        ? Color(0xFFAEB7CE)
+                                        : AppTheme.textSecondaryColor),
+                              ),
+                            ),
+                            if (!widget.hasConfiguredGoals &&
+                                widget.onEditGoals != null) ...[
+                              SizedBox(width: 6),
+                              InkWell(
+                                onTap: widget.onEditGoals,
+                                borderRadius: BorderRadius.circular(4),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 2, vertical: 2),
+                                  child: Text(
+                                    'alterar meta',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      decoration: TextDecoration.underline,
+                                      color: isDarkMode
+                                          ? Color(0xFFAEB7CE)
+                                          : AppTheme.textSecondaryColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -136,7 +171,7 @@ class _NutritionCardState extends State<NutritionCard> {
                           consumed: widget.proteinConsumed,
                           goal: widget.proteinGoal,
                           unit: 'g',
-                          color: Color(0xFF9575CD),
+                          color: MacroTheme.proteinColor,
                           isDarkMode: isDarkMode,
                         ),
                         SizedBox(height: 3),
@@ -145,7 +180,7 @@ class _NutritionCardState extends State<NutritionCard> {
                           consumed: widget.carbsConsumed,
                           goal: widget.carbsGoal,
                           unit: 'g',
-                          color: Color(0xFFFFB74D),
+                          color: MacroTheme.carbsColor,
                           isDarkMode: isDarkMode,
                         ),
                         SizedBox(height: 3),
@@ -154,7 +189,7 @@ class _NutritionCardState extends State<NutritionCard> {
                           consumed: widget.fatsConsumed,
                           goal: widget.fatsGoal,
                           unit: 'g',
-                          color: Color(0xFF4DB6AC),
+                          color: MacroTheme.fatColor,
                           isDarkMode: isDarkMode,
                         ),
                       ],
@@ -345,7 +380,7 @@ class CalorieCirclePainter extends CustomPainter {
     // Progress arc - vermelho se excedeu, rosa se normal
     final progressColor = isExceeded
         ? Color(0xFFE57373)
-        : Color(0xFFFF6B9D);
+        : MacroTheme.caloriesColor;
 
     final progressPaint = Paint()
       ..color = progressColor.withValues(alpha: isExceeded ? 0.7 : 0.45)

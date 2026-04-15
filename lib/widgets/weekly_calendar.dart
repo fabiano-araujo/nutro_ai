@@ -310,6 +310,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     final isToday = _isSameDay(date, DateTime.now());
     final dayName = _getDayName(date.weekday, context);
     final dayNumber = date.day.toString();
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final onPrimaryColor = Theme.of(context).colorScheme.onPrimary;
 
     return GestureDetector(
       onTap: () {
@@ -332,9 +334,9 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                 fontSize: 11,
                 fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
                 color: isSelected
-                    ? Theme.of(context).primaryColor
+                    ? primaryColor
                     : isToday
-                        ? Theme.of(context).primaryColor
+                        ? primaryColor
                         : isDarkMode
                             ? Colors.white70
                             : AppTheme.textSecondaryColor,
@@ -345,22 +347,22 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Theme.of(context).primaryColor
+                    ? primaryColor
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 dayNumber,
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected
-                      ? Colors.white
-                      : isToday
-                          ? Theme.of(context).primaryColor
-                          : isDarkMode
-                              ? Colors.white
-                              : AppTheme.textPrimaryColor,
+                fontSize: 14,
+                fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? onPrimaryColor
+                    : isToday
+                        ? primaryColor
+                        : isDarkMode
+                            ? Colors.white
+                            : AppTheme.textPrimaryColor,
                 ),
               ),
             ),

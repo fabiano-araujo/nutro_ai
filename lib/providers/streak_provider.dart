@@ -21,6 +21,7 @@ class StreakProvider extends ChangeNotifier {
   bool get isFreezeActive => _streak?.isFreezeActive ?? false;
   bool get isStreakInDanger => _streak?.isStreakInDanger ?? false;
   int get bestOverallStreak => _streak?.bestOverallStreak ?? 0;
+  int get primaryStreak => registrationStreak;
 
   /// Configura o token de autenticação
   void setToken(String token) {

@@ -104,8 +104,9 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                         _saveMealChanges();
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onPrimary,
                         padding: EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -137,9 +138,12 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: 80), // Space above the save button
         child: FloatingActionButton(
-          backgroundColor: AppTheme.primaryColor,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           onPressed: _showAddDialog,
-          child: Icon(Icons.add, color: Colors.white),
+          child: Icon(
+            Icons.add,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
         ),
       ),
     );

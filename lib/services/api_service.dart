@@ -194,6 +194,64 @@ class ApiService {
 
   // MÉTODOS DE ASSINATURA
 
+  static Future<Map<String, dynamic>> getSubscriptionConfig({
+    required String token,
+    required int userId,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$subscriptionBaseUrl/subscription/config/$userId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Falha ao obter status da assinatura: ${response.statusCode} - ${response.body}',
+      );
+    }
+
+    final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+    if (responseData['success'] != true || responseData['data'] == null) {
+      throw Exception(
+        responseData['message'] ?? 'Resposta inválida ao obter assinatura',
+      );
+    }
+
+    return responseData['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> confirmGooglePlaySubscription({
+    required String token,
+    required String purchaseToken,
+    required String productId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$subscriptionBaseUrl/subscription/google-play/confirm'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'purchaseToken': purchaseToken,
+        'productId': productId,
+      }),
+    );
+
+    final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode != 200 || responseData['success'] != true) {
+      throw Exception(
+        responseData['error'] ??
+            responseData['message'] ??
+            'Falha ao confirmar assinatura na Google Play',
+      );
+    }
+
+    return responseData['data'] as Map<String, dynamic>;
+  }
+
   // Criar pagamento de assinatura
   static Future<PaymentData> createSubscriptionPayment({
     required String token,

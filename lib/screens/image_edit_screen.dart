@@ -10,7 +10,7 @@ import '../screens/document_scan_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../theme/app_theme.dart';
 import 'dart:convert';
-import '../screens/ai_tutor_screen.dart';
+import '../screens/nutrition_assistant_screen.dart';
 
 class ImageEditScreen extends StatefulWidget {
   final Uint8List image;
@@ -190,9 +190,9 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
     }
   }
 
-  // Novo método para enviar para NutroChatScreen
+  // Novo método para enviar para NutritionAssistantScreen
   void _sendToNutritionAssistant(Uint8List processedImage) async {
-    print('[PROCESS] Navegando para NutroChatScreen');
+    print('[PROCESS] Navegando para NutritionAssistantScreen');
 
     // Converter a imagem para base64 para incluir no JSON
     final String base64Image = base64Encode(processedImage);
@@ -247,7 +247,7 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => NutroChatScreen(initialPrompt: jsonData),
+        builder: (context) => NutritionAssistantScreen(initialPrompt: jsonData),
       ),
     );
   }

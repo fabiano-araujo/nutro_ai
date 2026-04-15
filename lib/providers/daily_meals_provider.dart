@@ -143,6 +143,17 @@ class DailyMealsProvider extends ChangeNotifier {
 
   DateTime get selectedDate => _selectedDate;
 
+  /// Retorna true se houver algum alimento registrado na data informada.
+  bool hasMealsOn(DateTime date) {
+    final dateKey = _formatDate(date);
+    final meals = _mealsByDate[dateKey];
+    if (meals == null || meals.isEmpty) return false;
+    for (final meal in meals) {
+      if (meal.foods.isNotEmpty) return true;
+    }
+    return false;
+  }
+
   List<Meal> get todayMeals {
     final dateKey = _formatDate(_selectedDate);
     return _mealsByDate[dateKey] ?? [];

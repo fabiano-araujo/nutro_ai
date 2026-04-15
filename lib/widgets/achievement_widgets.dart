@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/essay_progress_model.dart';
+import 'state_animation.dart';
 
 /// Widget para exibir uma conquista individual
 class AchievementCard extends StatelessWidget {
@@ -39,17 +40,17 @@ class AchievementCard extends StatelessWidget {
             Text(
               achievement.name,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: achievement.isUnlocked ? null : Colors.grey[600],
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: achievement.isUnlocked ? null : Colors.grey[600],
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               achievement.description,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: achievement.isUnlocked ? null : Colors.grey[500],
-              ),
+                    color: achievement.isUnlocked ? null : Colors.grey[500],
+                  ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -59,9 +60,9 @@ class AchievementCard extends StatelessWidget {
               Text(
                 'Desbloqueado em ${_formatDate(achievement.unlockedAt)}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                  fontSize: 10,
-                ),
+                      color: Colors.grey[600],
+                      fontSize: 10,
+                    ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -72,7 +73,7 @@ class AchievementCard extends StatelessWidget {
   }
 
   Widget _buildIcon(BuildContext context) {
-    final color = achievement.isUnlocked 
+    final color = achievement.isUnlocked
         ? _getAchievementColor(achievement.type)
         : Colors.grey[400];
 
@@ -174,8 +175,10 @@ class AchievementGrid extends StatelessWidget {
     }
 
     // Separar conquistas desbloqueadas e bloqueadas
-    final unlockedAchievements = achievements.where((a) => a.isUnlocked).toList();
-    final lockedAchievements = achievements.where((a) => !a.isUnlocked).toList();
+    final unlockedAchievements =
+        achievements.where((a) => a.isUnlocked).toList();
+    final lockedAchievements =
+        achievements.where((a) => !a.isUnlocked).toList();
     final sortedAchievements = [...unlockedAchievements, ...lockedAchievements];
 
     return Card(
@@ -191,8 +194,8 @@ class AchievementGrid extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 _buildProgressIndicator(context),
               ],
@@ -228,24 +231,24 @@ class AchievementGrid extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.emoji_events,
-              size: 64,
-              color: Colors.grey[400],
+            StateAnimation(
+              fallbackIcon: Icons.emoji_events,
+              size: 120,
+              accentColor: Colors.amber,
             ),
             const SizedBox(height: 16),
             Text(
               'Nenhuma conquista disponível',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey[600],
-              ),
+                    color: Colors.grey[600],
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Complete redações para desbloquear conquistas!',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
-              ),
+                    color: Colors.grey[500],
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -264,8 +267,8 @@ class AchievementGrid extends StatelessWidget {
         Text(
           '$unlockedCount/$totalCount',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(width: 8),
         SizedBox(
@@ -296,7 +299,8 @@ class AchievementUnlockedDialog extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<AchievementUnlockedDialog> createState() => _AchievementUnlockedDialogState();
+  State<AchievementUnlockedDialog> createState() =>
+      _AchievementUnlockedDialogState();
 }
 
 class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
@@ -309,12 +313,12 @@ class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
   @override
   void initState() {
     super.initState();
-    
+
     _scaleController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     _rotationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -391,16 +395,16 @@ class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
                   Text(
                     'Conquista Desbloqueada!',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.amber,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.achievement.name,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -454,17 +458,20 @@ class AchievementBadge extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: achievement.isUnlocked 
+          color: achievement.isUnlocked
               ? _getAchievementColor(achievement.type)
               : Colors.grey[300],
           shape: BoxShape.circle,
-          boxShadow: achievement.isUnlocked ? [
-            BoxShadow(
-              color: _getAchievementColor(achievement.type).withOpacity(0.3),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
+          boxShadow: achievement.isUnlocked
+              ? [
+                  BoxShadow(
+                    color:
+                        _getAchievementColor(achievement.type).withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Icon(
           _getIconData(achievement.iconName),
@@ -531,19 +538,20 @@ class AchievementBadgeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unlockedAchievements = achievements.where((a) => a.isUnlocked).toList();
+    final unlockedAchievements =
+        achievements.where((a) => a.isUnlocked).toList();
     final visibleAchievements = unlockedAchievements.take(maxVisible).toList();
     final remainingCount = unlockedAchievements.length - maxVisible;
 
     return Row(
       children: [
         ...visibleAchievements.map((achievement) => Padding(
-          padding: const EdgeInsets.only(right: 8.0),
-          child: AchievementBadge(
-            achievement: achievement,
-            size: badgeSize,
-          ),
-        )),
+              padding: const EdgeInsets.only(right: 8.0),
+              child: AchievementBadge(
+                achievement: achievement,
+                size: badgeSize,
+              ),
+            )),
         if (remainingCount > 0)
           Container(
             width: badgeSize,

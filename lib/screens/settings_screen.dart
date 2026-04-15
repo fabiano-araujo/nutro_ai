@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/storage_service.dart';
 import '../main.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../providers/nutrition_goals_provider.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   final int? initialTab;
@@ -26,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedLanguage = 'en';
   ThemeMode _themeMode = ThemeMode.light;
   bool _mealReminders = true;
+  String _appVersion = '--';
 
   @override
   void initState() {
@@ -36,12 +39,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     try {
       final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-      final languageController = Provider.of<LanguageController>(context, listen: false);
-      String currentLanguage = languageController.localeToString(languageController.currentLocale);
+      final languageController =
+          Provider.of<LanguageController>(context, listen: false);
+      final packageInfo = await PackageInfo.fromPlatform();
+      String currentLanguage =
+          languageController.localeToString(languageController.currentLocale);
+
+      if (!mounted) return;
 
       setState(() {
         _selectedLanguage = currentLanguage.isNotEmpty ? currentLanguage : 'en';
         _themeMode = themeProvider.themeMode;
+        _appVersion = packageInfo.buildNumber.isNotEmpty
+            ? '${packageInfo.version} (${packageInfo.buildNumber})'
+            : packageInfo.version;
       });
     } catch (e) {
       print('Erro ao carregar configurações: $e');
@@ -66,8 +77,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'theme': _themeModeToString(_themeMode),
     });
 
-    final languageController = Provider.of<LanguageController>(context, listen: false);
-    await languageController.setLocale(languageController.localeFromString(_selectedLanguage));
+    final languageController =
+        Provider.of<LanguageController>(context, listen: false);
+    await languageController
+        .setLocale(languageController.localeFromString(_selectedLanguage));
   }
 
   Future<void> _shareApp() async {
@@ -79,7 +92,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appId = packageInfo.packageName;
     }
     final playStoreUrl = 'https://play.google.com/store/apps/details?id=$appId';
-    String shareMessage = context.tr.translate('share_app_message').replaceAll('{url}', playStoreUrl);
+    String shareMessage = context.tr
+        .translate('share_app_message')
+        .replaceAll('{url}', playStoreUrl);
     await Share.share(shareMessage);
   }
 
@@ -115,7 +130,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showEditAgeDialog(int currentAge) {
-    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final nutritionProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
     final controller = TextEditingController(text: currentAge.toString());
     showDialog(
       context: context,
@@ -150,7 +166,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showEditGenderDialog(String currentGender) {
-    final nutritionProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
+    final nutritionProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -161,7 +178,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ListTile(
               leading: const Icon(Icons.male),
               title: Text(context.tr.translate('male')),
-              trailing: currentGender == 'male' ? const Icon(Icons.check) : null,
+              trailing:
+                  currentGender == 'male' ? const Icon(Icons.check) : null,
               onTap: () {
                 nutritionProvider.updatePersonalInfo(sex: 'male');
                 Navigator.pop(context);
@@ -170,7 +188,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ListTile(
               leading: const Icon(Icons.female),
               title: Text(context.tr.translate('female')),
-              trailing: currentGender == 'female' ? const Icon(Icons.check) : null,
+              trailing:
+                  currentGender == 'female' ? const Icon(Icons.check) : null,
               onTap: () {
                 nutritionProvider.updatePersonalInfo(sex: 'female');
                 Navigator.pop(context);
@@ -188,11 +207,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     late final TextEditingController cmController;
 
     if (provider.heightUnit == HeightUnit.cm) {
-      cmController = TextEditingController(text: provider.height.toStringAsFixed(0));
+      cmController =
+          TextEditingController(text: provider.height.toStringAsFixed(0));
     } else {
       final heightData = provider.heightInFeet();
-      feetController = TextEditingController(text: heightData['feet'].toString());
-      inchesController = TextEditingController(text: heightData['inches'].toString());
+      feetController =
+          TextEditingController(text: heightData['feet'].toString());
+      inchesController =
+          TextEditingController(text: heightData['inches'].toString());
     }
 
     showDialog(
@@ -258,7 +280,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               double heightInCm;
               if (provider.heightUnit == HeightUnit.cm) {
-                heightInCm = double.tryParse(cmController.text) ?? provider.height;
+                heightInCm =
+                    double.tryParse(cmController.text) ?? provider.height;
               } else {
                 final feet = int.tryParse(feetController.text) ?? 0;
                 final inches = int.tryParse(inchesController.text) ?? 0;
@@ -285,15 +308,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     switch (provider.weightUnit) {
       case WeightUnit.kg:
-        kgController = TextEditingController(text: provider.weight.toStringAsFixed(1));
+        kgController =
+            TextEditingController(text: provider.weight.toStringAsFixed(1));
         break;
       case WeightUnit.lbs:
-        lbsController = TextEditingController(text: provider.weightInLbs().toStringAsFixed(1));
+        lbsController = TextEditingController(
+            text: provider.weightInLbs().toStringAsFixed(1));
         break;
       case WeightUnit.stLbs:
         final weightData = provider.weightInStLbs();
-        stoneController = TextEditingController(text: weightData['stone'].toString());
-        poundsController = TextEditingController(text: weightData['pounds'].toString());
+        stoneController =
+            TextEditingController(text: weightData['stone'].toString());
+        poundsController =
+            TextEditingController(text: weightData['pounds'].toString());
         break;
     }
 
@@ -324,7 +351,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: provider.weightUnit == WeightUnit.kg
             ? TextField(
                 controller: kgController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: context.tr.translate('weight_kg'),
                   border: const OutlineInputBorder(),
@@ -333,7 +361,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : provider.weightUnit == WeightUnit.lbs
                 ? TextField(
                     controller: lbsController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
                       labelText: context.tr.translate('weight_lbs'),
                       border: const OutlineInputBorder(),
@@ -374,16 +403,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               double weightInKg;
               switch (provider.weightUnit) {
                 case WeightUnit.kg:
-                  weightInKg = double.tryParse(kgController.text) ?? provider.weight;
+                  weightInKg =
+                      double.tryParse(kgController.text) ?? provider.weight;
                   break;
                 case WeightUnit.lbs:
-                  final lbs = double.tryParse(lbsController.text) ?? provider.weightInLbs();
+                  final lbs = double.tryParse(lbsController.text) ??
+                      provider.weightInLbs();
                   weightInKg = NutritionGoalsProvider.weightToKg(lbs);
                   break;
                 case WeightUnit.stLbs:
                   final stone = int.tryParse(stoneController.text) ?? 0;
                   final pounds = int.tryParse(poundsController.text) ?? 0;
-                  weightInKg = NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
+                  weightInKg =
+                      NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
                   break;
               }
 
@@ -415,7 +447,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: isSelected ? theme.colorScheme.primary : null,
               ),
               title: Text(provider.getFitnessGoalName(goal, dialogContext)),
-              trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+              trailing: isSelected
+                  ? Icon(Icons.check, color: theme.colorScheme.primary)
+                  : null,
               onTap: () {
                 provider.updateActivityAndGoals(fitnessGoal: goal);
                 Navigator.pop(dialogContext);
@@ -440,7 +474,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _showEditActivityLevelDialog(ThemeData theme, NutritionGoalsProvider provider) {
+  void _showEditActivityLevelDialog(
+      ThemeData theme, NutritionGoalsProvider provider) {
     final levels = ActivityLevel.values;
     showDialog(
       context: context,
@@ -460,7 +495,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 provider.getActivityLevelDescription(level, dialogContext),
                 style: theme.textTheme.bodySmall,
               ),
-              trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+              trailing: isSelected
+                  ? Icon(Icons.check, color: theme.colorScheme.primary)
+                  : null,
               onTap: () {
                 provider.updateActivityAndGoals(activityLevel: level);
                 Navigator.pop(dialogContext);
@@ -472,7 +509,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showEditDietTypeDialog(ThemeData theme, NutritionGoalsProvider provider) {
+  void _showEditDietTypeDialog(
+      ThemeData theme, NutritionGoalsProvider provider) {
     final dietTypes = DietType.values;
     showDialog(
       context: context,
@@ -493,7 +531,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   provider.getDietTypeDescription(dietType, dialogContext),
                   style: theme.textTheme.bodySmall,
                 ),
-                trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+                trailing: isSelected
+                    ? Icon(Icons.check, color: theme.colorScheme.primary)
+                    : null,
                 onTap: () {
                   provider.updateDietType(dietType);
                   Navigator.pop(dialogContext);
@@ -510,14 +550,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDarkMode = theme.brightness == Brightness.dark;
     final authService = Provider.of<AuthService>(context);
     final nutritionProvider = Provider.of<NutritionGoalsProvider>(context);
 
     return Scaffold(
+      backgroundColor:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -531,9 +583,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
-          // Account Section (Conta)
           _buildSectionCard(
             theme: theme,
             colorScheme: colorScheme,
@@ -541,14 +592,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _buildAccountRow(
                 context.tr.translate('name'),
-                authService.isAuthenticated ? authService.currentUser?.name ?? context.tr.translate('user') : context.tr.translate('not_logged_in'),
+                authService.isAuthenticated
+                    ? authService.currentUser?.name ??
+                        context.tr.translate('user')
+                    : context.tr.translate('not_logged_in'),
                 Icons.person_outline,
                 theme,
-                onTap: () {
-                  if (authService.isAuthenticated) {
-                    _showEditNameDialog(authService.currentUser?.name ?? '');
-                  }
-                },
+                onTap: authService.isAuthenticated
+                    ? () =>
+                        _showEditNameDialog(authService.currentUser?.name ?? '')
+                    : null,
               ),
               _buildAccountRow(
                 context.tr.translate('age'),
@@ -559,7 +612,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _buildAccountRow(
                 context.tr.translate('gender'),
-                nutritionProvider.sex == 'male' ? context.tr.translate('male') : context.tr.translate('female'),
+                nutritionProvider.sex == 'male'
+                    ? context.tr.translate('male')
+                    : context.tr.translate('female'),
                 Icons.wc_outlined,
                 theme,
                 onTap: () => _showEditGenderDialog(nutritionProvider.sex),
@@ -590,21 +645,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _buildAccountRow(
                 context.tr.translate('goal'),
-                nutritionProvider.getFitnessGoalName(nutritionProvider.fitnessGoal, context),
+                nutritionProvider.getFitnessGoalName(
+                    nutritionProvider.fitnessGoal, context),
                 Icons.track_changes,
                 theme,
                 onTap: () => _showEditGoalDialog(theme, nutritionProvider),
               ),
               _buildAccountRow(
                 context.tr.translate('activity_level'),
-                nutritionProvider.getActivityLevelName(nutritionProvider.activityLevel, context),
+                nutritionProvider.getActivityLevelName(
+                    nutritionProvider.activityLevel, context),
                 Icons.directions_run,
                 theme,
-                onTap: () => _showEditActivityLevelDialog(theme, nutritionProvider),
+                onTap: () =>
+                    _showEditActivityLevelDialog(theme, nutritionProvider),
               ),
               _buildAccountRow(
                 context.tr.translate('diet'),
-                nutritionProvider.getDietTypeName(nutritionProvider.dietType, context),
+                nutritionProvider.getDietTypeName(
+                    nutritionProvider.dietType, context),
                 Icons.restaurant_menu,
                 theme,
                 onTap: () => _showEditDietTypeDialog(theme, nutritionProvider),
@@ -625,34 +684,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Appearance Section
-          _buildSectionCard(
-            theme: theme,
-            colorScheme: colorScheme,
-            title: context.tr.translate('theme'),
-            children: [
-              _buildThemeRow(theme, colorScheme),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Preferences Section
           _buildSectionCard(
             theme: theme,
             colorScheme: colorScheme,
             title: context.tr.translate('preferences'),
             children: [
+              _buildThemeRow(theme, colorScheme),
               _buildLanguageRow(theme),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Notifications Section
-          _buildSectionCard(
-            theme: theme,
-            colorScheme: colorScheme,
-            title: context.tr.translate('notifications'),
-            children: [
               _buildNotificationRow(theme, colorScheme),
             ],
           ),
@@ -666,7 +704,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _buildNavigationRow(
                 context.tr.translate('app_version'),
-                '1.0.0',
+                _appVersion,
                 Icons.info_outline,
                 theme,
                 onTap: null,
@@ -700,7 +738,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -712,35 +750,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required List<Widget> children,
   }) {
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
             child: Text(
               title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          ...children,
-          const SizedBox(height: 8),
+          ..._buildSectionChildren(children, colorScheme),
         ],
       ),
     );
+  }
+
+  List<Widget> _buildSectionChildren(
+      List<Widget> children, ColorScheme colorScheme) {
+    final items = <Widget>[];
+
+    for (int i = 0; i < children.length; i++) {
+      items.add(children[i]);
+      if (i != children.length - 1) {
+        items.add(_buildDivider(colorScheme));
+      }
+    }
+
+    return items;
   }
 
   Widget _buildThemeRow(ThemeData theme, ColorScheme colorScheme) {
@@ -751,104 +802,124 @@ class _SettingsScreenState extends State<SettingsScreen> {
     };
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr.translate('theme'),
-            style: theme.textTheme.bodyLarge,
-          ),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: themeOptions.entries.map((entry) {
-                final isSelected = entry.key == _themeMode;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _themeMode = entry.key;
-                    });
-                    _saveSettings();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isSelected ? colorScheme.primary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _getThemeShortName(entry.key),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          Row(
+            children: [
+              _buildLeadingIcon(Icons.palette_outlined, colorScheme),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr.translate('theme'),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getThemeLabel(_themeMode),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: themeOptions.entries.map((entry) {
+              final isSelected = entry.key == _themeMode;
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _themeMode = entry.key;
+                  });
+                  _saveSettings();
+                },
+                borderRadius: BorderRadius.circular(999),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                );
-              }).toList(),
-            ),
+                  child: Text(
+                    entry.value,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isSelected
+                          ? Colors.white
+                          : theme.textTheme.bodyLarge?.color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
     );
   }
 
-  String _getThemeShortName(ThemeMode mode) {
+  String _getThemeLabel(ThemeMode mode) {
     switch (mode) {
       case ThemeMode.light:
-        return 'Light';
+        return context.tr.translate('light_theme');
       case ThemeMode.dark:
-        return 'Dark';
+        return context.tr.translate('dark_theme');
       case ThemeMode.system:
-        return 'Auto';
+        return context.tr.translate('system_theme');
     }
   }
 
-  Widget _buildLanguageRow(ThemeData theme) {
-    List<Map<String, String>> availableLanguages = AppLocalizations.getAvailableLanguages();
-
-    // Find current language name
-    String currentLanguageName = availableLanguages
-        .firstWhere(
-          (lang) => lang['code'] == _selectedLanguage,
-          orElse: () => {'name': 'English', 'code': 'en'},
-        )['name']!;
-
-    return InkWell(
-      onTap: () {
-        _showLanguageDialog(theme, availableLanguages);
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              context.tr.translate('language'),
-              style: theme.textTheme.bodyLarge,
-            ),
-            Row(
-              children: [
-                Text(
-                  currentLanguageName,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right),
-              ],
-            ),
-          ],
-        ),
+  Widget _buildLeadingIcon(IconData icon, ColorScheme colorScheme) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Icon(
+        icon,
+        size: 22,
+        color: colorScheme.primary,
       ),
     );
+  }
+
+  Widget _buildLanguageRow(ThemeData theme) {
+    return _buildAccountRow(
+      context.tr.translate('language'),
+      _getCurrentLanguageName(),
+      Icons.translate_rounded,
+      theme,
+      onTap: () {
+        _showLanguageDialog(theme, AppLocalizations.getAvailableLanguages());
+      },
+      isAction: true,
+    );
+  }
+
+  String _getCurrentLanguageName() {
+    return AppLocalizations.getAvailableLanguages().firstWhere(
+      (lang) => lang['code'] == _selectedLanguage,
+      orElse: () => {'name': 'English', 'code': 'en'},
+    )['name']!;
   }
 
   Widget _buildFormulaRow(ThemeData theme) {
@@ -886,7 +957,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _getFormulaDescription(formula),
                 style: theme.textTheme.bodySmall,
               ),
-              trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+              trailing: isSelected
+                  ? Icon(Icons.check, color: theme.colorScheme.primary)
+                  : null,
               onTap: () {
                 provider.updateActivityAndGoals(formula: formula);
                 Navigator.pop(dialogContext);
@@ -962,7 +1035,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(context.tr.translate('body_fat_validation_error')),
+                    content:
+                        Text(context.tr.translate('body_fat_validation_error')),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -976,41 +1050,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildNotificationRow(ThemeData theme, ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.tr.translate('meal_reminders'),
-                  style: theme.textTheme.bodyLarge,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() => _mealReminders = !_mealReminders);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              _buildLeadingIcon(Icons.notifications_outlined, colorScheme),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr.translate('meal_reminders'),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.tr.translate('meal_reminders_description'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  context.tr.translate('meal_reminders_description'),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              Switch(
+                value: _mealReminders,
+                onChanged: (value) {
+                  setState(() => _mealReminders = value);
+                },
+                activeThumbColor: colorScheme.primary,
+              ),
+            ],
           ),
-          Switch(
-            value: _mealReminders,
-            onChanged: (value) {
-              setState(() => _mealReminders = value);
-            },
-            activeThumbColor: colorScheme.primary,
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  void _showLanguageDialog(ThemeData theme, List<Map<String, String>> availableLanguages) {
+  void _showLanguageDialog(
+      ThemeData theme, List<Map<String, String>> availableLanguages) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1025,7 +1113,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: isSelected ? theme.colorScheme.primary : null,
               ),
               title: Text(lang['name']!),
-              trailing: isSelected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+              trailing: isSelected
+                  ? Icon(Icons.check, color: theme.colorScheme.primary)
+                  : null,
               onTap: () {
                 setState(() {
                   _selectedLanguage = lang['code']!;
@@ -1047,35 +1137,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ThemeData theme, {
     VoidCallback? onTap,
   }) {
-    return InkWell(
+    return _buildAccountRow(
+      label,
+      trailing,
+      icon,
+      theme,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 24, color: theme.colorScheme.primary),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyLarge,
-              ),
-            ),
-            if (trailing.isNotEmpty)
-              Text(
-                trailing,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                ),
-              ),
-            if (trailing.isEmpty)
-              Icon(
-                Icons.chevron_right,
-                color: theme.textTheme.bodyLarge?.color,
-              ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1084,41 +1151,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String value,
     IconData icon,
     ThemeData theme, {
-    required VoidCallback onTap,
+    VoidCallback? onTap,
     bool isAction = false,
   }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 24, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyLarge,
-              ),
-            ),
-            if (value.isNotEmpty)
-              Text(
-                value,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isAction
-                      ? theme.colorScheme.primary
-                      : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                  fontWeight: isAction ? FontWeight.w600 : FontWeight.normal,
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              _buildLeadingIcon(icon, colorScheme),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (value.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        value,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: isAction
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                          fontWeight:
+                              isAction ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
-            ),
-          ],
+              if (onTap != null)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 24,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Divider(
+        height: 1,
+        color: colorScheme.outlineVariant.withValues(alpha: 0.3),
       ),
     );
   }

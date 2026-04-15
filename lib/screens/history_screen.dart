@@ -10,8 +10,9 @@ import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/credit_indicator.dart';
+import '../widgets/state_animation.dart';
 import 'settings_screen.dart';
-import 'ai_tutor_screen.dart';
+import 'nutrition_assistant_screen.dart';
 import 'document_summary_screen.dart';
 import 'text_enhancement_screen.dart';
 import 'code_enhancer_screen.dart';
@@ -300,10 +301,10 @@ class _HistoryWidgetState extends State<HistoryWidget>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.history_edu_outlined,
-            size: 64,
-            color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+          StateAnimation(
+            fallbackIcon: Icons.history_edu_outlined,
+            size: 140,
+            accentColor: colorScheme.primary,
           ),
           SizedBox(height: 20),
           Text(
@@ -478,7 +479,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
       case 'conversation':
         iconData = Icons.chat_bubble_outline;
         iconColor = colorScheme.secondaryContainer;
-        typeLabel = 'Chat';
+        typeLabel = 'Conversa livre';
         break;
       case 'youtube':
         iconData = Icons.play_circle_outline;
@@ -546,13 +547,13 @@ class _HistoryWidgetState extends State<HistoryWidget>
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // Navegar diretamente para NutroChatScreen independente do tipo
+          // Navegar diretamente para NutritionAssistantScreen independente do tipo
           if (item.type == 'tutor' || item.type == 'conversation') {
             // Para tutor e conversation, usar o ID da conversa
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => NutroChatScreen(
+                builder: (context) => NutritionAssistantScreen(
                   conversationId: item.id,
                 ),
               ),
@@ -654,7 +655,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NutroChatScreen(
+                  builder: (context) => NutritionAssistantScreen(
                     conversationId:
                         conversationIdFromToolData, // Usar o conversationId se disponível
                     initialPrompt:
@@ -692,7 +693,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NutroChatScreen(
+                  builder: (context) => NutritionAssistantScreen(
                     initialPrompt: fallbackJsonData,
                   ),
                 ),
@@ -1022,15 +1023,14 @@ class _HistoryWidgetState extends State<HistoryWidget>
                             // Fechar o modal e navegar para a ferramenta
                             Navigator.pop(context);
 
-                            // Sempre navegar para NutroChatScreen
+                            // Sempre navegar para NutritionAssistantScreen
                             if (item.type == 'tutor' ||
                                 item.type == 'conversation') {
                               // Para tutor e conversation, usar o ID da conversa
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      NutroChatScreen(
+                                  builder: (context) => NutritionAssistantScreen(
                                     conversationId: item.id,
                                   ),
                                 ),
@@ -1121,8 +1121,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        NutroChatScreen(
+                                    builder: (context) => NutritionAssistantScreen(
                                       conversationId:
                                           conversationIdFromToolData, // Usar o conversationId se disponível
                                       initialPrompt:
@@ -1160,8 +1159,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        NutroChatScreen(
+                                    builder: (context) => NutritionAssistantScreen(
                                       initialPrompt: fallbackJsonData,
                                     ),
                                   ),
@@ -1244,4 +1242,3 @@ class _HistoryWidgetState extends State<HistoryWidget>
     }
   }
 }
-

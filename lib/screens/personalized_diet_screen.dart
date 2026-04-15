@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../theme/macro_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:lottie/lottie.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/meal_types_provider.dart';
@@ -13,10 +14,12 @@ import '../models/Nutrient.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../screens/food_page.dart';
+import '../screens/meal_page.dart';
 import '../screens/nutrition_goals_wizard_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../i18n/app_localizations.dart';
+import '../widgets/diet_style_message_state.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
@@ -331,6 +334,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final buttonColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final buttonForegroundColor = AppTheme.onColor(buttonColor);
 
     showDialog(
       context: context,
@@ -373,10 +377,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: buttonColor,
+              foregroundColor: buttonForegroundColor,
             ),
             child: Text(
               l10n.translate('subscribe_now'),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: buttonForegroundColor),
             ),
           ),
         ],
@@ -748,6 +753,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final isWeekly = dietProvider.dietMode == DietMode.weekly;
     final selectedColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final selectedTextColor = AppTheme.onColor(selectedColor);
     final unselectedBorderColor =
         isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
@@ -774,7 +780,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: isWeekly
-                ? Colors.white
+                ? selectedTextColor
                 : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
           ),
           showCheckmark: false,
@@ -806,7 +812,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: !isWeekly
-                ? Colors.white
+                ? selectedTextColor
                 : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
           ),
           showCheckmark: false,
@@ -919,103 +925,23 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
   Widget _buildEmptyState(
       bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider) {
-    final textColor =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
-    final secondaryTextColor =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
     final buttonColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 40),
-
-          // Animação Lottie de comida/dieta
-          Lottie.network(
-            'https://assets9.lottiefiles.com/packages/lf20_tljjahng.json',
-            width: 180,
-            height: 180,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.restaurant_menu,
-                  size: 72,
-                  color: AppTheme.primaryColor.withValues(alpha: 0.5),
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(height: 24),
-
-          // Título
-          Text(
-            isWeeklyMode
-                ? l10n.translate('no_weekly_diet')
-                : l10n.translate('no_daily_diet'),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 8),
-
-          // Descrição
-          Text(
-            isWeeklyMode
-                ? l10n.translate('no_weekly_diet_description')
-                : l10n.translate('no_daily_diet_description'),
-            style: TextStyle(
-              fontSize: 14,
-              color: secondaryTextColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 32),
-
-          // Botão para gerar dieta
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _generateDietPlan,
-              icon: const Icon(
-                Icons.auto_awesome,
-                color: Colors.white,
-              ),
-              label: Text(
-                l10n.translate('generate_diet_ai'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: buttonColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return DietStyleMessageState(
+      title: isWeeklyMode
+          ? l10n.translate('no_weekly_diet')
+          : l10n.translate('no_daily_diet'),
+      message: isWeeklyMode
+          ? l10n.translate('no_weekly_diet_description')
+          : l10n.translate('no_daily_diet_description'),
+      fallbackIcon: Icons.restaurant_menu,
+      primaryActionLabel: l10n.translate('generate_diet_ai'),
+      primaryActionIcon: Icons.auto_awesome,
+      onPrimaryAction: _generateDietPlan,
+      topSpacing: 40,
+      accentColor: buttonColor,
+      pinActionsToBottom: true,
     );
   }
 
@@ -1027,6 +953,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
+    final accentColor = Theme.of(context).colorScheme.primary;
 
     return SingleChildScrollView(
       controller: _scrollController,
@@ -1041,9 +968,9 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           // Título da seção de refeições
           Text(
             l10n.translate('meals'),
-            style: TextStyle(
+            style: GoogleFonts.poppins(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: textColor,
             ),
           ),
@@ -1061,20 +988,19 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                       icon: Icon(
                         Icons.repeat,
                         size: 18,
-                        color: AppTheme.primaryColor,
+                        color: accentColor,
                       ),
                       label: Text(
                         l10n.translate('repeat_diet_other_days'),
-                        style: TextStyle(color: AppTheme.primaryColor),
+                        style: TextStyle(color: accentColor),
                       ),
                     ),
                   TextButton.icon(
                     onPressed: _replaceAllMeals,
-                    icon: Icon(Icons.refresh,
-                        size: 18, color: AppTheme.primaryColor),
+                    icon: Icon(Icons.refresh, size: 18, color: accentColor),
                     label: Text(
                       l10n.translate('replace_all'),
-                      style: TextStyle(color: AppTheme.primaryColor),
+                      style: TextStyle(color: accentColor),
                     ),
                   ),
                 ],
@@ -1090,8 +1016,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           else
             ...dietPlan.meals.map((meal) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildMealCardStyled(meal, isDarkMode, cardColor,
-                      textColor, secondaryTextColor),
+                  child: _buildMealCardStyled(
+                      meal, isDarkMode, textColor, secondaryTextColor),
                 )),
 
           const SizedBox(height: 80), // Espaço para o FAB
@@ -1101,101 +1027,106 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   }
 
   Widget _buildMacroCards(DailyNutrition nutrition, bool isDarkMode) {
-    return Row(
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+    final secondaryColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildMacroStat(MacroTheme.caloriesIcon, nutrition.calories.toString(),
+              'kcal', MacroTheme.caloriesColor, secondaryColor),
+          _buildMacroDivider(isDarkMode),
+          _buildMacroStat(MacroTheme.proteinIcon, nutrition.protein.toStringAsFixed(0),
+              'g prot', MacroTheme.proteinColor, secondaryColor),
+          _buildMacroDivider(isDarkMode),
+          _buildMacroStat(MacroTheme.carbsIcon, nutrition.carbs.toStringAsFixed(0),
+              'g carb', MacroTheme.carbsColor, secondaryColor),
+          _buildMacroDivider(isDarkMode),
+          _buildMacroStat(MacroTheme.fatIcon, nutrition.fat.toStringAsFixed(0),
+              'g gord', MacroTheme.fatColor, secondaryColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroStat(IconData icon, String value, String unit, Color color,
+      Color secondaryColor) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: _buildMacroCardCompact(
-            emoji: '🔥',
-            value: nutrition.calories.toString(),
-            unit: 'kcal',
-            color: const Color(0xFFFF6B9D),
-            isDarkMode: isDarkMode,
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: color,
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildMacroCardCompact(
-            emoji: '💪',
-            value: nutrition.protein.toStringAsFixed(0),
-            unit: 'g prot',
-            color: const Color(0xFF9575CD),
-            isDarkMode: isDarkMode,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildMacroCardCompact(
-            emoji: '🌾',
-            value: nutrition.carbs.toStringAsFixed(0),
-            unit: 'g carb',
-            color: const Color(0xFFFFB74D),
-            isDarkMode: isDarkMode,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildMacroCardCompact(
-            emoji: '🥑',
-            value: nutrition.fat.toStringAsFixed(0),
-            unit: 'g gord',
-            color: const Color(0xFF4DB6AC),
-            isDarkMode: isDarkMode,
+        Text(
+          unit,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            color: secondaryColor,
           ),
         ),
       ],
     );
   }
 
+  Widget _buildMacroDivider(bool isDarkMode) {
+    return Container(
+      width: 1,
+      height: 32,
+      color: isDarkMode
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.08),
+    );
+  }
+
   Widget _buildMacroCardCompact({
-    required String emoji,
+    required IconData icon,
     required String value,
     required String unit,
     required Color color,
     required bool isDarkMode,
     bool isSmall = false,
   }) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final secondaryColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: isSmall ? 6 : 12,
-        horizontal: isSmall ? 4 : 8,
-      ),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(isSmall ? 8 : 12),
-        border: Border.all(
-          color: color.withOpacity(0.3),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: isSmall ? 13 : 18),
+        SizedBox(height: isSmall ? 2 : 4),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: isSmall ? 11 : 15,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
+        Text(
+          unit,
+          style: GoogleFonts.inter(
+            fontSize: isSmall ? 8 : 10,
+            color: secondaryColor,
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: TextStyle(fontSize: isSmall ? 14 : 20)),
-          SizedBox(height: isSmall ? 2 : 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isSmall ? 12 : 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            unit,
-            style: TextStyle(
-              fontSize: isSmall ? 8 : 10,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1205,7 +1136,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       color: cardColor,
       borderRadius: BorderRadius.circular(16),
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -1220,7 +1151,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             Icon(
               Icons.restaurant_outlined,
               size: 48,
-              color: secondaryTextColor.withOpacity(0.5),
+              color: secondaryTextColor.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 12),
             Text(
@@ -1246,117 +1177,113 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
+  void _openMealPage(PlannedMeal meal) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MealPage.fromPlannedMeal(meal: meal),
+      ),
+    );
+  }
+
   Widget _buildMealCardStyled(PlannedMeal meal, bool isDarkMode,
-      Color cardColor, Color textColor, Color secondaryTextColor) {
+      Color textColor, Color secondaryTextColor) {
     final hasFoods = meal.foods.isNotEmpty;
     final isExpanded = _expandedMeals.contains(meal.type);
     final l10n = AppLocalizations.of(context);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
 
-    return Material(
-      color: cardColor,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.1),
-      child: InkWell(
-        onTap: hasFoods
-            ? () {
-                setState(() {
-                  if (isExpanded) {
-                    _expandedMeals.remove(meal.type);
-                  } else {
-                    _expandedMeals.add(meal.type);
-                  }
-                });
-              }
-            : null,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color:
-                  isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-            ),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _getMealEmoji(meal.type),
-                        style: const TextStyle(fontSize: 24),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _getMealDisplayName(meal, l10n),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
+    return InkWell(
+      onTap: hasFoods ? () => _openMealPage(meal) : null,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+              child: Row(
+                children: [
+                  Text(
+                    _getMealEmoji(meal.type),
+                    style: const TextStyle(fontSize: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getMealDisplayName(meal, l10n),
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            hasFoods
-                                ? '${meal.foods.length} ${meal.foods.length == 1 ? 'item' : 'itens'} • ${meal.mealTotals.calories.toStringAsFixed(0)} kcal'
-                                : meal.time,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: secondaryTextColor,
-                            ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          hasFoods
+                              ? '${meal.foods.length} ${meal.foods.length == 1 ? 'item' : 'itens'} • ${meal.mealTotals.calories.toStringAsFixed(0)} kcal'
+                              : meal.time,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: secondaryTextColor,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    if (hasFoods)
-                      AnimatedRotation(
+                  ),
+                  if (hasFoods)
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          if (isExpanded) {
+                            _expandedMeals.remove(meal.type);
+                          } else {
+                            _expandedMeals.add(meal.type);
+                          }
+                        });
+                      },
+                      icon: AnimatedRotation(
                         turns: isExpanded ? 0.5 : 0,
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
                           Icons.keyboard_arrow_down,
                           size: 24,
-                          color: secondaryTextColor.withOpacity(0.7),
+                          color: secondaryTextColor.withValues(alpha: 0.7),
                         ),
                       ),
-                    IconButton(
-                      onPressed: () => _replaceMeal(meal.type),
-                      icon: Icon(
-                        Icons.refresh,
-                        size: 20,
-                        color: secondaryTextColor.withOpacity(0.7),
-                      ),
                     ),
-                  ],
-                ),
+                  IconButton(
+                    onPressed: () => _replaceMeal(meal.type),
+                    icon: Icon(
+                      Icons.refresh,
+                      size: 20,
+                      color: secondaryTextColor.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
               ),
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: hasFoods
-                    ? _buildExpandedFoodList(
-                        meal, isDarkMode, textColor, secondaryTextColor)
-                    : const SizedBox.shrink(),
-                crossFadeState: isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
-              ),
-            ],
-          ),
+            ),
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: hasFoods
+                  ? _buildExpandedFoodList(
+                      meal, isDarkMode, textColor, secondaryTextColor)
+                  : const SizedBox.shrink(),
+              crossFadeState: isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
         ),
       ),
     );
@@ -1373,7 +1300,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
             gradient: LinearGradient(
               colors: [
                 Colors.transparent,
-                (isDarkMode ? Colors.white : Colors.black).withOpacity(0.08),
+                (isDarkMode ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.08),
                 Colors.transparent,
               ],
             ),
@@ -1391,49 +1319,42 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: _buildMacroCardCompact(
-                  emoji: '🔥',
-                  value: meal.mealTotals.calories.toStringAsFixed(0),
-                  unit: 'kcal',
-                  color: const Color(0xFFFF6B9D),
-                  isDarkMode: isDarkMode,
-                  isSmall: true,
-                ),
+              _buildMacroCardCompact(
+                icon: MacroTheme.caloriesIcon,
+                value: meal.mealTotals.calories.toStringAsFixed(0),
+                unit: 'kcal',
+                color: MacroTheme.caloriesColor,
+                isDarkMode: isDarkMode,
+                isSmall: true,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  emoji: '💪',
-                  value: meal.mealTotals.protein.toStringAsFixed(1),
-                  unit: 'g prot',
-                  color: const Color(0xFF9575CD),
-                  isDarkMode: isDarkMode,
-                  isSmall: true,
-                ),
+              _buildMacroDivider(isDarkMode),
+              _buildMacroCardCompact(
+                icon: MacroTheme.proteinIcon,
+                value: meal.mealTotals.protein.toStringAsFixed(1),
+                unit: 'g prot',
+                color: MacroTheme.proteinColor,
+                isDarkMode: isDarkMode,
+                isSmall: true,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  emoji: '🌾',
-                  value: meal.mealTotals.carbs.toStringAsFixed(1),
-                  unit: 'g carb',
-                  color: const Color(0xFFFFB74D),
-                  isDarkMode: isDarkMode,
-                  isSmall: true,
-                ),
+              _buildMacroDivider(isDarkMode),
+              _buildMacroCardCompact(
+                icon: MacroTheme.carbsIcon,
+                value: meal.mealTotals.carbs.toStringAsFixed(1),
+                unit: 'g carb',
+                color: MacroTheme.carbsColor,
+                isDarkMode: isDarkMode,
+                isSmall: true,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  emoji: '🥑',
-                  value: meal.mealTotals.fat.toStringAsFixed(1),
-                  unit: 'g gord',
-                  color: const Color(0xFF4DB6AC),
-                  isDarkMode: isDarkMode,
-                  isSmall: true,
-                ),
+              _buildMacroDivider(isDarkMode),
+              _buildMacroCardCompact(
+                icon: MacroTheme.fatIcon,
+                value: meal.mealTotals.fat.toStringAsFixed(1),
+                unit: 'g gord',
+                color: MacroTheme.fatColor,
+                isDarkMode: isDarkMode,
+                isSmall: true,
               ),
             ],
           ),
@@ -1477,19 +1398,19 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                   children: [
                     Text(
                       food.name,
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: textColor.withOpacity(0.9),
+                        color: textColor.withValues(alpha: 0.9),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       '${food.amount.toStringAsFixed(0)} ${food.unit}',
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: secondaryTextColor.withOpacity(0.7),
+                        color: secondaryTextColor.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -1497,10 +1418,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
               ),
               Text(
                 '${food.calories} kcal',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: textColor.withOpacity(0.7),
+                  color: textColor.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -1511,54 +1432,49 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   }
 
   Widget _buildMealCard(PlannedMeal meal, bool isDarkMode) {
-    final backgroundColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final secondaryTextColor =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final l10n = AppLocalizations.of(context);
 
-    return Card(
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1.5,
-      shadowColor: isDarkMode
-          ? Colors.black.withOpacity(0.3)
-          : Colors.black.withOpacity(0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
       ),
-      color: backgroundColor,
       child: ExpansionTile(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
         ),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        tilePadding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
         childrenPadding: EdgeInsets.zero,
-        leading: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          child: Text(
-            _getMealEmoji(meal.type),
-            style: const TextStyle(fontSize: 28),
-          ),
+        leading: Text(
+          _getMealEmoji(meal.type),
+          style: const TextStyle(fontSize: 26),
         ),
         title: Text(
           _getMealDisplayName(meal, l10n),
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
             fontSize: 16,
             letterSpacing: -0.2,
             color: (isDarkMode
                     ? AppTheme.darkTextColor
                     : AppTheme.textPrimaryColor)
-                .withOpacity(0.85),
+                .withValues(alpha: 0.85),
           ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(
             '${meal.time} • ${meal.mealTotals.calories} kcal',
-            style: TextStyle(
-              color: secondaryTextColor.withOpacity(0.7),
+            style: GoogleFonts.inter(
+              color: secondaryTextColor.withValues(alpha: 0.7),
               fontSize: 13,
             ),
           ),
@@ -1576,7 +1492,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                   child: Icon(
                     Icons.autorenew,
                     size: 18,
-                    color: secondaryTextColor.withOpacity(0.5),
+                    color: secondaryTextColor.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -1600,7 +1516,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                         colors: [
                           Colors.transparent,
                           (isDarkMode ? Colors.white : Colors.black)
-                              .withOpacity(0.05),
+                              .withValues(alpha: 0.05),
                           Colors.transparent,
                         ],
                       ),
@@ -1609,49 +1525,42 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                 ),
                 const SizedBox(height: 4),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: _buildMacroCardCompact(
-                        emoji: '🔥',
-                        value: meal.mealTotals.calories.toStringAsFixed(0),
-                        unit: 'kcal',
-                        color: const Color(0xFFFF6B9D),
-                        isDarkMode: isDarkMode,
-                        isSmall: true,
-                      ),
+                    _buildMacroCardCompact(
+                      icon: MacroTheme.caloriesIcon,
+                      value: meal.mealTotals.calories.toStringAsFixed(0),
+                      unit: 'kcal',
+                      color: MacroTheme.caloriesColor,
+                      isDarkMode: isDarkMode,
+                      isSmall: true,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: _buildMacroCardCompact(
-                        emoji: '💪',
-                        value: meal.mealTotals.protein.toStringAsFixed(1),
-                        unit: 'g prot',
-                        color: const Color(0xFF9575CD),
-                        isDarkMode: isDarkMode,
-                        isSmall: true,
-                      ),
+                    _buildMacroDivider(isDarkMode),
+                    _buildMacroCardCompact(
+                      icon: MacroTheme.proteinIcon,
+                      value: meal.mealTotals.protein.toStringAsFixed(1),
+                      unit: 'g prot',
+                      color: MacroTheme.proteinColor,
+                      isDarkMode: isDarkMode,
+                      isSmall: true,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: _buildMacroCardCompact(
-                        emoji: '🌾',
-                        value: meal.mealTotals.carbs.toStringAsFixed(1),
-                        unit: 'g carb',
-                        color: const Color(0xFFFFB74D),
-                        isDarkMode: isDarkMode,
-                        isSmall: true,
-                      ),
+                    _buildMacroDivider(isDarkMode),
+                    _buildMacroCardCompact(
+                      icon: MacroTheme.carbsIcon,
+                      value: meal.mealTotals.carbs.toStringAsFixed(1),
+                      unit: 'g carb',
+                      color: MacroTheme.carbsColor,
+                      isDarkMode: isDarkMode,
+                      isSmall: true,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: _buildMacroCardCompact(
-                        emoji: '🥑',
-                        value: meal.mealTotals.fat.toStringAsFixed(1),
-                        unit: 'g gord',
-                        color: const Color(0xFF4DB6AC),
-                        isDarkMode: isDarkMode,
-                        isSmall: true,
-                      ),
+                    _buildMacroDivider(isDarkMode),
+                    _buildMacroCardCompact(
+                      icon: MacroTheme.fatIcon,
+                      value: meal.mealTotals.fat.toStringAsFixed(1),
+                      unit: 'g gord',
+                      color: MacroTheme.fatColor,
+                      isDarkMode: isDarkMode,
+                      isSmall: true,
                     ),
                   ],
                 ),
@@ -1704,10 +1613,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                   children: [
                     Text(
                       food.name,
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: textColor.withOpacity(0.85),
+                        color: textColor.withValues(alpha: 0.85),
                         height: 1.2,
                       ),
                       maxLines: 1,
@@ -1716,9 +1625,9 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                     const SizedBox(height: 1),
                     Text(
                       '${food.amount.toStringAsFixed(0)} ${food.unit}',
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 11,
-                        color: secondaryTextColor.withOpacity(0.75),
+                        color: secondaryTextColor.withValues(alpha: 0.75),
                         height: 1.2,
                       ),
                     ),
@@ -1729,19 +1638,19 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                 children: [
                   Text(
                     '${food.calories}',
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: textColor.withOpacity(0.7),
+                      color: textColor.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(width: 1),
                   Text(
                     'kcal',
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 8,
                       fontWeight: FontWeight.w500,
-                      color: textColor.withOpacity(0.7),
+                      color: textColor.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

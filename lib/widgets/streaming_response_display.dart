@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import 'dart:async';
 import '../i18n/app_localizations_extension.dart';
 import '../utils/message_formatter.dart';
+import 'state_animation.dart';
 
 class StreamingResponseDisplay extends StatefulWidget {
   final String response;
@@ -182,10 +183,10 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
         padding: EdgeInsets.all(20),
         child: Column(
           children: [
-            Icon(
-              Icons.error_outline,
-              color: AppTheme.errorColor,
-              size: 40,
+            StateAnimation(
+              fallbackIcon: Icons.error_outline,
+              size: 120,
+              accentColor: AppTheme.errorColor,
             ),
             SizedBox(height: 16),
             Text(
@@ -237,12 +238,12 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
         padding: EdgeInsets.all(40),
         child: Column(
           children: [
-            Icon(
-              Icons.text_fields,
-              color: isDarkMode
-                  ? AppTheme.darkTextColor.withOpacity(0.5)
-                  : Colors.grey[400],
-              size: 48,
+            StateAnimation(
+              fallbackIcon: Icons.text_fields,
+              size: 120,
+              accentColor: isDarkMode
+                  ? AppTheme.darkTextColor.withOpacity(0.7)
+                  : Colors.grey[500],
             ),
             SizedBox(height: 24),
             Text(
