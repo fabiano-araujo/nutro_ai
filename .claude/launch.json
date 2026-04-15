@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Flutter: Chrome",
+      "runtimeExecutable": "flutter",
+      "runtimeArgs": ["run", "-d", "chrome", "--target", "lib/main.dart"],
+      "port": 57587
+    },
+    {
+      "name": "Flutter: Android Emulator",
+      "runtimeExecutable": "flutter",
+      "runtimeArgs": ["run", "-d", "emulator-5554", "--target", "lib/main.dart"],
+      "port": 8080
+    }
+  ]
+}
