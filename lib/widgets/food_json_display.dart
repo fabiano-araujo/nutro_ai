@@ -16,7 +16,8 @@ class FoodJsonDisplay extends StatefulWidget {
   final bool isDarkMode;
   final DateTime selectedDate;
   final String? messageId; // ID da mensagem do chat para vinculação
-  final VoidCallback? onDeleteMessage; // Callback para excluir a mensagem do chat
+  final VoidCallback?
+      onDeleteMessage; // Callback para excluir a mensagem do chat
 
   const FoodJsonDisplay({
     Key? key,
@@ -44,13 +45,18 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     super.initState();
     _parseMeal();
     // Adicionar automaticamente após o frame atual para garantir acesso ao contexto
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      final mealsProvider =
+          Provider.of<DailyMealsProvider>(context, listen: false);
+      await mealsProvider.ready;
       if (!mounted) return;
 
       // Verificar se já existe uma refeição com este messageId no provider
       if (widget.messageId != null) {
-        final mealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
-        final existingMeal = mealsProvider.getMealByMessageId(widget.messageId!);
+        final existingMeal =
+            mealsProvider.getMealByMessageId(widget.messageId!);
         if (existingMeal != null) {
           // Já foi adicionado anteriormente, apenas atualizar o estado local
           setState(() {
@@ -83,7 +89,8 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     final jsonStr = FoodJsonParser.extractFoodJson(widget.message);
 
     // Extrair tipo de refeição do JSON da IA (ou usar fallback por horário)
-    final mealTypeStr = jsonStr != null ? FoodJsonParser.extractMealType(jsonStr) : null;
+    final mealTypeStr =
+        jsonStr != null ? FoodJsonParser.extractMealType(jsonStr) : null;
     final mealType = mealTypeStr != null
         ? FoodJsonParser.mealTypeFromString(mealTypeStr)
         : AIInteractionHelper.getMealTypeByTime();
@@ -115,10 +122,26 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   }
 
   void _handleMealUpdated(Meal updatedMeal) {
+    if (_isAdded) {
+      final mealsProvider =
+          Provider.of<DailyMealsProvider>(context, listen: false);
+
+      if (updatedMeal.foods.isEmpty) {
+        mealsProvider.deleteMeal(updatedMeal.id);
+        widget.onDeleteMessage?.call();
+      } else {
+        mealsProvider.updateMeal(updatedMeal);
+      }
+    }
+
+    if (!mounted) return;
+
     setState(() {
       _meal = updatedMeal;
+      if (updatedMeal.foods.isEmpty) {
+        _isAdded = false;
+      }
     });
-    // TODO: Considerar atualizar a refeição no provider se ela já foi adicionada
   }
 
   void _handleDelete() {
@@ -177,9 +200,8 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
       // Monta payload para o endpoint /favorites/process-ai
       final foods = meal.foods.map((food) {
-        final nutrient = food.nutrients?.isNotEmpty == true
-            ? food.nutrients!.first
-            : null;
+        final nutrient =
+            food.nutrients?.isNotEmpty == true ? food.nutrients!.first : null;
         return {
           'name': food.name,
           'emoji': food.emoji,

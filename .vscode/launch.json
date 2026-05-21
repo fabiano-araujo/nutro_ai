@@ -10,6 +10,20 @@
             "flutterMode": "debug"
         },
         {
+            "name": "Flutter: Web Server (Codex)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "flutterMode": "release",
+            "deviceId": "web-server",
+            "toolArgs": [
+                "--web-hostname",
+                "127.0.0.1",
+                "--web-port",
+                "51539"
+            ]
+        },
+        {
             "name": "Flutter: Chrome",
             "type": "dart",
             "request": "launch",

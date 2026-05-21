@@ -71,7 +71,7 @@ class AIInteractionHelper {
         return displayContentBuilder(rawContent);
       }
 
-      if (!autoRegisterFoods) {
+      if (!autoRegisterFoods && !FoodJsonParser.hasFoodJsonSignal(rawContent)) {
         return rawContent;
       }
 
@@ -240,15 +240,6 @@ class AIInteractionHelper {
         // NOTA: A adição de alimentos é feita pelo FoodJsonDisplay quando renderizado
         // Não adicionar aqui para evitar duplicação
 
-        // Marcar que não está mais em streaming
-        messageNotifier.setStreaming(false);
-
-        // Atualizar o estado na NutritionAssistantScreen via callbacks
-        setLoading(false);
-        if (studyItemType == 'image_analysis') {
-          setProcessingMedia(false);
-        }
-
         // Garantir que a mensagem seja adequadamente armazenada no histórico local
         // Devemos verificar se o índice ainda é válido e se a mensagem existe
         if (streamingMessageIndex < messages.length &&
@@ -263,6 +254,15 @@ class AIInteractionHelper {
           print(
               '⚠️ AIInteractionHelper - Índice de streaming ($streamingMessageIndex) inválido ou notifier diferente ao concluir. Não atualizando a lista local diretamente.');
           // Considerar adicionar a mensagem se ela não existir mais no índice esperado.
+        }
+
+        // Marcar que não está mais em streaming depois de gravar a mensagem final.
+        messageNotifier.setStreaming(false);
+
+        // Atualizar o estado na NutritionAssistantScreen via callbacks
+        setLoading(false);
+        if (studyItemType == 'image_analysis') {
+          setProcessingMedia(false);
         }
 
         // Compilar e salvar no histórico

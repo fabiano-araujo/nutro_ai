@@ -162,6 +162,10 @@ final Map<String, String> frFRTranslations = {
       'Je n\'ai pas pu terminer l\'action interne. Reessayez.',
   'chat_action_login': 'Se connecter',
   'chat_action_configure_goals_ui': 'Configurer dans l\'app',
+  'chat_goals_setup_banner_title': 'Completez vos objectifs',
+  'chat_goals_setup_banner_body':
+      'Personnalisez les calories et macros dans l\'app.',
+  'chat_goals_setup_banner_button': 'Configurer',
   'chat_action_continue_goals_chat': 'Continuer dans le chat',
   'chat_action_edit_macros_ui': 'Modifier les macros dans l\'app',
   'chat_action_continue_macros_chat': 'Ajuster les macros dans le chat',
@@ -321,7 +325,7 @@ final Map<String, String> frFRTranslations = {
   'welcome_message_card':
       'Bonjour ! Je suis Nutro AI, votre assistant nutritionnel',
   'welcome_description':
-      'Assistant intelligent pour améliorer votre apprentissage 📚👩‍🎓',
+      'Suivez vos calories, macros et objectifs nutritionnels au même endroit',
   'start_conversation': 'Démarrer la conversation',
 
   // Titre de la barre d'applications dans l'écran des outils
@@ -361,6 +365,7 @@ final Map<String, String> frFRTranslations = {
       'Paiement sécurisé avec Google Play. Résiliation à tout moment.',
   'free_plan': 'Gratuit',
   'monthly': 'Mensuel',
+  'per_month': 'par mois',
   'yearly': 'Annuel',
   'lifetime': 'À vie',
   'popular': 'PLUS POPULAIRE',
@@ -418,6 +423,7 @@ final Map<String, String> frFRTranslations = {
   'please_enter_valid_email': 'Veuillez entrer un email valide',
   'please_enter_password': 'Veuillez entrer votre mot de passe',
   'password_min_length': 'Le mot de passe doit comporter au moins 6 caractères',
+  'remember_email_password': 'Mémoriser l\'email et le mot de passe',
   'login_to_access_profile': 'Connectez-vous pour accéder à votre profil',
   'login_description':
       'Connectez-vous pour voir votre historique, vos favoris et vos paramètres personnalisés.',
@@ -433,6 +439,9 @@ final Map<String, String> frFRTranslations = {
   'register_subtitle': 'Remplissez les détails pour commencer',
   'name': 'Nom',
   'please_enter_name': 'Veuillez entrer votre nom',
+  'name_min_length': 'Le nom doit comporter au moins 2 caractères',
+  'email_already_in_use':
+      'Cet email est déjà enregistré. Connectez-vous ou utilisez un autre email.',
   'confirm_password': 'Confirmer le Mot de Passe',
   'please_confirm_password': 'Veuillez confirmer votre mot de passe',
   'passwords_dont_match': 'Les mots de passe ne correspondent pas',
@@ -472,6 +481,33 @@ final Map<String, String> frFRTranslations = {
   'free_meal': 'Repas Libre',
   'meal': 'Repas',
   'select_meal_type': 'Sélectionner le type de repas',
+  'add': 'Ajouter',
+  'meals': 'Repas',
+  'protein_full': 'Protéine',
+  'fat': 'Lipides',
+  'quick_add_food': 'Ajout rapide',
+  'values_per_serving': 'Valeurs nutritionnelles par portion',
+  'serving': 'Portion',
+  'used_times': 'Utilisé {count} fois',
+  'ready_to_add': 'Prêt à ajouter',
+  'repeat': 'Répéter',
+  'date': 'Date',
+  'no_recent_foods': 'Aucun aliment récent',
+  'no_saved_favorites': 'Aucun favori enregistré',
+  'recent_foods_empty_hint':
+      'Vos aliments apparaîtront ici après avoir enregistré des repas',
+  'favorite_foods_empty_hint':
+      'Ajoutez des aliments aux favoris pour les retrouver rapidement',
+  'no_registered_meals': 'Aucun repas enregistré',
+  'repeatable_meals_empty_hint': 'Vos repas apparaîtront ici pour les répéter',
+  'options': 'Options',
+  'undo': 'Annuler',
+  'remove_from_favorites': 'Retirer des favoris',
+  'recent_deleted': 'Récent supprimé',
+  'favorite_deleted': 'Favori supprimé',
+  'meal_deleted': 'Repas supprimé',
+  'added_to_favorites': 'Ajouté aux favoris',
+  'delete_item_question': 'Supprimer "{name}" ?',
 
   // Tiroir et conversations libres
   'diary': 'Journal',
@@ -588,6 +624,43 @@ final Map<String, String> frFRTranslations = {
   'streak_checkin_action': 'Mettre à jour la série',
   'streak_checkin_success': 'Série mise à jour avec succès.',
   'streak_checkin_error': 'Impossible de mettre à jour votre série maintenant.',
+  'streak_screen_title': 'Série',
+  'streak_tab_personal': 'Personnel',
+  'streak_tab_friends': 'Amis',
+  'streak_share_tooltip': 'Partager la série',
+  'streak_share_message':
+      'J\'ai une série de {count} jours sur Nutro AI. Venez suivre la vôtre avec moi !',
+  'streak_keep_today': 'Mettre à jour aujourd\'hui',
+  'streak_freeze_none_title': 'Vous n\'avez aucune protection de série',
+  'streak_freeze_none_message':
+      'Les protections sauvent votre série lorsque vous ne pouvez pas enregistrer de repas.',
+  'streak_freeze_available_title': 'Vous avez {count} protection(s)',
+  'streak_freeze_available_message':
+      'Utilisez une protection pour geler votre série pendant 24 heures.',
+  'streak_freeze_active_message': 'Votre série est temporairement protégée.',
+  'streak_freeze_activated': 'Protection activée avec succès.',
+  'streak_get_more_freezes': 'En obtenir plus',
+  'streak_freeze_info_title': 'Protections de série',
+  'streak_freeze_info_message':
+      'Des protections supplémentaires deviennent disponibles lorsque vous restez régulier et participez aux actions sociales de l\'app.',
+  'streak_calendar_title': 'Calendrier de la série',
+  'streak_calendar_logged_day': 'Repas enregistré',
+  'streak_today': 'Aujourd\'hui',
+  'streak_previous_month': 'Mois précédent',
+  'streak_next_month': 'Mois suivant',
+  'streak_friend_empty_title': 'Commencez une série avec des amis',
+  'streak_friend_empty_message':
+      'Invitez quelqu\'un à enregistrer des repas avec vous et à rester régulier chaque jour.',
+  'streak_invite_friends': 'Inviter des amis',
+  'streak_duo_title': 'Séries avec des amis',
+  'streak_duo_checkin': 'Check-in',
+  'streak_you': 'Vous',
+  'streak_friend_best': 'Meilleur : {count}',
+  'streak_friend_checkin_success': 'Check-in avec ami mis à jour.',
+  'streak_friend_checkin_error': 'Impossible de mettre à jour le check-in.',
+  'streak_friend_progress_title': 'Progression en duo',
+  'streak_friend_progress_message':
+      '{friends} ami(s) et {duos} série(s) en duo actives.',
   'social_open_hub': 'Ouvrir le hub social',
   'social_summary_title': 'Résumé social',
   'social_summary_subtitle': 'Suivez séries, amis et défis au même endroit.',

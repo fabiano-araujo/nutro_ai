@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +13,7 @@ import '../models/meal_model.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import 'food_page.dart';
 
 class MealPage extends StatefulWidget {
@@ -207,9 +209,9 @@ Regras:
         iconTheme: IconThemeData(color: textColor),
         title: Text(
           meal.resolveTitle(l10n),
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             color: textColor,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             fontSize: 18,
           ),
         ),
@@ -219,96 +221,42 @@ Regras:
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeroCard(
-              context,
+            _buildHeaderCard(
               isDarkMode: isDarkMode,
               textColor: textColor,
               secondaryTextColor: secondaryTextColor,
             ),
             const SizedBox(height: 16),
-            _buildSectionTitle(
-              l10n.translate('meal_overview'),
-              textColor,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatTile(
-                    label: l10n.translate('calories'),
-                    value: '${meal.calories.toStringAsFixed(0)} kcal',
-                    icon: Icons.local_fire_department_rounded,
-                    color: const Color(0xFFFF7D61),
-                    isDarkMode: isDarkMode,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _StatTile(
-                    label: l10n.translate('protein'),
-                    value: '${meal.protein.toStringAsFixed(1)} g',
-                    icon: Icons.fitness_center_rounded,
-                    color: const Color(0xFF7D6BFF),
-                    isDarkMode: isDarkMode,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatTile(
-                    label: l10n.translate('carbs'),
-                    value: '${meal.carbs.toStringAsFixed(1)} g',
-                    icon: Icons.grain_rounded,
-                    color: const Color(0xFFFFB248),
-                    isDarkMode: isDarkMode,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _StatTile(
-                    label: l10n.translate('fats'),
-                    value: '${meal.fat.toStringAsFixed(1)} g',
-                    icon: Icons.opacity_rounded,
-                    color: const Color(0xFF37B39B),
-                    isDarkMode: isDarkMode,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            _buildMacroCards(isDarkMode),
+            const SizedBox(height: 24),
             _buildSectionTitle(
               l10n.translate('nutritional_score'),
               textColor,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildScoreCard(
-              context,
               isDarkMode: isDarkMode,
               textColor: textColor,
               secondaryTextColor: secondaryTextColor,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             _buildSectionTitle(
               l10n.translate('meal_foods_title'),
               textColor,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildFoodsCard(
               isDarkMode: isDarkMode,
               textColor: textColor,
               secondaryTextColor: secondaryTextColor,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             _buildSectionTitle(
               l10n.translate('nutrition_tips'),
               textColor,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildTipsCard(
-              context,
               isDarkMode: isDarkMode,
               textColor: textColor,
               secondaryTextColor: secondaryTextColor,
@@ -319,8 +267,7 @@ Regras:
     );
   }
 
-  Widget _buildHeroCard(
-    BuildContext context, {
+  Widget _buildHeaderCard({
     required bool isDarkMode,
     required Color textColor,
     required Color secondaryTextColor,
@@ -328,182 +275,199 @@ Regras:
     final l10n = AppLocalizations.of(context);
     final meal = widget.meal;
     final qualityColor = _analysis.quality.color;
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  const Color(0xFF312743),
-                  const Color(0xFF1F2128),
-                ]
-              : [
-                  const Color(0xFFF3EFFF),
-                  const Color(0xFFFFF6E7),
-                ],
-        ),
-        border: Border.all(
-          color: qualityColor.withValues(alpha: isDarkMode ? 0.45 : 0.24),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: qualityColor.withValues(alpha: isDarkMode ? 0.12 : 0.08),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color:
-                      Colors.white.withValues(alpha: isDarkMode ? 0.08 : 0.65),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Text(
-                  meal.emoji,
-                  style: const TextStyle(fontSize: 28),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      meal.resolveTitle(l10n),
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      meal.subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color:
-                      qualityColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _analysis.score.round().toString(),
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: qualityColor,
-                      ),
-                    ),
-                    Text(
-                      l10n.translate('nutritional_score'),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            meal.emoji,
+            style: const TextStyle(fontSize: 32),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildHeroChip(
-                label: l10n.translate(_analysis.quality.labelKey),
-                color: qualityColor,
-                isDarkMode: isDarkMode,
-              ),
-              _buildHeroChip(
-                label:
-                    '${meal.foods.length} ${l10n.translate('foods_count_label')}',
-                color: const Color(0xFF6A8DFF),
-                isDarkMode: isDarkMode,
-              ),
-              _buildHeroChip(
-                label:
-                    '${meal.fiber.toStringAsFixed(1)} g ${l10n.translate('fiber')}${meal.fiberIsEstimated ? ' • ${l10n.translate('estimated')}' : ''}',
-                color: const Color(0xFF27A98B),
-                isDarkMode: isDarkMode,
-              ),
-            ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  meal.resolveTitle(l10n),
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  meal.subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: qualityColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _analysis.score.round().toString(),
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: qualityColor,
+                  ),
+                ),
+                Text(
+                  '/100',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeroChip({
-    required String label,
-    required Color color,
-    required bool isDarkMode,
-  }) {
+  Widget _buildMacroCards(bool isDarkMode) {
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+    final secondaryColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final meal = widget.meal;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.18 : 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: color.withValues(alpha: isDarkMode ? 0.40 : 0.18),
-        ),
+        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildMacroStat(
+                MacroTheme.caloriesIcon,
+                meal.calories.toStringAsFixed(0),
+                'kcal',
+                MacroTheme.caloriesColor,
+                secondaryColor,
+              ),
+            ),
+            _buildMacroDivider(isDarkMode),
+            Expanded(
+              child: _buildMacroStat(
+                MacroTheme.proteinIcon,
+                '${meal.protein.toStringAsFixed(0)}g',
+                'Proteína',
+                MacroTheme.proteinColor,
+                secondaryColor,
+              ),
+            ),
+            _buildMacroDivider(isDarkMode),
+            Expanded(
+              child: _buildMacroStat(
+                MacroTheme.carbsIcon,
+                '${meal.carbs.toStringAsFixed(0)}g',
+                'Carboidrato',
+                MacroTheme.carbsColor,
+                secondaryColor,
+              ),
+            ),
+            _buildMacroDivider(isDarkMode),
+            Expanded(
+              child: _buildMacroStat(
+                MacroTheme.fatIcon,
+                '${meal.fat.toStringAsFixed(0)}g',
+                'Gordura',
+                MacroTheme.fatColor,
+                secondaryColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildScoreCard(
-    BuildContext context, {
+  Widget _buildMacroStat(IconData icon, String value, String unit, Color color,
+      Color secondaryColor) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        Text(
+          unit,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            color: secondaryColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMacroDivider(bool isDarkMode) {
+    return VerticalDivider(
+      color: isDarkMode
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.08),
+      width: 1,
+      thickness: 1,
+      indent: 4,
+      endIndent: 4,
+    );
+  }
+
+  Widget _buildScoreCard({
     required bool isDarkMode,
     required Color textColor,
     required Color secondaryTextColor,
   }) {
     final l10n = AppLocalizations.of(context);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-        ),
+        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,18 +480,18 @@ Regras:
                   children: [
                     Text(
                       l10n.translate('meal_quality'),
-                      style: TextStyle(
-                        fontSize: 13,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: secondaryTextColor,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       l10n.translate(_analysis.quality.labelKey),
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                         color: _analysis.quality.color,
                       ),
                     ),
@@ -536,23 +500,23 @@ Regras:
               ),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: _analysis.quality.color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '${_analysis.score.round()}/100',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                     color: _analysis.quality.color,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           _LevelBar(
             label: l10n.translate('protein_level'),
             value: _analysis.proteinRatio,
@@ -560,10 +524,10 @@ Regras:
             valueLabel: l10n.translate(_analysis.proteinLevelKey),
             leftLabel: l10n.translate('low'),
             rightLabel: l10n.translate('high'),
-            color: const Color(0xFF7D6BFF),
+            color: MacroTheme.proteinColor,
             isDarkMode: isDarkMode,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           _LevelBar(
             label: l10n.translate('fiber_level'),
             value: _analysis.fiberRatio,
@@ -572,7 +536,7 @@ Regras:
             valueLabel: l10n.translate(_analysis.fiberLevelKey),
             leftLabel: l10n.translate('low'),
             rightLabel: l10n.translate('high'),
-            color: const Color(0xFF27A98B),
+            color: MacroTheme.fatColor,
             isDarkMode: isDarkMode,
           ),
         ],
@@ -585,14 +549,17 @@ Regras:
     required Color textColor,
     required Color secondaryTextColor,
   }) {
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-        ),
+        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Column(
         children: [
@@ -603,10 +570,19 @@ Regras:
               secondaryTextColor: secondaryTextColor,
             ),
             if (i != widget.meal.foods.length - 1)
-              Divider(
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8),
                 height: 1,
-                color: (isDarkMode ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.06),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      (isDarkMode ? Colors.white : Colors.black)
+                          .withValues(alpha: 0.08),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
               ),
           ],
         ],
@@ -630,25 +606,18 @@ Regras:
             ),
           );
         },
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 36,
+                height: 36,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(14),
-                ),
                 child: Text(
                   food.emoji,
-                  style: const TextStyle(fontSize: 22),
+                  style: const TextStyle(fontSize: 24),
                 ),
               ),
               const SizedBox(width: 12),
@@ -658,42 +627,31 @@ Regras:
                   children: [
                     Text(
                       food.name,
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: textColor,
+                        fontWeight: FontWeight.w500,
+                        color: textColor.withValues(alpha: 0.9),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       food.amountLabel,
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: secondaryTextColor,
+                        color: secondaryTextColor.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${food.calories.toStringAsFixed(0)} kcal',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: secondaryTextColor.withValues(alpha: 0.7),
-                    size: 18,
-                  ),
-                ],
+              Text(
+                '${food.calories.toStringAsFixed(0)} kcal',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: textColor.withValues(alpha: 0.7),
+                ),
               ),
             ],
           ),
@@ -702,44 +660,44 @@ Regras:
     );
   }
 
-  Widget _buildTipsCard(
-    BuildContext context, {
+  Widget _buildTipsCard({
     required bool isDarkMode,
     required Color textColor,
     required Color secondaryTextColor,
   }) {
     final l10n = AppLocalizations.of(context);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-        ),
+        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.translate('nutrition_tips_description'),
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 13,
               height: 1.45,
               color: secondaryTextColor,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (_isLoadingTips) ...[
             Row(
               children: [
                 SizedBox(
-                  width: 18,
-                  height: 18,
+                  width: 16,
+                  height: 16,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2.2,
+                    strokeWidth: 2,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
@@ -747,7 +705,7 @@ Regras:
                 Expanded(
                   child: Text(
                     l10n.translate('analyzing_meal'),
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: textColor,
@@ -762,23 +720,23 @@ Regras:
               textColor: textColor,
             ),
             if (_tips!.positivePoints.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _TipsList(
                 title: l10n.translate('positive_points'),
                 items: _tips!.positivePoints,
                 icon: Icons.trending_up_rounded,
-                color: const Color(0xFF27A98B),
+                color: MacroTheme.fatColor,
                 textColor: textColor,
                 secondaryTextColor: secondaryTextColor,
               ),
             ],
             if (_tips!.canImprove.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _TipsList(
                 title: l10n.translate('can_improve'),
                 items: _tips!.canImprove,
                 icon: Icons.tune_rounded,
-                color: const Color(0xFFFF9F43),
+                color: MacroTheme.carbsColor,
                 textColor: textColor,
                 secondaryTextColor: secondaryTextColor,
               ),
@@ -786,7 +744,7 @@ Regras:
           ] else ...[
             Text(
               _tipsError ?? l10n.translate('nutrition_tips_description'),
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 13,
                 height: 1.45,
                 color: _tipsError == null
@@ -795,7 +753,7 @@ Regras:
               ),
             ),
           ],
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -804,16 +762,18 @@ Regras:
                 _tips == null
                     ? Icons.auto_awesome_outlined
                     : Icons.refresh_rounded,
+                size: 18,
               ),
               label: Text(
                 l10n.translate(
                   _tips == null ? 'get_ai_tips' : 'refresh_tips',
                 ),
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -828,74 +788,10 @@ Regras:
   Widget _buildSectionTitle(String title, Color textColor) {
     return Text(
       title,
-      style: TextStyle(
+      style: GoogleFonts.poppins(
         fontSize: 18,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w600,
         color: textColor,
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  final bool isDarkMode;
-
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-    required this.isDarkMode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: color.withValues(alpha: isDarkMode ? 0.35 : 0.18),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDarkMode
-                        ? const Color(0xFFAEB7CE)
-                        : AppTheme.textSecondaryColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: isDarkMode
-                  ? AppTheme.darkTextColor
-                  : AppTheme.textPrimaryColor,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -940,9 +836,9 @@ class _LevelBar extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                   color: textColor,
                 ),
               ),
@@ -950,7 +846,7 @@ class _LevelBar extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               amountLabel,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: secondaryTextColor,
@@ -958,11 +854,11 @@ class _LevelBar extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(999),
           child: Container(
-            height: 12,
+            height: 10,
             color: barBackground,
             child: Align(
               alignment: Alignment.centerLeft,
@@ -982,32 +878,32 @@ class _LevelBar extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Row(
           children: [
             Text(
               leftLabel,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 color: secondaryTextColor,
               ),
             ),
             const Spacer(),
             Text(
               valueLabel,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: color,
               ),
             ),
             const Spacer(),
             Text(
               rightLabel,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 color: secondaryTextColor,
               ),
             ),
@@ -1031,15 +927,15 @@ class _TipsBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 14,
+        style: GoogleFonts.inter(
+          fontSize: 13,
           height: 1.5,
           color: textColor,
         ),
@@ -1076,18 +972,18 @@ class _TipsList extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               title,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: textColor,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         for (final item in items)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: 6),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1104,7 +1000,7 @@ class _TipsList extends StatelessWidget {
                 Expanded(
                   child: Text(
                     item,
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 13,
                       height: 1.45,
                       color: secondaryTextColor,

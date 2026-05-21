@@ -41,6 +41,11 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                     children: [
                       _buildHeader(theme, isDarkMode, textColor),
                       const SizedBox(height: 20),
+                      _buildSyncStatusBanner(
+                          provider, theme, isDarkMode, textColor),
+                      if (provider.hasPendingServerSync ||
+                          provider.isSyncingWithServer)
+                        const SizedBox(height: 16),
                       _buildGoalsHeroCard(
                           provider, theme, isDarkMode, textColor),
                       const SizedBox(height: 16),
@@ -149,6 +154,56 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSyncStatusBanner(
+    NutritionGoalsProvider provider,
+    ThemeData theme,
+    bool isDarkMode,
+    Color textColor,
+  ) {
+    if (!provider.hasPendingServerSync && !provider.isSyncingWithServer) {
+      return const SizedBox.shrink();
+    }
+
+    final accentColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final message = provider.isSyncingWithServer
+        ? AppLocalizations.of(context).translate('goals_syncing')
+        : AppLocalizations.of(context).translate('goals_not_synced');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: isDarkMode ? 0.14 : 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: accentColor.withValues(alpha: isDarkMode ? 0.28 : 0.20),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            provider.isSyncingWithServer
+                ? Icons.sync_rounded
+                : Icons.cloud_off_rounded,
+            size: 18,
+            color: accentColor,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

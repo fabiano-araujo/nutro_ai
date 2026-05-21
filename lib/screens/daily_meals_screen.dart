@@ -747,7 +747,7 @@ class _MealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
     final secondaryTextColor =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 

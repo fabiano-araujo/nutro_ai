@@ -7,12 +7,7 @@ class FoodJsonParser {
   /// Detecta se há um JSON de alimentos na mensagem
   static bool containsFoodJson(String message) {
     try {
-      // Normalizar mensagem para detecção mais rápida (remover quebras de linha)
-      final normalized = message.replaceAll('\n', '').replaceAll('\r', '');
-
-      // Procurar por padrões como: {"foods": ou {\"foods\":
-      if (!normalized.contains('"foods"') &&
-          !normalized.contains('\\"foods\\"')) {
+      if (!hasFoodJsonSignal(message)) {
         return false;
       }
 
@@ -27,6 +22,16 @@ class FoodJsonParser {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Detecta sinais fortes de payload nutricional sem exigir JSON completo.
+  static bool hasFoodJsonSignal(String message) {
+    final normalized = _normalizeJsonLikeText(message)
+        .replaceAll('\n', '')
+        .replaceAll('\r', '');
+
+    return RegExp(r'"foods"\s*:').hasMatch(normalized) ||
+        RegExp(r'"mealType"\s*:').hasMatch(normalized);
   }
 
   /// Detecta o início de um JSON de refeição ainda incompleto no stream.
@@ -45,24 +50,25 @@ class FoodJsonParser {
 
       final firstNonWhitespace = message.indexOf(RegExp(r'\S'));
       if (firstNonWhitespace != -1 && message[firstNonWhitespace] == '{') {
-        final trimmedStart = message.substring(firstNonWhitespace);
+        final trimmedStart =
+            _normalizeJsonLikeText(message.substring(firstNonWhitespace));
 
         if (trimmedStart.contains('"mealType"') ||
-            trimmedStart.contains('\\"mealType\\"') ||
             trimmedStart.contains('"foods"') ||
-            trimmedStart.contains('\\"foods\\"') ||
             trimmedStart.startsWith('{')) {
           return firstNonWhitespace;
         }
       }
 
+      final normalized = _normalizeJsonLikeText(message);
+
       final inlineMealTypeMatch =
-          RegExp(r'\{\s*\\?"mealType').firstMatch(message);
+          RegExp(r'\{\s*"mealType"').firstMatch(normalized);
       if (inlineMealTypeMatch != null) {
         return inlineMealTypeMatch.start;
       }
 
-      final inlineFoodsMatch = RegExp(r'\{\s*\\?"foods').firstMatch(message);
+      final inlineFoodsMatch = RegExp(r'\{\s*"foods"').firstMatch(normalized);
       if (inlineFoodsMatch != null) {
         return inlineFoodsMatch.start;
       }
@@ -99,41 +105,18 @@ class FoodJsonParser {
   /// Extrai o JSON de alimentos da mensagem
   static String? extractFoodJson(String message) {
     try {
-      // Fazer unescape se necessário
-      String cleanMessage =
-          message.contains('\\"') ? message.replaceAll('\\"', '"') : message;
+      final cleanMessage = _normalizeJsonLikeText(message);
 
       // Encontrar a posição inicial do JSON
-      final foodsIndex = cleanMessage.indexOf('"foods"');
+      final foodsIndex = _findFoodsKeyIndex(cleanMessage);
       if (foodsIndex == -1) return null;
 
       // Procurar para trás para encontrar o '{' inicial
-      int startIndex = -1;
-      for (int i = foodsIndex; i >= 0; i--) {
-        if (cleanMessage[i] == '{') {
-          startIndex = i;
-          break;
-        }
-      }
-
+      final startIndex = _findObjectStart(cleanMessage, foodsIndex);
       if (startIndex == -1) return null;
 
       // Usar contador de chaves para encontrar o fechamento correto
-      int braceCount = 0;
-      int endIndex = -1;
-
-      for (int i = startIndex; i < cleanMessage.length; i++) {
-        if (cleanMessage[i] == '{') {
-          braceCount++;
-        } else if (cleanMessage[i] == '}') {
-          braceCount--;
-          if (braceCount == 0) {
-            endIndex = i;
-            break;
-          }
-        }
-      }
-
+      final endIndex = _findObjectEnd(cleanMessage, startIndex);
       if (endIndex == -1) return null;
 
       return cleanMessage.substring(startIndex, endIndex + 1);
@@ -154,6 +137,12 @@ class FoodJsonParser {
         // Se tinha escapes, também remover a versão original
         final originalJson = jsonStr.replaceAll('"', '\\"');
         cleaned = cleaned.replaceAll(originalJson, '');
+      }
+      if (cleaned == message) {
+        final candidateStart = findFoodJsonCandidateStart(message);
+        if (candidateStart != null) {
+          cleaned = message.substring(0, candidateStart);
+        }
       }
       return cleaned.trim();
     } catch (e) {
@@ -240,6 +229,7 @@ class FoodJsonParser {
 
       final foodsList = decoded['foods'] as List;
       final foods = <Food>[];
+      final seenFoods = <String>{};
 
       for (var foodData in foodsList) {
         if (foodData is! Map) continue;
@@ -248,6 +238,9 @@ class FoodJsonParser {
         final portion = foodData['portion'] as String?;
 
         if (name == null) continue;
+
+        final foodIdentity = _foodIdentity(name);
+        if (!seenFoods.add(foodIdentity)) continue;
 
         // Tentar extrair macros de diferentes estruturas
         Map<String, dynamic>? macros;
@@ -320,6 +313,70 @@ class FoodJsonParser {
     } catch (e) {
       return null;
     }
+  }
+
+  static String _foodIdentity(String name) {
+    return name.trim().toLowerCase();
+  }
+
+  static String _normalizeJsonLikeText(String message) {
+    return message
+        .replaceAll('\\"', '"')
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('„', '"')
+        .replaceAll('‟', '"');
+  }
+
+  static int _findFoodsKeyIndex(String message) {
+    return RegExp(r'"foods"\s*:').firstMatch(message)?.start ?? -1;
+  }
+
+  static int _findObjectStart(String message, int fromIndex) {
+    for (var i = fromIndex; i >= 0; i--) {
+      if (message[i] == '{') {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  static int _findObjectEnd(String message, int startIndex) {
+    var braceCount = 0;
+    var inString = false;
+    var escaped = false;
+
+    for (var i = startIndex; i < message.length; i++) {
+      final char = message[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char == '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char == '"') {
+        inString = !inString;
+      }
+
+      if (!inString) {
+        if (char == '{') {
+          braceCount++;
+        } else if (char == '}') {
+          braceCount--;
+          if (braceCount == 0) {
+            return i;
+          }
+        }
+      }
+    }
+
+    return -1;
   }
 
   /// Helper para converter valores para double

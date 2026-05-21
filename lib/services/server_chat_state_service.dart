@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'app_integrity_service.dart';
 import '../util/app_constants.dart';
 
 class ServerChatStateService {
@@ -15,7 +16,7 @@ class ServerChatStateService {
   }) async {
     final response = await http.get(
       _chatStateUri,
-      headers: _headers(token),
+      headers: await _headers(token),
     );
 
     return _decodeResponse(
@@ -31,7 +32,7 @@ class ServerChatStateService {
   }) async {
     final response = await http.post(
       _chatCommandUri,
-      headers: _headers(token),
+      headers: await _headers(token),
       body: jsonEncode({
         'commandName': commandName,
         'arguments': arguments,
@@ -44,9 +45,10 @@ class ServerChatStateService {
     );
   }
 
-  Map<String, String> _headers(String token) => {
+  Future<Map<String, String>> _headers(String token) async => {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
+        ...await AppIntegrityService.appCheckHeaders(),
       };
 
   Map<String, dynamic> _decodeResponse(

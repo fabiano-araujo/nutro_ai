@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../models/diet_plan_model.dart';
 import '../providers/nutrition_goals_provider.dart' show NutritionGoalsProvider;
 import '../providers/meal_types_provider.dart' show MealTypeConfig;
+import '../services/app_integrity_service.dart';
+import '../services/user_app_state_service.dart';
 import '../util/app_constants.dart';
 
 class DietPlanProvider extends ChangeNotifier {
@@ -33,10 +36,19 @@ class DietPlanProvider extends ChangeNotifier {
   String? _authToken;
   int? _userId;
   bool _isPremium = false;
+  bool _hasPendingPreferencesSync = false;
+  bool _isSyncingPreferences = false;
+  int _preferencesRevision = 0;
+  Timer? _preferencesSyncDebounce;
+  final UserAppStateService _appStateService = UserAppStateService();
+  static const String _pendingPreferencesSyncKey =
+      'diet_preferences_pending_server_sync';
 
   // Getters para status de autenticação
   bool get isAuthenticated => _authToken != null && _userId != null;
   bool get isPremium => _isPremium;
+  bool get hasPendingPreferencesSync => _hasPendingPreferencesSync;
+  bool get isSyncingPreferences => _isSyncingPreferences;
 
   // Getters
   Map<String, DietPlan> get dietPlans => _dietPlans;
@@ -47,7 +59,8 @@ class DietPlanProvider extends ChangeNotifier {
   DietPlan? get partialDietPlan => _partialDietPlan;
   int get expectedMealsCount => _expectedMealsCount;
   DietMode get dietMode => _preferences.dietMode;
-  bool get hasCompletedDietPersonalization => hasReviewedDietGenerationPreferences;
+  bool get hasCompletedDietPersonalization =>
+      hasReviewedDietGenerationPreferences;
   bool get hasReviewedDietGenerationPreferences =>
       _preferences.hasReviewedRestrictions ||
       _preferences.hasReviewedFoodPreferences ||
@@ -84,6 +97,7 @@ class DietPlanProvider extends ChangeNotifier {
   void setDietMode(DietMode mode) {
     _preferences = _preferences.copyWith(dietMode: mode);
     _saveToPreferences();
+    _markPreferencesPendingAndScheduleSync();
     notifyListeners();
   }
 
@@ -97,11 +111,13 @@ class DietPlanProvider extends ChangeNotifier {
   Future<void> setAuth(String token, int userId) async {
     _authToken = token;
     _userId = userId;
+    await _loadPendingPreferencesSyncFlag();
     print('🔐 DietPlanProvider: Auth configurado para userId: $userId');
 
     // Verificar status premium e carregar dietas do servidor
     await _checkPremiumStatus();
     await _loadFromServer();
+    await syncPendingPreferencesIfNeeded();
     notifyListeners();
   }
 
@@ -110,6 +126,7 @@ class DietPlanProvider extends ChangeNotifier {
     _authToken = null;
     _userId = null;
     _isPremium = false;
+    _preferencesSyncDebounce?.cancel();
     print('🔓 DietPlanProvider: Auth limpo');
     notifyListeners();
   }
@@ -346,14 +363,25 @@ class DietPlanProvider extends ChangeNotifier {
   void updatePreferences(DietPreferences newPreferences) {
     _preferences = newPreferences;
     _saveToPreferences();
+    _markPreferencesPendingAndScheduleSync();
     notifyListeners();
   }
 
   Future<void> applyServerPreferencesSnapshot(
     Map<String, dynamic> payload,
   ) async {
+    if (!_serverHasReviewedDietPreferences(payload) &&
+        (_hasPendingPreferencesSync || _hasLocalDietPreferences)) {
+      _hasPendingPreferencesSync = true;
+      await _savePendingPreferencesSyncFlag();
+      await _syncPreferencesToServer();
+      return;
+    }
+
     _preferences = DietPreferences.fromJson(payload);
     await _saveToPreferences();
+    _hasPendingPreferencesSync = false;
+    await _savePendingPreferencesSyncFlag();
     notifyListeners();
   }
 
@@ -410,6 +438,7 @@ class DietPlanProvider extends ChangeNotifier {
           reviewedRoutineNeeds ?? _preferences.hasReviewedRoutineNeeds,
     );
     _saveToPreferences();
+    _markPreferencesPendingAndScheduleSync();
     notifyListeners();
   }
 
@@ -475,6 +504,7 @@ class DietPlanProvider extends ChangeNotifier {
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       final requestBody = {
         'prompt': prompt,
@@ -974,6 +1004,7 @@ Rules:
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       final requestBody = {
         'prompt': prompt,
@@ -1389,6 +1420,101 @@ Rules:
     } catch (e) {
       print('❌ Erro ao carregar planos de dieta: $e');
     }
+  }
+
+  Map<String, dynamic> dietPreferencesToServerPayload() =>
+      _preferences.toJson();
+
+  bool get _hasLocalDietPreferences =>
+      _preferences.hasReviewedRestrictions ||
+      _preferences.hasReviewedFoodPreferences ||
+      _preferences.hasReviewedRoutineNeeds ||
+      _preferences.foodRestrictions.isNotEmpty ||
+      _preferences.favoriteFoods.isNotEmpty ||
+      _preferences.avoidedFoods.isNotEmpty ||
+      _preferences.routineConsiderations.isNotEmpty ||
+      _preferences.mealsPerDay != 3 ||
+      _preferences.hungriestMealTime != 'lunch';
+
+  bool _serverHasReviewedDietPreferences(Map<String, dynamic> payload) {
+    if (payload['hasReviewedAnyDietPreference'] == true ||
+        payload['isReadyForDietGeneration'] == true ||
+        payload['hasReviewedRestrictions'] == true ||
+        payload['hasReviewedFoodPreferences'] == true ||
+        payload['hasReviewedRoutineNeeds'] == true) {
+      return true;
+    }
+
+    bool hasAnyList(String key) =>
+        payload[key] is List && (payload[key] as List).isNotEmpty;
+
+    return hasAnyList('foodRestrictions') ||
+        hasAnyList('favoriteFoods') ||
+        hasAnyList('avoidedFoods') ||
+        hasAnyList('routineConsiderations');
+  }
+
+  Future<void> syncPendingPreferencesIfNeeded() async {
+    if (!isAuthenticated) return;
+    if (!_hasPendingPreferencesSync) return;
+    await _syncPreferencesToServer();
+  }
+
+  void _markPreferencesPendingAndScheduleSync() {
+    _preferencesRevision++;
+    _hasPendingPreferencesSync = true;
+    _savePendingPreferencesSyncFlag();
+    _schedulePreferencesSync();
+  }
+
+  void _schedulePreferencesSync() {
+    if (!isAuthenticated) return;
+    _preferencesSyncDebounce?.cancel();
+    _preferencesSyncDebounce = Timer(const Duration(seconds: 2), () {
+      _syncPreferencesToServer();
+    });
+  }
+
+  Future<void> _syncPreferencesToServer() async {
+    if (_isSyncingPreferences || !isAuthenticated || _authToken == null) {
+      return;
+    }
+
+    _isSyncingPreferences = true;
+    final syncRevision = _preferencesRevision;
+    notifyListeners();
+
+    try {
+      await _appStateService.syncAppState(
+        token: _authToken!,
+        dietGenerationPreferences: dietPreferencesToServerPayload(),
+      );
+      if (_preferencesRevision == syncRevision) {
+        _hasPendingPreferencesSync = false;
+        await _savePendingPreferencesSyncFlag();
+      }
+    } catch (e) {
+      _hasPendingPreferencesSync = true;
+      await _savePendingPreferencesSyncFlag();
+      print('❌ DietPlanProvider: Erro ao sincronizar preferências: $e');
+    } finally {
+      _isSyncingPreferences = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadPendingPreferencesSyncFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    _hasPendingPreferencesSync =
+        prefs.getBool(_pendingPreferencesSyncKey) ?? false;
+  }
+
+  Future<void> _savePendingPreferencesSyncFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(
+      _pendingPreferencesSyncKey,
+      _hasPendingPreferencesSync,
+    );
   }
 
   // Save to SharedPreferences

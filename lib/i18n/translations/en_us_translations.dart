@@ -30,6 +30,7 @@ final Map<String, String> enUSTranslations = {
   'please_enter_valid_email': 'Please enter a valid email',
   'please_enter_password': 'Please enter your password',
   'password_min_length': 'Password must be at least 6 characters',
+  'remember_email_password': 'Remember email and password',
   'login_to_access_profile': 'Login to access your profile',
   'login_description':
       'Sign in to view your history, favorites, and personalized settings.',
@@ -47,6 +48,8 @@ final Map<String, String> enUSTranslations = {
   'register_subtitle': 'Fill in the details to get started',
   'name': 'Name',
   'please_enter_name': 'Please enter your name',
+  'email_already_in_use':
+      'This email is already registered. Try signing in or use another email.',
   'confirm_password': 'Confirm Password',
   'please_confirm_password': 'Please confirm your password',
   'passwords_dont_match': 'Passwords do not match',
@@ -205,6 +208,9 @@ final Map<String, String> enUSTranslations = {
       'I could not interpret the requested in-app action. Please try again.',
   'chat_action_login': 'Log in',
   'chat_action_configure_goals_ui': 'Set up in the app',
+  'chat_goals_setup_banner_title': 'Complete your goals',
+  'chat_goals_setup_banner_body': 'Personalize calories and macros in the app.',
+  'chat_goals_setup_banner_button': 'Set up',
   'chat_action_continue_goals_chat': 'Continue in chat',
   'chat_action_edit_macros_ui': 'Edit macros in the app',
   'chat_action_continue_macros_chat': 'Adjust macros in chat',
@@ -604,7 +610,7 @@ final Map<String, String> enUSTranslations = {
   // Welcome message in card
   'welcome_message_card': 'Hi! I\'m Nutro AI, your nutrition assistant',
   'welcome_description':
-      'Intelligent assistant to enhance your learning 📚👩‍🎓',
+      'Track calories, macros, and nutrition goals in one place',
   'start_conversation': 'Start conversation',
 
   // AppBar title in tools screen
@@ -634,6 +640,7 @@ final Map<String, String> enUSTranslations = {
   'secure_google_play': 'Secure with Google Play. Cancel anytime.',
   'free_plan': 'Free',
   'monthly': 'Monthly',
+  'per_month': 'per month',
   'yearly': 'Yearly',
   'lifetime': 'Lifetime',
   'popular': 'MOST POPULAR',
@@ -703,6 +710,28 @@ final Map<String, String> enUSTranslations = {
   'no_results_found': 'No results found',
   'no_recent_searches': 'No recent searches',
   'no_favorite_foods': 'No favorite foods',
+  'quick_add_food': 'Quick add',
+  'values_per_serving': 'Nutrition values per serving',
+  'serving': 'Serving',
+  'used_times': 'Used {count} times',
+  'ready_to_add': 'Ready to add',
+  'repeat': 'Repeat',
+  'date': 'Date',
+  'no_recent_foods': 'No recent foods',
+  'no_saved_favorites': 'No saved favorites',
+  'recent_foods_empty_hint': 'Your foods will appear here after you log meals',
+  'favorite_foods_empty_hint': 'Favorite foods to access them quickly',
+  'no_registered_meals': 'No registered meals',
+  'repeatable_meals_empty_hint':
+      'Your meals will appear here so you can repeat them',
+  'options': 'Options',
+  'undo': 'Undo',
+  'remove_from_favorites': 'Remove from favorites',
+  'recent_deleted': 'Recent removed',
+  'favorite_deleted': 'Favorite removed',
+  'meal_deleted': 'Meal removed',
+  'added_to_favorites': 'Added to favorites',
+  'delete_item_question': 'Delete "{name}"?',
 
   // Daily Meals Screen
   'meals_diary': 'Meals Diary',
@@ -999,6 +1028,10 @@ final Map<String, String> enUSTranslations = {
   // Nutrition Goals Wizard Screen
   'configure_goals': 'Configure Goals',
   'goals_configured_successfully': 'Goals configured successfully!',
+  'goals_saved_locally_pending_sync':
+      'Goals saved on this device. We will sync them when internet is available.',
+  'goals_syncing': 'Syncing goals with your account...',
+  'goals_not_synced': 'Goals are not synced with your account yet.',
   'personal_info_title': 'Personal Information',
   'personal_info_subtitle': 'We need to know a little about you',
   'sex': 'Sex',
@@ -1181,6 +1214,43 @@ final Map<String, String> enUSTranslations = {
   'streak_checkin_action': 'Update streak',
   'streak_checkin_success': 'Streak updated successfully.',
   'streak_checkin_error': 'Unable to update your streak right now.',
+  'streak_screen_title': 'Streak',
+  'streak_tab_personal': 'Personal',
+  'streak_tab_friends': 'Friends',
+  'streak_share_tooltip': 'Share streak',
+  'streak_share_message':
+      'I have a {count}-day streak on Nutro AI. Come track yours with me!',
+  'streak_keep_today': 'Update today',
+  'streak_freeze_none_title': 'You have no streak protections',
+  'streak_freeze_none_message':
+      'Protections save your streak when you cannot log meals.',
+  'streak_freeze_available_title': 'You have {count} protection(s)',
+  'streak_freeze_available_message':
+      'Use a protection to freeze your streak for 24 hours.',
+  'streak_freeze_active_message': 'Your streak is temporarily protected.',
+  'streak_freeze_activated': 'Protection activated successfully.',
+  'streak_get_more_freezes': 'Get more',
+  'streak_freeze_info_title': 'Streak protections',
+  'streak_freeze_info_message':
+      'Extra protections become available as you stay consistent and participate in social actions in the app.',
+  'streak_calendar_title': 'Streak calendar',
+  'streak_calendar_logged_day': 'Meal logged',
+  'streak_today': 'Today',
+  'streak_previous_month': 'Previous month',
+  'streak_next_month': 'Next month',
+  'streak_friend_empty_title': 'Start a streak with friends',
+  'streak_friend_empty_message':
+      'Invite someone to log meals with you and stay consistent every day.',
+  'streak_invite_friends': 'Invite friends',
+  'streak_duo_title': 'Friend streaks',
+  'streak_duo_checkin': 'Check-in',
+  'streak_you': 'You',
+  'streak_friend_best': 'Best: {count}',
+  'streak_friend_checkin_success': 'Friend check-in updated.',
+  'streak_friend_checkin_error': 'Unable to update check-in.',
+  'streak_friend_progress_title': 'Duo progress',
+  'streak_friend_progress_message':
+      '{friends} friend(s) and {duos} active duo streak(s).',
   'social_open_hub': 'Open social hub',
   'social_summary_title': 'Social summary',
   'social_summary_subtitle':

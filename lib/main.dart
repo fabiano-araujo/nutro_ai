@@ -3,10 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'services/app_integrity_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation.dart';
@@ -41,17 +42,7 @@ void main() async {
   // Inicializa as plataformas WebView
   _initializeWebView();
 
-  // Inicializar Firebase para notificacoes push
-  if (!kIsWeb) {
-    try {
-      await Firebase.initializeApp();
-      // Inicializar servico de notificacoes
-      await NotificationService().initialize();
-      print('[Main] Firebase initialized');
-    } catch (e) {
-      print('[Main] Error initializing Firebase: $e');
-    }
-  }
+  await _initializeFirebaseServices();
 
   // Inicializar serviços de anúncios apenas em plataformas não web
   if (!kIsWeb) {
@@ -75,14 +66,84 @@ void main() async {
   runApp(MyApp(initialTheme: savedTheme));
 }
 
+Future<void> _initializeFirebaseServices() async {
+  try {
+    if (kIsWeb && !_hasWebFirebaseConfig) {
+      print(
+          '[Main] Firebase web config ausente; Firebase/App Check web nao foi inicializado.');
+      return;
+    }
+
+    await Firebase.initializeApp(
+      options: kIsWeb ? _webFirebaseOptions : null,
+    );
+    await AppIntegrityService.activateAppCheck();
+
+    if (!kIsWeb) {
+      await NotificationService().initialize();
+    }
+
+    print('[Main] Firebase initialized');
+  } catch (e) {
+    print('[Main] Error initializing Firebase: $e');
+  }
+}
+
+const String _firebaseWebApiKey = String.fromEnvironment(
+  'FIREBASE_WEB_API_KEY',
+  defaultValue: '',
+);
+const String _firebaseWebAppId = String.fromEnvironment(
+  'FIREBASE_WEB_APP_ID',
+  defaultValue: '',
+);
+const String _firebaseWebMessagingSenderId = String.fromEnvironment(
+  'FIREBASE_WEB_MESSAGING_SENDER_ID',
+  defaultValue: '',
+);
+const String _firebaseWebProjectId = String.fromEnvironment(
+  'FIREBASE_WEB_PROJECT_ID',
+  defaultValue: '',
+);
+const String _firebaseWebAuthDomain = String.fromEnvironment(
+  'FIREBASE_WEB_AUTH_DOMAIN',
+  defaultValue: '',
+);
+const String _firebaseWebStorageBucket = String.fromEnvironment(
+  'FIREBASE_WEB_STORAGE_BUCKET',
+  defaultValue: '',
+);
+
+bool get _hasWebFirebaseConfig =>
+    _firebaseWebApiKey.isNotEmpty &&
+    _firebaseWebAppId.isNotEmpty &&
+    _firebaseWebMessagingSenderId.isNotEmpty &&
+    _firebaseWebProjectId.isNotEmpty;
+
+FirebaseOptions get _webFirebaseOptions => FirebaseOptions(
+      apiKey: _firebaseWebApiKey,
+      appId: _firebaseWebAppId,
+      messagingSenderId: _firebaseWebMessagingSenderId,
+      projectId: _firebaseWebProjectId,
+      authDomain:
+          _firebaseWebAuthDomain.isEmpty ? null : _firebaseWebAuthDomain,
+      storageBucket:
+          _firebaseWebStorageBucket.isEmpty ? null : _firebaseWebStorageBucket,
+    );
+
 // Função para inicializar o WebView baseado na plataforma
 void _initializeWebView() {
   try {
     if (!kIsWeb) {
-      if (Platform.isAndroid) {
-        AndroidWebViewPlatform.registerWith();
-      } else if (Platform.isIOS) {
-        WebKitWebViewPlatform.registerWith();
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.android:
+          AndroidWebViewPlatform.registerWith();
+          break;
+        case TargetPlatform.iOS:
+          WebKitWebViewPlatform.registerWith();
+          break;
+        default:
+          break;
       }
     }
   } catch (e) {
@@ -134,24 +195,6 @@ class _MyAppState extends State<MyApp> {
   Future<void> _initializeAuth() async {
     try {
       await _authService.initialize();
-
-      // Se o usuário estiver autenticado, buscar seus dados do servidor
-      if (_authService.isAuthenticated) {
-        print('Usuário autenticado, buscando dados do servidor...');
-        // Buscar dados do usuário e atualizar status de assinatura
-        final userData = await _authService.fetchUserDataAndUpdateStatus();
-
-        if (userData != null) {
-          print('Dados do usuário obtidos, atualizando créditos...');
-          // Atualizar créditos usando o provider
-          Future.delayed(Duration.zero, () {
-            final creditProvider = Provider.of<CreditProvider>(
-                navigatorKey.currentContext!,
-                listen: false);
-            creditProvider.updateCreditsFromServer(userData);
-          });
-        }
-      }
     } catch (e) {
       print('Erro ao inicializar autenticação ou buscar dados: $e');
     }

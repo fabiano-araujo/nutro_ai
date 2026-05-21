@@ -30,6 +30,7 @@ final Map<String, String> esESTranslations = {
   'please_enter_valid_email': 'Por favor, introduce un email válido',
   'please_enter_password': 'Por favor, introduce tu contraseña',
   'password_min_length': 'La contraseña debe tener al menos 6 caracteres',
+  'remember_email_password': 'Recordar email y contraseña',
   'login_to_access_profile': 'Inicia sesión para acceder a tu perfil',
   'login_description':
       'Inicia sesión para ver tu historial, favoritos y configuraciones personalizadas.',
@@ -45,6 +46,9 @@ final Map<String, String> esESTranslations = {
   'register_subtitle': 'Completa los datos para comenzar',
   'name': 'Nombre',
   'please_enter_name': 'Por favor, ingresa tu nombre',
+  'name_min_length': 'El nombre debe tener al menos 2 caracteres',
+  'email_already_in_use':
+      'Este email ya está registrado. Intenta iniciar sesión o usa otro email.',
   'confirm_password': 'Confirmar Contraseña',
   'please_confirm_password': 'Por favor, confirma tu contraseña',
   'passwords_dont_match': 'Las contraseñas no coinciden',
@@ -207,6 +211,9 @@ final Map<String, String> esESTranslations = {
       'No pude completar la accion interna. Intentalo de nuevo.',
   'chat_action_login': 'Iniciar sesion',
   'chat_action_configure_goals_ui': 'Configurar en la app',
+  'chat_goals_setup_banner_title': 'Completa tus metas',
+  'chat_goals_setup_banner_body': 'Personaliza calorias y macros en la app.',
+  'chat_goals_setup_banner_button': 'Configurar',
   'chat_action_continue_goals_chat': 'Continuar en el chat',
   'chat_action_edit_macros_ui': 'Editar macros en la app',
   'chat_action_continue_macros_chat': 'Ajustar macros en el chat',
@@ -501,7 +508,7 @@ final Map<String, String> esESTranslations = {
   // Mensaje de bienvenida en tarjeta
   'welcome_message_card': '¡Hola! Soy Nutro AI, tu asistente de nutrición',
   'welcome_description':
-      'Asistente inteligente para potenciar tu aprendizaje 📚👩‍🎓',
+      'Controla calorías, macros y objetivos nutricionales en un solo lugar',
   'start_conversation': 'Iniciar conversación',
 
   // Título de AppBar en la pantalla de herramientas
@@ -540,6 +547,7 @@ final Map<String, String> esESTranslations = {
   'secure_google_play': 'Seguro con Google Play. Cancela cuando quieras.',
   'free_plan': 'Gratis',
   'monthly': 'Mensual',
+  'per_month': 'al mes',
   'yearly': 'Anual',
   'lifetime': 'De por vida',
   'popular': 'MÁS POPULAR',
@@ -612,6 +620,32 @@ final Map<String, String> esESTranslations = {
   'no_results_found': 'No se encontraron resultados',
   'no_recent_searches': 'No hay búsquedas recientes',
   'no_favorite_foods': 'No hay alimentos favoritos',
+  'add': 'Agregar',
+  'meals': 'Comidas',
+  'fat': 'Grasa',
+  'quick_add_food': 'Agregar rápido',
+  'values_per_serving': 'Valores nutricionales por porción',
+  'serving': 'Porción',
+  'used_times': 'Usado {count} veces',
+  'ready_to_add': 'Listo para agregar',
+  'repeat': 'Repetir',
+  'date': 'Fecha',
+  'no_recent_foods': 'No hay alimentos recientes',
+  'no_saved_favorites': 'No hay favoritos guardados',
+  'recent_foods_empty_hint':
+      'Tus alimentos aparecerán aquí después de registrar comidas',
+  'favorite_foods_empty_hint':
+      'Marca alimentos como favoritos para acceder rápidamente',
+  'no_registered_meals': 'No hay comidas registradas',
+  'repeatable_meals_empty_hint': 'Tus comidas aparecerán aquí para repetirlas',
+  'options': 'Opciones',
+  'undo': 'Deshacer',
+  'remove_from_favorites': 'Quitar de favoritos',
+  'recent_deleted': 'Reciente eliminado',
+  'favorite_deleted': 'Favorito eliminado',
+  'meal_deleted': 'Comida eliminada',
+  'added_to_favorites': 'Añadido a favoritos',
+  'delete_item_question': '¿Eliminar "{name}"?',
 
   // Daily Meals Screen
   'meals_diary': 'Diario de Comidas',
@@ -761,6 +795,43 @@ final Map<String, String> esESTranslations = {
   'streak_checkin_action': 'Actualizar racha',
   'streak_checkin_success': 'Racha actualizada correctamente.',
   'streak_checkin_error': 'No fue posible actualizar tu racha ahora.',
+  'streak_screen_title': 'Racha',
+  'streak_tab_personal': 'Personal',
+  'streak_tab_friends': 'Amigos',
+  'streak_share_tooltip': 'Compartir racha',
+  'streak_share_message':
+      'Tengo una racha de {count} días en Nutro AI. ¡Ven a seguir la tuya conmigo!',
+  'streak_keep_today': 'Actualizar hoy',
+  'streak_freeze_none_title': 'No tienes protecciones de racha',
+  'streak_freeze_none_message':
+      'Las protecciones salvan tu racha cuando no puedes registrar comidas.',
+  'streak_freeze_available_title': 'Tienes {count} protección(es)',
+  'streak_freeze_available_message':
+      'Usa una protección para congelar tu racha durante 24 horas.',
+  'streak_freeze_active_message': 'Tu racha está protegida temporalmente.',
+  'streak_freeze_activated': 'Protección activada correctamente.',
+  'streak_get_more_freezes': 'Obtener más',
+  'streak_freeze_info_title': 'Protecciones de racha',
+  'streak_freeze_info_message':
+      'Las protecciones extra quedan disponibles cuando mantienes constancia y participas en acciones sociales de la app.',
+  'streak_calendar_title': 'Calendario de la racha',
+  'streak_calendar_logged_day': 'Comida registrada',
+  'streak_today': 'Hoy',
+  'streak_previous_month': 'Mes anterior',
+  'streak_next_month': 'Mes siguiente',
+  'streak_friend_empty_title': 'Empieza una racha con amigos',
+  'streak_friend_empty_message':
+      'Invita a alguien a registrar comidas contigo y mantener la constancia todos los días.',
+  'streak_invite_friends': 'Invitar amigos',
+  'streak_duo_title': 'Rachas con amigos',
+  'streak_duo_checkin': 'Check-in',
+  'streak_you': 'Tú',
+  'streak_friend_best': 'Mejor: {count}',
+  'streak_friend_checkin_success': 'Check-in con amigo actualizado.',
+  'streak_friend_checkin_error': 'No fue posible actualizar el check-in.',
+  'streak_friend_progress_title': 'Progreso en dúo',
+  'streak_friend_progress_message':
+      '{friends} amigo(s) y {duos} racha(s) en dúo activas.',
   'social_open_hub': 'Abrir centro social',
   'social_summary_title': 'Resumen social',
   'social_summary_subtitle':

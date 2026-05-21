@@ -49,6 +49,7 @@ import 'nutrition_goals_wizard_screen.dart';
 import '../utils/food_json_parser.dart';
 import '../widgets/recent_foods_sheet.dart';
 import '../widgets/macro_edit_bottom_sheet.dart';
+import '../widgets/header_streak_badge.dart';
 import '../services/app_agent_service.dart';
 import '../services/auth_service.dart';
 
@@ -56,7 +57,8 @@ import '../services/auth_service.dart';
 // Este padrão de design é usado para resolver o problema do ciclo de vida
 // com IndexedStack, que não chama deactivate() quando mudamos de aba.
 class NutritionAssistantManager {
-  static final NutritionAssistantManager _instance = NutritionAssistantManager._internal();
+  static final NutritionAssistantManager _instance =
+      NutritionAssistantManager._internal();
   NutritionAssistantScreenState? activeState;
 
   factory NutritionAssistantManager() {
@@ -108,7 +110,8 @@ class NutritionAssistantScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  NutritionAssistantScreenState createState() => NutritionAssistantScreenState();
+  NutritionAssistantScreenState createState() =>
+      NutritionAssistantScreenState();
 
   // Método que permite chamar a lógica de deactivate externamente
   static void handleTabExit() {
@@ -451,7 +454,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           widget.initialPrompt!.isNotEmpty) {
         // Não é de ferramenta (ou caso de ferramenta não coberto), mas temos um prompt inicial.
         // E não estamos carregando uma conversa completa.
-        print('💬 NutritionAssistantScreen: Novo prompt de chat. Enviando mensagem.');
+        print(
+            '💬 NutritionAssistantScreen: Novo prompt de chat. Enviando mensagem.');
         Future.delayed(Duration(milliseconds: 100), () {
           _messageController.text = widget.initialPrompt!;
           _handleSendMessage();
@@ -502,8 +506,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         'message': text,
         'timestamp': (m['timestamp'] is DateTime)
             ? (m['timestamp'] as DateTime).toIso8601String()
-            : (m['timestamp']?.toString() ??
-                DateTime.now().toIso8601String()),
+            : (m['timestamp']?.toString() ?? DateTime.now().toIso8601String()),
       });
     }
     if (converted.isEmpty) return;
@@ -1490,7 +1493,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                               child: Container(
                                 color: currentScaffoldBackgroundColor,
                                 child: Align(
-                                  alignment: Alignment.center, // Centralizado vertical e horizontalmente
+                                  alignment: Alignment
+                                      .center, // Centralizado vertical e horizontalmente
                                   child: SingleChildScrollView(
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 16),
@@ -1545,8 +1549,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                               ),
                                               if (hasGoals)
                                                 _buildActionChip(
-                                                  icon:
-                                                      Icons.lightbulb_outline,
+                                                  icon: Icons.lightbulb_outline,
                                                   label: 'Ideias de comida',
                                                   isDarkMode: isDarkMode,
                                                   onTap: () {
@@ -1595,8 +1598,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                 rows.add(SizedBox(height: 8));
                                               }
                                               rows.add(Row(
-                                                mainAxisSize:
-                                                    MainAxisSize.min,
+                                                mainAxisSize: MainAxisSize.min,
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: rowChips,
@@ -1634,8 +1636,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                             Consumer<DailyMealsProvider>(
                               builder: (context, mealsProvider, _) {
                                 // Conta total de itens (foods) em todas as refeições do dia
-                                final count = mealsProvider.todayMeals.fold<int>(
-                                    0, (s, m) => s + m.foods.length);
+                                final count = mealsProvider.todayMeals
+                                    .fold<int>(0, (s, m) => s + m.foods.length);
                                 if (_lastMealCount == -1) {
                                   _lastMealCount = count;
                                 } else if (count > _lastMealCount) {
@@ -1643,21 +1645,19 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   WidgetsBinding.instance
                                       .addPostFrameCallback((_) {
                                     if (!mounted) return;
-                                    setState(
-                                        () => _showMealAddedToast = true);
-                                    Future.delayed(
-                                        const Duration(seconds: 3), () {
+                                    setState(() => _showMealAddedToast = true);
+                                    Future.delayed(const Duration(seconds: 3),
+                                        () {
                                       if (!mounted) return;
-                                      setState(() =>
-                                          _showMealAddedToast = false);
+                                      setState(
+                                          () => _showMealAddedToast = false);
                                     });
                                   });
                                 } else if (count < _lastMealCount) {
                                   _lastMealCount = count;
                                 }
                                 return AnimatedSwitcher(
-                                  duration:
-                                      const Duration(milliseconds: 250),
+                                  duration: const Duration(milliseconds: 250),
                                   transitionBuilder: (child, anim) =>
                                       SizeTransition(
                                     sizeFactor: anim,
@@ -1667,17 +1667,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   child: _showMealAddedToast
                                       ? Padding(
                                           key: const ValueKey('meal-toast'),
-                                          padding: const EdgeInsets.only(
-                                              bottom: 8),
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
                                           child: Container(
-                                            padding: const EdgeInsets
-                                                .symmetric(
+                                            padding: const EdgeInsets.symmetric(
                                                 horizontal: 14, vertical: 10),
                                             decoration: BoxDecoration(
-                                              color: Colors.green
-                                                  .withOpacity(isDarkMode
-                                                      ? 0.18
-                                                      : 0.12),
+                                              color: Colors.green.withOpacity(
+                                                  isDarkMode ? 0.18 : 0.12),
                                               borderRadius:
                                                   BorderRadius.circular(14),
                                               border: Border.all(
@@ -1686,8 +1683,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                             ),
                                             child: Row(
                                               children: [
-                                                const Icon(
-                                                    Icons.check_circle,
+                                                const Icon(Icons.check_circle,
                                                     color: Colors.green,
                                                     size: 18),
                                                 const SizedBox(width: 8),
@@ -1703,14 +1699,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                               d.month ==
                                                                   now.month &&
                                                               d.day == now.day;
-                                                      final yest = now
-                                                          .subtract(const Duration(
+                                                      final yest = now.subtract(
+                                                          const Duration(
                                                               days: 1));
-                                                      final isYest = d.year ==
-                                                              yest.year &&
-                                                          d.month ==
-                                                              yest.month &&
-                                                          d.day == yest.day;
+                                                      final isYest =
+                                                          d.year == yest.year &&
+                                                              d.month ==
+                                                                  yest.month &&
+                                                              d.day == yest.day;
                                                       if (isToday) {
                                                         return 'Adicionado ao diário de hoje';
                                                       }
@@ -1740,13 +1736,16 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                           // Banner "Fazer login" discreto — só após enviar mensagem
                           Consumer<AuthService>(
                             builder: (context, auth, _) {
-                              final sentSomething =
-                                  _chatController.messages.any((m) =>
+                              final sentSomething = _chatController.messages
+                                  .any((m) =>
                                       (m['isUser'] == true) ||
                                       (m is Map && m['isUser'] == true));
-                              if (auth.isAuthenticated) return const SizedBox.shrink();
-                              if (_loginBannerDismissed) return const SizedBox.shrink();
-                              if (!sentSomething) return const SizedBox.shrink();
+                              if (auth.isAuthenticated)
+                                return const SizedBox.shrink();
+                              if (_loginBannerDismissed)
+                                return const SizedBox.shrink();
+                              if (!sentSomething)
+                                return const SizedBox.shrink();
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Container(
@@ -1781,8 +1780,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                         onPressed: _openLoginFromChat,
                                         style: TextButton.styleFrom(
                                           minimumSize: const Size(0, 28),
-                                          padding: const EdgeInsets
-                                              .symmetric(horizontal: 8),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8),
                                         ),
                                         child: const Text('Entrar',
                                             style: TextStyle(fontSize: 13)),
@@ -1796,8 +1795,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(
                                             minWidth: 28, minHeight: 28),
-                                        onPressed: () => setState(() =>
-                                            _loginBannerDismissed = true),
+                                        onPressed: () => setState(
+                                            () => _loginBannerDismissed = true),
                                       ),
                                     ],
                                   ),
@@ -1805,6 +1804,110 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                               );
                             },
                           ),
+
+                          if (!widget.isFreeChat)
+                            Consumer2<AuthService, NutritionGoalsProvider>(
+                              builder: (context, auth, goalsProvider, _) {
+                                if (!auth.isAuthenticated ||
+                                    goalsProvider.hasConfiguredGoals) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                return FutureBuilder<void>(
+                                  future: goalsProvider.ensureLoaded(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState !=
+                                            ConnectionState.done ||
+                                        goalsProvider.hasConfiguredGoals) {
+                                      return const SizedBox.shrink();
+                                    }
+
+                                    final l10n = AppLocalizations.of(context);
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: _openGoalWizardFromChat,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: isDarkMode
+                                                ? Colors.white.withOpacity(0.06)
+                                                : Colors.black
+                                                    .withOpacity(0.04),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.tune_rounded,
+                                                size: 18,
+                                                color: isDarkMode
+                                                    ? Colors.white70
+                                                    : Colors.black54,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      l10n.translate(
+                                                          'chat_goals_setup_banner_title'),
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: isDarkMode
+                                                            ? Colors.white
+                                                            : Colors.black87,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      l10n.translate(
+                                                          'chat_goals_setup_banner_body'),
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: isDarkMode
+                                                            ? Colors.white70
+                                                            : Colors.black54,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed:
+                                                    _openGoalWizardFromChat,
+                                                style: TextButton.styleFrom(
+                                                  minimumSize:
+                                                      const Size(0, 32),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 10),
+                                                ),
+                                                child: Text(
+                                                  l10n.translate(
+                                                      'chat_goals_setup_banner_button'),
+                                                  style: const TextStyle(
+                                                      fontSize: 13),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
 
                           // Exibir miniatura da imagem selecionada
                           if (hasSelectedImage && selectedImageBytes != null)
@@ -1878,18 +1981,22 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                 ? _buildRecordingComposer(isDarkMode)
                                 : Row(
                                     children: [
-                                      // Botão de galeria/foto
+                                      // Botão "+" — Galeria, Câmera, Recentes e favoritos
                                       IconButton(
-                                        icon: Icon(Icons.camera_alt,
+                                        icon: Icon(Icons.add,
                                             color: isDarkMode
                                                 ? Colors.grey[400]
-                                                : AppTheme
-                                                    .textSecondaryColor),
+                                                : AppTheme.textSecondaryColor),
                                         onPressed: () {
                                           showModalBottomSheet(
                                             context: context,
                                             backgroundColor: Theme.of(context)
                                                 .scaffoldBackgroundColor,
+                                            shape: const RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.vertical(
+                                                      top: Radius.circular(20)),
+                                            ),
                                             builder: (context) => SafeArea(
                                               child: Column(
                                                 mainAxisSize: MainAxisSize.min,
@@ -1932,12 +2039,31 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                           ImageSource.camera);
                                                     },
                                                   ),
+                                                  ListTile(
+                                                    leading: Icon(Icons.history,
+                                                        color: isDarkMode
+                                                            ? Colors.white70
+                                                            : AppTheme
+                                                                .textSecondaryColor),
+                                                    title: Text(
+                                                        'Recentes e favoritos',
+                                                        style: TextStyle(
+                                                            color: isDarkMode
+                                                                ? Colors.white
+                                                                : AppTheme
+                                                                    .textPrimaryColor)),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      _openRecentFoodsSheet();
+                                                    },
+                                                  ),
                                                 ],
                                               ),
                                             ),
                                           );
                                         },
                                         splashRadius: 20,
+                                        tooltip: 'Adicionar',
                                       ),
 
                                       // Campo de texto
@@ -1982,7 +2108,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                   : AppTheme.textPrimaryColor),
                                           textCapitalization:
                                               TextCapitalization.sentences,
-                                          maxLines: null,
+                                          minLines: 1,
+                                          maxLines: 6,
                                           onChanged: (text) {
                                             if (_suggestions.isNotEmpty) {
                                               _clearSuggestions();
@@ -2011,7 +2138,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                       ? Icons.mic
                                                       : Icons.send,
                                           color: isLoading
-                                              ? Colors.red
+                                              ? isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.red
                                               : isTranscribingAudio
                                                   ? Colors.orange
                                                   : isDarkMode
@@ -2292,6 +2421,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     // Verificar se a mensagem contém JSON de alimentos (apenas para mensagens da IA)
     final bool hasFoodJson =
         !isUser && FoodJsonParser.containsFoodJson(message);
+    final foodMessageId = 'msg-${timestamp.microsecondsSinceEpoch}-$index';
     final String displayMessage = AppAgentService.sanitizeDisplayMessage(
       message,
       autoRegisterFoods: hasFoodJson,
@@ -2311,8 +2441,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           builder: (context, notifier, _) {
             final hasJsonInNotifier =
                 FoodJsonParser.containsFoodJson(notifier.message);
-            final showsMealCard =
-                hasJsonInNotifier && !notifier.isStreaming;
+            final showsMealCard = hasJsonInNotifier && !notifier.isStreaming;
             final cleanMessage = notifier.displayMessage;
             final contextualActions = _buildContextualMessageActions(
               rawMessage: notifier.message,
@@ -2345,10 +2474,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                   Consumer<DailyMealsProvider>(
                     builder: (context, mealsProvider, _) {
                       return FoodJsonDisplay(
+                        key: ValueKey(foodMessageId),
                         message: notifier.message,
                         isDarkMode: isDarkMode,
                         selectedDate: mealsProvider.selectedDate,
-                        messageId: index.toString(),
+                        messageId: foodMessageId,
                         onDeleteMessage: () {
                           _chatController.deleteMessagePair(index);
                         },
@@ -2392,10 +2522,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             Consumer<DailyMealsProvider>(
               builder: (context, mealsProvider, _) {
                 return FoodJsonDisplay(
+                  key: ValueKey(foodMessageId),
                   message: message,
                   isDarkMode: isDarkMode,
                   selectedDate: mealsProvider.selectedDate,
-                  messageId: index.toString(),
+                  messageId: foodMessageId,
                   onDeleteMessage: () {
                     _chatController.deleteMessagePair(index);
                   },
@@ -2489,7 +2620,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   void _carregarAnuncioIntersticial() {
     // Não carregar anúncios na web
     if (kIsWeb) {
-      print("NutritionAssistantScreen: Pulando carregamento de anúncios na versão web");
+      print(
+          "NutritionAssistantScreen: Pulando carregamento de anúncios na versão web");
       return;
     }
 
@@ -2513,7 +2645,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   // Método público que pode ser chamado de fora para simular o comportamento do deactivate
   // Este método contém a mesma lógica que o método deactivate() original
   void handleTabChanged() {
-    print('NutritionAssistantScreen - handleTabChanged chamado ao trocar de aba');
+    print(
+        'NutritionAssistantScreen - handleTabChanged chamado ao trocar de aba');
 
     // Não mostrar anúncios na web
     if (kIsWeb) {
@@ -2870,8 +3003,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         child: Row(
           children: [
             IconButton(
-              icon: Icon(
-                  widget.isFreeChat ? Icons.arrow_back : Icons.menu,
+              icon: Icon(widget.isFreeChat ? Icons.arrow_back : Icons.menu,
                   color: isDarkMode ? Colors.white : Colors.black87),
               onPressed: widget.onOpenDrawer,
               tooltip: widget.isFreeChat ? 'Voltar' : 'Menu',
@@ -2895,9 +3027,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: isDarkMode
-                                    ? Colors.white
-                                    : Colors.black87,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black87,
                               ),
                             ),
                             if (title != null &&
@@ -2952,12 +3083,16 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                       ),
               ),
             ),
-            IconButton(
-              icon: Icon(Icons.search,
-                  color: isDarkMode ? Colors.white : Colors.black87),
-              onPressed: onSearchTap,
-              tooltip: 'Pesquisar alimentos',
-            ),
+            const HeaderStreakBadge(margin: EdgeInsets.only(right: 4)),
+            if (onSearchTap != null)
+              IconButton(
+                icon: Icon(Icons.search,
+                    color: isDarkMode ? Colors.white : Colors.black87),
+                onPressed: onSearchTap,
+                tooltip: 'Pesquisar alimentos',
+              )
+            else
+              const SizedBox(width: 8),
           ],
         ),
       ),
@@ -2969,8 +3104,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor:
-          isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

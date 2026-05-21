@@ -11,6 +11,7 @@ class DailyMealsProvider extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now();
   final Map<String, List<Meal>> _mealsByDate = {};
   final Map<String, int> _waterByDate = {};
+  late final Future<void> _initialLoadFuture;
   bool _isLoaded = false;
 
   // Goals (can be customized by user later)
@@ -27,12 +28,18 @@ class DailyMealsProvider extends ChangeNotifier {
   bool _isSyncing = false;
   bool _isLoadingFromServer = false;
 
+  /// Callback disparado após sync bem-sucedido do dia atual.
+  /// Usado para auto check-in de streak (ver main_navigation.dart).
+  void Function()? onTodaySynced;
+
   // Getters para estado de sync
   bool get isSyncing => _isSyncing;
   bool get isAuthenticated => _userId != null && _token != null;
+  bool get isLoaded => _isLoaded;
+  Future<void> get ready => _initialLoadFuture;
 
   DailyMealsProvider() {
-    _loadFromPreferences();
+    _initialLoadFuture = _loadFromPreferences();
   }
 
   /// Define credenciais de autenticação e carrega dados do servidor
@@ -40,9 +47,11 @@ class DailyMealsProvider extends ChangeNotifier {
     print('[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - userId: $userId');
     _userId = userId;
     _token = token;
-    print('[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - Carregando dados do servidor...');
+    print(
+        '[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - Carregando dados do servidor...');
     await _loadFromServer();
-    print('[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - ✅ Carregamento concluído');
+    print(
+        '[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - ✅ Carregamento concluído');
   }
 
   /// Limpa credenciais de autenticação
@@ -69,7 +78,8 @@ class DailyMealsProvider extends ChangeNotifier {
         to: DateTime.now(),
       );
 
-      print('[DailyMealsProvider] ${summaries.length} dias carregados do servidor');
+      print(
+          '[DailyMealsProvider] ${summaries.length} dias carregados do servidor');
 
       // Mesclar com dados locais (servidor tem prioridade)
       for (final summary in summaries) {
@@ -77,7 +87,7 @@ class DailyMealsProvider extends ChangeNotifier {
 
         // Se há dados do servidor, sobrescreve os locais
         if (summary.meals.isNotEmpty) {
-          _mealsByDate[dateKey] = summary.meals;
+          _mealsByDate[dateKey] = _normalizeMeals(summary.meals);
           _waterByDate[dateKey] = summary.waterGlasses;
         }
       }
@@ -109,14 +119,17 @@ class DailyMealsProvider extends ChangeNotifier {
     _isSyncing = true;
     print('[DailyMealsProvider] Sincronizando com servidor...');
 
+    final syncDate = _selectedDate;
+    bool synced = false;
+
     try {
-      final dateKey = _formatDate(_selectedDate);
+      final dateKey = _formatDate(syncDate);
       final meals = _mealsByDate[dateKey] ?? [];
       final water = _waterByDate[dateKey] ?? 0;
 
       await MealsSyncService.syncDay(
         token: _token!,
-        date: _selectedDate,
+        date: syncDate,
         meals: meals,
         waterGlasses: water,
         goals: MealGoals(
@@ -127,12 +140,21 @@ class DailyMealsProvider extends ChangeNotifier {
         ),
       );
 
+      synced = true;
       print('[DailyMealsProvider] Sincronização concluída');
     } catch (e) {
       print('[DailyMealsProvider] Erro ao sincronizar: $e');
     } finally {
       _isSyncing = false;
     }
+
+    if (synced && _isSameDay(syncDate, DateTime.now())) {
+      onTodaySynced?.call();
+    }
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   /// Força sincronização imediata (para uso manual)
@@ -172,10 +194,14 @@ class DailyMealsProvider extends ChangeNotifier {
   }
 
   // Daily totals
-  int get totalCalories => todayMeals.fold(0, (sum, meal) => sum + meal.totalCalories);
-  double get totalProtein => todayMeals.fold(0.0, (sum, meal) => sum + meal.totalProtein);
-  double get totalCarbs => todayMeals.fold(0.0, (sum, meal) => sum + meal.totalCarbs);
-  double get totalFat => todayMeals.fold(0.0, (sum, meal) => sum + meal.totalFat);
+  int get totalCalories =>
+      todayMeals.fold(0, (sum, meal) => sum + meal.totalCalories);
+  double get totalProtein =>
+      todayMeals.fold(0.0, (sum, meal) => sum + meal.totalProtein);
+  double get totalCarbs =>
+      todayMeals.fold(0.0, (sum, meal) => sum + meal.totalCarbs);
+  double get totalFat =>
+      todayMeals.fold(0.0, (sum, meal) => sum + meal.totalFat);
 
   // Remaining values
   int get caloriesRemaining => caloriesGoal - totalCalories;
@@ -225,9 +251,13 @@ class DailyMealsProvider extends ChangeNotifier {
 
         decodedMap.forEach((dateKey, mealsListJson) {
           final List<dynamic> mealsList = mealsListJson as List<dynamic>;
-          _mealsByDate[dateKey] = mealsList
-              .map((mealJson) => Meal.fromJson(mealJson as Map<String, dynamic>))
-              .toList();
+          _mealsByDate[dateKey] = _normalizeMeals(
+            mealsList
+                .map(
+                  (mealJson) => Meal.fromJson(mealJson as Map<String, dynamic>),
+                )
+                .toList(),
+          );
         });
       }
 
@@ -318,32 +348,63 @@ class DailyMealsProvider extends ChangeNotifier {
     _mealsByDate[dateKey] ??= [];
 
     final meals = _mealsByDate[dateKey]!;
+    final normalizedMeal = _normalizeMeal(
+      meal.copyWith(dateTime: _selectedDate),
+    );
 
     // Se tem messageId, verificar se já existe uma refeição com esse messageId
     // para evitar duplicação
-    if (meal.messageId != null) {
-      final existingByMessageId = meals.any((m) => m.messageId == meal.messageId);
-      if (existingByMessageId) {
-        print('⚠️ DailyMealsProvider - Refeição com messageId ${meal.messageId} já existe, ignorando duplicata');
+    if (normalizedMeal.messageId != null) {
+      final existingByMessageId =
+          meals.indexWhere((m) => m.messageId == normalizedMeal.messageId);
+      if (existingByMessageId != -1) {
+        final normalizedExisting = _normalizeMeal(meals[existingByMessageId]);
+        if (normalizedExisting.foods.length !=
+            meals[existingByMessageId].foods.length) {
+          meals[existingByMessageId] = normalizedExisting;
+          _saveToPreferences();
+          notifyListeners();
+        }
+        print(
+            '⚠️ DailyMealsProvider - Refeição com messageId ${normalizedMeal.messageId} já existe, ignorando duplicata');
+        return;
+      }
+
+      final existingWithSameFoods = meals.indexWhere(
+        (m) =>
+            m.type == normalizedMeal.type &&
+            _containsFoodSet(m.foods, normalizedMeal.foods),
+      );
+      if (existingWithSameFoods != -1) {
+        final existingMeal = _normalizeMeal(meals[existingWithSameFoods]);
+        meals[existingWithSameFoods] = existingMeal.messageId == null
+            ? existingMeal.copyWith(messageId: normalizedMeal.messageId)
+            : existingMeal;
+        _saveToPreferences();
+        notifyListeners();
         return;
       }
     }
 
     // Verificar se já existe uma refeição do mesmo tipo
-    final existingIndex = meals.indexWhere((m) => m.type == meal.type);
+    final existingIndex =
+        meals.indexWhere((m) => m.type == normalizedMeal.type);
 
     if (existingIndex != -1) {
       // Se já existe, mesclar os alimentos
       final existingMeal = meals[existingIndex];
-      final mergedFoods = List<Food>.from(existingMeal.foods)..addAll(meal.foods);
+      final mergedFoods = List<Food>.from(existingMeal.foods)
+        ..addAll(normalizedMeal.foods);
       // Preservar o messageId da nova refeição se existir
-      meals[existingIndex] = existingMeal.copyWith(
-        foods: mergedFoods,
-        messageId: meal.messageId ?? existingMeal.messageId,
+      meals[existingIndex] = _normalizeMeal(
+        existingMeal.copyWith(
+          foods: mergedFoods,
+          messageId: normalizedMeal.messageId ?? existingMeal.messageId,
+        ),
       );
     } else {
       // Senão, adicionar a nova refeição
-      meals.add(meal.copyWith(dateTime: _selectedDate));
+      meals.add(normalizedMeal);
     }
 
     _saveToPreferences();
@@ -408,10 +469,83 @@ class DailyMealsProvider extends ChangeNotifier {
     final index = meals.indexWhere((m) => m.id == updatedMeal.id);
     if (index == -1) return;
 
-    meals[index] = updatedMeal;
+    meals[index] = _normalizeMeal(updatedMeal);
     _saveToPreferences();
     _scheduleSync();
     notifyListeners();
+  }
+
+  List<Meal> _normalizeMeals(List<Meal> meals) {
+    final normalizedMeals =
+        meals.map(_normalizeMeal).where((meal) => meal.foods.isNotEmpty);
+    final mergedByIdentity = <String, Meal>{};
+
+    for (final meal in normalizedMeals) {
+      final identity = _mealIdentity(meal);
+      final existing = mergedByIdentity[identity];
+      if (existing == null) {
+        mergedByIdentity[identity] = meal;
+        continue;
+      }
+
+      mergedByIdentity[identity] = _normalizeMeal(
+        existing.copyWith(
+          foods: [...existing.foods, ...meal.foods],
+          messageId: existing.messageId ?? meal.messageId,
+        ),
+      );
+    }
+
+    return mergedByIdentity.values.toList();
+  }
+
+  Meal _normalizeMeal(Meal meal) {
+    if (meal.foods.length < 2) return meal;
+
+    final seenFoods = <String>{};
+    final dedupedFoods = <Food>[];
+
+    for (final food in meal.foods) {
+      final signature = _foodIdentity(food);
+      if (seenFoods.add(signature)) {
+        dedupedFoods.add(food);
+      }
+    }
+
+    if (dedupedFoods.length == meal.foods.length) return meal;
+    return meal.copyWith(foods: dedupedFoods);
+  }
+
+  bool _containsFoodSet(List<Food> existingFoods, List<Food> incomingFoods) {
+    if (incomingFoods.isEmpty || existingFoods.isEmpty) return false;
+
+    final existingCounts = <String, int>{};
+    for (final food in existingFoods) {
+      final signature = _foodIdentity(food);
+      existingCounts[signature] = (existingCounts[signature] ?? 0) + 1;
+    }
+
+    for (final food in incomingFoods) {
+      final signature = _foodIdentity(food);
+      final count = existingCounts[signature] ?? 0;
+      if (count <= 0) return false;
+      existingCounts[signature] = count - 1;
+    }
+
+    return true;
+  }
+
+  String _foodIdentity(Food food) {
+    return food.name.trim().toLowerCase();
+  }
+
+  String _mealIdentity(Meal meal) {
+    if (meal.messageId != null && meal.messageId!.isNotEmpty) {
+      return 'message:${meal.messageId}';
+    }
+
+    final foodNames = meal.foods.map(_foodIdentity).toList()..sort();
+    return '${meal.type.name}:${foodNames.join('|')}';
   }
 
   /// Remove uma refeição completa pelo ID
@@ -784,7 +918,9 @@ class DailyMealsProvider extends ChangeNotifier {
         'carbs': macros['carbs']!,
         'fat': macros['fat']!,
         'fiber': macros['fiber']!,
-        'hasData': macros['protein']! > 0 || macros['carbs']! > 0 || macros['fat']! > 0,
+        'hasData': macros['protein']! > 0 ||
+            macros['carbs']! > 0 ||
+            macros['fat']! > 0,
       });
     }
 
@@ -797,7 +933,8 @@ class DailyMealsProvider extends ChangeNotifier {
     final daysWithData = history.where((d) => d['hasData'] == true).toList();
     if (daysWithData.isEmpty) return 0;
 
-    final total = daysWithData.fold<int>(0, (sum, d) => sum + (d['calories'] as int));
+    final total =
+        daysWithData.fold<int>(0, (sum, d) => sum + (d['calories'] as int));
     return total / daysWithData.length;
   }
 
@@ -812,30 +949,19 @@ class DailyMealsProvider extends ChangeNotifier {
 
     final count = daysWithData.length;
     return {
-      'protein': daysWithData.fold<double>(0, (sum, d) => sum + (d['protein'] as double)) / count,
-      'carbs': daysWithData.fold<double>(0, (sum, d) => sum + (d['carbs'] as double)) / count,
-      'fat': daysWithData.fold<double>(0, (sum, d) => sum + (d['fat'] as double)) / count,
-      'fiber': daysWithData.fold<double>(0, (sum, d) => sum + (d['fiber'] as double)) / count,
+      'protein': daysWithData.fold<double>(
+              0, (sum, d) => sum + (d['protein'] as double)) /
+          count,
+      'carbs': daysWithData.fold<double>(
+              0, (sum, d) => sum + (d['carbs'] as double)) /
+          count,
+      'fat':
+          daysWithData.fold<double>(0, (sum, d) => sum + (d['fat'] as double)) /
+              count,
+      'fiber': daysWithData.fold<double>(
+              0, (sum, d) => sum + (d['fiber'] as double)) /
+          count,
     };
-  }
-
-  /// Get the current streak (consecutive days with logged meals)
-  int getCurrentStreak() {
-    int streak = 0;
-    final now = DateTime.now();
-
-    for (int i = 0; i < 365; i++) {
-      final date = now.subtract(Duration(days: i));
-      final calories = getCaloriesForDate(date);
-
-      if (calories > 0) {
-        streak++;
-      } else if (i > 0) {
-        break;
-      }
-    }
-
-    return streak;
   }
 
   /// Get total days with logged meals
@@ -865,9 +991,12 @@ class DailyMealsProvider extends ChangeNotifier {
 
   /// Limpa todos os dados de refeições e água (usado no logout)
   Future<void> clearAllData() async {
-    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Iniciando limpeza...');
-    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Refeições antes: ${_mealsByDate.length} dias');
-    print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Água antes: ${_waterByDate.length} dias');
+    print(
+        '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Iniciando limpeza...');
+    print(
+        '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Refeições antes: ${_mealsByDate.length} dias');
+    print(
+        '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Água antes: ${_waterByDate.length} dias');
 
     _mealsByDate.clear();
     _waterByDate.clear();
@@ -877,14 +1006,17 @@ class DailyMealsProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final removedMeals = await prefs.remove('daily_meals');
       final removedWater = await prefs.remove('water_by_date');
-      print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater');
+      print(
+          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater');
 
       // Verificar se foi removido
       final checkMeals = prefs.getString('daily_meals');
       final checkWater = prefs.getString('water_by_date');
-      print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Verificação: meals=${checkMeals == null ? "NULL (OK)" : "TEM DADOS!"}, water=${checkWater == null ? "NULL (OK)" : "TEM DADOS!"}');
+      print(
+          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - Verificação: meals=${checkMeals == null ? "NULL (OK)" : "TEM DADOS!"}, water=${checkWater == null ? "NULL (OK)" : "TEM DADOS!"}');
 
-      print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - ✅ Todos os dados de refeições foram limpos');
+      print(
+          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - ✅ Todos os dados de refeições foram limpos');
     } catch (e) {
       print('[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - ❌ ERRO: $e');
     }

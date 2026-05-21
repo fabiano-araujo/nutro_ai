@@ -159,6 +159,9 @@ final Map<String, String> itITTranslations = {
       'Non sono riuscito a completare l\'azione interna. Riprova.',
   'chat_action_login': 'Accedi',
   'chat_action_configure_goals_ui': 'Configura nell\'app',
+  'chat_goals_setup_banner_title': 'Completa i tuoi obiettivi',
+  'chat_goals_setup_banner_body': 'Personalizza calorie e macro nell\'app.',
+  'chat_goals_setup_banner_button': 'Configura',
   'chat_action_continue_goals_chat': 'Continua in chat',
   'chat_action_edit_macros_ui': 'Modifica i macro nell\'app',
   'chat_action_continue_macros_chat': 'Regola i macro in chat',
@@ -318,7 +321,7 @@ final Map<String, String> itITTranslations = {
   'welcome_message_card':
       'Ciao! Sono Nutro AI, il tuo assistente di nutrizione',
   'welcome_description':
-      'Assistente intelligente per migliorare il tuo apprendimento 📚👩‍🎓',
+      'Tieni traccia di calorie, macro e obiettivi nutrizionali in un unico posto',
   'start_conversation': 'Inizia conversazione',
 
   // Titolo della barra delle applicazioni nella schermata degli strumenti
@@ -359,6 +362,7 @@ final Map<String, String> itITTranslations = {
       'Pagamento sicuro con Google Play. Annulla quando vuoi.',
   'free_plan': 'Gratis',
   'monthly': 'Mensile',
+  'per_month': 'al mese',
   'yearly': 'Annuale',
   'lifetime': 'A vita',
   'popular': 'PIÙ POPOLARE',
@@ -416,6 +420,7 @@ final Map<String, String> itITTranslations = {
   'please_enter_valid_email': 'Inserisci una email valida',
   'please_enter_password': 'Inserisci la tua password',
   'password_min_length': 'La password deve contenere almeno 6 caratteri',
+  'remember_email_password': 'Ricorda email e password',
   'login_to_access_profile': 'Accedi per visualizzare il tuo profilo',
   'login_description':
       'Accedi per visualizzare la tua cronologia, i preferiti e le impostazioni personalizzate.',
@@ -431,6 +436,9 @@ final Map<String, String> itITTranslations = {
   'register_subtitle': 'Compila i dettagli per iniziare',
   'name': 'Nome',
   'please_enter_name': 'Per favore inserisci il tuo nome',
+  'name_min_length': 'Il nome deve contenere almeno 2 caratteri',
+  'email_already_in_use':
+      'Questa email è già registrata. Accedi o usa un’altra email.',
   'confirm_password': 'Conferma Password',
   'please_confirm_password': 'Per favore conferma la tua password',
   'passwords_dont_match': 'Le password non corrispondono',
@@ -470,6 +478,34 @@ final Map<String, String> itITTranslations = {
   'free_meal': 'Pasto Libero',
   'meal': 'Pasto',
   'select_meal_type': 'Seleziona tipo di pasto',
+  'add': 'Aggiungi',
+  'meals': 'Pasti',
+  'protein_full': 'Proteina',
+  'fat': 'Grassi',
+  'quick_add_food': 'Aggiunta rapida',
+  'values_per_serving': 'Valori nutrizionali per porzione',
+  'serving': 'Porzione',
+  'used_times': 'Usato {count} volte',
+  'ready_to_add': 'Pronto da aggiungere',
+  'repeat': 'Ripeti',
+  'date': 'Data',
+  'no_recent_foods': 'Nessun alimento recente',
+  'no_saved_favorites': 'Nessun preferito salvato',
+  'recent_foods_empty_hint':
+      'I tuoi alimenti appariranno qui dopo aver registrato i pasti',
+  'favorite_foods_empty_hint':
+      'Aggiungi alimenti ai preferiti per accedervi rapidamente',
+  'no_registered_meals': 'Nessun pasto registrato',
+  'repeatable_meals_empty_hint':
+      'I tuoi pasti appariranno qui per poterli ripetere',
+  'options': 'Opzioni',
+  'undo': 'Annulla',
+  'remove_from_favorites': 'Rimuovi dai preferiti',
+  'recent_deleted': 'Recente rimosso',
+  'favorite_deleted': 'Preferito rimosso',
+  'meal_deleted': 'Pasto rimosso',
+  'added_to_favorites': 'Aggiunto ai preferiti',
+  'delete_item_question': 'Eliminare "{name}"?',
 
   // Drawer e conversazioni libere
   'diary': 'Diario',
@@ -586,6 +622,43 @@ final Map<String, String> itITTranslations = {
   'streak_checkin_action': 'Aggiorna streak',
   'streak_checkin_success': 'Streak aggiornato con successo.',
   'streak_checkin_error': 'Impossibile aggiornare il tuo streak adesso.',
+  'streak_screen_title': 'Streak',
+  'streak_tab_personal': 'Personale',
+  'streak_tab_friends': 'Amici',
+  'streak_share_tooltip': 'Condividi streak',
+  'streak_share_message':
+      'Ho uno streak di {count} giorni su Nutro AI. Vieni a seguire il tuo con me!',
+  'streak_keep_today': 'Aggiorna oggi',
+  'streak_freeze_none_title': 'Non hai protezioni per lo streak',
+  'streak_freeze_none_message':
+      'Le protezioni salvano lo streak quando non puoi registrare pasti.',
+  'streak_freeze_available_title': 'Hai {count} protezione/i',
+  'streak_freeze_available_message':
+      'Usa una protezione per congelare lo streak per 24 ore.',
+  'streak_freeze_active_message': 'Il tuo streak è temporaneamente protetto.',
+  'streak_freeze_activated': 'Protezione attivata con successo.',
+  'streak_get_more_freezes': 'Ottieni altre',
+  'streak_freeze_info_title': 'Protezioni streak',
+  'streak_freeze_info_message':
+      'Le protezioni extra diventano disponibili quando resti costante e partecipi alle azioni social dell\'app.',
+  'streak_calendar_title': 'Calendario streak',
+  'streak_calendar_logged_day': 'Pasto registrato',
+  'streak_today': 'Oggi',
+  'streak_previous_month': 'Mese precedente',
+  'streak_next_month': 'Mese successivo',
+  'streak_friend_empty_title': 'Inizia uno streak con amici',
+  'streak_friend_empty_message':
+      'Invita qualcuno a registrare pasti con te e a restare costante ogni giorno.',
+  'streak_invite_friends': 'Invita amici',
+  'streak_duo_title': 'Streak con amici',
+  'streak_duo_checkin': 'Check-in',
+  'streak_you': 'Tu',
+  'streak_friend_best': 'Migliore: {count}',
+  'streak_friend_checkin_success': 'Check-in con amico aggiornato.',
+  'streak_friend_checkin_error': 'Impossibile aggiornare il check-in.',
+  'streak_friend_progress_title': 'Progresso in duo',
+  'streak_friend_progress_message':
+      '{friends} amico/i e {duos} streak in duo attivi.',
   'social_open_hub': 'Apri hub social',
   'social_summary_title': 'Riepilogo social',
   'social_summary_subtitle': 'Segui streak, amici e sfide in un unico posto.',

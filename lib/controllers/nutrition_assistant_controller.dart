@@ -216,7 +216,8 @@ class NutritionAssistantController with ChangeNotifier {
     } else if (showWelcomeMessage) {
       // Nenhuma mensagem inicial e nenhum ID de conversa, e showWelcomeMessage é true.
       // Esta é a única condição em que a mensagem de boas-vindas deve ser adicionada.
-      print('👋 NutritionAssistantController: Adicionando mensagem de boas-vindas.');
+      print(
+          '👋 NutritionAssistantController: Adicionando mensagem de boas-vindas.');
       _addWelcomeMessage(); // _addWelcomeMessage já chama notifyListeners
     } else {
       print(
@@ -233,7 +234,8 @@ class NutritionAssistantController with ChangeNotifier {
   void _addWelcomeMessage() {
     _messages.add({
       'isUser': false,
-      'message': 'Olá! Sou Nutro AI, seu assistente de nutrição. Como posso te ajudar hoje?',
+      'message':
+          'Olá! Sou Nutro AI, seu assistente de nutrição. Como posso te ajudar hoje?',
       'timestamp': DateTime.now(),
     });
     notifyListeners();
@@ -322,7 +324,8 @@ class NutritionAssistantController with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('❌ NutritionAssistantController - Erro inesperado ao carregar conversa: $e');
+      print(
+          '❌ NutritionAssistantController - Erro inesperado ao carregar conversa: $e');
       _addWelcomeMessage();
       _isLoading = false;
       notifyListeners();
@@ -687,7 +690,8 @@ class NutritionAssistantController with ChangeNotifier {
         mealTypesForAI = mealTypesProvider.mealTypes
             .map((mt) => {'id': mt.id, 'name': mt.name})
             .toList();
-        print('🍽️ NutritionAssistantController - Tipos de refeição: $mealTypesForAI');
+        print(
+            '🍽️ NutritionAssistantController - Tipos de refeição: $mealTypesForAI');
       } catch (e) {
         print(
             '⚠️ NutritionAssistantController - Não foi possível obter tipos de refeição: $e');
@@ -789,7 +793,7 @@ class NutritionAssistantController with ChangeNotifier {
       rawContent,
       autoRegisterFoods: autoRegisterFoods,
       fallbackSanitizer: (content) {
-        if (!autoRegisterFoods) {
+        if (!autoRegisterFoods && !FoodJsonParser.hasFoodJsonSignal(content)) {
           return content;
         }
         return FoodJsonParser.removeJsonCandidateFromMessage(content);
@@ -942,7 +946,8 @@ class NutritionAssistantController with ChangeNotifier {
         },
       );
     } catch (e) {
-      print('❌ NutritionAssistantController - Erro ao executar comando agêntico: $e');
+      print(
+          '❌ NutritionAssistantController - Erro ao executar comando agêntico: $e');
       _finalizeInterceptedMessage(
         notifier,
         'Desculpe, ocorreu um erro ao acessar seus dados no app. Tente novamente.',

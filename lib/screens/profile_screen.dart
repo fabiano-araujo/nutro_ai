@@ -19,7 +19,7 @@ import 'statistics_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'nutrition_goals_screen.dart';
 import '../i18n/app_localizations_extension.dart';
-import '../widgets/streak_display.dart';
+import '../widgets/header_streak_badge.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
@@ -36,6 +36,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoggingOut = false;
+
   void _navigateToLogin() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -44,61 +46,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  _LogoutCleanupDependencies _captureLogoutCleanupDependencies() {
+    return _LogoutCleanupDependencies(
+      storageService: StorageService(),
+      creditProvider: context.read<CreditProvider>(),
+      essayProvider: context.read<EssayProvider>(),
+      dailyMealsProvider: context.read<DailyMealsProvider>(),
+      foodHistoryProvider: context.read<FoodHistoryProvider>(),
+      dietPlanProvider: context.read<DietPlanProvider>(),
+      freeChatProvider: context.read<FreeChatProvider>(),
+      nutritionGoalsProvider: context.read<NutritionGoalsProvider>(),
+    );
+  }
+
   /// Limpa todos os dados do usuário de todos os providers e storage
-  Future<void> _clearAllUserData() async {
-    print('[🔄 AUTH_DATA] ========== INICIANDO LOGOUT - LIMPEZA DE DADOS ==========');
+  Future<void> _clearAllUserData(_LogoutCleanupDependencies deps) async {
+    print(
+        '[🔄 AUTH_DATA] ========== INICIANDO LOGOUT - LIMPEZA DE DADOS ==========');
 
     try {
       // Limpar dados do StorageService (histórico, favoritos, conversas, etc.)
       print('[🔄 AUTH_DATA] 1/7 Limpando StorageService...');
-      final storageService = StorageService();
-      await storageService.clearAllUserData();
+      await deps.storageService.clearAllUserData();
       print('[🔄 AUTH_DATA] 1/7 ✅ StorageService limpo');
 
       // Limpar CreditProvider
       print('[🔄 AUTH_DATA] 2/7 Limpando CreditProvider...');
-      final creditProvider = Provider.of<CreditProvider>(context, listen: false);
-      await creditProvider.clearUserData();
+      await deps.creditProvider.clearUserData();
       print('[🔄 AUTH_DATA] 2/7 ✅ CreditProvider limpo');
 
       // Limpar EssayProvider
       print('[🔄 AUTH_DATA] 3/7 Limpando EssayProvider...');
-      final essayProvider = Provider.of<EssayProvider>(context, listen: false);
-      essayProvider.clearUserData();
+      deps.essayProvider.clearUserData();
       print('[🔄 AUTH_DATA] 3/7 ✅ EssayProvider limpo');
 
       // Limpar DailyMealsProvider (todas as refeições e dados de água)
       print('[🔄 AUTH_DATA] 4/7 Limpando DailyMealsProvider...');
-      final dailyMealsProvider = Provider.of<DailyMealsProvider>(context, listen: false);
-      dailyMealsProvider.clearAuth();
-      await dailyMealsProvider.clearAllData();
+      deps.dailyMealsProvider.clearAuth();
+      await deps.dailyMealsProvider.clearAllData();
       print('[🔄 AUTH_DATA] 4/7 ✅ DailyMealsProvider limpo');
 
       // Limpar FoodHistoryProvider
       print('[🔄 AUTH_DATA] 5/7 Limpando FoodHistoryProvider...');
-      final foodHistoryProvider = Provider.of<FoodHistoryProvider>(context, listen: false);
-      await foodHistoryProvider.clearAll();
+      await deps.foodHistoryProvider.clearAll();
       print('[🔄 AUTH_DATA] 5/7 ✅ FoodHistoryProvider limpo');
 
       // Limpar DietPlanProvider (dietas personalizadas)
       print('[🔄 AUTH_DATA] 6/7 Limpando DietPlanProvider...');
-      final dietPlanProvider = Provider.of<DietPlanProvider>(context, listen: false);
-      await dietPlanProvider.clearAll();
+      await deps.dietPlanProvider.clearAll();
       print('[🔄 AUTH_DATA] 6/7 ✅ DietPlanProvider limpo');
 
       // Limpar FreeChatProvider (conversas livres do AI Tutor)
       print('[🔄 AUTH_DATA] 7/7 Limpando FreeChatProvider...');
-      final freeChatProvider = Provider.of<FreeChatProvider>(context, listen: false);
-      await freeChatProvider.clearAll();
+      await deps.freeChatProvider.clearAll();
       print('[🔄 AUTH_DATA] 7/7 ✅ FreeChatProvider limpo');
 
       // Limpar NutritionGoalsProvider (metas nutricionais)
       print('[🔄 AUTH_DATA] EXTRA: Limpando NutritionGoalsProvider...');
-      final nutritionGoalsProvider = Provider.of<NutritionGoalsProvider>(context, listen: false);
-      await nutritionGoalsProvider.clearAllData();
+      await deps.nutritionGoalsProvider.clearAllData();
       print('[🔄 AUTH_DATA] EXTRA: ✅ NutritionGoalsProvider limpo');
 
-      print('[🔄 AUTH_DATA] ========== LOGOUT CONCLUÍDO - TODOS OS DADOS LIMPOS ==========');
+      print(
+          '[🔄 AUTH_DATA] ========== LOGOUT CONCLUÍDO - TODOS OS DADOS LIMPOS ==========');
     } catch (e) {
       print('[🔄 AUTH_DATA] ❌ ERRO durante limpeza de dados: $e');
     }
@@ -109,14 +118,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authService = Provider.of<AuthService>(context);
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final isAuthenticated = authService.isAuthenticated && !_isLoggingOut;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      backgroundColor:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
           statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
         ),
         automaticallyImplyLeading: false,
@@ -136,21 +148,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.hub_rounded,
-              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-            ),
-            onPressed: widget.onOpenSocialHub,
-            tooltip: context.tr.translate('social_open_hub'),
-          ),
-        ],
+        actions: isAuthenticated
+            ? [
+                const HeaderStreakBadge(
+                  margin: EdgeInsets.only(right: 4),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color:
+                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                  tooltip: context.tr.translate('settings'),
+                ),
+              ]
+            : null,
         centerTitle: true,
         scrolledUnderElevation: 0,
         elevation: 0,
       ),
-      body: authService.isAuthenticated
+      body: isAuthenticated
           ? _buildAuthenticatedContent()
           : _buildUnauthenticatedContent(),
     );
@@ -168,27 +192,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
         // Profile Header
         _buildProfileHeader(user, theme, colorScheme, isDarkMode),
-        const SizedBox(height: 24),
-
-        // Streak Card
-        const StreakDetailCard(),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
 
         // Goal Card
         _buildGoalCard(theme, colorScheme, isDarkMode),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
 
         // Quick Stats
         _buildQuickStats(theme, colorScheme, isDarkMode),
-        const SizedBox(height: 32),
+        const SizedBox(height: 16),
 
         // Settings Section
         _buildSettingsSection(theme, colorScheme, isDarkMode),
-        const SizedBox(height: 32),
+        const SizedBox(height: 16),
 
         // Logout
         _buildLogoutButton(authService, theme, colorScheme),
@@ -197,10 +217,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader(user, ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
+  Widget _buildProfileHeader(
+      user, ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
     return Consumer<NutritionGoalsProvider>(
       builder: (context, nutritionProvider, child) {
-        final bmi = _calculateBMI(nutritionProvider.weight, nutritionProvider.height);
+        final bmi =
+            _calculateBMI(nutritionProvider.weight, nutritionProvider.height);
         final bmiCategory = _getBMICategory(bmi, context);
 
         return Column(
@@ -270,7 +292,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color:
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -287,7 +310,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildGoalCard(ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
+  Widget _buildGoalCard(
+      ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
     return Consumer<NutritionGoalsProvider>(
@@ -396,40 +420,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildQuickStats(ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
+  Widget _buildQuickStats(
+      ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
     return Consumer<DailyMealsProvider>(
       builder: (context, mealsProvider, child) {
-        final streak = mealsProvider.getCurrentStreak();
         final avgCalories = mealsProvider.getAverageCalories(7);
 
-        return Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.local_fire_department_rounded,
-                value: streak.toString(),
-                label: context.tr.translate('profile_streak'),
-                theme: theme,
-                colorScheme: colorScheme,
-                cardColor: cardColor,
-                isDarkMode: isDarkMode,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.show_chart_rounded,
-                value: avgCalories > 0 ? '${avgCalories.toStringAsFixed(0)}' : '-',
-                label: context.tr.translate('profile_avg_cal'),
-                theme: theme,
-                colorScheme: colorScheme,
-                cardColor: cardColor,
-                isDarkMode: isDarkMode,
-              ),
-            ),
-          ],
+        return _buildStatCard(
+          icon: Icons.show_chart_rounded,
+          value: avgCalories > 0 ? '${avgCalories.toStringAsFixed(0)}' : '-',
+          label: context.tr.translate('profile_avg_cal'),
+          theme: theme,
+          colorScheme: colorScheme,
+          cardColor: cardColor,
+          isDarkMode: isDarkMode,
         );
       },
     );
@@ -481,21 +487,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingsSection(ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
+  Widget _buildSettingsSection(
+      ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         children: [
+          const SizedBox(height: 6),
           _buildSettingsItem(
             icon: Icons.bar_chart_rounded,
             title: context.tr.translate('statistics'),
@@ -554,6 +557,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               );
             },
           ),
+          const SizedBox(height: 6),
         ],
       ),
     );
@@ -570,29 +574,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
             children: [
-              Icon(
-                icon,
-                size: 24,
-                color: colorScheme.primary,
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: colorScheme.primary,
+                ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Text(
                   title,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w500,
+                    fontSize: 15,
                   ),
                 ),
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                size: 24,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                size: 20,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               ),
             ],
           ),
@@ -603,64 +616,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildDivider(ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.only(left: 68, right: 20),
       child: Divider(
         height: 1,
-        color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+        color: colorScheme.outlineVariant.withValues(alpha: 0.25),
       ),
     );
   }
 
-  Widget _buildLogoutButton(AuthService authService, ThemeData theme, ColorScheme colorScheme) {
-    return TextButton(
-      onPressed: () async {
-        final shouldLogout = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(context.tr.translate('logout')),
-            content: Text(context.tr.translate('logout_confirmation')),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(context.tr.translate('cancel')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text(
-                  context.tr.translate('logout'),
-                  style: TextStyle(color: colorScheme.error),
-                ),
-              ),
-            ],
-          ),
-        );
+  Widget _buildLogoutButton(
+      AuthService authService, ThemeData theme, ColorScheme colorScheme) {
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
-        if (shouldLogout == true) {
-          // Limpar todos os dados do usuário antes de fazer logout
-          await _clearAllUserData();
-          await authService.logout();
-        }
-      },
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.logout_rounded,
-            size: 20,
-            color: colorScheme.error,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            context.tr.translate('logout'),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: colorScheme.error,
-              fontWeight: FontWeight.w500,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () async {
+            final shouldLogout = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text(context.tr.translate('logout')),
+                content: Text(context.tr.translate('logout_confirmation')),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text(context.tr.translate('cancel')),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: Text(
+                      context.tr.translate('logout'),
+                      style: TextStyle(color: colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            );
+
+            if (shouldLogout == true) {
+              if (!mounted) return;
+
+              final cleanupDependencies = _captureLogoutCleanupDependencies();
+              setState(() {
+                _isLoggingOut = true;
+              });
+
+              await Future.wait([
+                authService.logout(),
+                _clearAllUserData(cleanupDependencies),
+              ]);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: colorScheme.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.logout_rounded,
+                    size: 18,
+                    color: colorScheme.error,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    context.tr.translate('logout'),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.error,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -782,4 +827,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return context.tr.translate('goal_maintain_weight');
     }
   }
+}
+
+class _LogoutCleanupDependencies {
+  final StorageService storageService;
+  final CreditProvider creditProvider;
+  final EssayProvider essayProvider;
+  final DailyMealsProvider dailyMealsProvider;
+  final FoodHistoryProvider foodHistoryProvider;
+  final DietPlanProvider dietPlanProvider;
+  final FreeChatProvider freeChatProvider;
+  final NutritionGoalsProvider nutritionGoalsProvider;
+
+  const _LogoutCleanupDependencies({
+    required this.storageService,
+    required this.creditProvider,
+    required this.essayProvider,
+    required this.dailyMealsProvider,
+    required this.foodHistoryProvider,
+    required this.dietPlanProvider,
+    required this.freeChatProvider,
+    required this.nutritionGoalsProvider,
+  });
 }

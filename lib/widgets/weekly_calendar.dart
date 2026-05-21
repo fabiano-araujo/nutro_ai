@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
+import 'header_streak_badge.dart';
 
 class WeeklyCalendar extends StatefulWidget {
   final Function(DateTime)? onDaySelected;
@@ -63,7 +64,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     // Ajustar a referência para o início da semana também
     final refWeekday = _referenceDate.weekday;
     final refDaysToSubtract = refWeekday == 7 ? 0 : refWeekday;
-    final refWeekStart = _referenceDate.subtract(Duration(days: refDaysToSubtract));
+    final refWeekStart =
+        _referenceDate.subtract(Duration(days: refDaysToSubtract));
 
     final difference = weekStart.difference(refWeekStart).inDays;
     return (difference / 7).round();
@@ -158,7 +160,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
 
     return Container(
       height: 56,
-      color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      color:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       padding: EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: [
@@ -182,7 +185,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                    color:
+                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                   ),
                 ),
               ),
@@ -238,7 +242,9 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                        color: isDarkMode
+                            ? Colors.white
+                            : AppTheme.textPrimaryColor,
                       ),
                     ),
                   ),
@@ -246,6 +252,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
               ),
             ),
           ],
+
+          const HeaderStreakBadge(margin: EdgeInsets.only(right: 4)),
 
           // Ícone de pesquisa à direita
           if (widget.onSearchPressed != null && !widget.isFreeChat)
@@ -269,7 +277,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
 
     return Container(
       height: 56,
-      color: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      color:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       child: PageView.builder(
         controller: _pageController,
         onPageChanged: (index) {
@@ -278,7 +287,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
           });
         },
         itemBuilder: (context, index) {
-          final weekIndex = index - 1000; // Offset para permitir navegação em ambas direções
+          final weekIndex =
+              index - 1000; // Offset para permitir navegação em ambas direções
           final daysInWeek = _getDaysInWeek(weekIndex);
 
           return _buildWeekView(daysInWeek, isDarkMode);
@@ -332,7 +342,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
               dayName,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
+                fontWeight:
+                    isSelected || isToday ? FontWeight.bold : FontWeight.w500,
                 color: isSelected
                     ? primaryColor
                     : isToday
@@ -346,23 +357,22 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? primaryColor
-                    : Colors.transparent,
+                color: isSelected ? primaryColor : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 dayNumber,
                 style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
-                color: isSelected
-                    ? onPrimaryColor
-                    : isToday
-                        ? primaryColor
-                        : isDarkMode
-                            ? Colors.white
-                            : AppTheme.textPrimaryColor,
+                  fontSize: 14,
+                  fontWeight:
+                      isSelected || isToday ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected
+                      ? onPrimaryColor
+                      : isToday
+                          ? primaryColor
+                          : isDarkMode
+                              ? Colors.white
+                              : AppTheme.textPrimaryColor,
                 ),
               ),
             ),

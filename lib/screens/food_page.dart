@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -499,15 +500,15 @@ class _FoodPageState extends State<FoodPage> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
             color: color,
           ),
         ),
         Text(
           unit,
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 10,
             color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
           ),
@@ -593,21 +594,23 @@ class _FoodPageState extends State<FoodPage> {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final subtleBorder = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
 
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.8,
           ),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -620,10 +623,10 @@ class _FoodPageState extends State<FoodPage> {
                   children: [
                     Text(
                       'Select Meal Type',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: textColor.withValues(alpha: 0.85),
+                      style: GoogleFonts.poppins(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
                       ),
                     ),
                     IconButton(
@@ -632,43 +635,37 @@ class _FoodPageState extends State<FoodPage> {
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 12),
                 // Meal types list
                 ...MealType.values.map((mealType) {
                   final option = DailyMealsProvider.getMealTypeOption(mealType);
 
                   return InkWell(
+                    borderRadius: BorderRadius.circular(10),
                     onTap: () {
-                      Navigator.pop(context); // Close meal type selector
+                      Navigator.pop(context);
                       _addToMeal(mealType);
                     },
                     child: Container(
-                      padding:
-                          EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                      margin: EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 12),
+                      margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
                         color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDarkMode
-                              ? AppTheme.darkBorderColor
-                              : AppTheme.dividerColor,
-                          width: 1,
-                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: subtleBorder, width: 1),
                       ),
                       child: Row(
                         children: [
-                          Text(
-                            option.emoji,
-                            style: TextStyle(fontSize: 24),
-                          ),
-                          SizedBox(width: 12),
+                          Text(option.emoji,
+                              style: const TextStyle(fontSize: 22)),
+                          const SizedBox(width: 12),
                           Text(
                             option.name,
-                            style: TextStyle(
-                              fontSize: 16,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
                               fontWeight: FontWeight.w500,
-                              color: textColor.withValues(alpha: 0.85),
+                              color: textColor,
                             ),
                           ),
                         ],
@@ -676,7 +673,7 @@ class _FoodPageState extends State<FoodPage> {
                     ),
                   );
                 }).toList(),
-                SizedBox(height: 16),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -688,7 +685,15 @@ class _FoodPageState extends State<FoodPage> {
   void _showPortionPicker() {
     final currentFood = _fullFoodData ?? widget.food;
     final portions = currentFood.foodRegions?.first.portions;
-    if (portions == null || portions.isEmpty) return;
+
+    // If no portions are available, inform the user instead of doing nothing
+    if (portions == null || portions.isEmpty) {
+      UIUtils.showPrimarySnackBar(
+        context,
+        'Porções alternativas não disponíveis para este alimento',
+      );
+      return;
+    }
 
     // Get base serving size (usually 100g)
     final nutrient = currentFood.nutrients?.first;
@@ -696,22 +701,31 @@ class _FoodPageState extends State<FoodPage> {
 
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
         final textColor =
             isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+        final subtleBorder = isDarkMode
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.black.withValues(alpha: 0.08);
+        final primaryColor =
+            isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
 
         return Container(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -721,10 +735,10 @@ class _FoodPageState extends State<FoodPage> {
                 children: [
                   Text(
                     'Select Portion',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: textColor.withValues(alpha: 0.85),
+                    style: GoogleFonts.poppins(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
                     ),
                   ),
                   IconButton(
@@ -733,7 +747,7 @@ class _FoodPageState extends State<FoodPage> {
                   ),
                 ],
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 12),
               // Portions list
               ...portions.map((portion) {
                 final isSelected =
@@ -744,6 +758,7 @@ class _FoodPageState extends State<FoodPage> {
                 final displayText = parsed['displayText'] as String;
 
                 return InkWell(
+                  borderRadius: BorderRadius.circular(10),
                   onTap: () {
                     setState(() {
                       // Parse the description to get display values
@@ -776,23 +791,17 @@ class _FoodPageState extends State<FoodPage> {
                     Navigator.pop(context);
                   },
                   child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                    margin: EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 14, horizontal: 12),
+                    margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.1)
+                          ? primaryColor.withValues(alpha: 0.08)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : (isDarkMode
-                                ? AppTheme.darkBorderColor
-                                : AppTheme.dividerColor),
-                        width: isSelected ? 2 : 1,
+                        color: isSelected ? primaryColor : subtleBorder,
+                        width: 1,
                       ),
                     ),
                     child: Row(
@@ -801,12 +810,12 @@ class _FoodPageState extends State<FoodPage> {
                         Expanded(
                           child: Text(
                             displayText,
-                            style: TextStyle(
-                              fontSize: 16,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
                               fontWeight: isSelected
                                   ? FontWeight.w600
-                                  : FontWeight.normal,
-                              color: textColor.withValues(alpha: 0.85),
+                                  : FontWeight.w500,
+                              color: textColor,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -814,11 +823,11 @@ class _FoodPageState extends State<FoodPage> {
                         ),
                         if (isSelected)
                           Padding(
-                            padding: EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.only(left: 8),
                             child: Icon(
                               Icons.check_circle,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 24,
+                              color: primaryColor,
+                              size: 20,
                             ),
                           ),
                       ],
@@ -826,8 +835,9 @@ class _FoodPageState extends State<FoodPage> {
                   ),
                 );
               }).toList(),
-              SizedBox(height: 16),
+              const SizedBox(height: 8),
             ],
+          ),
           ),
         );
       },
@@ -839,11 +849,16 @@ class _FoodPageState extends State<FoodPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final secondaryTextColor =
-        isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final subtleBorder = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+    final primaryColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final onPrimary = isDarkMode ? Colors.black : Colors.white;
 
     // Use full data if loaded, otherwise use initial data
     final currentFood = _fullFoodData ?? widget.food;
@@ -852,6 +867,11 @@ class _FoodPageState extends State<FoodPage> {
     final protein = _getScaledValue(nutrient?.protein);
     final carbs = _getScaledValue(nutrient?.carbohydrate);
     final fat = _getScaledValue(nutrient?.fat);
+
+    // Whether alternative portions exist (controls Unit field interactivity)
+    final availablePortions = currentFood.foodRegions?.first.portions;
+    final hasPortions =
+        availablePortions != null && availablePortions.isNotEmpty;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -931,6 +951,8 @@ class _FoodPageState extends State<FoodPage> {
                     pinned: true,
                     backgroundColor: backgroundColor,
                     elevation: 0,
+                    scrolledUnderElevation: 0,
+                    centerTitle: true,
                     leading: IconButton(
                       icon: Icon(Icons.arrow_back, color: textColor),
                       onPressed: () => Navigator.pop(context),
@@ -938,16 +960,16 @@ class _FoodPageState extends State<FoodPage> {
                     title: widget.selectedMealType != null
                         ? DropdownButton<MealType>(
                             value: _selectedMealType,
-                            underline: SizedBox.shrink(),
+                            underline: const SizedBox.shrink(),
                             isDense: true,
                             dropdownColor: isDarkMode
                                 ? AppTheme.darkCardColor
                                 : Colors.white,
                             icon: Icon(Icons.arrow_drop_down,
-                                color: textColor, size: 24),
-                            style: TextStyle(
+                                color: textColor, size: 22),
+                            style: GoogleFonts.poppins(
                               color: textColor,
-                              fontSize: 20,
+                              fontSize: 17,
                               fontWeight: FontWeight.w600,
                             ),
                             items: MealType.values.map((mealType) {
@@ -960,10 +982,16 @@ class _FoodPageState extends State<FoodPage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(option.emoji,
-                                        style: TextStyle(fontSize: 20)),
-                                    SizedBox(width: 8),
-                                    Text(option.name,
-                                        style: TextStyle(fontSize: 20)),
+                                        style: const TextStyle(fontSize: 18)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      option.name,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               );
@@ -1056,24 +1084,20 @@ class _FoodPageState extends State<FoodPage> {
                               children: [
                                 // Square food image with rounded corners
                                 Container(
-                                  width: 80,
-                                  height: 80,
+                                  width: 72,
+                                  height: 72,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(14),
                                     color: isDarkMode
-                                        ? Color(0xFF2E2E2E)
-                                        : Color(0xFFF3F4F6),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.1),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
+                                        ? const Color(0xFF2E2E2E)
+                                        : const Color(0xFFF3F4F6),
+                                    border: Border.all(
+                                      color: subtleBorder,
+                                      width: 1,
+                                    ),
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(14),
                                     child: currentFood.imageUrl != null
                                         ? CachedNetworkImage(
                                             imageUrl: currentFood.imageUrl!,
@@ -1082,21 +1106,24 @@ class _FoodPageState extends State<FoodPage> {
                                                 Center(
                                               child: Text(
                                                 currentFood.emoji,
-                                                style: TextStyle(fontSize: 40),
+                                                style: const TextStyle(
+                                                    fontSize: 34),
                                               ),
                                             ),
                                             errorWidget:
                                                 (context, url, error) => Center(
                                               child: Text(
                                                 currentFood.emoji,
-                                                style: TextStyle(fontSize: 40),
+                                                style: const TextStyle(
+                                                    fontSize: 34),
                                               ),
                                             ),
                                           )
                                         : Center(
                                             child: Text(
                                               currentFood.emoji,
-                                              style: TextStyle(fontSize: 40),
+                                              style: const TextStyle(
+                                                  fontSize: 34),
                                             ),
                                           ),
                                   ),
@@ -1111,21 +1138,21 @@ class _FoodPageState extends State<FoodPage> {
                                     children: [
                                       Text(
                                         currentFood.name,
-                                        style: TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color:
-                                              textColor.withValues(alpha: 0.85),
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700,
+                                          color: textColor,
+                                          height: 1.25,
                                         ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       if (currentFood.brand != null) ...[
-                                        SizedBox(height: 4),
+                                        const SizedBox(height: 4),
                                         Text(
                                           currentFood.brand!,
-                                          style: TextStyle(
-                                            fontSize: 16,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
                                             color: secondaryTextColor,
                                           ),
                                           maxLines: 1,
@@ -1153,12 +1180,12 @@ class _FoodPageState extends State<FoodPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Padding(
-                                        padding: EdgeInsets.only(
-                                            left: 12, bottom: 8),
+                                        padding: const EdgeInsets.only(
+                                            left: 4, bottom: 8),
                                         child: Text(
                                           'Serving Size',
-                                          style: TextStyle(
-                                            fontSize: 12,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w500,
                                             color: secondaryTextColor,
                                           ),
@@ -1167,48 +1194,42 @@ class _FoodPageState extends State<FoodPage> {
                                       TextField(
                                         controller: _servingSizeController,
                                         keyboardType: TextInputType.number,
-                                        style: TextStyle(
-                                          fontSize: 18,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 15,
                                           fontWeight: FontWeight.w600,
-                                          color:
-                                              textColor.withValues(alpha: 0.85),
+                                          color: textColor,
                                         ),
                                         decoration: InputDecoration(
                                           filled: true,
                                           fillColor: Colors.transparent,
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(12),
+                                                BorderRadius.circular(10),
                                             borderSide: BorderSide(
-                                              color: isDarkMode
-                                                  ? AppTheme.darkBorderColor
-                                                  : AppTheme.dividerColor,
-                                              width: 2,
+                                              color: subtleBorder,
+                                              width: 1,
                                             ),
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(12),
+                                                BorderRadius.circular(10),
                                             borderSide: BorderSide(
-                                              color: isDarkMode
-                                                  ? AppTheme.darkBorderColor
-                                                  : AppTheme.dividerColor,
-                                              width: 2,
+                                              color: subtleBorder,
+                                              width: 1,
                                             ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(12),
+                                                BorderRadius.circular(10),
                                             borderSide: BorderSide(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                              width: 2,
+                                              color: primaryColor,
+                                              width: 1.5,
                                             ),
                                           ),
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 16,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 14,
                                           ),
                                         ),
                                         onChanged: _updateServingSize,
@@ -1224,34 +1245,40 @@ class _FoodPageState extends State<FoodPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Padding(
-                                        padding: EdgeInsets.only(
-                                            left: 12, bottom: 8),
+                                        padding: const EdgeInsets.only(
+                                            left: 4, bottom: 8),
                                         child: Text(
                                           'Unit',
-                                          style: TextStyle(
-                                            fontSize: 12,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w500,
                                             color: secondaryTextColor,
                                           ),
                                         ),
                                       ),
                                       InkWell(
-                                        onTap: _showPortionPicker,
-                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: hasPortions
+                                            ? _showPortionPicker
+                                            : () {
+                                                UIUtils.showPrimarySnackBar(
+                                                  context,
+                                                  'Porções alternativas não disponíveis para este alimento',
+                                                );
+                                              },
+                                        borderRadius:
+                                            BorderRadius.circular(10),
                                         child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 16,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 14,
                                           ),
                                           decoration: BoxDecoration(
                                             border: Border.all(
-                                              color: isDarkMode
-                                                  ? AppTheme.darkBorderColor
-                                                  : AppTheme.dividerColor,
-                                              width: 2,
+                                              color: subtleBorder,
+                                              width: 1,
                                             ),
                                             borderRadius:
-                                                BorderRadius.circular(12),
+                                                BorderRadius.circular(10),
                                           ),
                                           child: Row(
                                             mainAxisAlignment:
@@ -1267,11 +1294,12 @@ class _FoodPageState extends State<FoodPage> {
                                                                   'displayText']
                                                               as String
                                                           : '${_currentServingSize.toStringAsFixed(0)} ${nutrient?.servingUnit ?? 'g'}'),
-                                                  style: TextStyle(
-                                                    fontSize: 18,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 15,
                                                     fontWeight: FontWeight.w600,
-                                                    color: textColor.withValues(
-                                                        alpha: 0.85),
+                                                    color: hasPortions
+                                                        ? textColor
+                                                        : secondaryTextColor,
                                                   ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -1279,8 +1307,12 @@ class _FoodPageState extends State<FoodPage> {
                                               ),
                                               Icon(
                                                 Icons.unfold_more,
-                                                color: secondaryTextColor,
-                                                size: 20,
+                                                color: secondaryTextColor
+                                                    .withValues(
+                                                        alpha: hasPortions
+                                                            ? 1.0
+                                                            : 0.4),
+                                                size: 18,
                                               ),
                                             ],
                                           ),
@@ -1298,48 +1330,87 @@ class _FoodPageState extends State<FoodPage> {
                           // Nutrition Facts - Macro Summary Card
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildMacroCardCompact(
-                                    icon: MacroTheme.caloriesIcon,
-                                    value: calories.toStringAsFixed(0),
-                                    unit: 'kcal',
-                                    color: MacroTheme.caloriesColor,
-                                    isDarkMode: isDarkMode,
+                            child: Card(
+                              margin: EdgeInsets.zero,
+                              elevation: 0,
+                              shadowColor: Colors.transparent,
+                              surfaceTintColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(color: subtleBorder),
+                              ),
+                              color: isDarkMode
+                                  ? AppTheme.darkCardColor
+                                  : AppTheme.cardColor,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 12),
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildMacroCardCompact(
+                                          icon: MacroTheme.caloriesIcon,
+                                          value: calories.toStringAsFixed(0),
+                                          unit: 'kcal',
+                                          color: MacroTheme.caloriesColor,
+                                          isDarkMode: isDarkMode,
+                                        ),
+                                      ),
+                                      VerticalDivider(
+                                        color: subtleBorder,
+                                        width: 1,
+                                        thickness: 1,
+                                        indent: 4,
+                                        endIndent: 4,
+                                      ),
+                                      Expanded(
+                                        child: _buildMacroCardCompact(
+                                          icon: MacroTheme.proteinIcon,
+                                          value:
+                                              '${protein.toStringAsFixed(1)}g',
+                                          unit: 'Proteína',
+                                          color: MacroTheme.proteinColor,
+                                          isDarkMode: isDarkMode,
+                                        ),
+                                      ),
+                                      VerticalDivider(
+                                        color: subtleBorder,
+                                        width: 1,
+                                        thickness: 1,
+                                        indent: 4,
+                                        endIndent: 4,
+                                      ),
+                                      Expanded(
+                                        child: _buildMacroCardCompact(
+                                          icon: MacroTheme.carbsIcon,
+                                          value:
+                                              '${carbs.toStringAsFixed(1)}g',
+                                          unit: 'Carboidrato',
+                                          color: MacroTheme.carbsColor,
+                                          isDarkMode: isDarkMode,
+                                        ),
+                                      ),
+                                      VerticalDivider(
+                                        color: subtleBorder,
+                                        width: 1,
+                                        thickness: 1,
+                                        indent: 4,
+                                        endIndent: 4,
+                                      ),
+                                      Expanded(
+                                        child: _buildMacroCardCompact(
+                                          icon: MacroTheme.fatIcon,
+                                          value: '${fat.toStringAsFixed(1)}g',
+                                          unit: 'Gordura',
+                                          color: MacroTheme.fatColor,
+                                          isDarkMode: isDarkMode,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildMacroCardCompact(
-                                    icon: MacroTheme.proteinIcon,
-                                    value: protein.toStringAsFixed(1),
-                                    unit: 'g prot',
-                                    color: MacroTheme.proteinColor,
-                                    isDarkMode: isDarkMode,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildMacroCardCompact(
-                                    icon: MacroTheme.carbsIcon,
-                                    value: carbs.toStringAsFixed(1),
-                                    unit: 'g carb',
-                                    color: MacroTheme.carbsColor,
-                                    isDarkMode: isDarkMode,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildMacroCardCompact(
-                                    icon: MacroTheme.fatIcon,
-                                    value: fat.toStringAsFixed(1),
-                                    unit: 'g gord',
-                                    color: MacroTheme.fatColor,
-                                    isDarkMode: isDarkMode,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
 
@@ -1347,38 +1418,36 @@ class _FoodPageState extends State<FoodPage> {
 
                           // Detailed Nutrition Facts Card
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Card(
-                              margin: EdgeInsets.zero,
-                              elevation: 1.5,
-                              shadowColor: isDarkMode
-                                  ? Colors.black.withValues(alpha: 0.3)
-                                  : Colors.black.withValues(alpha: 0.08),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isDarkMode
+                                    ? AppTheme.darkCardColor
+                                    : AppTheme.cardColor,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: subtleBorder,
+                                  width: 1,
+                                ),
                               ),
-                              color: cardColor,
                               child: Padding(
-                                padding: EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(18),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     // Macronutrients Section
                                     Text(
                                       'Macronutrients',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color:
-                                            textColor.withValues(alpha: 0.85),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
                                       ),
                                     ),
 
                                     Divider(
-                                      color: isDarkMode
-                                          ? Colors.white24
-                                          : Colors.black12,
-                                      height: 24,
+                                      color: subtleBorder,
+                                      height: 22,
                                       thickness: 1,
                                     ),
 
@@ -1415,7 +1484,7 @@ class _FoodPageState extends State<FoodPage> {
                                         decoration: BoxDecoration(
                                           border: Border(
                                             left: BorderSide(
-                                              color: Color(0xFFA1887F)
+                                              color: MacroTheme.carbsColor
                                                   .withValues(alpha: 0.3),
                                               width: 2,
                                             ),
@@ -1457,7 +1526,7 @@ class _FoodPageState extends State<FoodPage> {
                                         decoration: BoxDecoration(
                                           border: Border(
                                             left: BorderSide(
-                                              color: MacroTheme.proteinColor
+                                              color: MacroTheme.fatColor
                                                   .withValues(alpha: 0.3),
                                               width: 2,
                                             ),
@@ -1488,19 +1557,16 @@ class _FoodPageState extends State<FoodPage> {
                                     // Micronutrients Section
                                     Text(
                                       'Micronutrients',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color:
-                                            textColor.withValues(alpha: 0.85),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
                                       ),
                                     ),
 
                                     Divider(
-                                      color: isDarkMode
-                                          ? Colors.white24
-                                          : Colors.black12,
-                                      height: 24,
+                                      color: subtleBorder,
+                                      height: 22,
                                       thickness: 1,
                                     ),
 
@@ -1624,45 +1690,34 @@ class _FoodPageState extends State<FoodPage> {
               left: 0,
               right: 0,
               child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      backgroundColor.withValues(alpha: 0.0),
-                      backgroundColor,
-                    ],
-                  ),
-                ),
-                padding: EdgeInsets.all(16),
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (widget.selectedMealType != null) {
-                      // Add directly to the selected meal type
-                      _addToMeal(_selectedMealType);
-                    } else {
-                      // Show meal type selector if no meal was pre-selected
-                      _showMealTypeSelector(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                color: backgroundColor,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (widget.selectedMealType != null) {
+                        _addToMeal(_selectedMealType);
+                      } else {
+                        _showMealTypeSelector(context);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: onPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                    elevation: 1,
-                    shadowColor: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.4),
-                  ),
-                  child: Text(
-                    'Add to Meal',
-                    style: AppTheme.buttonText.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    child: Text(
+                      'Add to Meal',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: onPrimary,
+                      ),
                     ),
                   ),
                 ),

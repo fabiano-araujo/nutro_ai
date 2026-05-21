@@ -30,6 +30,7 @@ final Map<String, String> ptBRTranslations = {
   'please_enter_valid_email': 'Por favor, insira um email válido',
   'please_enter_password': 'Por favor, insira sua senha',
   'password_min_length': 'A senha deve ter pelo menos 6 caracteres',
+  'remember_email_password': 'Lembrar email e senha',
   'login_to_access_profile': 'Entre para acessar seu perfil',
   'login_description':
       'Entre para ver seu histórico, favoritos e configurações personalizadas.',
@@ -47,6 +48,8 @@ final Map<String, String> ptBRTranslations = {
   'register_subtitle': 'Preencha os dados para começar',
   'name': 'Nome',
   'please_enter_name': 'Por favor, insira seu nome',
+  'email_already_in_use':
+      'Este email já está cadastrado. Tente fazer login ou use outro email.',
   'confirm_password': 'Confirmar Senha',
   'please_confirm_password': 'Por favor, confirme sua senha',
   'passwords_dont_match': 'As senhas não coincidem',
@@ -213,6 +216,9 @@ final Map<String, String> ptBRTranslations = {
       'Nao consegui interpretar a acao interna solicitada. Tente novamente.',
   'chat_action_login': 'Fazer login',
   'chat_action_configure_goals_ui': 'Configurar na interface',
+  'chat_goals_setup_banner_title': 'Complete suas metas',
+  'chat_goals_setup_banner_body': 'Personalize calorias e macros no app.',
+  'chat_goals_setup_banner_button': 'Configurar',
   'chat_action_continue_goals_chat': 'Continuar no chat',
   'chat_action_edit_macros_ui': 'Editar macros na interface',
   'chat_action_continue_macros_chat': 'Ajustar macros no chat',
@@ -777,7 +783,7 @@ final Map<String, String> ptBRTranslations = {
   // Mensagem de boas-vindas no card
   'welcome_message_card': 'Olá! Sou Nutro AI, seu assistente de nutrição',
   'welcome_description':
-      'Assistente inteligente para potencializar seu aprendizado 📚👩‍🎓',
+      'Acompanhe calorias, macros e metas nutricionais em um só lugar',
   'start_conversation': 'Iniciar conversa',
 
   // Título da AppBar na tela de ferramentas
@@ -815,6 +821,7 @@ final Map<String, String> ptBRTranslations = {
   'secure_google_play': 'Seguro com Google Play. Cancele quando quiser.',
   'free_plan': 'Grátis',
   'monthly': 'Mensal',
+  'per_month': 'por mês',
   'yearly': 'Anual',
   'lifetime': 'Vitalício',
   'popular': 'MAIS POPULAR',
@@ -893,6 +900,29 @@ final Map<String, String> ptBRTranslations = {
   'no_results_found': 'Nenhum resultado encontrado',
   'no_recent_searches': 'Nenhuma pesquisa recente',
   'no_favorite_foods': 'Nenhum alimento favorito',
+  'quick_add_food': 'Adicionar rápido',
+  'values_per_serving': 'Valores nutricionais por porção',
+  'serving': 'Porção',
+  'used_times': 'Usado {count} vezes',
+  'ready_to_add': 'Pronto para adicionar',
+  'repeat': 'Repetir',
+  'date': 'Data',
+  'no_recent_foods': 'Nenhum alimento recente',
+  'no_saved_favorites': 'Nenhum favorito salvo',
+  'recent_foods_empty_hint':
+      'Seus alimentos aparecerão aqui após registrar refeições',
+  'favorite_foods_empty_hint':
+      'Marque alimentos como favoritos para acessá-los rapidamente',
+  'no_registered_meals': 'Nenhuma refeição registrada',
+  'repeatable_meals_empty_hint': 'Suas refeições aparecerão aqui para repetir',
+  'options': 'Opções',
+  'undo': 'Desfazer',
+  'remove_from_favorites': 'Remover dos favoritos',
+  'recent_deleted': 'Recente removido',
+  'favorite_deleted': 'Favorito removido',
+  'meal_deleted': 'Refeição removida',
+  'added_to_favorites': 'Adicionado aos favoritos',
+  'delete_item_question': 'Deseja excluir "{name}"?',
 
   // Daily Meals Screen
   'meals_diary': 'Diário de Refeições',
@@ -1190,6 +1220,10 @@ final Map<String, String> ptBRTranslations = {
   // Nutrition Goals Wizard Screen
   'configure_goals': 'Configurar Metas',
   'goals_configured_successfully': 'Metas configuradas com sucesso!',
+  'goals_saved_locally_pending_sync':
+      'Metas salvas no aparelho. Vamos sincronizar quando houver internet.',
+  'goals_syncing': 'Sincronizando metas com sua conta...',
+  'goals_not_synced': 'Metas ainda não sincronizadas com sua conta.',
   'personal_info_title': 'Informações Pessoais',
   'personal_info_subtitle': 'Precisamos conhecer um pouco sobre você',
   'sex': 'Sexo',
@@ -1383,6 +1417,44 @@ final Map<String, String> ptBRTranslations = {
   'streak_checkin_action': 'Atualizar sequência',
   'streak_checkin_success': 'Sequência atualizada com sucesso.',
   'streak_checkin_error': 'Não foi possível atualizar sua sequência agora.',
+  'streak_screen_title': 'Sequência',
+  'streak_tab_personal': 'Pessoal',
+  'streak_tab_friends': 'Amigos',
+  'streak_share_tooltip': 'Compartilhar sequência',
+  'streak_share_message':
+      'Estou com {count} dias de sequência no Nutro AI. Vem acompanhar comigo!',
+  'streak_keep_today': 'Atualizar hoje',
+  'streak_freeze_none_title': 'Você está sem proteções de sequência',
+  'streak_freeze_none_message':
+      'As proteções salvam sua sequência quando você não consegue registrar refeições.',
+  'streak_freeze_available_title': 'Você tem {count} proteção(ões)',
+  'streak_freeze_available_message':
+      'Use uma proteção para congelar sua sequência por 24 horas.',
+  'streak_freeze_active_message':
+      'Sua sequência está protegida temporariamente.',
+  'streak_freeze_activated': 'Proteção ativada com sucesso.',
+  'streak_get_more_freezes': 'Obter mais',
+  'streak_freeze_info_title': 'Proteções de sequência',
+  'streak_freeze_info_message':
+      'Proteções extras ficam disponíveis conforme você mantém consistência e participa das ações sociais do app.',
+  'streak_calendar_title': 'Calendário da sequência',
+  'streak_calendar_logged_day': 'Refeição registrada',
+  'streak_today': 'Hoje',
+  'streak_previous_month': 'Mês anterior',
+  'streak_next_month': 'Próximo mês',
+  'streak_friend_empty_title': 'Comece uma sequência com amigos',
+  'streak_friend_empty_message':
+      'Convide alguém para registrar refeições com você e manter a constância todos os dias.',
+  'streak_invite_friends': 'Convidar amigos',
+  'streak_duo_title': 'Sequências com amigos',
+  'streak_duo_checkin': 'Check-in',
+  'streak_you': 'Você',
+  'streak_friend_best': 'Recorde: {count}',
+  'streak_friend_checkin_success': 'Check-in com amigo atualizado.',
+  'streak_friend_checkin_error': 'Não foi possível atualizar o check-in.',
+  'streak_friend_progress_title': 'Progresso em dupla',
+  'streak_friend_progress_message':
+      '{friends} amigo(s) e {duos} sequência(s) em dupla ativas.',
   'social_open_hub': 'Abrir central social',
   'social_summary_title': 'Resumo social',
   'social_summary_subtitle':

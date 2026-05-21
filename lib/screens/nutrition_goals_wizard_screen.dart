@@ -44,6 +44,12 @@ class _NutritionGoalsWizardScreenState
 
   Color _accentColor(ThemeData theme) => theme.colorScheme.primary;
   Color _onAccentColor(ThemeData theme) => theme.colorScheme.onPrimary;
+  Color _surfaceColor(bool isDarkMode) =>
+      isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF3F3F3);
+  Color _inputFillColor(bool isDarkMode) =>
+      isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;
+  Color _subtleBorderColor(bool isDarkMode) =>
+      isDarkMode ? Colors.white12 : Colors.black12;
 
   @override
   void initState() {
@@ -178,11 +184,14 @@ class _NutritionGoalsWizardScreenState
     final provider =
         Provider.of<NutritionGoalsProvider>(context, listen: false);
     final navigatorContext = Navigator.of(context).context;
-    final successMessage =
-        context.tr.translate('goals_configured_successfully');
 
     // Ensure calculated mode is enabled
     provider.setUseCalculatedGoals(true);
+    provider.syncPendingIfNeeded();
+
+    final successMessage = provider.hasPendingServerSync
+        ? context.tr.translate('goals_saved_locally_pending_sync')
+        : context.tr.translate('goals_configured_successfully');
 
     Navigator.pop(context);
     UIUtils.showPrimarySnackBar(navigatorContext, successMessage);
@@ -199,45 +208,84 @@ class _NutritionGoalsWizardScreenState
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.close, color: textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          context.tr.translate('configure_goals'),
-          style: AppTheme.headingLarge.copyWith(
-            color: textColor,
-            fontSize: 20,
-          ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildMinimalHeader(theme, isDarkMode, textColor),
+            _buildProgressIndicator(theme, isDarkMode, textColor),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (index) {
+                  setState(() => _currentStep = index);
+                },
+                children: [
+                  _buildPersonalInfoStep(theme, isDarkMode, textColor),
+                  _buildActivityLevelStep(theme, isDarkMode, textColor),
+                  _buildFitnessGoalStep(theme, isDarkMode, textColor),
+                ],
+              ),
+            ),
+            _buildNavigationButtons(theme, isDarkMode, textColor),
+          ],
         ),
       ),
-      body: Column(
-        children: [
-          // Progress indicator
-          _buildProgressIndicator(theme, isDarkMode, textColor),
+    );
+  }
 
-          // Pages
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (index) {
-                setState(() => _currentStep = index);
-              },
-              children: [
-                _buildPersonalInfoStep(theme, isDarkMode, textColor),
-                _buildActivityLevelStep(theme, isDarkMode, textColor),
-                _buildFitnessGoalStep(theme, isDarkMode, textColor),
-              ],
+  Widget _buildMinimalHeader(
+      ThemeData theme, bool isDarkMode, Color textColor) {
+    return SizedBox(
+      height: 52,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                color: textColor,
+              ),
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              onPressed: () => Navigator.pop(context),
             ),
-          ),
-
-          // Navigation buttons
-          _buildNavigationButtons(theme, isDarkMode, textColor),
-        ],
+            Expanded(
+              child: Center(
+                child: Text(
+                  context.tr.translate('configure_goals'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _surfaceColor(isDarkMode),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: _subtleBorderColor(isDarkMode)),
+                ),
+                child: Text(
+                  '${_currentStep + 1}/3',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textColor.withValues(alpha: 0.72),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -245,7 +293,7 @@ class _NutritionGoalsWizardScreenState
   Widget _buildProgressIndicator(
       ThemeData theme, bool isDarkMode, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
         children: List.generate(3, (index) {
           final isCompleted = index < _currentStep;
@@ -256,7 +304,7 @@ class _NutritionGoalsWizardScreenState
               children: [
                 Expanded(
                   child: Container(
-                    height: 4,
+                    height: 3,
                     decoration: BoxDecoration(
                       color: isCompleted || isCurrent
                           ? _accentColor(theme)
@@ -276,151 +324,158 @@ class _NutritionGoalsWizardScreenState
 
   Widget _buildPersonalInfoStep(
       ThemeData theme, bool isDarkMode, Color textColor) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepHeader(
-            icon: Icons.person,
-            title: context.tr.translate('personal_info_title'),
-            subtitle: context.tr.translate('personal_info_subtitle'),
-            theme: theme,
-            textColor: textColor,
-          ),
-          const SizedBox(height: 32),
-
-          // Sex selection
-          Text(
-            context.tr.translate('sex'),
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSelectableCard(
-                  icon: Icons.male,
-                  label: context.tr.translate('male'),
-                  isSelected: _selectedSex == 'male',
-                  onTap: () => setState(() => _selectedSex = 'male'),
-                  theme: theme,
-                  isDarkMode: isDarkMode,
-                  textColor: textColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSelectableCard(
-                  icon: Icons.female,
-                  label: context.tr.translate('female'),
-                  isSelected: _selectedSex == 'female',
-                  onTap: () => setState(() => _selectedSex = 'female'),
-                  theme: theme,
-                  isDarkMode: isDarkMode,
-                  textColor: textColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Age
-          _buildAgeInput(theme, textColor, isDarkMode),
-          const SizedBox(height: 24),
-
-          // Height
-          Consumer<NutritionGoalsProvider>(
-            builder: (context, provider, child) {
-              return _buildHeightInput(theme, textColor, isDarkMode, provider);
-            },
-          ),
-          const SizedBox(height: 24),
-
-          // Weight
-          Consumer<NutritionGoalsProvider>(
-            builder: (context, provider, child) {
-              return _buildWeightInput(theme, textColor, isDarkMode, provider);
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
+    return _buildStepBody(
+      header: _buildStepHeader(
+        icon: Icons.person_outline,
+        title: context.tr.translate('personal_info_title'),
+        subtitle: context.tr.translate('personal_info_subtitle'),
+        theme: theme,
+        isDarkMode: isDarkMode,
+        textColor: textColor,
       ),
+      children: [
+        Text(
+          context.tr.translate('sex'),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSelectableCard(
+                icon: Icons.male,
+                label: context.tr.translate('male'),
+                isSelected: _selectedSex == 'male',
+                onTap: () => setState(() => _selectedSex = 'male'),
+                theme: theme,
+                isDarkMode: isDarkMode,
+                textColor: textColor,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildSelectableCard(
+                icon: Icons.female,
+                label: context.tr.translate('female'),
+                isSelected: _selectedSex == 'female',
+                onTap: () => setState(() => _selectedSex = 'female'),
+                theme: theme,
+                isDarkMode: isDarkMode,
+                textColor: textColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildAgeInput(theme, textColor, isDarkMode),
+        const SizedBox(height: 12),
+        Consumer<NutritionGoalsProvider>(
+          builder: (context, provider, child) {
+            return _buildHeightInput(theme, textColor, isDarkMode, provider);
+          },
+        ),
+        const SizedBox(height: 12),
+        Consumer<NutritionGoalsProvider>(
+          builder: (context, provider, child) {
+            return _buildWeightInput(theme, textColor, isDarkMode, provider);
+          },
+        ),
+      ],
     );
   }
 
   Widget _buildActivityLevelStep(
       ThemeData theme, bool isDarkMode, Color textColor) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepHeader(
-            icon: Icons.directions_run,
-            title: context.tr.translate('activity_level'),
-            subtitle: context.tr.translate('activity_level_subtitle'),
+    return _buildStepBody(
+      header: _buildStepHeader(
+        icon: Icons.directions_run,
+        title: context.tr.translate('activity_level'),
+        subtitle: context.tr.translate('activity_level_subtitle'),
+        theme: theme,
+        isDarkMode: isDarkMode,
+        textColor: textColor,
+      ),
+      children: ActivityLevel.values.map((level) {
+        final provider =
+            Provider.of<NutritionGoalsProvider>(context, listen: false);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _buildOptionCard(
+            icon: _getActivityIcon(level),
+            title: provider.getActivityLevelName(level, context),
+            subtitle: provider.getActivityLevelDescription(level, context),
+            isSelected: _selectedActivityLevel == level,
+            onTap: () => setState(() => _selectedActivityLevel = level),
             theme: theme,
+            isDarkMode: isDarkMode,
             textColor: textColor,
           ),
-          const SizedBox(height: 32),
-          ...ActivityLevel.values.map((level) {
-            final provider =
-                Provider.of<NutritionGoalsProvider>(context, listen: false);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildOptionCard(
-                title: provider.getActivityLevelName(level, context),
-                subtitle: provider.getActivityLevelDescription(level, context),
-                isSelected: _selectedActivityLevel == level,
-                onTap: () => setState(() => _selectedActivityLevel = level),
-                theme: theme,
-                isDarkMode: isDarkMode,
-                textColor: textColor,
-              ),
-            );
-          }).toList(),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 
   Widget _buildFitnessGoalStep(
       ThemeData theme, bool isDarkMode, Color textColor) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepHeader(
-            icon: Icons.center_focus_strong,
-            title: context.tr.translate('your_goal'),
-            subtitle: context.tr.translate('your_goal_subtitle'),
+    return _buildStepBody(
+      header: _buildStepHeader(
+        icon: Icons.flag_outlined,
+        title: context.tr.translate('your_goal'),
+        subtitle: context.tr.translate('your_goal_subtitle'),
+        theme: theme,
+        isDarkMode: isDarkMode,
+        textColor: textColor,
+      ),
+      children: FitnessGoal.values.map((goal) {
+        final provider =
+            Provider.of<NutritionGoalsProvider>(context, listen: false);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _buildOptionCard(
+            icon: _getFitnessGoalIcon(goal),
+            title: provider.getFitnessGoalName(goal, context),
+            subtitle: _getGoalDescription(goal),
+            isSelected: _selectedFitnessGoal == goal,
+            onTap: () => setState(() => _selectedFitnessGoal = goal),
             theme: theme,
+            isDarkMode: isDarkMode,
             textColor: textColor,
           ),
-          const SizedBox(height: 32),
-          ...FitnessGoal.values.map((goal) {
-            final provider =
-                Provider.of<NutritionGoalsProvider>(context, listen: false);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildOptionCard(
-                title: provider.getFitnessGoalName(goal, context),
-                subtitle: _getGoalDescription(goal),
-                isSelected: _selectedFitnessGoal == goal,
-                onTap: () => setState(() => _selectedFitnessGoal = goal),
-                theme: theme,
-                isDarkMode: isDarkMode,
-                textColor: textColor,
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildStepBody({
+    required Widget header,
+    required List<Widget> children,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    header,
+                    const SizedBox(height: 24),
+                    ...children,
+                  ],
+                ),
               ),
-            );
-          }).toList(),
-        ],
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -429,33 +484,45 @@ class _NutritionGoalsWizardScreenState
     required String title,
     required String subtitle,
     required ThemeData theme,
+    required bool isDarkMode,
     required Color textColor,
   }) {
-    final accentColor = _accentColor(theme);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(16),
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
+            color: _surfaceColor(isDarkMode),
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(color: _subtleBorderColor(isDarkMode)),
           ),
-          child: Icon(icon, color: accentColor, size: 32),
+          child: Icon(
+            icon,
+            color: textColor.withValues(alpha: 0.82),
+            size: 22,
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Text(
           title,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            color: textColor,
-            fontWeight: FontWeight.bold,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.getSoftTextColor(isDarkMode),
+            height: 1.3,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           subtitle,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: textColor.withValues(alpha: 0.7),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            color: textColor.withValues(alpha: 0.62),
+            height: 1.35,
           ),
         ),
       ],
@@ -472,38 +539,42 @@ class _NutritionGoalsWizardScreenState
     required Color textColor,
   }) {
     final accentColor = _accentColor(theme);
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final selectedForeground = _onAccentColor(theme);
+    final foregroundColor = isSelected ? selectedForeground : textColor;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(100),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? accentColor : _surfaceColor(isDarkMode),
+          borderRadius: BorderRadius.circular(100),
           border: Border.all(
-            color: isSelected
-                ? accentColor
-                : (isDarkMode
-                    ? AppTheme.darkBorderColor
-                    : AppTheme.dividerColor),
-            width: isSelected ? 2 : 1,
+            color: isSelected ? accentColor : _subtleBorderColor(isDarkMode),
+            width: 1,
           ),
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              color: isSelected ? accentColor : textColor,
-              size: 32,
+              color: foregroundColor,
+              size: 20,
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isSelected ? accentColor : textColor,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: foregroundColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -512,59 +583,102 @@ class _NutritionGoalsWizardScreenState
     );
   }
 
-  Widget _buildAgeInput(ThemeData theme, Color textColor, bool isDarkMode) {
-    final accentColor = _accentColor(theme);
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+  InputDecoration _numberInputDecoration({
+    required ThemeData theme,
+    required bool isDarkMode,
+    String? suffixText,
+  }) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: _subtleBorderColor(isDarkMode)),
+    );
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-          width: 1,
+    return InputDecoration(
+      filled: true,
+      fillColor: _inputFillColor(isDarkMode),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: _accentColor(theme),
+          width: 1.5,
         ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      suffixText: suffixText,
+      suffixStyle: theme.textTheme.bodyMedium?.copyWith(
+        color: (isDarkMode ? Colors.white : AppTheme.textPrimaryColor)
+            .withValues(alpha: 0.58),
+      ),
+    );
+  }
+
+  Widget _buildUnitToggle({
+    required String label,
+    required VoidCallback onTap,
+    required ThemeData theme,
+    required bool isDarkMode,
+  }) {
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(100),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 58, minHeight: 46),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: _surfaceColor(isDarkMode),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAgeInput(ThemeData theme, Color textColor, bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _surfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _subtleBorderColor(isDarkMode)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.tr.translate('age'),
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _ageController,
                   keyboardType: TextInputType.number,
-                  style: theme.textTheme.headlineMedium?.copyWith(
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     color: textColor,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                   ),
                   textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: isDarkMode
-                            ? AppTheme.darkBorderColor
-                            : AppTheme.dividerColor,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: accentColor,
-                        width: 2,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: _numberInputDecoration(
+                    theme: theme,
+                    isDarkMode: isDarkMode,
                   ),
                   onChanged: (value) {
                     final age = int.tryParse(value);
@@ -574,11 +688,12 @@ class _NutritionGoalsWizardScreenState
                   },
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Text(
                 context.tr.translate('years'),
-                style: theme.textTheme.bodyLarge?.copyWith(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: textColor.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -590,31 +705,26 @@ class _NutritionGoalsWizardScreenState
 
   Widget _buildHeightInput(ThemeData theme, Color textColor, bool isDarkMode,
       NutritionGoalsProvider provider) {
-    final accentColor = _accentColor(theme);
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
     final isCm = provider.heightUnit == HeightUnit.cm;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-          width: 1,
-        ),
+        color: _surfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _subtleBorderColor(isDarkMode)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.tr.translate('height'),
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             children: [
               if (isCm) ...[
@@ -622,28 +732,14 @@ class _NutritionGoalsWizardScreenState
                   child: TextField(
                     controller: _heightController,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineMedium?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                     textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDarkMode
-                              ? AppTheme.darkBorderColor
-                              : AppTheme.dividerColor,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: accentColor,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: _numberInputDecoration(
+                      theme: theme,
+                      isDarkMode: isDarkMode,
                     ),
                     onChanged: (value) {
                       final height = double.tryParse(value);
@@ -659,32 +755,15 @@ class _NutritionGoalsWizardScreenState
                   child: TextField(
                     controller: _heightController,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineMedium?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                     textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDarkMode
-                              ? AppTheme.darkBorderColor
-                              : AppTheme.dividerColor,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: accentColor,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: _numberInputDecoration(
+                      theme: theme,
+                      isDarkMode: isDarkMode,
                       suffixText: "'",
-                      suffixStyle: theme.textTheme.bodyLarge?.copyWith(
-                        color: textColor.withValues(alpha: 0.6),
-                      ),
                     ),
                     onChanged: (value) {
                       final feet = int.tryParse(value) ?? 0;
@@ -704,32 +783,15 @@ class _NutritionGoalsWizardScreenState
                   child: TextField(
                     controller: _heightInchesController,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineMedium?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                     textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDarkMode
-                              ? AppTheme.darkBorderColor
-                              : AppTheme.dividerColor,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: accentColor,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: _numberInputDecoration(
+                      theme: theme,
+                      isDarkMode: isDarkMode,
                       suffixText: '"',
-                      suffixStyle: theme.textTheme.bodyLarge?.copyWith(
-                        color: textColor.withValues(alpha: 0.6),
-                      ),
                     ),
                     onChanged: (value) {
                       final feet = int.tryParse(_heightController.text) ?? 0;
@@ -743,27 +805,15 @@ class _NutritionGoalsWizardScreenState
                   ),
                 ),
               ],
-              const SizedBox(width: 16),
-              GestureDetector(
+              const SizedBox(width: 12),
+              _buildUnitToggle(
+                label: isCm ? 'cm' : 'ft',
                 onTap: () {
                   provider.toggleHeightUnit();
                   _updateHeightController(provider);
                 },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    isCm ? 'cm' : 'ft',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: accentColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                theme: theme,
+                isDarkMode: isDarkMode,
               ),
             ],
           ),
@@ -774,8 +824,6 @@ class _NutritionGoalsWizardScreenState
 
   Widget _buildWeightInput(ThemeData theme, Color textColor, bool isDarkMode,
       NutritionGoalsProvider provider) {
-    final accentColor = _accentColor(theme);
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
     final String unitLabel;
     final bool showSecondField = provider.weightUnit == WeightUnit.stLbs;
 
@@ -792,26 +840,23 @@ class _NutritionGoalsWizardScreenState
     }
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor,
-          width: 1,
-        ),
+        color: _surfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _subtleBorderColor(isDarkMode)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.tr.translate('weight'),
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             children: [
               if (!showSecondField) ...[
@@ -820,28 +865,14 @@ class _NutritionGoalsWizardScreenState
                     controller: _weightController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    style: theme.textTheme.headlineMedium?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                     textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDarkMode
-                              ? AppTheme.darkBorderColor
-                              : AppTheme.dividerColor,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: accentColor,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: _numberInputDecoration(
+                      theme: theme,
+                      isDarkMode: isDarkMode,
                     ),
                     onChanged: (value) {
                       final weight = double.tryParse(value);
@@ -867,32 +898,15 @@ class _NutritionGoalsWizardScreenState
                   child: TextField(
                     controller: _weightController,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineMedium?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                     textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDarkMode
-                              ? AppTheme.darkBorderColor
-                              : AppTheme.dividerColor,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: accentColor,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: _numberInputDecoration(
+                      theme: theme,
+                      isDarkMode: isDarkMode,
                       suffixText: 'st',
-                      suffixStyle: theme.textTheme.bodyMedium?.copyWith(
-                        color: textColor.withValues(alpha: 0.6),
-                      ),
                     ),
                     onChanged: (value) {
                       final stone = int.tryParse(value) ?? 0;
@@ -912,32 +926,15 @@ class _NutritionGoalsWizardScreenState
                   child: TextField(
                     controller: _weightPoundsController,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineMedium?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                     textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDarkMode
-                              ? AppTheme.darkBorderColor
-                              : AppTheme.dividerColor,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: accentColor,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: _numberInputDecoration(
+                      theme: theme,
+                      isDarkMode: isDarkMode,
                       suffixText: 'lbs',
-                      suffixStyle: theme.textTheme.bodyMedium?.copyWith(
-                        color: textColor.withValues(alpha: 0.6),
-                      ),
                     ),
                     onChanged: (value) {
                       final stone = int.tryParse(_weightController.text) ?? 0;
@@ -951,27 +948,15 @@ class _NutritionGoalsWizardScreenState
                   ),
                 ),
               ],
-              const SizedBox(width: 16),
-              GestureDetector(
+              const SizedBox(width: 12),
+              _buildUnitToggle(
+                label: unitLabel,
                 onTap: () {
                   provider.toggleWeightUnit();
                   _updateWeightController(provider);
                 },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    unitLabel,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: accentColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                theme: theme,
+                isDarkMode: isDarkMode,
               ),
             ],
           ),
@@ -981,6 +966,7 @@ class _NutritionGoalsWizardScreenState
   }
 
   Widget _buildOptionCard({
+    required IconData icon,
     required String title,
     required String subtitle,
     required bool isSelected,
@@ -990,27 +976,45 @@ class _NutritionGoalsWizardScreenState
     required Color textColor,
   }) {
     final accentColor = _accentColor(theme);
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final selectedForeground = _onAccentColor(theme);
+    final foregroundColor = isSelected ? selectedForeground : textColor;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? accentColor : _surfaceColor(isDarkMode),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected
-                ? accentColor
-                : (isDarkMode
-                    ? AppTheme.darkBorderColor
-                    : AppTheme.dividerColor),
-            width: isSelected ? 2 : 1,
+            color: isSelected ? accentColor : _subtleBorderColor(isDarkMode),
+            width: 1,
           ),
         ),
         child: Row(
           children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? selectedForeground.withValues(alpha: 0.12)
+                    : _inputFillColor(isDarkMode),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: isSelected
+                      ? selectedForeground.withValues(alpha: 0.18)
+                      : _subtleBorderColor(isDarkMode),
+                ),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: foregroundColor,
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1018,27 +1022,30 @@ class _NutritionGoalsWizardScreenState
                   Text(
                     title,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: isSelected ? accentColor : textColor,
+                      color: foregroundColor,
                       fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: textColor.withValues(alpha: 0.6),
+                      color: foregroundColor.withValues(alpha: 0.64),
+                      height: 1.25,
                     ),
                   ),
                 ],
               ),
             ),
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: accentColor,
-                size: 24,
-              ),
+            const SizedBox(width: 10),
+            Icon(
+              isSelected
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked_rounded,
+              color: foregroundColor.withValues(alpha: isSelected ? 1 : 0.35),
+              size: 22,
+            ),
           ],
         ),
       ),
@@ -1048,16 +1055,11 @@ class _NutritionGoalsWizardScreenState
   Widget _buildNavigationButtons(
       ThemeData theme, bool isDarkMode, Color textColor) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: isDarkMode
+            ? AppTheme.darkBackgroundColor
+            : AppTheme.backgroundColor,
       ),
       child: Row(
         children: [
@@ -1066,15 +1068,30 @@ class _NutritionGoalsWizardScreenState
               child: OutlinedButton(
                 onPressed: _previousStep,
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: textColor.withValues(alpha: 0.3)),
+                  backgroundColor: _surfaceColor(isDarkMode),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(color: _subtleBorderColor(isDarkMode)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(100),
                   ),
                 ),
-                child: Text(
-                  context.tr.translate('back'),
-                  style: TextStyle(color: textColor),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.arrow_back, size: 18, color: textColor),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        context.tr.translate('back'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1087,24 +1104,70 @@ class _NutritionGoalsWizardScreenState
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentColor(theme),
                 foregroundColor: _onAccentColor(theme),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(100),
                 ),
               ),
-              child: Text(
-                widget.fromProfile
-                    ? context.tr.translate('save')
-                    : (_currentStep == 2
-                        ? context.tr.translate('finish')
-                        : context.tr.translate('next')),
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      widget.fromProfile
+                          ? context.tr.translate('save')
+                          : (_currentStep == 2
+                              ? context.tr.translate('finish')
+                              : context.tr.translate('next')),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    widget.fromProfile || _currentStep == 2
+                        ? Icons.check
+                        : Icons.arrow_forward,
+                    size: 18,
+                  ),
+                ],
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  IconData _getActivityIcon(ActivityLevel level) {
+    switch (level) {
+      case ActivityLevel.sedentary:
+        return Icons.weekend_outlined;
+      case ActivityLevel.lightlyActive:
+        return Icons.directions_walk;
+      case ActivityLevel.moderatelyActive:
+        return Icons.directions_run;
+      case ActivityLevel.veryActive:
+        return Icons.fitness_center;
+      case ActivityLevel.extremelyActive:
+        return Icons.local_fire_department_outlined;
+    }
+  }
+
+  IconData _getFitnessGoalIcon(FitnessGoal goal) {
+    switch (goal) {
+      case FitnessGoal.loseWeight:
+        return Icons.trending_down;
+      case FitnessGoal.loseWeightSlowly:
+        return Icons.south_east;
+      case FitnessGoal.maintainWeight:
+        return Icons.balance_outlined;
+      case FitnessGoal.gainWeightSlowly:
+        return Icons.north_east;
+      case FitnessGoal.gainWeight:
+        return Icons.trending_up;
+    }
   }
 
   String _getGoalDescription(FitnessGoal goal) {

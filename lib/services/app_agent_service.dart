@@ -1092,7 +1092,14 @@ Responda no mesmo idioma do pedido original do usuário.
   }) async {
     final authService = Provider.of<AuthService>(context, listen: false);
     if (!authService.isAuthenticated || authService.token == null) {
-      return basePrompt;
+      const currentAppStateJson = '{"auth":{"isAuthenticated":false}}';
+      return '''
+[APP_CURRENT_STATE_BEGIN]
+$currentAppStateJson
+[APP_CURRENT_STATE_END]
+
+$basePrompt
+''';
     }
 
     final currentAppStateJson = jsonEncode(
@@ -1118,8 +1125,6 @@ $basePrompt
     final setupCompletionStatus =
         (goalSetup['setupCompletionStatus'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
-    final profile = (goalSetup['profile'] as Map?)?.cast<String, dynamic>() ??
-        const <String, dynamic>{};
     final goalSetupMacroTargets =
         (goalSetup['macroTargets'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
@@ -1135,6 +1140,13 @@ $basePrompt
     final dietPreferences =
         (state['dietGenerationPreferences'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
+    final setupStatusValues = setupCompletionStatus.values.toList();
+    final hasCompleteSetup =
+        setupStatusValues.isNotEmpty && setupStatusValues.every((v) => v == true);
+    final hasConfiguredGoals =
+        goalSetup['configurationStatus'] == 'configured' ||
+            goalSetup['hasConfiguredGoals'] == true ||
+            hasCompleteSetup;
 
     return _pruneNullEntries({
       'auth': {
@@ -1142,44 +1154,29 @@ $basePrompt
         'userId': auth['userId'],
       },
       'goalSetup': _pruneNullEntries({
-        'configurationStatus': goalSetup['configurationStatus'],
-        'defaultMacroTargetsApplied': goalSetup['defaultMacroTargetsApplied'],
-        'missingSetupFields': _limitStringList(goalSetup['missingSetupFields']),
-        'requiredFieldsForInitialSetup':
-            _limitStringList(goalSetup['requiredFieldsForInitialSetup']) ??
-                _limitStringList(goalSetup['missingSetupFields']),
-        'setupCompletionStatus': _pruneNullEntries({
-          'sex': setupCompletionStatus['sex'],
-          'age': setupCompletionStatus['age'],
-          'weight_kg': setupCompletionStatus['weight_kg'],
-          'height_cm': setupCompletionStatus['height_cm'],
-          'activity_level': setupCompletionStatus['activity_level'],
-          'fitness_goal': setupCompletionStatus['fitness_goal'],
-        }),
-        'profile': _pruneNullEntries({
-          'sex': profile['sex'],
-          'age': profile['age'],
-          'weightKg': profile['weightKg'],
-          'heightCm': profile['heightCm'],
-          'activityLevel': profile['activityLevel'],
-          'fitnessGoal': profile['fitnessGoal'],
-        }),
-        'macroSummary': _pruneNullEntries({
-          'goalMode':
-              goalSetupMacroTargets['goalMode'] ?? macroTargets['goalMode'],
-          'caloriesGoal': goalSetupMacroTargets['caloriesGoal'] ??
-              macroTargets['caloriesGoal'],
-          'proteinGoal':
-              goalSetupMacroGrams['protein'] ?? macroTargets['proteinGoal'],
-          'carbsGoal':
-              goalSetupMacroGrams['carbs'] ?? macroTargets['carbsGoal'],
-          'fatGoal': goalSetupMacroGrams['fat'] ?? macroTargets['fatGoal'],
-          'percentages': _pruneNullEntries({
-            'carbs': macroPercentages['carbs'],
-            'protein': macroPercentages['protein'],
-            'fat': macroPercentages['fat'],
+        'configurationStatus':
+            hasConfiguredGoals ? 'configured' : 'needs_initial_setup',
+        'configured': hasConfiguredGoals,
+        'defaultMacroTargetsApplied':
+            goalSetup['defaultMacroTargetsApplied'] == true ||
+                !hasConfiguredGoals,
+        if (hasConfiguredGoals)
+          'macroSummary': _pruneNullEntries({
+            'goalMode':
+                goalSetupMacroTargets['goalMode'] ?? macroTargets['goalMode'],
+            'caloriesGoal': goalSetupMacroTargets['caloriesGoal'] ??
+                macroTargets['caloriesGoal'],
+            'proteinGoal':
+                goalSetupMacroGrams['protein'] ?? macroTargets['proteinGoal'],
+            'carbsGoal':
+                goalSetupMacroGrams['carbs'] ?? macroTargets['carbsGoal'],
+            'fatGoal': goalSetupMacroGrams['fat'] ?? macroTargets['fatGoal'],
+            'percentages': _pruneNullEntries({
+              'carbs': macroPercentages['carbs'],
+              'protein': macroPercentages['protein'],
+              'fat': macroPercentages['fat'],
+            }),
           }),
-        }),
       }),
       'dietGenerationPreferences': _pruneNullEntries({
         'isPreferenceStepOptional':
@@ -1537,12 +1534,6 @@ $basePrompt
     }
 
     final currentUserId = authService.currentUser?.id;
-    if (_cachedServerState != null &&
-        _cachedServerState!['auth'] is Map &&
-        (_cachedServerState!['auth'] as Map)['userId'] == currentUserId) {
-      return _cachedServerState!;
-    }
-
     try {
       final remoteState = await _serverChatStateService.fetchState(
         token: authService.token!,

@@ -5,14 +5,12 @@ import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'personalized_diet_screen.dart';
 import 'food_search_screen.dart';
-import 'camera_scan_screen.dart';
 import 'unified_search_screen.dart';
 import 'free_chat_screen.dart';
 import 'social_hub_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
-import '../services/api_service.dart';
-import '../theme/app_theme.dart';
+import '../services/user_app_state_service.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/free_chat_provider.dart';
 import '../providers/daily_meals_provider.dart';
@@ -23,6 +21,10 @@ import '../providers/feed_provider.dart';
 import '../providers/credit_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../providers/meal_types_provider.dart';
+import '../providers/food_history_provider.dart';
+import '../models/user_model.dart';
+import '../theme/app_theme.dart';
 
 // Controlador global para gerenciar a navegação entre abas
 class NavigationController {
@@ -96,6 +98,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   // Controle para evitar chamadas duplicadas de auth
   bool _authInitialized = false;
+  String? _configuredAuthKey;
+  final UserAppStateService _appStateService = UserAppStateService();
 
   @override
   void initState() {
@@ -136,6 +140,10 @@ class _MainNavigationState extends State<MainNavigation> {
   /// Atualiza o DailyMealsProvider e providers sociais com as credenciais de auth
   void _updateMealsProviderAuth(
       AuthService authService, DailyMealsProvider dailyMealsProvider) {
+    if (authService.isLoading) {
+      return;
+    }
+
     final streakProvider = context.read<StreakProvider>();
     final friendsProvider = context.read<FriendsProvider>();
     final challengesProvider = context.read<ChallengesProvider>();
@@ -144,11 +152,19 @@ class _MainNavigationState extends State<MainNavigation> {
     final dietPlanProvider = context.read<DietPlanProvider>();
     final nutritionGoalsProvider = context.read<NutritionGoalsProvider>();
     final freeChatProvider = context.read<FreeChatProvider>();
+    final mealTypesProvider = context.read<MealTypesProvider>();
+    final foodHistoryProvider = context.read<FoodHistoryProvider>();
 
     if (authService.isAuthenticated && authService.currentUser != null) {
       final userId = authService.currentUser!.id.toString();
       final token = authService.token ?? '';
       if (token.isNotEmpty) {
+        final authKey = '$userId:$token';
+        if (_configuredAuthKey == authKey) {
+          return;
+        }
+        _configuredAuthKey = authKey;
+
         print('[🔄 AUTH_DATA] ========== LOGIN DETECTADO ==========');
         print('[🔄 AUTH_DATA] UserId: $userId');
         print('[🔄 AUTH_DATA] Configurando providers...');
@@ -158,6 +174,13 @@ class _MainNavigationState extends State<MainNavigation> {
 
         streakProvider.setToken(token);
         print('[🔄 AUTH_DATA] ✅ StreakProvider configurado');
+
+        // Auto check-in de streak após sync de refeições do dia atual.
+        // O backend só aceita check-in quando há UserDailySummary com calorias > 0,
+        // então disparar logo após o sync garante a sincronização das duas pontas.
+        dailyMealsProvider.onTodaySynced = () {
+          streakProvider.performCheckIn();
+        };
 
         friendsProvider.setToken(token);
         print('[🔄 AUTH_DATA] ✅ FriendsProvider configurado');
@@ -172,14 +195,22 @@ class _MainNavigationState extends State<MainNavigation> {
         dietPlanProvider.setAuth(token, authService.currentUser!.id);
         print('[🔄 AUTH_DATA] ✅ DietPlanProvider configurado');
 
-        // Recarregar conversas do FreeChatProvider (dados locais do usuário)
-        print('[🔄 AUTH_DATA] Recarregando FreeChatProvider...');
-        freeChatProvider.reloadConversations();
-        print('[🔄 AUTH_DATA] ✅ FreeChatProvider recarregado');
+        nutritionGoalsProvider.setAuth(token, authService.currentUser!.id);
+        freeChatProvider.setAuth(token, authService.currentUser!.id);
 
-        // Carregar créditos do servidor após login
-        _loadUserDataFromServer(
-            token, authService.currentUser!.id, creditProvider);
+        // Carregar estado do usuário em uma única solicitação: perfil/créditos,
+        // metas nutricionais e conversas livres.
+        _loadAppStateFromServer(
+          token,
+          authService.currentUser!.id,
+          authService,
+          creditProvider,
+          dietPlanProvider,
+          nutritionGoalsProvider,
+          freeChatProvider,
+          mealTypesProvider,
+          foodHistoryProvider,
+        );
 
         // Forçar recriação do NutritionAssistantScreen para carregar dados do usuário
         print(
@@ -195,10 +226,12 @@ class _MainNavigationState extends State<MainNavigation> {
             '[🔄 AUTH_DATA] ========== LOGIN CONFIGURAÇÃO CONCLUÍDA ==========');
       }
     } else {
+      _configuredAuthKey = null;
       print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
       print('[🔄 AUTH_DATA] Limpando auth de todos os providers...');
 
       dailyMealsProvider.clearAuth();
+      dailyMealsProvider.onTodaySynced = null;
       print('[🔄 AUTH_DATA] ✅ DailyMealsProvider limpo');
 
       streakProvider.clearAuth();
@@ -216,8 +249,13 @@ class _MainNavigationState extends State<MainNavigation> {
       dietPlanProvider.clearAuth();
       print('[🔄 AUTH_DATA] ✅ DietPlanProvider limpo');
 
+      nutritionGoalsProvider.clearAuth();
       nutritionGoalsProvider.clearAllData();
       print('[🔄 AUTH_DATA] ✅ NutritionGoalsProvider limpo');
+
+      freeChatProvider.clearAuth();
+      mealTypesProvider.clearAuth();
+      foodHistoryProvider.clearAuth();
 
       // Forçar recriação do NutritionAssistantScreen para limpar estado visual
       print('[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen...');
@@ -233,20 +271,72 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
-  /// Carrega dados do usuário do servidor (créditos, etc.)
-  Future<void> _loadUserDataFromServer(
-      String token, int userId, CreditProvider creditProvider) async {
+  /// Carrega dados do usuário do servidor em uma única chamada.
+  Future<void> _loadAppStateFromServer(
+    String token,
+    int userId,
+    AuthService authService,
+    CreditProvider creditProvider,
+    DietPlanProvider dietPlanProvider,
+    NutritionGoalsProvider nutritionGoalsProvider,
+    FreeChatProvider freeChatProvider,
+    MealTypesProvider mealTypesProvider,
+    FoodHistoryProvider foodHistoryProvider,
+  ) async {
     try {
-      print('[MainNavigation] Carregando dados do usuário do servidor...');
-      final userData = await ApiService.getUserData(token, userId);
+      print('[MainNavigation] Carregando app-state do usuário do servidor...');
+      final appState = await _appStateService.fetchAppState(token: token);
+
+      final userData = (appState['user'] as Map?)?.cast<String, dynamic>();
+      if (userData != null) {
+        await authService.updateUserLocally(User.fromJson(userData));
+      }
 
       // Atualizar créditos do servidor
-      if (userData.containsKey('credits')) {
-        await creditProvider.updateCreditsFromServer(userData);
+      if (appState.containsKey('credits')) {
+        await creditProvider.updateCreditsFromServer(appState);
         print('[MainNavigation] Créditos atualizados do servidor');
       }
+
+      await nutritionGoalsProvider.setAuth(
+        token,
+        userId,
+        appState: appState,
+      );
+
+      await freeChatProvider.setAuth(
+        token,
+        userId,
+        serverConversations:
+            (appState['freeChatConversations'] as List<dynamic>?) ??
+                const <dynamic>[],
+      );
+
+      final dietPreferences = (appState['dietGenerationPreferences'] as Map?)
+          ?.cast<String, dynamic>();
+      if (dietPreferences != null && dietPreferences.isNotEmpty) {
+        await dietPlanProvider.applyServerPreferencesSnapshot(dietPreferences);
+      }
+
+      await mealTypesProvider.setAuth(
+        token,
+        userId,
+        serverMealTypes:
+            (appState['mealTypes'] as List<dynamic>?) ?? const <dynamic>[],
+      );
+
+      await foodHistoryProvider.setAuth(
+        token,
+        userId,
+        serverFoodHistory:
+            (appState['foodHistory'] as Map?)?.cast<String, dynamic>(),
+      );
     } catch (e) {
-      print('[MainNavigation] Erro ao carregar dados do servidor: $e');
+      print('[MainNavigation] Erro ao carregar app-state do servidor: $e');
+      await nutritionGoalsProvider.setAuth(token, userId);
+      await freeChatProvider.setAuth(token, userId);
+      await mealTypesProvider.setAuth(token, userId);
+      await foodHistoryProvider.setAuth(token, userId);
     }
   }
 
@@ -366,7 +456,9 @@ class _MainNavigationState extends State<MainNavigation> {
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: isDarkMode
+              ? AppTheme.darkBackgroundColor
+              : Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
           type: BottomNavigationBarType.fixed,
           showSelectedLabels: true,
@@ -402,8 +494,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   Widget _buildDrawer(bool isDarkMode) {
     return Drawer(
-      backgroundColor:
-          isDarkMode ? const Color(0xFF171717) : Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF171717) : Colors.white,
       child: SafeArea(
         child: Stack(
           children: [
@@ -420,8 +511,7 @@ class _MainNavigationState extends State<MainNavigation> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color:
-                              isDarkMode ? Colors.white : Colors.black87,
+                          color: isDarkMode ? Colors.white : Colors.black87,
                         ),
                       ),
                       const Spacer(),
@@ -436,9 +526,7 @@ class _MainNavigationState extends State<MainNavigation> {
                           icon: Icon(
                             Icons.search,
                             size: 20,
-                            color: isDarkMode
-                                ? Colors.white70
-                                : Colors.black54,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
                           ),
                           onPressed: () {
                             Navigator.pop(context);
@@ -501,9 +589,7 @@ class _MainNavigationState extends State<MainNavigation> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: isDarkMode
-                          ? Colors.white54
-                          : Colors.black54,
+                      color: isDarkMode ? Colors.white54 : Colors.black54,
                     ),
                   ),
                 ),
@@ -521,9 +607,7 @@ class _MainNavigationState extends State<MainNavigation> {
                           child: Text(
                             context.tr.translate('no_conversations'),
                             style: TextStyle(
-                              color: isDarkMode
-                                  ? Colors.white38
-                                  : Colors.grey,
+                              color: isDarkMode ? Colors.white38 : Colors.grey,
                               fontSize: 13,
                             ),
                           ),
@@ -535,15 +619,12 @@ class _MainNavigationState extends State<MainNavigation> {
                         itemCount: conversations.length,
                         itemBuilder: (context, index) {
                           final chat = conversations[index];
-                          final isSelected =
-                              _currentMode == 'free_chat' &&
-                                  _currentFreeChatId == chat.id;
+                          final isSelected = _currentMode == 'free_chat' &&
+                              _currentFreeChatId == chat.id;
                           return InkWell(
-                            onTap: () =>
-                                _openFreeChat(chat.id, chat.title),
-                            onLongPress: () =>
-                                _showDeleteConfirmation(chat.id,
-                                    chat.title, freeChatProvider),
+                            onTap: () => _openFreeChat(chat.id, chat.title),
+                            onLongPress: () => _showDeleteConfirmation(
+                                chat.id, chat.title, freeChatProvider),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 12),
@@ -596,9 +677,7 @@ class _MainNavigationState extends State<MainNavigation> {
                         Icon(
                           Icons.edit_outlined,
                           size: 18,
-                          color: isDarkMode
-                              ? Colors.black
-                              : Colors.white,
+                          color: isDarkMode ? Colors.black : Colors.white,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -606,9 +685,7 @@ class _MainNavigationState extends State<MainNavigation> {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: isDarkMode
-                                ? Colors.black
-                                : Colors.white,
+                            color: isDarkMode ? Colors.black : Colors.white,
                           ),
                         ),
                       ],
@@ -636,13 +713,10 @@ class _MainNavigationState extends State<MainNavigation> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: isDarkMode
-              ? const Color(0xFF212121)
-              : const Color(0xFFF5F5F5),
+          color: isDarkMode ? const Color(0xFF212121) : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(16),
           border: isSelected
-              ? Border.all(
-                  color: Theme.of(context).primaryColor, width: 1.5)
+              ? Border.all(color: Theme.of(context).primaryColor, width: 1.5)
               : null,
         ),
         child: Column(
@@ -675,21 +749,6 @@ class _MainNavigationState extends State<MainNavigation> {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return context.tr.translate('today');
-    } else if (difference.inDays == 1) {
-      return context.tr.translate('yesterday');
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} ${context.tr.translate('days_ago')}';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
   }
 
   void _showDeleteConfirmation(

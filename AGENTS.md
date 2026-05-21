@@ -56,6 +56,9 @@ This file guides coding agents working in this repository.
 9. Agentic chat requests can return `{"app_command": {...}}` or `{"app_commands":[...]}` from the backend for app-scoped actions/data. The Flutter chat executes the command(s) via providers, sends the result back to the server in a second request, and only the final natural-language answer should remain visible to the user.
 10. Agentic follow-up prompts now include `[APP_CURRENT_STATE_BEGIN]... [APP_CURRENT_STATE_END]` with the latest structured app state so the backend can decide the next step without relying on fragile local heuristics.
 10. Natural-language chat responses may append a hidden UI hint block such as `[APP_UI_HINT_BEGIN]{"actions":["login","configure_goals_ui","edit_macros_ui"]}[APP_UI_HINT_END]`. The Flutter app must strip that block from the visible message and use it only to render native action buttons.
+11. Authenticated app bootstrap/sync uses a single app-state contract:
+   - `GET /user/app-state` returns user profile/subscription, credits, server goal setup, macro targets, diet-generation preferences, and free-chat conversations.
+   - `PUT /user/app-state` syncs pending nutrition goals and/or free-chat conversations saved locally while offline.
 
 ## 4) Main Commands
 

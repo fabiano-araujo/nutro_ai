@@ -63,270 +63,207 @@ class _FriendsScreenState extends State<FriendsScreen> {
         final content = RefreshIndicator(
           onRefresh: friendsProvider.refresh,
           color: primaryColor,
-          child: CustomScrollView(
-            slivers: [
-              // Search bar elegante
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 80),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDarkMode
+                          ? AppTheme.darkBorderColor
+                          : AppTheme.dividerColor,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black
+                            .withValues(alpha: isDarkMode ? 0.14 : 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar usuarios...',
+                      hintStyle: TextStyle(
                         color: isDarkMode
-                            ? AppTheme.darkBorderColor
-                            : AppTheme.dividerColor,
+                            ? Colors.white.withValues(alpha: 0.35)
+                            : AppTheme.textSecondaryColor,
+                        fontSize: 14,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black
-                              .withValues(alpha: isDarkMode ? 0.14 : 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar usuarios...',
-                        hintStyle: TextStyle(
-                          color: isDarkMode
-                              ? Colors.white.withValues(alpha: 0.35)
-                              : AppTheme.textSecondaryColor,
-                          fontSize: 14,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search_rounded,
-                          color: primaryColor.withValues(alpha: 0.7),
-                        ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(Icons.clear_rounded,
-                                    size: 20,
-                                    color: isDarkMode
-                                        ? Colors.white54
-                                        : Colors.grey),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchResults = [];
-                                  });
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: primaryColor.withValues(alpha: 0.7),
                       ),
-                      onChanged: _searchUsers,
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.clear_rounded,
+                                size: 20,
+                                color:
+                                    isDarkMode ? Colors.white54 : Colors.grey,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchResults = [];
+                                });
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
+                    onChanged: _searchUsers,
                   ),
                 ),
               ),
-
               if (showLoadingState)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                const SizedBox(
+                  height: 320,
+                  child: Center(child: CircularProgressIndicator()),
                 )
               else if (showErrorState)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: DietStyleMessageState(
-                    title: 'Nao foi possivel carregar seus amigos',
-                    message:
-                        'Verifique sua conexao e tente novamente para buscar sua rede social.',
-                    fallbackIcon: Icons.cloud_off_rounded,
-                    primaryActionLabel: 'Tentar novamente',
-                    primaryActionIcon: Icons.refresh_rounded,
-                    onPrimaryAction: friendsProvider.refresh,
-                    topSpacing: 24,
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                  ),
+                DietStyleMessageState(
+                  title: 'Nao foi possivel carregar seus amigos',
+                  message:
+                      'Verifique sua conexao e tente novamente para buscar sua rede social.',
+                  fallbackIcon: Icons.cloud_off_rounded,
+                  primaryActionLabel: 'Tentar novamente',
+                  primaryActionIcon: Icons.refresh_rounded,
+                  onPrimaryAction: friendsProvider.refresh,
+                  topSpacing: 24,
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                 )
               else ...[
-                // Search results
                 if (_searchResults.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: _SearchResultsSection(
-                      results: _searchResults,
-                      onSendRequest: (userId) async {
-                        final success =
-                            await friendsProvider.sendFriendRequest(userId);
-                        if (success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Pedido enviado!')),
-                          );
-                          _searchUsers(_searchController.text);
-                        }
-                      },
-                    ),
+                  _SearchResultsSection(
+                    results: _searchResults,
+                    onSendRequest: (userId) async {
+                      final success =
+                          await friendsProvider.sendFriendRequest(userId);
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Pedido enviado!')),
+                        );
+                        _searchUsers(_searchController.text);
+                      }
+                    },
                   ),
-
-                // Pending requests toggle
                 if (friendsProvider.hasPendingRequests)
-                  SliverToBoxAdapter(
-                    child: _CollapsibleSection(
-                      icon: Icons.person_add_rounded,
-                      iconColor: const Color(0xFFFF9800),
-                      title:
-                          '${friendsProvider.receivedRequests.length} pedido${friendsProvider.receivedRequests.length > 1 ? 's' : ''} de amizade',
-                      isExpanded: _showPendingRequests,
-                      onToggle: () => setState(
-                          () => _showPendingRequests = !_showPendingRequests),
-                      badgeCount: friendsProvider.receivedRequests.length,
-                    ),
+                  _CollapsibleSection(
+                    icon: Icons.person_add_rounded,
+                    iconColor: const Color(0xFFFF9800),
+                    title:
+                        '${friendsProvider.receivedRequests.length} pedido${friendsProvider.receivedRequests.length > 1 ? 's' : ''} de amizade',
+                    isExpanded: _showPendingRequests,
+                    onToggle: () => setState(
+                        () => _showPendingRequests = !_showPendingRequests),
+                    badgeCount: friendsProvider.receivedRequests.length,
                   ),
-
-                // Pending requests list
                 if (_showPendingRequests &&
                     friendsProvider.receivedRequests.isNotEmpty)
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final request = friendsProvider.receivedRequests[index];
-                        return _PendingRequestCard(
-                          request: request,
-                          onAccept: () async {
-                            final success =
-                                await friendsProvider.acceptRequest(request.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(success
-                                      ? 'Pedido aceito! ${request.user.name} agora e seu amigo.'
-                                      : 'Erro ao aceitar pedido'),
-                                  backgroundColor:
-                                      success ? Colors.green : Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          onReject: () async {
-                            final success =
-                                await friendsProvider.rejectRequest(request.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(success
-                                      ? 'Pedido rejeitado'
-                                      : 'Erro ao rejeitar pedido'),
-                                ),
-                              );
-                            }
-                          },
-                        );
+                  ...friendsProvider.receivedRequests.map((request) {
+                    return _PendingRequestCard(
+                      request: request,
+                      onAccept: () async {
+                        final success =
+                            await friendsProvider.acceptRequest(request.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(success
+                                  ? 'Pedido aceito! ${request.user.name} agora e seu amigo.'
+                                  : 'Erro ao aceitar pedido'),
+                              backgroundColor:
+                                  success ? Colors.green : Colors.red,
+                            ),
+                          );
+                        }
                       },
-                      childCount: friendsProvider.receivedRequests.length,
-                    ),
-                  ),
-
-                // Sent requests toggle
+                      onReject: () async {
+                        final success =
+                            await friendsProvider.rejectRequest(request.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(success
+                                  ? 'Pedido rejeitado'
+                                  : 'Erro ao rejeitar pedido'),
+                            ),
+                          );
+                        }
+                      },
+                    );
+                  }),
                 if (friendsProvider.hasSentRequests)
-                  SliverToBoxAdapter(
-                    child: _CollapsibleSection(
-                      icon: Icons.send_rounded,
-                      iconColor: const Color(0xFF2196F3),
-                      title:
-                          '${friendsProvider.sentRequests.length} pedido${friendsProvider.sentRequests.length > 1 ? 's' : ''} enviado${friendsProvider.sentRequests.length > 1 ? 's' : ''}',
-                      isExpanded: _showSentRequests,
-                      onToggle: () => setState(
-                          () => _showSentRequests = !_showSentRequests),
-                    ),
+                  _CollapsibleSection(
+                    icon: Icons.send_rounded,
+                    iconColor: const Color(0xFF2196F3),
+                    title:
+                        '${friendsProvider.sentRequests.length} pedido${friendsProvider.sentRequests.length > 1 ? 's' : ''} enviado${friendsProvider.sentRequests.length > 1 ? 's' : ''}',
+                    isExpanded: _showSentRequests,
+                    onToggle: () =>
+                        setState(() => _showSentRequests = !_showSentRequests),
                   ),
-
-                // Sent requests list
                 if (_showSentRequests &&
                     friendsProvider.sentRequests.isNotEmpty)
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final request = friendsProvider.sentRequests[index];
-                        return _SentRequestCard(
-                          request: request,
-                          onCancel: () async {
-                            final success = await friendsProvider
-                                .cancelSentRequest(request.id);
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Pedido cancelado')),
-                              );
-                            }
-                          },
-                        );
+                  ...friendsProvider.sentRequests.map((request) {
+                    return _SentRequestCard(
+                      request: request,
+                      onCancel: () async {
+                        final success =
+                            await friendsProvider.cancelSentRequest(request.id);
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Pedido cancelado')),
+                          );
+                        }
                       },
-                      childCount: friendsProvider.sentRequests.length,
-                    ),
-                  ),
-
-                // Duo streaks section
+                    );
+                  }),
                 if (friendsProvider.duoStreaks.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: _SectionHeader(
-                      title: 'Duo Streaks',
-                      icon: Icons.local_fire_department_rounded,
-                      iconColor: const Color(0xFFFF5722),
-                    ),
+                  _SectionHeader(
+                    title: 'Duo Streaks',
+                    icon: Icons.local_fire_department_rounded,
+                    iconColor: const Color(0xFFFF5722),
                   ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final duo = friendsProvider.duoStreaks[index];
-                        return _DuoStreakCard(
-                          duoStreak: duo,
-                          onCheckIn: () =>
-                              friendsProvider.duoCheckIn(duo.friendshipId),
-                        );
-                      },
-                      childCount: friendsProvider.duoStreaks.length,
-                    ),
-                  ),
+                  ...friendsProvider.duoStreaks.map((duo) {
+                    return _DuoStreakCard(
+                      duoStreak: duo,
+                      onCheckIn: () =>
+                          friendsProvider.duoCheckIn(duo.friendshipId),
+                    );
+                  }),
                 ],
-
-                // Friends list
-                SliverToBoxAdapter(
-                  child: _SectionHeader(
-                    title: 'Amigos',
-                    icon: Icons.people_rounded,
-                    count: friendsProvider.friends.length,
-                  ),
+                _SectionHeader(
+                  title: 'Amigos',
+                  icon: Icons.people_rounded,
+                  count: friendsProvider.friends.length,
                 ),
-
                 if (friendsProvider.friends.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _EmptyFriendsState(
-                      onSearchTap: () => _searchFocusNode.requestFocus(),
-                    ),
+                  _EmptyFriendsState(
+                    onSearchTap: () => _searchFocusNode.requestFocus(),
                   )
                 else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final friendData = friendsProvider.friends[index];
-                        return _FriendCard(
-                          friendData: friendData,
-                          onPing: () => _showPingDialog(
-                              context, friendData, friendsProvider),
-                          onRemove: () => _confirmRemoveFriend(
-                              context, friendData, friendsProvider),
-                        );
-                      },
-                      childCount: friendsProvider.friends.length,
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 80),
-                ),
+                  ...friendsProvider.friends.map((friendData) {
+                    return _FriendCard(
+                      friendData: friendData,
+                      onPing: () =>
+                          _showPingDialog(context, friendData, friendsProvider),
+                      onRemove: () => _confirmRemoveFriend(
+                          context, friendData, friendsProvider),
+                    );
+                  }),
               ],
             ],
           ),

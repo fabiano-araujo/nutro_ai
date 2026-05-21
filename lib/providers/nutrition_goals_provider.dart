@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../services/user_app_state_service.dart';
 
 enum CalculationFormula {
   mifflinStJeor,
@@ -84,6 +85,12 @@ class NutritionGoalsProvider extends ChangeNotifier {
   bool _hasExplicitFitnessGoal = false;
   int _stateRevision = 0;
   late final Future<void> _loadFuture;
+  final UserAppStateService _appStateService = UserAppStateService();
+  String? _authToken;
+  int? _authUserId;
+  bool _hasPendingServerSync = false;
+  bool _isSyncingWithServer = false;
+  String? _lastServerSyncError;
 
   // Getters
   String get sex => _sex;
@@ -116,6 +123,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
       _hasExplicitActivityLevel ? _activityLevel : null;
   FitnessGoal? get explicitFitnessGoal =>
       _hasExplicitFitnessGoal ? _fitnessGoal : null;
+  bool get hasPendingServerSync => _hasPendingServerSync;
+  bool get isSyncingWithServer => _isSyncingWithServer;
+  String? get lastServerSyncError => _lastServerSyncError;
   List<String> get missingSetupFields {
     final missing = <String>[];
     if (!_hasExplicitSex) missing.add('sex');
@@ -172,15 +182,15 @@ class NutritionGoalsProvider extends ChangeNotifier {
   Future<void> applyServerSnapshot({
     required Map<String, dynamic> goalSetup,
     Map<String, dynamic>? macroTargets,
+    bool clearPendingSync = true,
   }) async {
     _markStateMutation();
 
     final completion =
         (goalSetup['setupCompletionStatus'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
-    final profile =
-        (goalSetup['profile'] as Map?)?.cast<String, dynamic>() ??
-            const <String, dynamic>{};
+    final profile = (goalSetup['profile'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
     final goalSetupMacroTargets =
         (goalSetup['macroTargets'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
@@ -240,9 +250,64 @@ class NutritionGoalsProvider extends ChangeNotifier {
         'default_template';
     _useCalculatedGoals = goalMode == 'calculated';
     _hasConfiguredGoals = _computeHasConfiguredGoals();
+    if (clearPendingSync) {
+      _hasPendingServerSync = false;
+      _lastServerSyncError = null;
+    }
 
     await _saveToPreferences(markConfigured: _hasConfiguredGoals);
     notifyListeners();
+  }
+
+  Future<void> setAuth(
+    String token,
+    int userId, {
+    Map<String, dynamic>? appState,
+  }) async {
+    _authToken = token;
+    _authUserId = userId;
+    await ensureLoaded();
+
+    if (_hasPendingServerSync) {
+      await syncPendingIfNeeded();
+      return;
+    }
+
+    final goalSetup =
+        (appState?['goalSetup'] as Map?)?.cast<String, dynamic>() ??
+            (appState?['chatState'] is Map
+                ? ((appState!['chatState'] as Map)['goalSetup'] as Map?)
+                    ?.cast<String, dynamic>()
+                : null) ??
+            const <String, dynamic>{};
+    final macroTargets =
+        (appState?['macroTargets'] as Map?)?.cast<String, dynamic>() ??
+            (appState?['chatState'] is Map
+                ? ((appState!['chatState'] as Map)['macroTargets'] as Map?)
+                    ?.cast<String, dynamic>()
+                : null);
+
+    if (goalSetup.isNotEmpty) {
+      final serverIsConfigured =
+          goalSetup['configurationStatus']?.toString() == 'configured';
+      if (!serverIsConfigured && _hasConfiguredGoals) {
+        _hasPendingServerSync = true;
+        await _saveToPreferences();
+        await syncPendingIfNeeded();
+        return;
+      }
+
+      await applyServerSnapshot(
+        goalSetup: goalSetup,
+        macroTargets: macroTargets,
+      );
+    }
+  }
+
+  void clearAuth() {
+    _authToken = null;
+    _authUserId = null;
+    _isSyncingWithServer = false;
   }
 
   // Load saved preferences
@@ -333,6 +398,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
       _manualProteinGoal = prefs.getInt('nutrition_manualProtein') ?? 100;
       _manualCarbsGoal = prefs.getInt('nutrition_manualCarbs') ?? 250;
       _manualFatGoal = prefs.getInt('nutrition_manualFat') ?? 67;
+      _hasPendingServerSync =
+          prefs.getBool('nutrition_pendingServerSync') ?? false;
+      _lastServerSyncError = prefs.getString('nutrition_lastServerSyncError');
 
       // Load measurement units
       final heightUnitIndex = prefs.getInt('nutrition_heightUnit') ?? 0;
@@ -409,6 +477,13 @@ class NutritionGoalsProvider extends ChangeNotifier {
         _hasExplicitFitnessGoal,
       );
       await prefs.setBool('nutrition_hasConfiguredGoals', _hasConfiguredGoals);
+      await prefs.setBool('nutrition_pendingServerSync', _hasPendingServerSync);
+      if (_lastServerSyncError != null) {
+        await prefs.setString(
+            'nutrition_lastServerSyncError', _lastServerSyncError!);
+      } else {
+        await prefs.remove('nutrition_lastServerSyncError');
+      }
     } catch (e) {
       print('Error saving nutrition goals: $e');
     }
@@ -442,6 +517,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     if (bodyFat != null) _bodyFat = bodyFat;
 
     _saveToPreferences();
+    _markPendingServerSync();
     notifyListeners();
   }
 
@@ -463,6 +539,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     if (formula != null) _formula = formula;
 
     _saveToPreferences();
+    _markPendingServerSync();
     notifyListeners();
   }
 
@@ -504,6 +581,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     }
 
     _saveToPreferences();
+    _markPendingServerSync();
     notifyListeners();
   }
 
@@ -539,6 +617,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     }
 
     _saveToPreferences();
+    _markPendingServerSync();
     notifyListeners();
   }
 
@@ -547,6 +626,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _markStateMutation();
     _useCalculatedGoals = value;
     _saveToPreferences();
+    _markPendingServerSync();
     notifyListeners();
   }
 
@@ -579,6 +659,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _dietType = DietType.custom;
 
     _saveToPreferences();
+    _markPendingServerSync();
     notifyListeners();
   }
 
@@ -663,6 +744,111 @@ class NutritionGoalsProvider extends ChangeNotifier {
         'grams',
       ],
     };
+  }
+
+  Map<String, dynamic> getServerGoalSetupSnapshot() {
+    final missingFields = missingSetupFields;
+    final isConfigured = missingFields.isEmpty;
+    return {
+      'configurationStatus':
+          isConfigured ? 'configured' : 'needs_initial_setup',
+      'defaultMacroTargetsApplied': !hasConfiguredGoals,
+      'missingSetupFields': missingFields,
+      'setupCompletionStatus': setupCompletionStatus,
+      'profile': {
+        'sex': explicitSex,
+        'age': explicitAge,
+        'weightKg': explicitWeight == null ? null : _round1(explicitWeight!),
+        'heightCm': explicitHeight == null ? null : _round1(explicitHeight!),
+        'bodyFat': _bodyFat,
+        'activityLevel': explicitActivityLevel?.name,
+        'fitnessGoal': explicitFitnessGoal?.name,
+      }..removeWhere((_, value) => value == null),
+      'formula': _formula.name,
+      'dietType': _dietType.name,
+      'macroTargets': {
+        'goalMode': !hasConfiguredGoals
+            ? 'default_template'
+            : (_useCalculatedGoals ? 'calculated' : 'manual'),
+        'caloriesGoal': caloriesGoal,
+        'grams': {
+          'protein': proteinGoal,
+          'carbs': carbsGoal,
+          'fat': fatGoal,
+        },
+      },
+    };
+  }
+
+  Future<void> syncPendingIfNeeded() async {
+    if (!_hasPendingServerSync || _authToken == null || _authUserId == null) {
+      return;
+    }
+
+    await _syncToServer();
+  }
+
+  void _markPendingServerSync() {
+    if (_authToken == null || _authUserId == null) {
+      return;
+    }
+
+    _hasPendingServerSync = true;
+    _lastServerSyncError = null;
+    _saveToPreferences();
+    _syncToServer();
+  }
+
+  Future<void> _syncToServer() async {
+    final token = _authToken;
+    if (_isSyncingWithServer ||
+        token == null ||
+        _authUserId == null ||
+        !_hasPendingServerSync) {
+      return;
+    }
+
+    final syncRevision = _stateRevision;
+    _isSyncingWithServer = true;
+    notifyListeners();
+
+    try {
+      final response = await _appStateService.syncAppState(
+        token: token,
+        goalSetup: getServerGoalSetupSnapshot(),
+        macroTargets: getMacroSnapshot(),
+      );
+
+      if (_stateRevision == syncRevision) {
+        final goalSetup =
+            (response['goalSetup'] as Map?)?.cast<String, dynamic>() ??
+                const <String, dynamic>{};
+        final macroTargets =
+            (response['macroTargets'] as Map?)?.cast<String, dynamic>();
+
+        if (goalSetup.isNotEmpty) {
+          await applyServerSnapshot(
+            goalSetup: goalSetup,
+            macroTargets: macroTargets,
+            clearPendingSync: true,
+          );
+        } else {
+          _hasPendingServerSync = false;
+          _lastServerSyncError = null;
+          await _saveToPreferences();
+        }
+      }
+    } catch (e) {
+      _lastServerSyncError = e.toString();
+      await _saveToPreferences();
+      print('Error syncing nutrition goals with server: $e');
+    } finally {
+      _isSyncingWithServer = false;
+      notifyListeners();
+      if (_hasPendingServerSync && _stateRevision != syncRevision) {
+        _syncToServer();
+      }
+    }
   }
 
   void updateMacroTargetsFromPercentages({
@@ -1047,6 +1233,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _hasExplicitHeight = false;
     _hasExplicitActivityLevel = false;
     _hasExplicitFitnessGoal = false;
+    _hasPendingServerSync = false;
+    _isSyncingWithServer = false;
+    _lastServerSyncError = null;
 
     // Limpar do SharedPreferences
     try {

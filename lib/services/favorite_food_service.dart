@@ -260,6 +260,32 @@ class FavoriteFoodService {
     }
   }
 
+  Future<bool> deleteRecent(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/favorites/recents/$id'),
+        headers: _headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('[FavoriteFoodService] Erro ao deletar recente: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteMeal(int mealId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/meals/meal/$mealId'),
+        headers: _headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('[FavoriteFoodService] Erro ao deletar refeição: $e');
+      return false;
+    }
+  }
+
   // ============================================
   // RECENTES
   // ============================================

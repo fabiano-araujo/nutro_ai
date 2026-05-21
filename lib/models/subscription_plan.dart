@@ -61,14 +61,14 @@ class SubscriptionPlan {
           'Resumo semanal com sua evolucao',
         ],
         savePercentage: 25,
-        isMostPopular: true,
+        isMostPopular: false,
       ),
       SubscriptionPlan(
         id: PurchaseService.planoAnual,
         title: 'Plano Anual',
         description: 'Acompanhamento completo para manter consistencia',
         period: 'Anual',
-        price: 'R\$ 249,90',
+        price: 'R\$ 238,80',
         color: const Color(0xFF66BB6A),
         icon: Icons.emoji_events_rounded,
         features: [
@@ -79,7 +79,7 @@ class SubscriptionPlan {
           'Prioridade nos recursos premium do app',
         ],
         savePercentage: 30,
-        isMostPopular: false,
+        isMostPopular: true,
       ),
     ];
   }

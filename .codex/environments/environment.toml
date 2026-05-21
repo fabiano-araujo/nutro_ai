@@ -16,6 +16,11 @@ icon = "run"
 command = "flutter run -d chrome"
 
 [[actions]]
+name = "Flutter: Codex Web"
+icon = "run"
+command = "flutter run -d web-server --release --web-hostname 127.0.0.1 --web-port 51539"
+
+[[actions]]
 name = "Flutter: Windows"
 icon = "run"
 command = "flutter run -d windows"

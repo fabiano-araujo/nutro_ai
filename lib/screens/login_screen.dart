@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -32,12 +31,17 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _didAutoCloseAfterLogin = false;
 
+  Color _surfaceColor(bool isDarkMode) =>
+      isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF3F3F3);
+  Color _subtleBorderColor(bool isDarkMode) =>
+      isDarkMode ? Colors.white12 : Colors.black12;
+
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 700),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -48,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.16),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
@@ -148,15 +152,13 @@ class _LoginScreenState extends State<LoginScreen>
 
     final bgColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final borderColor =
-        isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
     final textPrimary =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final textSecondary =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final primaryColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final onPrimary = AppTheme.onColor(primaryColor);
 
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -166,254 +168,249 @@ class _LoginScreenState extends State<LoginScreen>
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        leading: widget.onOpenDrawer != null
-            ? IconButton(
-                icon: Icon(Icons.menu, color: textPrimary),
-                onPressed: widget.onOpenDrawer,
-                tooltip: 'Menu',
-              )
-            : canPop
-                ? IconButton(
-                    icon: Icon(Icons.arrow_back, color: textPrimary),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    tooltip: context.tr.translate('back'),
-                  )
-                : null,
-        title: Text(
-          context.tr.translate('login_title') ?? 'Login',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: textPrimary,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 4.0),
-            child: CreditIndicator(),
-          ),
-          IconButton(
-            icon: Icon(Icons.card_giftcard, color: textPrimary),
-            tooltip: context.tr.translate('watch_ad_for_credits') ??
-                'Assistir anúncio para ganhar créditos',
-            onPressed: () => RewardAdDialog.show(context),
-          ),
-          IconButton(
-            icon: Icon(Icons.settings, color: textPrimary),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 40),
+        child: Column(
+          children: [
+            _buildMinimalHeader(
+              canPop: canPop,
+              textColor: textPrimary,
+              isDarkMode: isDarkMode,
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Center(
+                        child: FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 520),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  _buildLoginMark(
+                                    primaryColor: primaryColor,
+                                    textColor: textPrimary,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    context.tr.translate('app_title'),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          AppTheme.getSoftTextColor(isDarkMode),
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    context.tr.translate('app_subtitle'),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color:
+                                          textSecondary.withValues(alpha: 0.9),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 34),
+                                  Text(
+                                    context.tr.translate('welcome'),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          AppTheme.getSoftTextColor(isDarkMode),
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    context.tr.translate('welcome_description'),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color:
+                                          textSecondary.withValues(alpha: 0.82),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  if (_isLoading)
+                                    SizedBox(
+                                      height: 52,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: primaryColor,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    _SocialButton(
+                                      onPressed: _handleGoogleLogin,
+                                      icon: const Icon(
+                                        Icons.g_mobiledata,
+                                        size: 30,
+                                        color: Colors.red,
+                                      ),
+                                      label: context.tr
+                                          .translate('sign_in_with_google'),
+                                      backgroundColor: primaryColor,
+                                      borderColor: primaryColor,
+                                      textColor: onPrimary,
+                                    ),
+                                  const SizedBox(height: 10),
+                                  _SocialButton(
+                                    onPressed: () async {
+                                      final loginSucceeded =
+                                          await Navigator.of(context)
+                                              .push<bool>(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const EmailLoginScreen(),
+                                        ),
+                                      );
 
-                  // Logo
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: borderColor, width: 1.5),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.restaurant,
-                            size: 36,
-                            color: primaryColor,
-                          );
-                        },
+                                      if (!mounted || loginSucceeded != true) {
+                                        return;
+                                      }
+
+                                      if (widget.popOnSuccess) {
+                                        _closeAfterSuccessfulLogin();
+                                      }
+                                    },
+                                    icon: Icon(
+                                      Icons.email_outlined,
+                                      size: 19,
+                                      color: textPrimary,
+                                    ),
+                                    label: context.tr
+                                        .translate('sign_in_with_email'),
+                                    backgroundColor: _surfaceColor(isDarkMode),
+                                    borderColor: _subtleBorderColor(isDarkMode),
+                                    textColor: textPrimary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                  const SizedBox(height: 20),
-
-                  // App title
-                  Text(
-                    context.tr.translate('app_title') ?? 'Nutro AI',
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: textPrimary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Subtitle
-                  Text(
-                    context.tr.translate('app_subtitle') ??
-                        'Seu assistente inteligente de nutrição',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: textSecondary,
-                      height: 1.5,
-                    ),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // Login card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: borderColor, width: 1),
-                      boxShadow: isDarkMode
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          context.tr.translate('welcome') ?? 'Bem-vindo',
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          context.tr.translate('welcome_description') ??
-                              'Entre com sua conta para acompanhar suas calorias e alcançar seus objetivos nutricionais',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: textSecondary,
-                            height: 1.5,
-                          ),
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        // Google button
-                        if (_isLoading)
-                          SizedBox(
-                            height: 50,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: primaryColor,
-                              ),
-                            ),
-                          )
-                        else
-                          _SocialButton(
-                            onPressed: _handleGoogleLogin,
-                            icon: const Icon(
-                              Icons.g_mobiledata,
-                              size: 28,
-                              color: Colors.red,
-                            ),
-                            label: context.tr.translate('sign_in_with_google') ??
-                                'Entrar com Google',
-                            borderColor: borderColor,
-                            cardColor: cardColor,
-                            textColor: textPrimary,
-                          ),
-
-                        const SizedBox(height: 16),
-
-                        // Divider
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Divider(color: borderColor, height: 1),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                context.tr.translate('or') ?? 'ou',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: textSecondary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Divider(color: borderColor, height: 1),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Email button
-                        _SocialButton(
-                          onPressed: () async {
-                            final loginSucceeded =
-                                await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const EmailLoginScreen(),
-                              ),
-                            );
-
-                            if (!mounted || loginSucceeded != true) {
-                              return;
-                            }
-
-                            if (widget.popOnSuccess) {
-                              _closeAfterSuccessfulLogin();
-                            }
-                          },
-                          icon: Icon(
-                            Icons.email_outlined,
-                            size: 20,
-                            color: textPrimary,
-                          ),
-                          label: context.tr.translate('sign_in_with_email') ??
-                              'Entrar com email e senha',
-                          borderColor: borderColor,
-                          cardColor: cardColor,
-                          textColor: textPrimary,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-                ],
+  Widget _buildMinimalHeader({
+    required bool canPop,
+    required Color textColor,
+    required bool isDarkMode,
+  }) {
+    return SizedBox(
+      height: 52,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: widget.onOpenDrawer != null
+                ? IconButton(
+                    icon: Icon(Icons.menu, color: textColor),
+                    onPressed: widget.onOpenDrawer,
+                    tooltip: 'Menu',
+                  )
+                : canPop
+                    ? IconButton(
+                        icon: Icon(Icons.arrow_back, color: textColor),
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        tooltip: context.tr.translate('back'),
+                      )
+                    : const SizedBox(width: 48),
+          ),
+          Center(
+            child: Text(
+              context.tr.translate('login_title'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: textColor,
               ),
             ),
           ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CreditIndicator(),
+                IconButton(
+                  icon: Icon(Icons.card_giftcard, color: textColor),
+                  tooltip: context.tr.translate('watch_ad_for_credits'),
+                  onPressed: () => RewardAdDialog.show(context),
+                ),
+                IconButton(
+                  icon: Icon(Icons.settings, color: textColor),
+                  tooltip: context.tr.translate('settings'),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoginMark({
+    required Color primaryColor,
+    required Color textColor,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: _surfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: _subtleBorderColor(isDarkMode)),
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/logo.png',
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              Icons.restaurant_menu,
+              size: 24,
+              color: textColor.withValues(alpha: 0.82),
+            );
+          },
         ),
       ),
     );
@@ -424,16 +421,16 @@ class _SocialButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Widget icon;
   final String label;
+  final Color backgroundColor;
   final Color borderColor;
-  final Color cardColor;
   final Color textColor;
 
   const _SocialButton({
     required this.onPressed,
     required this.icon,
     required this.label,
+    required this.backgroundColor,
     required this.borderColor,
-    required this.cardColor,
     required this.textColor,
   });
 
@@ -441,15 +438,15 @@ class _SocialButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 52,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          backgroundColor: cardColor,
+          backgroundColor: backgroundColor,
           foregroundColor: textColor,
           side: BorderSide(color: borderColor, width: 1),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(100),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
@@ -458,12 +455,16 @@ class _SocialButton extends StatelessWidget {
           children: [
             icon,
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: textColor,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
               ),
             ),
           ],

@@ -29,6 +29,7 @@ final Map<String, String> deDETranslations = {
   'please_enter_valid_email': 'Bitte geben Sie eine gültige E-Mail ein',
   'please_enter_password': 'Bitte geben Sie Ihr Passwort ein',
   'password_min_length': 'Das Passwort muss mindestens 6 Zeichen lang sein',
+  'remember_email_password': 'E-Mail und Passwort merken',
   'login_to_access_profile':
       'Melden Sie sich an, um auf Ihr Profil zuzugreifen',
   'login_description':
@@ -45,6 +46,9 @@ final Map<String, String> deDETranslations = {
   'register_subtitle': 'Füllen Sie die Details aus, um zu beginnen',
   'name': 'Name',
   'please_enter_name': 'Bitte geben Sie Ihren Namen ein',
+  'name_min_length': 'Der Name muss mindestens 2 Zeichen lang sein',
+  'email_already_in_use':
+      'Diese E-Mail ist bereits registriert. Melden Sie sich an oder verwenden Sie eine andere E-Mail.',
   'confirm_password': 'Passwort Bestätigen',
   'please_confirm_password': 'Bitte bestätigen Sie Ihr Passwort',
   'passwords_dont_match': 'Passwörter stimmen nicht überein',
@@ -208,6 +212,10 @@ final Map<String, String> deDETranslations = {
       'Die interne Aktion konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
   'chat_action_login': 'Einloggen',
   'chat_action_configure_goals_ui': 'In der App einrichten',
+  'chat_goals_setup_banner_title': 'Ziele vervollstaendigen',
+  'chat_goals_setup_banner_body':
+      'Kalorien und Makros in der App personalisieren.',
+  'chat_goals_setup_banner_button': 'Einrichten',
   'chat_action_continue_goals_chat': 'Im Chat fortfahren',
   'chat_action_edit_macros_ui': 'Makros in der App bearbeiten',
   'chat_action_continue_macros_chat': 'Makros im Chat anpassen',
@@ -366,7 +374,7 @@ final Map<String, String> deDETranslations = {
   // Willkommensnachricht auf der Karte
   'welcome_message_card': 'Hallo! Ich bin Nutro AI, dein Ernährungsassistent',
   'welcome_description':
-      'Intelligenter Assistent zur Verbesserung deines Lernens 📚👩‍🎓',
+      'Verfolge Kalorien, Makros und Ernährungsziele an einem Ort',
   'start_conversation': 'Gespräch beginnen',
 
   // AppBar-Titel im Werkzeugbildschirm
@@ -406,6 +414,7 @@ final Map<String, String> deDETranslations = {
   'secure_google_play': 'Sicher mit Google Play. Jederzeit kündbar.',
   'free_plan': 'Gratis',
   'monthly': 'Monatlich',
+  'per_month': 'pro Monat',
   'yearly': 'Jährlich',
   'lifetime': 'Lebenslang',
   'popular': 'AM BELIEBTESTEN',
@@ -470,6 +479,34 @@ final Map<String, String> deDETranslations = {
   'free_meal': 'Freie Mahlzeit',
   'meal': 'Mahlzeit',
   'select_meal_type': 'Mahlzeittyp auswählen',
+  'add': 'Hinzufügen',
+  'meals': 'Mahlzeiten',
+  'protein_full': 'Protein',
+  'fat': 'Fett',
+  'quick_add_food': 'Schnell hinzufügen',
+  'values_per_serving': 'Nährwerte pro Portion',
+  'serving': 'Portion',
+  'used_times': '{count} Mal verwendet',
+  'ready_to_add': 'Bereit zum Hinzufügen',
+  'repeat': 'Wiederholen',
+  'date': 'Datum',
+  'no_recent_foods': 'Keine aktuellen Lebensmittel',
+  'no_saved_favorites': 'Keine gespeicherten Favoriten',
+  'recent_foods_empty_hint':
+      'Deine Lebensmittel erscheinen hier, nachdem du Mahlzeiten erfasst hast',
+  'favorite_foods_empty_hint':
+      'Markiere Lebensmittel als Favoriten, um schnell darauf zuzugreifen',
+  'no_registered_meals': 'Keine Mahlzeiten erfasst',
+  'repeatable_meals_empty_hint':
+      'Deine Mahlzeiten erscheinen hier, damit du sie wiederholen kannst',
+  'options': 'Optionen',
+  'undo': 'Rückgängig',
+  'remove_from_favorites': 'Aus Favoriten entfernen',
+  'recent_deleted': 'Eintrag entfernt',
+  'favorite_deleted': 'Favorit entfernt',
+  'meal_deleted': 'Mahlzeit entfernt',
+  'added_to_favorites': 'Zu Favoriten hinzugefügt',
+  'delete_item_question': '"{name}" löschen?',
 
   // Schublade und freie Gespräche
   'diary': 'Tagebuch',
@@ -586,6 +623,43 @@ final Map<String, String> deDETranslations = {
   'streak_checkin_success': 'Streak erfolgreich aktualisiert.',
   'streak_checkin_error':
       'Dein Streak konnte gerade nicht aktualisiert werden.',
+  'streak_screen_title': 'Streak',
+  'streak_tab_personal': 'Persönlich',
+  'streak_tab_friends': 'Freunde',
+  'streak_share_tooltip': 'Streak teilen',
+  'streak_share_message':
+      'Ich habe einen {count}-Tage-Streak in Nutro AI. Mach mit und verfolge deinen!',
+  'streak_keep_today': 'Heute aktualisieren',
+  'streak_freeze_none_title': 'Du hast keine Streak-Schutzoptionen',
+  'streak_freeze_none_message':
+      'Schutzoptionen retten deinen Streak, wenn du keine Mahlzeiten protokollieren kannst.',
+  'streak_freeze_available_title': 'Du hast {count} Schutzoption(en)',
+  'streak_freeze_available_message':
+      'Nutze eine Schutzoption, um deinen Streak 24 Stunden einzufrieren.',
+  'streak_freeze_active_message': 'Dein Streak ist vorübergehend geschützt.',
+  'streak_freeze_activated': 'Schutz erfolgreich aktiviert.',
+  'streak_get_more_freezes': 'Mehr erhalten',
+  'streak_freeze_info_title': 'Streak-Schutz',
+  'streak_freeze_info_message':
+      'Zusätzlicher Schutz wird verfügbar, wenn du konsequent bleibst und soziale Aktionen in der App nutzt.',
+  'streak_calendar_title': 'Streak-Kalender',
+  'streak_calendar_logged_day': 'Mahlzeit protokolliert',
+  'streak_today': 'Heute',
+  'streak_previous_month': 'Vorheriger Monat',
+  'streak_next_month': 'Nächster Monat',
+  'streak_friend_empty_title': 'Starte einen Streak mit Freunden',
+  'streak_friend_empty_message':
+      'Lade jemanden ein, mit dir Mahlzeiten zu protokollieren und jeden Tag dranzubleiben.',
+  'streak_invite_friends': 'Freunde einladen',
+  'streak_duo_title': 'Streaks mit Freunden',
+  'streak_duo_checkin': 'Check-in',
+  'streak_you': 'Du',
+  'streak_friend_best': 'Bestwert: {count}',
+  'streak_friend_checkin_success': 'Freunde-Check-in aktualisiert.',
+  'streak_friend_checkin_error': 'Check-in konnte nicht aktualisiert werden.',
+  'streak_friend_progress_title': 'Duo-Fortschritt',
+  'streak_friend_progress_message':
+      '{friends} Freund(e) und {duos} aktive Duo-Streak(s).',
   'social_open_hub': 'Social Hub öffnen',
   'social_summary_title': 'Soziale Übersicht',
   'social_summary_subtitle':

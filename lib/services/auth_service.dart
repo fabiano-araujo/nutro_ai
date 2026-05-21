@@ -158,38 +158,27 @@ class AuthService with ChangeNotifier {
 
       final updatedUser = await ApiService.getUserProfile(_token!);
 
-      if (updatedUser != null) {
-        // Verificar se houve mudança real nos dados antes de notificar
-        bool changed = jsonEncode(_currentUser?.toJson()) !=
-            jsonEncode(updatedUser.toJson());
+      // Verificar se houve mudança real nos dados antes de notificar
+      bool changed = jsonEncode(_currentUser?.toJson()) !=
+          jsonEncode(updatedUser.toJson());
 
-        if (changed) {
-          // Atualizar usuário em memória
-          _currentUser = updatedUser;
+      if (changed) {
+        // Atualizar usuário em memória
+        _currentUser = updatedUser;
 
-          // Salvar os dados atualizados
-          await _storage.write(
-            key: 'user_data',
-            value: jsonEncode(_currentUser!.toJson()),
-          );
+        // Salvar os dados atualizados
+        await _storage.write(
+          key: 'user_data',
+          value: jsonEncode(_currentUser!.toJson()),
+        );
 
-          print(
-              '[AuthService] Perfil do usuário atualizado: ${_currentUser!.name}');
-          notifyListeners(); // Notificar APENAS se houver mudança
-        } else {
-          print('[AuthService] Perfil do usuário já estava atualizado.');
-        }
-        return true;
-      } else {
         print(
-            '[AuthService] Não foi possível obter dados atualizados do usuário');
-        // Considerar tratar erro de sessão inválida aqui também
-        if (_token != null) {
-          _errorMessage = 'Sessão inválida. Faça login novamente.';
-          notifyListeners(); // Notificar sobre o erro
-        }
-        return false;
+            '[AuthService] Perfil do usuário atualizado: ${_currentUser!.name}');
+        notifyListeners(); // Notificar APENAS se houver mudança
+      } else {
+        print('[AuthService] Perfil do usuário já estava atualizado.');
       }
+      return true;
     } catch (e) {
       print('[AuthService] Erro ao atualizar perfil: $e');
 
@@ -216,48 +205,44 @@ class AuthService with ChangeNotifier {
 
   // Método para logout
   Future<void> logout({bool silent = false}) async {
-    _setLoading(true);
+    final tokenToUnregister = _token;
+
+    _isLoading = true;
+    _currentUser = null;
+    _token = null;
+
+    // Limpar mensagem de erro se o logout for silencioso
+    if (silent) {
+      _errorMessage = null;
+    }
+
+    notifyListeners();
+
+    print('[AuthService] Iniciando processo de logout (silent: $silent)');
+
+    // Desregistrar token FCM depois de limpar a UI, usando o token capturado.
+    await _unregisterFcmToken(tokenToUnregister);
+
+    // Tentar fazer logout do Google, mas não falhar se não conseguir
     try {
-      print('[AuthService] Iniciando processo de logout (silent: $silent)');
+      await _googleSignIn.signOut();
+      print('[AuthService] Logout do Google realizado com sucesso');
+    } catch (e) {
+      print('[AuthService] Erro ao fazer logout do Google: $e');
+      // Continuar mesmo com erro, pois precisamos limpar os dados locais
+    }
 
-      // Desregistrar token FCM antes de limpar dados
-      await _unregisterFcmToken();
-
-      // Tentar fazer logout do Google, mas não falhar se não conseguir
-      try {
-        await _googleSignIn.signOut();
-        print('[AuthService] Logout do Google realizado com sucesso');
-      } catch (e) {
-        print('[AuthService] Erro ao fazer logout do Google: $e');
-        // Continuar mesmo com erro, pois precisamos limpar os dados locais
-      }
-
-      // Limpar dados salvos
+    // Limpar dados salvos
+    try {
       await _storage.delete(key: 'auth_token');
       await _storage.delete(key: 'user_data');
       print('[AuthService] Dados de autenticação removidos do armazenamento');
-
-      // Limpar dados em memória
-      _currentUser = null;
-      _token = null;
-
-      // Limpar mensagem de erro se o logout for silencioso
-      if (silent) {
-        _errorMessage = null;
-      }
-
-      print('[AuthService] Logout realizado com sucesso');
-      notifyListeners();
     } catch (e) {
-      print('[AuthService] Erro ao fazer logout: $e');
-
-      // Mesmo com erro, garantir que os dados em memória sejam limpos
-      _currentUser = null;
-      _token = null;
-      notifyListeners();
-    } finally {
-      _setLoading(false);
+      print('[AuthService] Erro ao limpar dados de autenticação salvos: $e');
     }
+
+    print('[AuthService] Logout realizado com sucesso');
+    _setLoading(false);
   }
 
   // Método para atualizar o usuário localmente sem chamar API
@@ -462,12 +447,13 @@ class AuthService with ChangeNotifier {
   }
 
   // Desregistrar token FCM (chamado no logout)
-  Future<void> _unregisterFcmToken() async {
-    if (_token == null) return;
+  Future<void> _unregisterFcmToken([String? token]) async {
+    final authToken = token ?? _token;
+    if (authToken == null) return;
 
     try {
       final notificationService = NotificationService();
-      await notificationService.unregisterTokenFromBackend(_token!);
+      await notificationService.unregisterTokenFromBackend(authToken);
       print('[AuthService] FCM token unregistered');
     } catch (e) {
       print('[AuthService] Error unregistering FCM token: $e');

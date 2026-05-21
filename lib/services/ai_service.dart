@@ -1,12 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
-import 'dart:developer' as developer;
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
 import '../i18n/language_controller.dart';
 import 'dart:async';
-import '../services/api_service.dart'; // Importar para usar baseUrl
+import '../services/app_integrity_service.dart';
 import '../util/app_constants.dart'; // Importar constantes
 
 /// Serviço para interação com a API OpenAI.
@@ -20,9 +18,6 @@ import '../util/app_constants.dart'; // Importar constantes
 /// Todas as respostas da IA são entregues no idioma do dispositivo,
 /// utilizando o LanguageController para determinar o idioma atual.
 class AIService {
-  static const String _apiKey =
-      "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";
-  static const String _baseUrl = "https://api.openai.com/v1/chat/completions";
   static const String _model = "gpt-4o-mini";
 
   // Preços em dólares por 1000 tokens para diferentes modelos
@@ -78,12 +73,6 @@ class AIService {
     print('   💵 Custo de saída: \$${outputCost.toStringAsFixed(5)}');
     print('   💵 CUSTO TOTAL: \$${totalCost.toStringAsFixed(5)}');
   }
-
-  // Headers for OpenAI API requests
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': 'Bearer $_apiKey',
-      };
 
   // Método auxiliar para obter o idioma atual do dispositivo
   String getCurrentLanguageCode(LanguageController? languageController) {
@@ -147,6 +136,7 @@ class AIService {
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       // Novo formato de corpo da requisição
       final requestBody = {
@@ -392,6 +382,7 @@ class AIService {
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       // Formato do corpo da requisição para o novo endpoint
       final requestBody = {
@@ -592,6 +583,7 @@ class AIService {
         Uri.parse(endpoint),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
+          ...await AppIntegrityService.appCheckHeaders(),
         },
         body: jsonEncode({
           'audioBase64': audioBase64,
@@ -683,6 +675,7 @@ class AIService {
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       // Novo formato de corpo da requisição
       final requestBody = {
@@ -905,6 +898,7 @@ class AIService {
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       // Novo formato de corpo da requisição
       final requestBody = {
@@ -1134,6 +1128,7 @@ class AIService {
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       // Novo formato de corpo da requisição
       final requestBody = {
@@ -1357,6 +1352,7 @@ $transcript
       request.headers.addAll({
         'Content-Type': 'application/json; charset=utf-8',
       });
+      request.headers.addAll(await AppIntegrityService.appCheckHeaders());
 
       // Novo formato de corpo da requisição
       final requestBody = {
@@ -1732,7 +1728,10 @@ $transcript
 
       final response = await http.get(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          ...await AppIntegrityService.appCheckHeaders(),
+        },
       );
 
       print('📡 [AIServiceStop] Código de resposta: ${response.statusCode}');
