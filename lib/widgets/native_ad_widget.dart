@@ -6,7 +6,10 @@ import '../services/ad_manager.dart';
 import '../services/ad_settings_service.dart';
 
 class NativeAdWidget extends StatefulWidget {
-  const NativeAdWidget({Key? key}) : super(key: key);
+  /// adUnitId customizado por placement. Se null, usa o legado (nativeAdUnitId).
+  final String? adUnitId;
+
+  const NativeAdWidget({Key? key, this.adUnitId}) : super(key: key);
 
   @override
   _NativeAdWidgetState createState() => _NativeAdWidgetState();
@@ -34,8 +37,8 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
 
   // Verifica se o anúncio deve ser exibido
   Future<void> _checkShouldShowAd() async {
-    // Na web, nunca mostrar anúncios
-    if (kIsWeb) {
+    // Na web ou se usuário Premium, nunca mostrar anúncios
+    if (AdManager.adsBlocked) {
       setState(() {
         _shouldShowAd = false;
       });
@@ -89,10 +92,11 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
   }
 
   void _loadAd() async {
-    // Na web, não carregar anúncios
-    if (kIsWeb || !_shouldShowAd) return;
+    // Web, premium ou flag interna → não carregar
+    if (AdManager.adsBlocked || !_shouldShowAd) return;
 
     AdManager.createNativeAd(
+      adUnitId: widget.adUnitId,
       onAdLoaded: (Ad ad) {
         if (mounted) {
           setState(() {
@@ -113,8 +117,11 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Na web ou se não deve exibir o anúncio ou não está carregado
-    if (kIsWeb || !_shouldShowAd || !_isAdLoaded || _nativeAd == null) {
+    // Web, premium, não deve exibir ou ainda não carregou
+    if (AdManager.adsBlocked ||
+        !_shouldShowAd ||
+        !_isAdLoaded ||
+        _nativeAd == null) {
       // Retornar um widget vazio para não ocupar espaço
       return const SizedBox.shrink();
     }

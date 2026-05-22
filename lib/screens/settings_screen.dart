@@ -588,10 +588,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 560),
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 36),
                       children: [
-                        _buildSettingsHero(theme, isDarkMode, textColor),
-                        const SizedBox(height: 26),
                         _buildSectionCard(
                           theme: theme,
                           colorScheme: colorScheme,
@@ -786,48 +784,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSettingsHero(ThemeData theme, bool isDarkMode, Color textColor) {
-    return Column(
-      children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: _surfaceColor(isDarkMode),
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: _subtleBorderColor(isDarkMode)),
-          ),
-          child: Icon(
-            Icons.tune_rounded,
-            size: 23,
-            color: textColor.withValues(alpha: 0.82),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          context.tr.translate('settings_title'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.getSoftTextColor(isDarkMode),
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.tr.translate('profile_and_settings'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 15,
-            color: _mutedTextColor(isDarkMode).withValues(alpha: 0.86),
-            height: 1.4,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSectionCard({
     required ThemeData theme,
     required ColorScheme colorScheme,
@@ -896,7 +852,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: textColor.withValues(alpha: 0.9),
+                    color: textColor,
                   ),
                 ),
               ),
@@ -968,7 +924,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Icon(
         icon,
         size: 18,
-        color: textColor.withValues(alpha: 0.78),
+        color: textColor,
       ),
     );
   }
@@ -1149,7 +1105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: textColor.withValues(alpha: 0.9),
+                    color: textColor,
                   ),
                 ),
               ),
@@ -1256,7 +1212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: textColor.withValues(alpha: 0.9),
+                    color: textColor,
                   ),
                 ),
               ),

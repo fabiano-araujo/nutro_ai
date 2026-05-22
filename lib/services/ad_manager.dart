@@ -7,6 +7,18 @@ class AdManager {
   static final AdManager _instance = AdManager._internal();
   bool _initialized = false;
 
+  // Flag global de Premium. PurchaseService deve setar via setPremiumStatus().
+  // Quando true, todos os anúncios são suprimidos (exceto rewarded opt-in que o usuário pode pedir).
+  static bool _isPremium = false;
+  static bool get isPremium => _isPremium;
+  static void setPremiumStatus(bool premium) {
+    _isPremium = premium;
+    debugPrint('AdManager: premium status atualizado para $premium');
+  }
+
+  // Verifica se ads não-rewarded devem ser bloqueados (web ou usuário premium).
+  static bool get adsBlocked => kIsWeb || _isPremium;
+
   factory AdManager() {
     return _instance;
   }
@@ -68,39 +80,53 @@ class AdManager {
     }
   }
 
-  // ID do anúncio nativo
+  // ===== Slots por placement (Nutro AI) =====
+  // Para usar IDs novos por placement em produção. Em debug usa sempre IDs de teste do Google.
+
+  static const String _testNativeId = 'ca-app-pub-3940256099942544/2247696110';
+  static const String _testInterstitialId =
+      'ca-app-pub-3940256099942544/1033173712';
+  static const String _testRewardedId =
+      'ca-app-pub-3940256099942544/5224354917';
+
+  // Native genérico (legado / tools_screen)
   static String get nativeAdUnitId {
-    // ID de teste para desenvolvimento
-    if (kDebugMode) {
-      return 'ca-app-pub-3940256099942544/2247696110'; // ID de teste do Google
-    }
-    // ID real para produção
-    return 'ca-app-pub-6353302591459951/8335045731';
+    if (kDebugMode) return _testNativeId;
+    return 'ca-app-pub-6353302591459951/8299335029';
   }
 
-  // ID do anúncio intersticial
+  // Native específico para resultados de busca de alimentos
+  static String get nativeSearchAdUnitId {
+    if (kDebugMode) return _testNativeId;
+    return 'ca-app-pub-6353302591459951/2844891422';
+  }
+
+  // Native específico para estado vazio da Minha Dieta
+  static String get nativeDietEmptyAdUnitId {
+    if (kDebugMode) return _testNativeId;
+    return 'ca-app-pub-6353302591459951/8299335029';
+  }
+
+  // Intersticial genérico (legado / sair do AI)
   static String get interstitialAdUnitId {
-    // ID de teste para desenvolvimento
-    if (kDebugMode) {
-      return 'ca-app-pub-3940256099942544/1033173712'; // ID de teste do Google
-    }
-    // ID real para produção
-    return 'ca-app-pub-6353302591459951/5148870966';
+    if (kDebugMode) return _testInterstitialId;
+    return 'ca-app-pub-6353302591459951/6161319900';
   }
 
-  // ID do anúncio premiado
+  // Intersticial específico após registrar refeição
+  static String get interstitialMealDoneAdUnitId {
+    if (kDebugMode) return _testInterstitialId;
+    return 'ca-app-pub-6353302591459951/6161319900';
+  }
+
+  // Rewarded para créditos
   static String get rewardedAdUnitId {
-    // ID de teste para desenvolvimento
-    if (kDebugMode) {
-      return 'ca-app-pub-3940256099942544/5224354917'; // ID de teste do Google
-    }
-    // ID real para produção
-    return 'ca-app-pub-6353302591459951/8253254879';
+    if (kDebugMode) return _testRewardedId;
+    return 'ca-app-pub-6353302591459951/1723381446';
   }
 
-  // ID do aplicativo no AdMob
   static String get appId {
-    return 'ca-app-pub-6353302591459951~5409413771';
+    return 'ca-app-pub-6353302591459951~4220489218';
   }
 
   // Método para verificar disponibilidade de anúncios
@@ -108,19 +134,21 @@ class AdManager {
     return !kIsWeb; // Anúncios não estão disponíveis na web
   }
 
-  // Criar um anúncio nativo
+  // Criar um anúncio nativo (aceita adUnitId customizado por placement)
   static Future<NativeAd?> createNativeAd({
     required Function(Ad) onAdLoaded,
     required Function(Ad, LoadAdError) onAdFailedToLoad,
+    String? adUnitId,
   }) async {
-    // Se estiver na web, retorne null
-    if (kIsWeb) {
-      debugPrint('AdManager: Anúncios nativos não suportados na web');
+    // Web ou usuário premium → sem anúncios nativos
+    if (adsBlocked) {
+      debugPrint(
+          'AdManager: Anúncios nativos suprimidos (web=$kIsWeb premium=$_isPremium)');
       return null;
     }
 
     final nativeAd = NativeAd(
-      adUnitId: nativeAdUnitId,
+      adUnitId: adUnitId ?? nativeAdUnitId,
       factoryId:
           'customNativeAd', // Usa o factory id que registramos no MainActivity
       listener: NativeAdListener(
@@ -144,16 +172,18 @@ class AdManager {
     }
   }
 
-  // Carregar anúncio intersticial
+  // Carregar anúncio intersticial (aceita adUnitId customizado por placement)
   static Future<InterstitialAd?> loadInterstitialAd({
     Function(InterstitialAd ad)? onAdLoaded,
     Function(LoadAdError error)? onAdFailedToLoad,
     Function(Ad ad)? onAdDismissed,
     Function(Ad ad, AdError error)? onAdFailedToShow,
+    String? adUnitId,
   }) async {
-    // Se estiver na web, retorne null
-    if (kIsWeb) {
-      debugPrint('AdManager: Anúncios intersticiais não suportados na web');
+    // Web ou usuário premium → sem intersticiais
+    if (adsBlocked) {
+      debugPrint(
+          'AdManager: Anúncios intersticiais suprimidos (web=$kIsWeb premium=$_isPremium)');
       return null;
     }
 
@@ -161,12 +191,10 @@ class AdManager {
 
     try {
       await InterstitialAd.load(
-        adUnitId: interstitialAdUnitId,
+        adUnitId: adUnitId ?? interstitialAdUnitId,
         request: const AdRequest(
           nonPersonalizedAds: false,
-          keywords: ['finance', 'money', 'budget'],
-          contentUrl: 'https://flutter.dev',
-          neighboringContentUrls: ['https://flutter.dev/widgets'],
+          keywords: ['nutrition', 'food', 'diet', 'health', 'fitness'],
         ),
         adLoadCallback: InterstitialAdLoadCallback(
           onAdLoaded: (ad) {
@@ -393,6 +421,80 @@ class AdManager {
     } catch (e) {
       debugPrint('Exceção ao mostrar anúncio de recompensa: $e');
       return false;
+    }
+  }
+
+  // ===== Intersticial após registrar refeição =====
+  // A regra: só dispara após N refeições registradas e respeitando cooldown.
+  // Pré-carrega na N-1 para que a exibição na N seja imediata.
+
+  static int _mealsRegisteredCount = 0;
+  static InterstitialAd? _mealDoneInterstitial;
+  static bool _isLoadingMealDoneInterstitial = false;
+  static DateTime? _lastMealInterstitialAt;
+
+  static const int _mealsThreshold =
+      3; // mostra a cada 3 refeições registradas
+  static const Duration _mealInterstitialCooldown = Duration(minutes: 2);
+
+  /// Chamado sempre que uma refeição é registrada. Conta + pré-carrega ad quando
+  /// estiver próximo do threshold. NÃO mostra o ad — quem mostra é
+  /// [maybeShowMealDoneInterstitial], chamado após o feedback de sucesso na UI.
+  static void notifyMealRegistered() {
+    if (adsBlocked) return;
+    _mealsRegisteredCount++;
+    // Pré-carrega 1 refeição antes do threshold para que a exibição seja imediata.
+    if (_mealsRegisteredCount >= _mealsThreshold - 1 &&
+        _mealDoneInterstitial == null &&
+        !_isLoadingMealDoneInterstitial) {
+      _preloadMealDoneInterstitial();
+    }
+  }
+
+  static Future<void> _preloadMealDoneInterstitial() async {
+    if (adsBlocked || _isLoadingMealDoneInterstitial) return;
+    _isLoadingMealDoneInterstitial = true;
+    final ad = await loadInterstitialAd(
+      adUnitId: interstitialMealDoneAdUnitId,
+      onAdDismissed: (_) {
+        _mealDoneInterstitial = null;
+      },
+    );
+    _mealDoneInterstitial = ad;
+    _isLoadingMealDoneInterstitial = false;
+  }
+
+  /// Verifica se está na hora de mostrar o intersticial pós-refeição e, se
+  /// estiver, mostra. Não bloqueia: retorna após disparar o show() (fire-and-
+  /// forget). Idempotente — pode ser chamado em todo registro de refeição.
+  static Future<void> maybeShowMealDoneInterstitial() async {
+    if (adsBlocked) return;
+    if (_mealsRegisteredCount < _mealsThreshold) return;
+
+    // Cooldown — evita bombardear o usuário
+    final now = DateTime.now();
+    if (_lastMealInterstitialAt != null &&
+        now.difference(_lastMealInterstitialAt!) < _mealInterstitialCooldown) {
+      return;
+    }
+
+    final ad = _mealDoneInterstitial;
+    if (ad == null) {
+      // Ad ainda não está pronto — tenta carregar para a próxima oportunidade
+      if (!_isLoadingMealDoneInterstitial) {
+        unawaited(_preloadMealDoneInterstitial());
+      }
+      return;
+    }
+
+    _mealDoneInterstitial = null;
+    _mealsRegisteredCount = 0;
+    _lastMealInterstitialAt = now;
+
+    try {
+      await ad.show();
+    } catch (e) {
+      debugPrint('AdManager: falha ao mostrar intersticial meal-done: $e');
     }
   }
 }

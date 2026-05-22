@@ -407,7 +407,7 @@ class NutritionAssistantController with ChangeNotifier {
 
                   // Descrição
                   Text(
-                    'Você pode assistir a um anúncio para ganhar 7 créditos ou fazer o upgrade para a versão PRO e ter créditos ilimitados.',
+                    'Assista a um anúncio rápido e ganhe 7 créditos grátis para continuar agora mesmo.',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -416,8 +416,40 @@ class NutritionAssistantController with ChangeNotifier {
                   ),
                   const SizedBox(height: 24),
 
-                  // Botão PRO
+                  // Botão de anúncio (em destaque — caminho gratuito)
                   ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      RewardAdDialog.showRewardedAd(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black87,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      minimumSize: const Size(double.infinity, 0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.play_arrow, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Assistir anúncio • +7 créditos grátis',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Botão PRO (caminho premium — discreto)
+                  OutlinedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
                       Navigator.push(
@@ -427,12 +459,12 @@ class NutritionAssistantController with ChangeNotifier {
                         ),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black87,
-                      elevation: 0,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                          color: Colors.white.withOpacity(0.6), width: 1.5),
                       padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 24),
+                          vertical: 10, horizontal: 24),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -440,46 +472,17 @@ class NutritionAssistantController with ChangeNotifier {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.workspace_premium, size: 18),
-                        SizedBox(width: 8),
+                        Icon(Icons.workspace_premium, size: 16),
+                        SizedBox(width: 6),
                         Text(
-                          'Obter versão PRO',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          'Ou obter PRO ilimitado',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Botão de anúncio
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.play_arrow, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Assistir anúncio',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
                   // Cancelar
                   TextButton(
@@ -1129,15 +1132,23 @@ class NutritionAssistantController with ChangeNotifier {
   }
 
   /// Método para lidar com o botão de voz clicado
-  void handleVoiceButtonPressed(int messageIndex, BuildContext context) {
+  void handleVoiceButtonPressed(
+    int messageIndex,
+    BuildContext context, {
+    String? overrideText,
+  }) {
     if (messageIndex < 0 || messageIndex >= _messages.length) return;
 
     // Verifica se é uma mensagem do usuário
     if (_messages[messageIndex]['isUser'] == true) return;
 
-    // Obtém o texto da mensagem
+    // Obtém o texto da mensagem (ou usa override quando fornecido,
+    // por exemplo quando ha um card de alimentos e queremos ler so
+    // o conteudo visivel, nao o JSON cru).
     String messageText = '';
-    if (_messages[messageIndex].containsKey('message')) {
+    if (overrideText != null && overrideText.trim().isNotEmpty) {
+      messageText = overrideText;
+    } else if (_messages[messageIndex].containsKey('message')) {
       messageText = _messages[messageIndex]['message'];
     } else if (_messages[messageIndex].containsKey('notifier')) {
       messageText = _messages[messageIndex]['notifier'].message;
@@ -1433,7 +1444,7 @@ class NutritionAssistantController with ChangeNotifier {
 
                   // Descrição
                   Text(
-                    'Você pode assistir a um anúncio para ganhar 7 créditos ou fazer o upgrade para a versão PRO e ter créditos ilimitados.',
+                    'Assista a um anúncio rápido e ganhe 7 créditos grátis para continuar agora mesmo.',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -1442,8 +1453,40 @@ class NutritionAssistantController with ChangeNotifier {
                   ),
                   const SizedBox(height: 24),
 
-                  // Botão PRO
+                  // Botão de anúncio (em destaque — caminho gratuito)
                   ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      RewardAdDialog.showRewardedAd(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black87,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      minimumSize: const Size(double.infinity, 0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.play_arrow, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Assistir anúncio • +7 créditos grátis',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Botão PRO (caminho premium — discreto)
+                  OutlinedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
                       Navigator.push(
@@ -1453,12 +1496,12 @@ class NutritionAssistantController with ChangeNotifier {
                         ),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black87,
-                      elevation: 0,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                          color: Colors.white.withOpacity(0.6), width: 1.5),
                       padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 24),
+                          vertical: 10, horizontal: 24),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -1466,46 +1509,17 @@ class NutritionAssistantController with ChangeNotifier {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.workspace_premium, size: 18),
-                        SizedBox(width: 8),
+                        Icon(Icons.workspace_premium, size: 16),
+                        SizedBox(width: 6),
                         Text(
-                          'Obter versão PRO',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          'Ou obter PRO ilimitado',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Botão de anúncio
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.play_arrow, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Assistir anúncio',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
                   // Cancelar
                   TextButton(
@@ -1750,7 +1764,7 @@ class NutritionAssistantController with ChangeNotifier {
 
                   // Descrição
                   Text(
-                    'Você pode assistir a um anúncio para ganhar 7 créditos ou fazer o upgrade para a versão PRO e ter créditos ilimitados.',
+                    'Assista a um anúncio rápido e ganhe 7 créditos grátis para continuar agora mesmo.',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -1759,8 +1773,40 @@ class NutritionAssistantController with ChangeNotifier {
                   ),
                   const SizedBox(height: 24),
 
-                  // Botão PRO
+                  // Botão de anúncio (em destaque — caminho gratuito)
                   ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      RewardAdDialog.showRewardedAd(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black87,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      minimumSize: const Size(double.infinity, 0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.play_arrow, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Assistir anúncio • +7 créditos grátis',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Botão PRO (caminho premium — discreto)
+                  OutlinedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
                       Navigator.push(
@@ -1770,12 +1816,12 @@ class NutritionAssistantController with ChangeNotifier {
                         ),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black87,
-                      elevation: 0,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                          color: Colors.white.withOpacity(0.6), width: 1.5),
                       padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 24),
+                          vertical: 10, horizontal: 24),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -1783,46 +1829,17 @@ class NutritionAssistantController with ChangeNotifier {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.workspace_premium, size: 18),
-                        SizedBox(width: 8),
+                        Icon(Icons.workspace_premium, size: 16),
+                        SizedBox(width: 6),
                         Text(
-                          'Obter versão PRO',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          'Ou obter PRO ilimitado',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Botão de anúncio
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.play_arrow, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Assistir anúncio',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
                   // Cancelar
                   TextButton(

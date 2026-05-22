@@ -35,6 +35,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Color _mutedTextColor(bool isDarkMode) =>
       isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
+  Color _accentColor(bool isDarkMode) =>
+      isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF22C55E);
+
+  Color _accentSoftColor(bool isDarkMode) => isDarkMode
+      ? const Color(0xFF4ADE80).withValues(alpha: 0.12)
+      : const Color(0xFF22C55E).withValues(alpha: 0.10);
+
   @override
   void initState() {
     super.initState();
@@ -234,6 +241,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildHero(BuildContext context, bool isDarkMode, Color textColor) {
+    final accent = _accentColor(isDarkMode);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -241,13 +249,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: _surfaceColor(isDarkMode),
+            color: _accentSoftColor(isDarkMode),
             borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: _subtleBorderColor(isDarkMode)),
+            border: Border.all(color: accent.withValues(alpha: 0.35)),
           ),
           child: Icon(
             Icons.workspace_premium_outlined,
-            color: textColor.withValues(alpha: 0.82),
+            color: accent,
             size: 26,
           ),
         ),
@@ -297,7 +305,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildHeadline(BuildContext context, bool isDarkMode) {
     final parts =
         context.tr.translate('subscription_headline').split('{highlight}');
-    final accent = Theme.of(context).colorScheme.primary;
+    final accent = _accentColor(isDarkMode);
 
     return Text.rich(
       TextSpan(
@@ -351,8 +359,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               isDarkMode: isDarkMode,
               textColor: textColor,
               surfaceColor: _inputFillColor(isDarkMode),
-              selectedSurfaceColor: _surfaceColor(isDarkMode),
+              selectedSurfaceColor: _accentSoftColor(isDarkMode),
               borderColor: _subtleBorderColor(isDarkMode),
+              accentColor: _accentColor(isDarkMode),
               onTap: () => setState(() => _selectedPlanIndex = index),
               productTitle: _productTitle(product, plan),
               productPrice: _productPrice(product, plan),
@@ -412,13 +421,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     width: 22,
                     height: 22,
                     decoration: BoxDecoration(
-                      color: _surfaceColor(isDarkMode),
+                      color: _accentSoftColor(isDarkMode),
                       borderRadius: BorderRadius.circular(100),
                     ),
                     child: Icon(
                       Icons.check_rounded,
                       size: 15,
-                      color: textColor.withValues(alpha: 0.76),
+                      color: _accentColor(isDarkMode),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -530,10 +539,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       : null,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: textColor,
-                    foregroundColor: isDarkMode
-                        ? AppTheme.darkBackgroundColor
-                        : Colors.white,
+                    backgroundColor: _accentColor(isDarkMode),
+                    foregroundColor: Colors.white,
                     disabledBackgroundColor: _surfaceColor(isDarkMode),
                     disabledForegroundColor:
                         _mutedTextColor(isDarkMode).withValues(alpha: 0.7),
@@ -542,16 +549,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                   ),
                   child: _isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              isDarkMode
-                                  ? AppTheme.darkBackgroundColor
-                                  : Colors.white,
-                            ),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : Text(
@@ -587,7 +591,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           child: Icon(
             Icons.verified_user_outlined,
             size: 15,
-            color: textColor.withValues(alpha: 0.62),
+            color: _accentColor(isDarkMode).withValues(alpha: 0.85),
           ),
         ),
         const SizedBox(width: 6),
@@ -899,6 +903,7 @@ class _PlanOption extends StatelessWidget {
   final Color surfaceColor;
   final Color selectedSurfaceColor;
   final Color borderColor;
+  final Color accentColor;
   final VoidCallback onTap;
   final String productTitle;
   final String productPrice;
@@ -917,6 +922,7 @@ class _PlanOption extends StatelessWidget {
     required this.surfaceColor,
     required this.selectedSurfaceColor,
     required this.borderColor,
+    required this.accentColor,
     required this.onTap,
     required this.productTitle,
     required this.productPrice,
@@ -931,7 +937,11 @@ class _PlanOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final muted =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
-    final accent = Theme.of(context).colorScheme.primary;
+    final accent = accentColor;
+    final iconBgSelected = isDarkMode
+        ? accent.withValues(alpha: 0.18)
+        : accent.withValues(alpha: 0.14);
+    final iconBgIdle = isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;
 
     return Material(
       color: Colors.transparent,
@@ -955,13 +965,19 @@ class _PlanOption extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: isDarkMode ? const Color(0xFF1F1F1F) : Colors.white,
+                  color: isSelected ? iconBgSelected : iconBgIdle,
                   borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: borderColor),
+                  border: Border.all(
+                    color: isSelected
+                        ? accent.withValues(alpha: 0.35)
+                        : borderColor,
+                  ),
                 ),
                 child: Icon(
                   plan.icon,
-                  color: textColor.withValues(alpha: 0.78),
+                  color: isSelected
+                      ? accent
+                      : textColor.withValues(alpha: 0.78),
                   size: 21,
                 ),
               ),
@@ -997,14 +1013,10 @@ class _PlanOption extends StatelessWidget {
                             ),
                           ),
                           child: isSelected
-                              ? Icon(
+                              ? const Icon(
                                   Icons.check_rounded,
                                   size: 15,
-                                  color: ThemeData.estimateBrightnessForColor(
-                                              accent) ==
-                                          Brightness.dark
-                                      ? Colors.white
-                                      : Colors.black,
+                                  color: Colors.white,
                                 )
                               : null,
                         ),
@@ -1032,7 +1044,9 @@ class _PlanOption extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: textColor.withValues(alpha: 0.88),
+                            color: isSelected
+                                ? accent
+                                : textColor.withValues(alpha: 0.88),
                           ),
                         ),
                         Text(
@@ -1048,6 +1062,8 @@ class _PlanOption extends StatelessWidget {
                             textColor: textColor,
                             borderColor: borderColor,
                             isDarkMode: isDarkMode,
+                            accentColor: accent,
+                            highlighted: true,
                           ),
                         if (savingsLabel != null)
                           _SmallPlanChip(
@@ -1055,6 +1071,8 @@ class _PlanOption extends StatelessWidget {
                             textColor: textColor,
                             borderColor: borderColor,
                             isDarkMode: isDarkMode,
+                            accentColor: accent,
+                            highlighted: true,
                           ),
                       ],
                     ),
@@ -1074,22 +1092,37 @@ class _SmallPlanChip extends StatelessWidget {
   final Color textColor;
   final Color borderColor;
   final bool isDarkMode;
+  final Color? accentColor;
+  final bool highlighted;
 
   const _SmallPlanChip({
     required this.label,
     required this.textColor,
     required this.borderColor,
     required this.isDarkMode,
+    this.accentColor,
+    this.highlighted = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final accent = accentColor;
+    final bg = highlighted && accent != null
+        ? accent.withValues(alpha: isDarkMode ? 0.18 : 0.12)
+        : (isDarkMode ? const Color(0xFF1F1F1F) : Colors.white);
+    final border = highlighted && accent != null
+        ? accent.withValues(alpha: 0.40)
+        : borderColor;
+    final fg = highlighted && accent != null
+        ? accent
+        : textColor.withValues(alpha: 0.72);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1F1F1F) : Colors.white,
+        color: bg,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: border),
       ),
       child: Text(
         label,
@@ -1098,7 +1131,7 @@ class _SmallPlanChip extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: textColor.withValues(alpha: 0.72),
+          color: fg,
         ),
       ),
     );

@@ -449,4 +449,47 @@ class FoodJsonParser {
       dateTime: dateTime,
     );
   }
+
+  /// Gera um resumo legivel do card de alimentos no formato
+  /// "{kcal} kcal - {alimentos} - {tipo}". Retorna `null` se a mensagem
+  /// nao contem um JSON valido de alimentos.
+  static String? buildReadableFoodSummary(
+    String message, {
+    String Function(MealType type)? mealTypeNameResolver,
+  }) {
+    final jsonStr = extractFoodJson(message);
+    if (jsonStr == null) return null;
+
+    final foods = parseFoodJson(jsonStr);
+    if (foods == null || foods.isEmpty) return null;
+
+    final totalCalories =
+        foods.fold<int>(0, (sum, food) => sum + food.calories);
+    final foodNames = foods.map((f) => f.name).join(', ');
+
+    final mealType = mealTypeFromString(extractMealType(jsonStr));
+    final mealTypeName = mealTypeNameResolver?.call(mealType);
+
+    final base = '$totalCalories kcal — $foodNames';
+    return mealTypeName == null || mealTypeName.isEmpty
+        ? base
+        : '$base · $mealTypeName';
+  }
+
+  /// Retorna a mensagem com o JSON substituido por um resumo legivel do
+  /// card. Util para copiar/ler em voz alta sem expor o JSON cru.
+  static String toReadableMessage(
+    String message, {
+    String Function(MealType type)? mealTypeNameResolver,
+  }) {
+    final summary = buildReadableFoodSummary(
+      message,
+      mealTypeNameResolver: mealTypeNameResolver,
+    );
+    if (summary == null) return message;
+
+    final cleanText = removeJsonCandidateFromMessage(message).trim();
+    if (cleanText.isEmpty) return summary;
+    return '$cleanText\n$summary';
+  }
 }

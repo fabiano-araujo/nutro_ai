@@ -28,132 +28,93 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: Stack(
-        children: [
-          _buildBackgroundAccents(isDarkMode),
-          SafeArea(
-            child: Consumer<NutritionGoalsProvider>(
-              builder: (context, provider, child) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(theme, isDarkMode, textColor),
-                      const SizedBox(height: 20),
-                      _buildSyncStatusBanner(
-                          provider, theme, isDarkMode, textColor),
-                      if (provider.hasPendingServerSync ||
-                          provider.isSyncingWithServer)
-                        const SizedBox(height: 16),
-                      _buildGoalsHeroCard(
-                          provider, theme, isDarkMode, textColor),
-                      const SizedBox(height: 16),
-                      _buildMacroGrid(provider, theme, isDarkMode, textColor),
-                      const SizedBox(height: 24),
-                      _buildConfigurationSection(
-                        context,
-                        provider,
-                        theme,
-                        isDarkMode,
-                        textColor,
-                      ),
-                    ],
+      body: SafeArea(
+        child: Consumer<NutritionGoalsProvider>(
+          builder: (context, provider, child) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(isDarkMode, textColor),
+                  const SizedBox(height: 8),
+                  _buildSyncStatusBanner(
+                      provider, theme, isDarkMode, textColor),
+                  if (provider.hasPendingServerSync ||
+                      provider.isSyncingWithServer)
+                    const SizedBox(height: 14),
+                  _buildGoalsHeroCard(provider, theme, isDarkMode, textColor),
+                  const SizedBox(height: 14),
+                  _buildMacroGrid(provider, theme, isDarkMode, textColor),
+                  const SizedBox(height: 24),
+                  _buildConfigurationSection(
+                    context,
+                    provider,
+                    theme,
+                    isDarkMode,
+                    textColor,
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildBackgroundAccents(bool isDarkMode) {
-    final primaryGlow =
-        (isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor)
-            .withValues(alpha: isDarkMode ? 0.12 : 0.08);
-    final secondaryGlow =
-        MacroTheme.carbsColor.withValues(alpha: isDarkMode ? 0.08 : 0.06);
+  Widget _buildHeader(bool isDarkMode, Color textColor) {
+    const sideWidth = 56.0;
 
-    return IgnorePointer(
-      child: Stack(
+    return SizedBox(
+      height: 76,
+      child: Row(
         children: [
-          Positioned(
-            top: -90,
-            right: -40,
-            child: _buildGlow(primaryGlow, 220),
-          ),
-          Positioned(
-            top: 220,
-            left: -70,
-            child: _buildGlow(secondaryGlow, 180),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGlow(Color color, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-      ),
-    );
-  }
-
-  Widget _buildHeader(
-    ThemeData theme,
-    bool isDarkMode,
-    Color textColor,
-  ) {
-    final accentColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => Navigator.pop(context),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: _cardSurfaceColor(isDarkMode),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: accentColor.withValues(alpha: isDarkMode ? 0.2 : 0.12),
+          SizedBox(
+            width: sideWidth,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: textColor),
+                tooltip: AppLocalizations.of(context).translate('back'),
+                onPressed: () => Navigator.maybePop(context),
               ),
             ),
-            child: Icon(Icons.arrow_back_rounded, color: textColor),
           ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppLocalizations.of(context).translate('nutrition_goals'),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.w700,
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  AppLocalizations.of(context).translate('nutrition_goals'),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    height: 1.05,
+                  ).copyWith(color: textColor),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                AppLocalizations.of(context).translate('your_daily_goals'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: textColor.withValues(alpha: 0.64),
+                const SizedBox(height: 5),
+                Text(
+                  AppLocalizations.of(context).translate('your_daily_goals'),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _mutedTextColor(isDarkMode),
+                    height: 1.15,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: sideWidth),
+        ],
+      ),
     );
   }
 
@@ -177,11 +138,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: isDarkMode ? 0.14 : 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: accentColor.withValues(alpha: isDarkMode ? 0.28 : 0.20),
-        ),
+        color: _cardSurfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _borderColor(isDarkMode)),
       ),
       child: Row(
         children: [
@@ -223,20 +182,11 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: isDarkMode ? 0.16 : 0.1),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: accentColor.withValues(alpha: isDarkMode ? 0.28 : 0.18),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.16 : 0.05),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
+        color: _cardSurfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _borderColor(isDarkMode)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,15 +195,17 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: isDarkMode ? 0.2 : 0.14),
-                  borderRadius: BorderRadius.circular(16),
+                  color: _secondarySurfaceColor(isDarkMode),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _borderColor(isDarkMode)),
                 ),
                 child: Icon(
                   Icons.auto_awesome_rounded,
                   color: accentColor,
-                  size: 24,
+                  size: 23,
                 ),
               ),
               const SizedBox(width: 14),
@@ -264,38 +216,44 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                     Text(
                       AppLocalizations.of(context)
                           .translate('your_daily_goals'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: textColor.withValues(alpha: 0.68),
-                        fontWeight: FontWeight.w600,
+                      style: TextStyle(
+                        color: _mutedTextColor(isDarkMode),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text.rich(
                       TextSpan(
                         children: [
                           TextSpan(
                             text: '${provider.caloriesGoal}',
-                            style: theme.textTheme.displaySmall?.copyWith(
+                            style: TextStyle(
                               color: textColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 38,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 32,
+                              height: 1.05,
                             ),
                           ),
                           TextSpan(
                             text: ' kcal',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: textColor.withValues(alpha: 0.74),
+                            style: TextStyle(
+                              color: _mutedTextColor(isDarkMode),
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       summaryText,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: textColor.withValues(alpha: 0.7),
+                      style: TextStyle(
+                        color: _mutedTextColor(isDarkMode),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
                       ),
                     ),
                   ],
@@ -311,16 +269,12 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 ),
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color:
-                        _cardSurfaceColor(isDarkMode).withValues(alpha: 0.88),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: accentColor.withValues(
-                          alpha: isDarkMode ? 0.24 : 0.16),
-                    ),
+                    color: _secondarySurfaceColor(isDarkMode),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: _borderColor(isDarkMode)),
                   ),
                   child: Icon(
                     Icons.edit_outlined,
@@ -405,11 +359,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _cardSurfaceColor(isDarkMode).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: textColor.withValues(alpha: isDarkMode ? 0.08 : 0.06),
-        ),
+        color: _secondarySurfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: _borderColor(isDarkMode)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -424,9 +376,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             child: Text(
               label,
               style: TextStyle(
-                color: textColor.withValues(alpha: 0.82),
+                color: textColor.withValues(alpha: 0.86),
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -448,45 +400,30 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(100),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isPrimary
-              ? accentColor.withValues(alpha: isDarkMode ? 0.22 : 0.15)
-              : _cardSurfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isPrimary
-                ? accentColor.withValues(alpha: isDarkMode ? 0.28 : 0.2)
-                : textColor.withValues(alpha: isDarkMode ? 0.08 : 0.06),
-          ),
+          color: isPrimary ? accentColor : _secondarySurfaceColor(isDarkMode),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: _borderColor(isDarkMode)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isPrimary
-                    ? accentColor.withValues(alpha: isDarkMode ? 0.22 : 0.18)
-                    : _secondarySurfaceColor(isDarkMode),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                size: 18,
-                color:
-                    isPrimary ? accentColor : textColor.withValues(alpha: 0.8),
-              ),
+            Icon(
+              icon,
+              size: 18,
+              color: isPrimary ? AppTheme.onColor(accentColor) : textColor,
             ),
             const SizedBox(width: 10),
             Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: TextStyle(
+                color: isPrimary ? AppTheme.onColor(accentColor) : textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -502,8 +439,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth >= 900 ? 4 : 2;
-        final childAspectRatio = crossAxisCount == 4 ? 1.22 : 1.35;
+        final crossAxisCount = constraints.maxWidth >= 700 ? 4 : 2;
+        final childAspectRatio = crossAxisCount == 4 ? 1.32 : 1.44;
 
         return GridView.count(
           crossAxisCount: crossAxisCount,
@@ -519,7 +456,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               value: '${provider.caloriesGoal}',
               unit: 'kcal',
               accentColor: MacroTheme.caloriesColor,
-              theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
@@ -529,7 +465,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               value: '${provider.proteinGoal}',
               unit: 'g',
               accentColor: MacroTheme.proteinColor,
-              theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
@@ -539,7 +474,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               value: '${provider.carbsGoal}',
               unit: 'g',
               accentColor: MacroTheme.carbsColor,
-              theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
@@ -549,7 +483,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               value: '${provider.fatGoal}',
               unit: 'g',
               accentColor: MacroTheme.fatColor,
-              theme: theme,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
@@ -565,7 +498,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     required String value,
     required String unit,
     required Color accentColor,
-    required ThemeData theme,
     required bool isDarkMode,
     required Color textColor,
   }) {
@@ -573,62 +505,64 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cardSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: accentColor.withValues(alpha: isDarkMode ? 0.22 : 0.14),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.12 : 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _borderColor(isDarkMode)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
               icon,
               color: accentColor,
-              size: 22,
+              size: 21,
             ),
           ),
-          const Spacer(),
-          Text.rich(
-            TextSpan(
-              children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
                 TextSpan(
-                  text: value,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  children: [
+                    TextSpan(
+                      text: value,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        height: 1.05,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' $unit',
+                      style: TextStyle(
+                        color: _mutedTextColor(isDarkMode),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                TextSpan(
-                  text: ' $unit',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: textColor.withValues(alpha: 0.62),
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _mutedTextColor(isDarkMode),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: textColor.withValues(alpha: 0.62),
-              fontWeight: FontWeight.w500,
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -642,186 +576,146 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     bool isDarkMode,
     Color textColor,
   ) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _cardSurfaceColor(isDarkMode).withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: textColor.withValues(alpha: isDarkMode ? 0.08 : 0.05),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppLocalizations.of(context).translate('configuration'),
+          style: TextStyle(
+            color: textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.12 : 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+        const SizedBox(height: 6),
+        Text(
+          _getGoalDetail(provider.fitnessGoal, context),
+          style: TextStyle(
+            color: _mutedTextColor(isDarkMode),
+            fontSize: 13,
+            height: 1.35,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppLocalizations.of(context).translate('configuration'),
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _getGoalDetail(provider.fitnessGoal, context),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: textColor.withValues(alpha: 0.62),
-            ),
-          ),
-          const SizedBox(height: 18),
-          _buildInfoCard(
-            title:
-                AppLocalizations.of(context).translate('personal_information'),
-            subtitle:
-                '${provider.sex == "male" ? AppLocalizations.of(context).translate('male') : AppLocalizations.of(context).translate('female')}, ${provider.age} ${AppLocalizations.of(context).translate('years_old')}',
-            details:
-                '${provider.getFormattedHeight()}  •  ${provider.getFormattedWeight()}',
-            icon: Icons.person,
-            iconColor: const Color(0xFF4DB6AC),
-            theme: theme,
-            isDarkMode: isDarkMode,
-            textColor: textColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const NutritionGoalsWizardScreen(startStep: 0),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildInfoCard(
-            title:
-                AppLocalizations.of(context).translate('activity_level_title'),
-            subtitle:
-                provider.getActivityLevelName(provider.activityLevel, context),
-            details: provider.getActivityLevelDescription(
-              provider.activityLevel,
+        ),
+        const SizedBox(height: 16),
+        _buildInfoCard(
+          title: AppLocalizations.of(context).translate('personal_information'),
+          subtitle:
+              '${provider.sex == "male" ? AppLocalizations.of(context).translate('male') : AppLocalizations.of(context).translate('female')}, ${provider.age} ${AppLocalizations.of(context).translate('years_old')}',
+          details:
+              '${provider.getFormattedHeight()}  •  ${provider.getFormattedWeight()}',
+          icon: Icons.person,
+          iconColor: const Color(0xFF4DB6AC),
+          isDarkMode: isDarkMode,
+          textColor: textColor,
+          onTap: () {
+            Navigator.push(
               context,
-            ),
-            icon: Icons.directions_run,
-            iconColor: const Color(0xFF26A69A),
-            theme: theme,
-            isDarkMode: isDarkMode,
-            textColor: textColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const NutritionGoalsWizardScreen(startStep: 1),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildInfoCard(
-            title: AppLocalizations.of(context).translate('objective'),
-            subtitle:
-                provider.getFitnessGoalName(provider.fitnessGoal, context),
-            details: _getGoalDetail(provider.fitnessGoal, context),
-            icon: Icons.track_changes,
-            iconColor: const Color(0xFFFF6B9D),
-            theme: theme,
-            isDarkMode: isDarkMode,
-            textColor: textColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const NutritionGoalsWizardScreen(startStep: 2),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildInfoCard(
-            title: AppLocalizations.of(context).translate('diet_type'),
-            subtitle: provider.getDietTypeName(provider.dietType, context),
-            details:
-                provider.getDietTypeDescription(provider.dietType, context),
-            icon: Icons.restaurant_menu,
-            iconColor: const Color(0xFFFFB74D),
-            theme: theme,
-            isDarkMode: isDarkMode,
-            textColor: textColor,
-            onTap: () {
-              _showDietTypeDialog(provider, theme, isDarkMode, textColor);
-            },
-          ),
-          const SizedBox(height: 16),
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NutritionGoalsWizardScreen(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: (isDarkMode
-                        ? AppTheme.primaryColorDarkMode
-                        : AppTheme.primaryColor)
-                    .withValues(alpha: isDarkMode ? 0.2 : 0.13),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: (isDarkMode
-                          ? AppTheme.primaryColorDarkMode
-                          : AppTheme.primaryColor)
-                      .withValues(alpha: isDarkMode ? 0.28 : 0.18),
-                ),
+              MaterialPageRoute(
+                builder: (context) =>
+                    const NutritionGoalsWizardScreen(startStep: 0),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _cardSurfaceColor(isDarkMode),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.auto_awesome,
-                      color: isDarkMode
-                          ? AppTheme.primaryColorDarkMode
-                          : AppTheme.primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      AppLocalizations.of(context)
-                          .translate('configure_everything_again'),
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: textColor.withValues(alpha: 0.65),
-                  ),
-                ],
-              ),
-            ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildInfoCard(
+          title: AppLocalizations.of(context).translate('activity_level_title'),
+          subtitle: provider.getActivityLevelName(
+            provider.activityLevel,
+            context,
           ),
-        ],
+          details: provider.getActivityLevelDescription(
+            provider.activityLevel,
+            context,
+          ),
+          icon: Icons.directions_run,
+          iconColor: const Color(0xFF26A69A),
+          isDarkMode: isDarkMode,
+          textColor: textColor,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const NutritionGoalsWizardScreen(startStep: 1),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildInfoCard(
+          title: AppLocalizations.of(context).translate('objective'),
+          subtitle: provider.getFitnessGoalName(provider.fitnessGoal, context),
+          details: _getGoalDetail(provider.fitnessGoal, context),
+          icon: Icons.track_changes,
+          iconColor: const Color(0xFFFF6B9D),
+          isDarkMode: isDarkMode,
+          textColor: textColor,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const NutritionGoalsWizardScreen(startStep: 2),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildInfoCard(
+          title: AppLocalizations.of(context).translate('diet_type'),
+          subtitle: provider.getDietTypeName(provider.dietType, context),
+          details: provider.getDietTypeDescription(provider.dietType, context),
+          icon: Icons.restaurant_menu,
+          iconColor: const Color(0xFFFFB74D),
+          isDarkMode: isDarkMode,
+          textColor: textColor,
+          onTap: () {
+            _showDietTypeDialog(provider, theme, isDarkMode, textColor);
+          },
+        ),
+        const SizedBox(height: 16),
+        _buildResetGoalsButton(isDarkMode),
+      ],
+    );
+  }
+
+  Widget _buildResetGoalsButton(bool isDarkMode) {
+    final primaryColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final foregroundColor = AppTheme.onColor(primaryColor);
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const NutritionGoalsWizardScreen(),
+            ),
+          );
+        },
+        icon:
+            Icon(Icons.auto_awesome_rounded, size: 18, color: foregroundColor),
+        label: Text(
+          AppLocalizations.of(context).translate('configure_everything_again'),
+          style: TextStyle(
+            color: foregroundColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: foregroundColor,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
       ),
     );
   }
@@ -832,31 +726,29 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     required String details,
     required IconData icon,
     required Color iconColor,
-    required ThemeData theme,
     required bool isDarkMode,
     required Color textColor,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: _secondarySurfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: textColor.withValues(alpha: isDarkMode ? 0.08 : 0.06),
-          ),
+          color: _cardSurfaceColor(isDarkMode),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: _borderColor(isDarkMode)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-                borderRadius: BorderRadius.circular(16),
+                shape: BoxShape.circle,
               ),
               child: Icon(icon, color: iconColor, size: 22),
             ),
@@ -867,24 +759,31 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 children: [
                   Text(
                     title,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: textColor.withValues(alpha: 0.62),
+                    style: TextStyle(
+                      color: _mutedTextColor(isDarkMode),
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: theme.textTheme.bodyLarge?.copyWith(
+                    style: TextStyle(
                       color: textColor,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     details,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: textColor.withValues(alpha: 0.64),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _mutedTextColor(isDarkMode),
+                      fontSize: 13,
+                      height: 1.3,
                     ),
                   ),
                 ],
@@ -1093,6 +992,14 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
 
   Color _secondarySurfaceColor(bool isDarkMode) {
     return isDarkMode ? const Color(0xFF2A2A2A) : AppTheme.surfaceColor;
+  }
+
+  Color _borderColor(bool isDarkMode) {
+    return isDarkMode ? Colors.white12 : Colors.black12;
+  }
+
+  Color _mutedTextColor(bool isDarkMode) {
+    return isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
   }
 
   String _getGoalDetail(FitnessGoal goal, BuildContext context) {

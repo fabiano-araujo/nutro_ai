@@ -6,6 +6,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'ad_manager.dart';
 import 'api_service.dart';
 import 'auth_service.dart';
 
@@ -129,6 +130,7 @@ class PurchaseService with ChangeNotifier {
         _isPremium = savedIsPremium;
         _subscriptionType = savedIsPremium ? savedPlanType : 'free';
         _subscriptionExpiryDate = savedExpirationDate;
+        AdManager.setPremiumStatus(_isPremium);
       }
     } catch (e) {
       debugPrint('Erro ao carregar status da assinatura: $e');
@@ -389,6 +391,8 @@ class PurchaseService with ChangeNotifier {
     _isPremium = isPremium;
     _subscriptionType = isPremium ? planType : 'free';
     _subscriptionExpiryDate = isPremium ? expirationDate : null;
+
+    AdManager.setPremiumStatus(_isPremium);
 
     await _saveSubscriptionStatus(
       _isPremium,

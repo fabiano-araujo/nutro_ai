@@ -181,16 +181,37 @@ class DailyMealsProvider extends ChangeNotifier {
     return _mealsByDate[dateKey] ?? [];
   }
 
-  // Get meals by type
+  // Get meals by type — agrega todos os foods das refeicoes deste tipo
+  // (uteis quando ha varias entradas do chat para o mesmo tipo no dia).
   Meal? getMealByType(MealType type) {
-    return todayMeals.firstWhere(
-      (meal) => meal.type == type,
-      orElse: () => Meal(
+    final matching = todayMeals.where((m) => m.type == type).toList();
+    if (matching.isEmpty) {
+      return Meal(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         type: type,
         foods: [],
-      ),
+      );
+    }
+    if (matching.length == 1) return matching.first;
+
+    // Refeicao virtual agregada (so para exibicao na tela de refeicoes do dia).
+    final allFoods = <Food>[];
+    for (final m in matching) {
+      allFoods.addAll(m.foods);
+    }
+    return Meal(
+      id: 'aggregate:${type.name}:${_formatDate(_selectedDate)}',
+      type: type,
+      foods: allFoods,
+      dateTime: matching.first.dateTime,
     );
+  }
+
+  /// Lista todas as refeicoes deste tipo no dia (cada uma com seu messageId).
+  /// Usado quando precisamos preservar a identidade individual de cada card
+  /// do chat (ex.: aplicar edicao em uma refeicao especifica).
+  List<Meal> getMealsByType(MealType type) {
+    return todayMeals.where((m) => m.type == type).toList();
   }
 
   // Daily totals
@@ -352,58 +373,42 @@ class DailyMealsProvider extends ChangeNotifier {
       meal.copyWith(dateTime: _selectedDate),
     );
 
-    // Se tem messageId, verificar se já existe uma refeição com esse messageId
-    // para evitar duplicação
+    // Refeicoes vindas do chat (com messageId) sao SEMPRE entradas
+    // independentes — cada card do chat = sua propria refeicao. Isso evita
+    // que ao recarregar o app o card de uma mensagem mostre alimentos de
+    // outra mensagem mesclada do mesmo tipo de refeicao.
     if (normalizedMeal.messageId != null) {
       final existingByMessageId =
           meals.indexWhere((m) => m.messageId == normalizedMeal.messageId);
       if (existingByMessageId != -1) {
-        final normalizedExisting = _normalizeMeal(meals[existingByMessageId]);
-        if (normalizedExisting.foods.length !=
-            meals[existingByMessageId].foods.length) {
-          meals[existingByMessageId] = normalizedExisting;
-          _saveToPreferences();
-          notifyListeners();
-        }
-        print(
-            '⚠️ DailyMealsProvider - Refeição com messageId ${normalizedMeal.messageId} já existe, ignorando duplicata');
-        return;
-      }
-
-      final existingWithSameFoods = meals.indexWhere(
-        (m) =>
-            m.type == normalizedMeal.type &&
-            _containsFoodSet(m.foods, normalizedMeal.foods),
-      );
-      if (existingWithSameFoods != -1) {
-        final existingMeal = _normalizeMeal(meals[existingWithSameFoods]);
-        meals[existingWithSameFoods] = existingMeal.messageId == null
-            ? existingMeal.copyWith(messageId: normalizedMeal.messageId)
-            : existingMeal;
+        // Mesmo messageId ja existe — atualiza no lugar (sem duplicar).
+        meals[existingByMessageId] = normalizedMeal;
         _saveToPreferences();
         notifyListeners();
         return;
       }
+
+      // Card de chat novo — adiciona como refeicao separada, sem merge.
+      meals.add(normalizedMeal);
+      _saveToPreferences();
+      _scheduleSync();
+      notifyListeners();
+      return;
     }
 
-    // Verificar se já existe uma refeição do mesmo tipo
+    // Sem messageId (entrada manual via tela de refeicoes): mantem o
+    // comportamento legado de merge por tipo de refeicao.
     final existingIndex =
         meals.indexWhere((m) => m.type == normalizedMeal.type);
 
     if (existingIndex != -1) {
-      // Se já existe, mesclar os alimentos
       final existingMeal = meals[existingIndex];
       final mergedFoods = List<Food>.from(existingMeal.foods)
         ..addAll(normalizedMeal.foods);
-      // Preservar o messageId da nova refeição se existir
       meals[existingIndex] = _normalizeMeal(
-        existingMeal.copyWith(
-          foods: mergedFoods,
-          messageId: normalizedMeal.messageId ?? existingMeal.messageId,
-        ),
+        existingMeal.copyWith(foods: mergedFoods),
       );
     } else {
-      // Senão, adicionar a nova refeição
       meals.add(normalizedMeal);
     }
 
@@ -514,25 +519,6 @@ class DailyMealsProvider extends ChangeNotifier {
 
     if (dedupedFoods.length == meal.foods.length) return meal;
     return meal.copyWith(foods: dedupedFoods);
-  }
-
-  bool _containsFoodSet(List<Food> existingFoods, List<Food> incomingFoods) {
-    if (incomingFoods.isEmpty || existingFoods.isEmpty) return false;
-
-    final existingCounts = <String, int>{};
-    for (final food in existingFoods) {
-      final signature = _foodIdentity(food);
-      existingCounts[signature] = (existingCounts[signature] ?? 0) + 1;
-    }
-
-    for (final food in incomingFoods) {
-      final signature = _foodIdentity(food);
-      final count = existingCounts[signature] ?? 0;
-      if (count <= 0) return false;
-      existingCounts[signature] = count - 1;
-    }
-
-    return true;
   }
 
   String _foodIdentity(Food food) {

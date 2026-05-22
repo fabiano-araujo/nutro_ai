@@ -374,6 +374,27 @@ class FavoriteFoodService {
     }
   }
 
+  /// Busca alternativas (favorito + recente) para um nome de alimento.
+  /// Usado no card de refeicao para trocar facilmente entre fontes.
+  /// Retorna `{ 'favorite': {...} | null, 'recent': {...} | null }`.
+  Future<Map<String, dynamic>?> getAlternatives(String name) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/favorites/alternatives?name=${Uri.encodeComponent(name)}'),
+        headers: _headers,
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'] as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      print('[FavoriteFoodService] Erro ao buscar alternativas: $e');
+      return null;
+    }
+  }
+
   Future<bool> repeatMeal(int mealId, String targetDate) async {
     try {
       final response = await http.post(

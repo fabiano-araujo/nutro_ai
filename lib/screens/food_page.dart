@@ -14,6 +14,7 @@ import '../providers/daily_meals_provider.dart';
 import '../providers/food_history_provider.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
+import '../services/ad_manager.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../helpers/webview_helper.dart';
@@ -587,6 +588,10 @@ class _FoodPageState extends State<FoodPage> {
 
     // Show success message
     UIUtils.showPrimarySnackBar(navigatorContext, successMessage);
+
+    // Conta + tenta mostrar intersticial após N refeições
+    AdManager.notifyMealRegistered();
+    AdManager.maybeShowMealDoneInterstitial();
   }
 
   void _showMealTypeSelector(BuildContext context) {

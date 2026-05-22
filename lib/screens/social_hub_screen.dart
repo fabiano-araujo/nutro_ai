@@ -64,6 +64,7 @@ class _SocialHubScreenState extends State<SocialHubScreen>
   // Apenas 2 abas: Social e Desafios
   late TabController _tabController;
   bool _showPublicChallenges = false;
+  bool _isHeaderCollapsed = false;
 
   @override
   void initState() {
@@ -97,6 +98,12 @@ class _SocialHubScreenState extends State<SocialHubScreen>
       context.read<FriendsProvider>().refresh(),
       context.read<ChallengesProvider>().loadOverview(),
     ]);
+  }
+
+  void _handleScrollVisibility(ScrollNotification notification) {
+    final shouldCollapse = notification.metrics.pixels > 12;
+    if (shouldCollapse == _isHeaderCollapsed) return;
+    setState(() => _isHeaderCollapsed = shouldCollapse);
   }
 
   @override
@@ -177,58 +184,77 @@ class _SocialHubScreenState extends State<SocialHubScreen>
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _tabController.index == 0
-              ? _refreshData
-              : context.read<ChallengesProvider>().refresh,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: _SocialShellHeader(
-                  onOpenDrawer: widget.onOpenDrawer,
-                  title: _tabController.index == 0 ? 'Amigos' : 'Comunidade',
-                  subtitle: _tabController.index == 0
-                      ? 'Atualizações recentes'
-                      : 'Crie desafios e compare o progresso.',
-                  showStreakBadge: true,
-                  trailing: _tabController.index == 0
-                      ? const _SocialFriendsHeaderActions()
-                      : null,
+        child: Column(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: _isHeaderCollapsed ? 0 : 76,
+              child: ClipRect(
+                child: OverflowBox(
+                  minHeight: 0,
+                  maxHeight: 76,
+                  alignment: Alignment.topCenter,
+                  child: _SocialShellHeader(
+                    onOpenDrawer: widget.onOpenDrawer,
+                    title: _tabController.index == 0 ? 'Amigos' : 'Comunidade',
+                    subtitle: _tabController.index == 0
+                        ? 'Atualizações recentes'
+                        : 'Crie desafios e compare o progresso.',
+                    showStreakBadge: true,
+                    trailing: _tabController.index == 0
+                        ? const _SocialFriendsHeaderActions()
+                        : null,
+                  ),
                 ),
               ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _SocialModeTabsHeaderDelegate(
-                  selectedIndex: _tabController.index,
-                  onChanged: (index) {
-                    setState(() => _tabController.index = index);
-                    if (index == 1) {
-                      context.read<ChallengesProvider>().loadOverview();
-                    }
+            ),
+            _SocialModeTabs(
+              selectedIndex: _tabController.index,
+              onChanged: (index) {
+                setState(() {
+                  _tabController.index = index;
+                  _isHeaderCollapsed = false;
+                });
+                if (index == 1) {
+                  context.read<ChallengesProvider>().loadOverview();
+                }
+              },
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _tabController.index == 0
+                    ? _refreshData
+                    : context.read<ChallengesProvider>().refresh,
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    _handleScrollVisibility(notification);
+                    return false;
                   },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      bottom: _tabController.index == 1 ? 108 : 32,
+                    ),
+                    child: _tabController.index == 0
+                        ? _SocialTabContent(onRefresh: _refreshData)
+                        : _ChallengesContent(
+                            showPublic: _showPublicChallenges,
+                            onShowPublicChanged: (showPublic) {
+                              setState(
+                                  () => _showPublicChallenges = showPublic);
+                              if (showPublic) {
+                                context
+                                    .read<ChallengesProvider>()
+                                    .loadPublicChallenges();
+                              }
+                            },
+                          ),
+                  ),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: _tabController.index == 0
-                    ? _SocialTabContent(onRefresh: _refreshData)
-                    : _ChallengesContent(
-                        showPublic: _showPublicChallenges,
-                        onShowPublicChanged: (showPublic) {
-                          setState(() => _showPublicChallenges = showPublic);
-                          if (showPublic) {
-                            context
-                                .read<ChallengesProvider>()
-                                .loadPublicChallenges();
-                          }
-                        },
-                      ),
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: _tabController.index == 1 ? 108 : 32),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -521,46 +547,6 @@ class _SocialModeTabs extends StatelessWidget {
   }
 }
 
-class _SocialModeTabsHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-  static const double _height = 66;
-
-  const _SocialModeTabsHeaderDelegate({
-    required this.selectedIndex,
-    required this.onChanged,
-  });
-
-  @override
-  double get minExtent => _height;
-
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      color:
-          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      child: _SocialModeTabs(
-        selectedIndex: selectedIndex,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _SocialModeTabsHeaderDelegate oldDelegate) {
-    return selectedIndex != oldDelegate.selectedIndex;
-  }
-}
-
 class _SocialModeChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -582,37 +568,35 @@ class _SocialModeChip extends StatelessWidget {
     final unselectedBorderColor =
         isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final unselectedTextColor =
+        isDarkMode ? Colors.grey[400]! : Colors.grey[700]!;
 
-    return ChoiceChip(
-      label: SizedBox(
-        width: 100,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 141,
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? selectedColor : cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? selectedColor : unselectedBorderColor,
+            width: 1,
+          ),
+        ),
         child: Text(
           label,
           textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? selectedTextColor : unselectedTextColor,
+          ),
         ),
       ),
-      selected: selected,
-      onSelected: (value) {
-        if (value) onTap();
-      },
-      selectedColor: selectedColor,
-      backgroundColor: cardColor,
-      labelStyle: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: selected
-            ? selectedTextColor
-            : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
-      ),
-      showCheckmark: false,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? selectedColor : unselectedBorderColor,
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
   }
 }

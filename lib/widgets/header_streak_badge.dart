@@ -5,6 +5,7 @@ import '../providers/streak_provider.dart';
 import '../screens/streak_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 
 class HeaderStreakBadge extends StatelessWidget {
@@ -30,8 +31,6 @@ class HeaderStreakBadge extends StatelessWidget {
       (provider) => provider.registrationStreak,
     );
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final mutedColor =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final surfaceColor = isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;
     final borderColor = isDarkMode ? Colors.white12 : Colors.black12;
 
@@ -59,10 +58,10 @@ class HeaderStreakBadge extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.local_fire_department_rounded,
                     size: 18,
-                    color: streak > 0 ? const Color(0xFFFF9800) : mutedColor,
+                    color: MacroTheme.caloriesColor,
                   ),
                   const SizedBox(width: 4),
                   Text(

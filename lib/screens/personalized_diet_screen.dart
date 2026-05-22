@@ -14,12 +14,13 @@ import '../models/Nutrient.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../screens/food_page.dart';
-import '../screens/meal_page.dart';
 import '../screens/nutrition_goals_wizard_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../i18n/app_localizations.dart';
 import '../widgets/diet_style_message_state.dart';
+import '../widgets/native_ad_widget.dart';
+import '../services/ad_manager.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
@@ -37,14 +38,29 @@ class PersonalizedDietScreen extends StatefulWidget {
 
 class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   final ScrollController _scrollController = ScrollController();
+  bool _isHeaderCollapsed = false;
 
   // Controle de refeições expandidas
   final Set<String> _expandedMeals = {};
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScrollVisibility);
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_handleScrollVisibility);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleScrollVisibility() {
+    final shouldCollapse =
+        _scrollController.hasClients && _scrollController.offset > 12;
+    if (shouldCollapse == _isHeaderCollapsed) return;
+    setState(() => _isHeaderCollapsed = shouldCollapse);
   }
 
   // Generate diet plan for selected date
@@ -132,15 +148,57 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       languageCode: languageCode,
     );
 
+    if (!mounted) return;
+
+    final l10n = AppLocalizations.of(context);
+
     if (dietProvider.error != null) {
       // Check if error is premium required
       if (dietProvider.error == 'daily_diet_premium_required') {
         _showPremiumRequiredDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(dietProvider.error!)),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '${l10n.translate('diet_generation_error')}\n${dietProvider.error!}',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
+    } else if (dietProvider.currentDietPlan != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(l10n.translate('diet_generated_success')),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -717,16 +775,30 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
             return Column(
               children: [
-                // AppBar sempre visível
-                WeeklyCalendar(
-                  selectedDate: dietProvider.selectedDate,
-                  onDaySelected: (date) {
-                    dietProvider.setSelectedDate(date);
-                  },
-                  showAppBar: true,
-                  showCalendar: !isWeeklyMode,
-                  onOpenDrawer: widget.onOpenDrawer,
-                  onSearchPressed: widget.onSearchPressed,
+                // AppBar/calendário some ao rolar; os chips seguem fixos.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  height:
+                      _isHeaderCollapsed ? 0 : (isWeeklyMode ? 56.0 : 112.0),
+                  child: ClipRect(
+                    child: OverflowBox(
+                      minHeight: 0,
+                      maxHeight: isWeeklyMode ? 56 : 112,
+                      alignment: Alignment.topCenter,
+                      child: WeeklyCalendar(
+                        selectedDate: dietProvider.selectedDate,
+                        onDaySelected: (date) {
+                          setState(() => _isHeaderCollapsed = false);
+                          dietProvider.setSelectedDate(date);
+                        },
+                        showAppBar: true,
+                        showCalendar: !isWeeklyMode,
+                        onOpenDrawer: widget.onOpenDrawer,
+                        onSearchPressed: widget.onSearchPressed,
+                      ),
+                    ),
+                  ),
                 ),
 
                 // Chips sempre visíveis
@@ -772,7 +844,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           ),
           selected: isWeekly,
           onSelected: (selected) {
-            if (selected) dietProvider.setDietMode(DietMode.weekly);
+            if (selected) {
+              setState(() => _isHeaderCollapsed = false);
+              dietProvider.setDietMode(DietMode.weekly);
+            }
           },
           selectedColor: selectedColor,
           backgroundColor: cardColor,
@@ -804,7 +879,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           ),
           selected: !isWeekly,
           onSelected: (selected) {
-            if (selected) dietProvider.setDietMode(DietMode.daily);
+            if (selected) {
+              setState(() => _isHeaderCollapsed = false);
+              dietProvider.setDietMode(DietMode.daily);
+            }
           },
           selectedColor: selectedColor,
           backgroundColor: cardColor,
@@ -928,7 +1006,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
     final buttonColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-    return DietStyleMessageState(
+    final emptyState = DietStyleMessageState(
       title: isWeeklyMode
           ? l10n.translate('no_weekly_diet')
           : l10n.translate('no_daily_diet'),
@@ -941,7 +1019,28 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       onPrimaryAction: _generateDietPlan,
       topSpacing: 40,
       accentColor: buttonColor,
-      pinActionsToBottom: true,
+      pinActionsToBottom: false,
+    );
+
+    if (AdManager.adsBlocked) {
+      return emptyState;
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          emptyState,
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: NativeAdWidget(
+              adUnitId: AdManager.nativeDietEmptyAdUnitId,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1051,27 +1150,39 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         child: Row(
           children: [
             Expanded(
-              child: _buildMacroStat(MacroTheme.caloriesIcon,
-                  nutrition.calories.toString(), 'kcal',
-                  MacroTheme.caloriesColor, secondaryColor),
+              child: _buildMacroStat(
+                  MacroTheme.caloriesIcon,
+                  nutrition.calories.toString(),
+                  'kcal',
+                  MacroTheme.caloriesColor,
+                  secondaryColor),
             ),
             _buildMacroDivider(isDarkMode),
             Expanded(
-              child: _buildMacroStat(MacroTheme.proteinIcon,
-                  '${nutrition.protein.toStringAsFixed(0)}g', 'Proteína',
-                  MacroTheme.proteinColor, secondaryColor),
+              child: _buildMacroStat(
+                  MacroTheme.proteinIcon,
+                  '${nutrition.protein.toStringAsFixed(0)}g',
+                  'Proteína',
+                  MacroTheme.proteinColor,
+                  secondaryColor),
             ),
             _buildMacroDivider(isDarkMode),
             Expanded(
-              child: _buildMacroStat(MacroTheme.carbsIcon,
-                  '${nutrition.carbs.toStringAsFixed(0)}g', 'Carboidrato',
-                  MacroTheme.carbsColor, secondaryColor),
+              child: _buildMacroStat(
+                  MacroTheme.carbsIcon,
+                  '${nutrition.carbs.toStringAsFixed(0)}g',
+                  'Carboidrato',
+                  MacroTheme.carbsColor,
+                  secondaryColor),
             ),
             _buildMacroDivider(isDarkMode),
             Expanded(
-              child: _buildMacroStat(MacroTheme.fatIcon,
-                  '${nutrition.fat.toStringAsFixed(0)}g', 'Gordura',
-                  MacroTheme.fatColor, secondaryColor),
+              child: _buildMacroStat(
+                  MacroTheme.fatIcon,
+                  '${nutrition.fat.toStringAsFixed(0)}g',
+                  'Gordura',
+                  MacroTheme.fatColor,
+                  secondaryColor),
             ),
           ],
         ),
@@ -1199,13 +1310,16 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
-  void _openMealPage(PlannedMeal meal) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MealPage.fromPlannedMeal(meal: meal),
-      ),
-    );
+  void _toggleMealExpansion(PlannedMeal meal) {
+    if (meal.foods.isEmpty) return;
+
+    setState(() {
+      if (_expandedMeals.contains(meal.type)) {
+        _expandedMeals.remove(meal.type);
+      } else {
+        _expandedMeals.add(meal.type);
+      }
+    });
   }
 
   Widget _buildMealCardStyled(PlannedMeal meal, bool isDarkMode,
@@ -1218,7 +1332,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         : Colors.black.withValues(alpha: 0.08);
 
     return InkWell(
-      onTap: hasFoods ? () => _openMealPage(meal) : null,
+      onTap: hasFoods ? () => _toggleMealExpansion(meal) : null,
       borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(
@@ -1264,15 +1378,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                   ),
                   if (hasFoods)
                     IconButton(
-                      onPressed: () {
-                        setState(() {
-                          if (isExpanded) {
-                            _expandedMeals.remove(meal.type);
-                          } else {
-                            _expandedMeals.add(meal.type);
-                          }
-                        });
-                      },
+                      onPressed: () => _toggleMealExpansion(meal),
                       icon: AnimatedRotation(
                         turns: isExpanded ? 0.5 : 0,
                         duration: const Duration(milliseconds: 200),

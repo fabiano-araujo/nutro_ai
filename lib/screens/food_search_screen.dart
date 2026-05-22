@@ -19,7 +19,9 @@ import '../providers/daily_meals_provider.dart';
 import '../util/app_constants.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
+import '../services/ad_manager.dart';
 import '../utils/ui_utils.dart';
+import '../widgets/native_ad_widget.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   final MealType? selectedMealType;
@@ -48,6 +50,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   bool _loadingServerRecents = true;
   List<FavoriteFood> _serverFrequents = [];
   bool _loadingServerFrequents = true;
+  List<FavoriteFood> _serverFavorites = [];
+  bool _loadingServerFavorites = true;
 
   @override
   void initState() {
@@ -65,24 +69,31 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           setState(() {
             _loadingServerRecents = false;
             _loadingServerFrequents = false;
+            _loadingServerFavorites = false;
           });
         return;
       }
       final svc = FavoriteFoodService(token: token);
-      final results = await Future.wait(
-          [svc.getRecents(limit: 30), svc.getFrequents(limit: 30)]);
+      final results = await Future.wait([
+        svc.getRecents(limit: 30),
+        svc.getFrequents(limit: 30),
+        svc.getFavorites(),
+      ]);
       if (mounted)
         setState(() {
           _serverRecents = results[0];
           _loadingServerRecents = false;
           _serverFrequents = results[1];
           _loadingServerFrequents = false;
+          _serverFavorites = results[2];
+          _loadingServerFavorites = false;
         });
     } catch (_) {
       if (mounted)
         setState(() {
           _loadingServerRecents = false;
           _loadingServerFrequents = false;
+          _loadingServerFavorites = false;
         });
     }
   }
@@ -319,203 +330,196 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
+    final tabBar = TabBar(
+      controller: _tabController,
+      labelColor: textColor,
+      unselectedLabelColor: secondaryTextColor,
+      labelStyle: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.5,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.5,
+      ),
+      indicatorColor: AppTheme.primaryColor,
+      indicatorWeight: 2.5,
+      indicatorSize: TabBarIndicatorSize.tab,
+      dividerColor: isDarkMode ? Color(0xFF48484A) : Color(0xFFD1D1D6),
+      dividerHeight: 1,
+      tabs: [
+        Tab(text: 'Frequentes'),
+        Tab(text: context.tr.translate('recent')),
+        Tab(text: context.tr.translate('favorites')),
+      ],
+    );
+
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: _selectedMealType != null
-            ? DropdownButton<MealType>(
-                value: _selectedMealType,
-                underline: SizedBox.shrink(),
-                isDense: true,
-                dropdownColor:
-                    isDarkMode ? AppTheme.darkCardColor : Colors.white,
-                icon: Icon(Icons.arrow_drop_down, color: textColor, size: 24),
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-                items: MealType.values.map((mealType) {
-                  final option = DailyMealsProvider.getMealTypeOption(mealType);
-                  return DropdownMenuItem<MealType>(
-                    value: mealType,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(option.emoji, style: TextStyle(fontSize: 20)),
-                        SizedBox(width: 8),
-                        Text(option.name, style: TextStyle(fontSize: 20)),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (MealType? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedMealType = newValue;
-                    });
-                  }
-                },
-              )
-            : Text(
-                context.tr.translate('search_food'),
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-        actions: [
-          // Barcode scanner removed for now to improve intuitiveness
-          // IconButton(
-          //   icon: Icon(
-          //     Icons.barcode_reader,
-          //     color: textColor,
-          //   ),
-          //   onPressed: () { ... },
-          // ),
-        ],
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? textColor.withValues(alpha: 0.15)
-                    : textColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(80),
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  hintText: context.tr.translate('what_did_you_eat'),
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 22,
-                  ),
-                  filled: false,
-                  fillColor: Colors.transparent,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-                onSubmitted: _onSearchSubmitted,
+          // WebView (sempre ativo mas invisível)
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.0,
+              child: InAppWebView(
+                initialSettings: WebViewHelper.getOptimizedSettings(),
+                onWebViewCreated: _scraperHelper.onWebViewCreated,
+                onLoadStop: (controller, url) async {
+                  _scraperHelper.onLoadFinished(controller, url);
+                  // Wait a bit for the page to fully render
+                  await Future.delayed(Duration(milliseconds: 500));
+                  await _extractFoodData();
+                },
               ),
             ),
           ),
 
-          // Tabs
-          if (!_isSearching)
-            Container(
+          // UI visível (por cima do WebView)
+          Positioned.fill(
+            child: Container(
               color: backgroundColor,
-              child: Column(
-                children: [
-                  TabBar(
-                    controller: _tabController,
-                    labelColor: textColor,
-                    unselectedLabelColor: secondaryTextColor,
-                    labelStyle: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                    unselectedLabelStyle: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.5,
-                    ),
-                    indicatorColor: AppTheme.primaryColor,
-                    indicatorWeight: 2.5,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor:
-                        isDarkMode ? Color(0xFF48484A) : Color(0xFFD1D1D6),
-                    dividerHeight: 1,
-                    tabs: [
-                      Tab(text: 'Frequentes'),
-                      Tab(text: context.tr.translate('recent')),
-                      Tab(text: context.tr.translate('favorites')),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-          // Content with WebView in Stack
-          Expanded(
-            child: Stack(
-              children: [
-                // WebView (sempre ativo mas invisível)
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.0,
-                    child: InAppWebView(
-                      initialSettings: WebViewHelper.getOptimizedSettings(),
-                      onWebViewCreated: _scraperHelper.onWebViewCreated,
-                      onLoadStop: (controller, url) async {
-                        _scraperHelper.onLoadFinished(controller, url);
-                        // Wait a bit for the page to fully render
-                        await Future.delayed(Duration(milliseconds: 500));
-                        await _extractFoodData();
-                      },
-                    ),
-                  ),
-                ),
-
-                // UI visível (por cima do WebView)
-                Positioned.fill(
-                  child: Container(
-                    color: backgroundColor,
-                    child: _isSearching
-                        ? _buildSearchResults(isDarkMode, textColor,
-                            secondaryTextColor, cardColor)
-                        : Consumer<FoodHistoryProvider>(
-                            builder: (context, historyProvider, child) {
-                              return TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  _buildServerFrequentList(isDarkMode,
-                                      textColor, secondaryTextColor, cardColor),
-                                  _buildServerRecentList(isDarkMode, textColor,
-                                      secondaryTextColor, cardColor),
-                                  _buildFavoritesList(
-                                      historyProvider.favorites,
-                                      isDarkMode,
-                                      textColor,
-                                      secondaryTextColor,
-                                      cardColor),
-                                ],
-                              );
-                            },
+              child: SafeArea(
+                bottom: false,
+                child: NestedScrollView(
+                  headerSliverBuilder: (context, innerBoxIsScrolled) {
+                    return [
+                      SliverAppBar(
+                        backgroundColor: backgroundColor,
+                        elevation: 0,
+                        floating: true,
+                        snap: true,
+                        pinned: false,
+                        primary: false,
+                        leading: IconButton(
+                          icon: Icon(Icons.arrow_back, color: textColor),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        title: _selectedMealType != null
+                            ? DropdownButton<MealType>(
+                                value: _selectedMealType,
+                                underline: SizedBox.shrink(),
+                                isDense: true,
+                                dropdownColor: isDarkMode
+                                    ? AppTheme.darkCardColor
+                                    : Colors.white,
+                                icon: Icon(Icons.arrow_drop_down,
+                                    color: textColor, size: 24),
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                items: MealType.values.map((mealType) {
+                                  final option =
+                                      DailyMealsProvider.getMealTypeOption(
+                                          mealType);
+                                  return DropdownMenuItem<MealType>(
+                                    value: mealType,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(option.emoji,
+                                            style: TextStyle(fontSize: 20)),
+                                        SizedBox(width: 8),
+                                        Text(option.name,
+                                            style: TextStyle(fontSize: 20)),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (MealType? newValue) {
+                                  if (newValue != null) {
+                                    setState(() {
+                                      _selectedMealType = newValue;
+                                    });
+                                  }
+                                },
+                              )
+                            : Text(
+                                context.tr.translate('search_food'),
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? textColor.withValues(alpha: 0.15)
+                                  : textColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(80),
+                            ),
+                            child: TextField(
+                              controller: _searchController,
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText:
+                                    context.tr.translate('what_did_you_eat'),
+                                hintStyle: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 22,
+                                ),
+                                filled: false,
+                                fillColor: Colors.transparent,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                              onSubmitted: _onSearchSubmitted,
+                            ),
                           ),
-                  ),
+                        ),
+                      ),
+                      if (!_isSearching)
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _TabBarPersistentHeaderDelegate(
+                            backgroundColor: backgroundColor,
+                            tabBar: tabBar,
+                          ),
+                        ),
+                    ];
+                  },
+                  body: _isSearching
+                      ? _buildSearchResults(isDarkMode, textColor,
+                          secondaryTextColor, cardColor)
+                      : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildServerFrequentList(isDarkMode, textColor,
+                                secondaryTextColor, cardColor),
+                            _buildServerRecentList(isDarkMode, textColor,
+                                secondaryTextColor, cardColor),
+                            _buildServerFavoritesList(isDarkMode, textColor,
+                                secondaryTextColor, cardColor),
+                          ],
+                        ),
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -587,13 +591,12 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
             isDarkMode,
             textColor,
           ),
-          ..._apiResults.map((food) => _buildApiFoodCard(
-                food,
-                isDarkMode,
-                textColor,
-                secondaryTextColor,
-                cardColor,
-              )),
+          ..._buildApiResultsWithAd(
+            isDarkMode,
+            textColor,
+            secondaryTextColor,
+            cardColor,
+          ),
         ],
 
         // Still loading API
@@ -689,6 +692,38 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         ],
       ),
     );
+  }
+
+  // Constrói os cards de resultado intercalando um anúncio nativo após o 5º item.
+  // Só insere o ad se houver mais de 5 resultados e ads estiverem disponíveis.
+  List<Widget> _buildApiResultsWithAd(
+    bool isDarkMode,
+    Color textColor,
+    Color secondaryTextColor,
+    Color cardColor,
+  ) {
+    const int adPosition = 5;
+    final widgets = <Widget>[];
+    final showAdSlot = !AdManager.adsBlocked && _apiResults.length > adPosition;
+
+    for (var i = 0; i < _apiResults.length; i++) {
+      widgets.add(_buildApiFoodCard(
+        _apiResults[i],
+        isDarkMode,
+        textColor,
+        secondaryTextColor,
+        cardColor,
+      ));
+      if (showAdSlot && i == adPosition - 1) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: NativeAdWidget(
+            adUnitId: AdManager.nativeSearchAdUnitId,
+          ),
+        ));
+      }
+    }
+    return widgets;
   }
 
   Widget _buildApiFoodCard(
@@ -815,9 +850,12 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     );
   }
 
-  Widget _buildFavoritesList(List<Food> favoriteFoods, bool isDarkMode,
-      Color textColor, Color secondaryTextColor, Color cardColor) {
-    if (favoriteFoods.isEmpty) {
+  Widget _buildServerFavoritesList(bool isDarkMode, Color textColor,
+      Color secondaryTextColor, Color cardColor) {
+    if (_loadingServerFavorites) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_serverFavorites.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -842,9 +880,25 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
     return ListView.builder(
       padding: EdgeInsets.zero,
-      itemCount: favoriteFoods.length,
+      itemCount: _serverFavorites.length,
       itemBuilder: (context, index) {
-        final food = favoriteFoods[index];
+        final fav = _serverFavorites[index];
+        final food = Food(
+          name: fav.name,
+          emoji: fav.emoji ?? '🍽️',
+          nutrients: [
+            Nutrient(
+              idFood: 0,
+              servingSize: fav.baseAmount,
+              servingUnit: fav.baseUnit,
+              calories: fav.calories.toDouble(),
+              protein: fav.protein,
+              carbohydrate: fav.carbs,
+              fat: fav.fat,
+            ),
+          ],
+          foodRegions: [],
+        );
         return _buildFoodCard(
             food, isDarkMode, textColor, secondaryTextColor, cardColor);
       },
@@ -956,6 +1010,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       context,
       '${food.name} adicionado ao ${option.name}',
     );
+
+    // Conta + tenta mostrar intersticial após N refeições (sem await — fire-and-forget)
+    AdManager.notifyMealRegistered();
+    AdManager.maybeShowMealDoneInterstitial();
   }
 
   void _showMealTypeSelector(Food food) {
@@ -1108,5 +1166,36 @@ class _FoodListItem extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _TabBarPersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Color backgroundColor;
+  final TabBar tabBar;
+
+  _TabBarPersistentHeaderDelegate({
+    required this.backgroundColor,
+    required this.tabBar,
+  });
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: backgroundColor,
+      child: tabBar,
+    );
+  }
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  bool shouldRebuild(_TabBarPersistentHeaderDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar ||
+        backgroundColor != oldDelegate.backgroundColor;
   }
 }

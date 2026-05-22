@@ -8,7 +8,7 @@ import '../models/food_model.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../widgets/nutrition_card.dart';
-import '../widgets/weekly_calendar.dart';
+import '../widgets/month_calendar_sheet.dart';
 import '../widgets/water_tracker.dart';
 import 'meal_page.dart';
 import 'manage_meal_types_screen.dart';
@@ -31,41 +31,30 @@ class DailyMealsScreen extends StatefulWidget {
 class _DailyMealsScreenState extends State<DailyMealsScreen> {
   final Map<MealType, bool> _expandedMeals = {};
 
-  Future<void> _showDatePicker(BuildContext context) async {
-    final mealsProvider =
-        Provider.of<DailyMealsProvider>(context, listen: false);
+  void _showDatePickerSheet(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    final DateTime? picked = await showDatePicker(
+    showModalBottomSheet(
       context: context,
-      initialDate: mealsProvider.selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: isDarkMode
-                ? ColorScheme.dark(
-                    primary: AppTheme.primaryColorDarkMode,
-                    onPrimary: Colors.black,
-                    surface: AppTheme.darkCardColor,
-                    onSurface: AppTheme.darkTextColor,
-                  )
-                : ColorScheme.light(
-                    primary: AppTheme.primaryColor,
-                    onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: AppTheme.textPrimaryColor,
-                  ),
-          ),
-          child: child!,
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Consumer<DailyMealsProvider>(
+          builder: (context, mealsProvider, child) {
+            return MonthCalendarSheet(
+              selectedDate: mealsProvider.selectedDate,
+              hasMeals: mealsProvider.hasMealsOn,
+              onDaySelected: (date) {
+                Navigator.of(sheetContext).pop();
+                mealsProvider.setSelectedDate(date);
+              },
+            );
+          },
         );
       },
     );
-
-    if (picked != null && picked != mealsProvider.selectedDate) {
-      mealsProvider.setSelectedDate(picked);
-    }
   }
 
   @override
@@ -129,41 +118,43 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     fontSize: 20,
                   ),
                 ),
-                Text(
-                  dateText,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: textColor.withValues(alpha: 0.7),
+                InkWell(
+                  onTap: () => _showDatePickerSheet(context),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          dateText,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: textColor.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 16,
+                          color: textColor.withValues(alpha: 0.7),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             );
           },
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.calendar_today,
-                color: textColor.withValues(alpha: 0.85)),
-            tooltip: AppLocalizations.of(context).translate('select_date'),
-            onPressed: () => _showDatePicker(context),
-          ),
-        ],
       ),
       body: Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
         builder: (context, mealsProvider, goalsProvider, child) {
           return SingleChildScrollView(
             child: Column(
               children: [
-                // Weekly Calendar - dias da semana
-                WeeklyCalendar(
-                  selectedDate: mealsProvider.selectedDate,
-                  onDaySelected: (date) {
-                    mealsProvider.setSelectedDate(date);
-                  },
-                  showAppBar: false,
-                  showCalendar: true,
-                ),
                 SizedBox(height: 8),
 
                 // Nutrition summary header with edit button
@@ -884,43 +875,36 @@ class _MealCard extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.caloriesIcon,
-                  value: meal!.totalCalories.toStringAsFixed(0),
-                  unit: 'kcal',
-                  color: MacroTheme.caloriesColor,
-                ),
+              _buildMacroCardCompact(
+                icon: MacroTheme.caloriesIcon,
+                value: meal!.totalCalories.toStringAsFixed(0),
+                unit: 'kcal',
+                color: MacroTheme.caloriesColor,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.proteinIcon,
-                  value: meal!.totalProtein.toStringAsFixed(1),
-                  unit: 'g prot',
-                  color: MacroTheme.proteinColor,
-                ),
+              const SizedBox(width: 18),
+              _buildMacroCardCompact(
+                icon: MacroTheme.proteinIcon,
+                value: meal!.totalProtein.toStringAsFixed(1),
+                unit: 'g prot',
+                color: MacroTheme.proteinColor,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.carbsIcon,
-                  value: meal!.totalCarbs.toStringAsFixed(1),
-                  unit: 'g carb',
-                  color: MacroTheme.carbsColor,
-                ),
+              const SizedBox(width: 18),
+              _buildMacroCardCompact(
+                icon: MacroTheme.carbsIcon,
+                value: meal!.totalCarbs.toStringAsFixed(1),
+                unit: 'g carb',
+                color: MacroTheme.carbsColor,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.fatIcon,
-                  value: meal!.totalFat.toStringAsFixed(1),
-                  unit: 'g gord',
-                  color: MacroTheme.fatColor,
-                ),
+              const SizedBox(width: 18),
+              _buildMacroCardCompact(
+                icon: MacroTheme.fatIcon,
+                value: meal!.totalFat.toStringAsFixed(1),
+                unit: 'g gord',
+                color: MacroTheme.fatColor,
               ),
             ],
           ),

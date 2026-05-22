@@ -2,6 +2,34 @@ import 'Nutrient.dart';
 import 'FoodRegion.dart';
 import 'FoodAllergen.dart';
 
+/// Origem dos macros exibidos no card.
+/// - [favorite]: alimento favorito do usuario (prioridade maxima).
+/// - [recent]: alimento ja usado antes pelo usuario.
+/// - [ai]: estimativa gerada pela IA (fallback).
+enum FoodSource { favorite, recent, ai }
+
+FoodSource foodSourceFromString(String? value) {
+  switch (value) {
+    case 'favorite':
+      return FoodSource.favorite;
+    case 'recent':
+      return FoodSource.recent;
+    default:
+      return FoodSource.ai;
+  }
+}
+
+String foodSourceToString(FoodSource source) {
+  switch (source) {
+    case FoodSource.favorite:
+      return 'favorite';
+    case FoodSource.recent:
+      return 'recent';
+    case FoodSource.ai:
+      return 'ai';
+  }
+}
+
 class Food {
   // Database fields from Prisma schema
   final int? id;
@@ -15,6 +43,10 @@ class Food {
   // Legacy/UI fields for backward compatibility
   final String? amount;
   final String emoji;
+
+  // Origem dos macros (favorito > recente > IA)
+  final FoodSource source;
+  final int? sourceId;
 
   // Relationships
   final List<Nutrient>? nutrients;
@@ -31,6 +63,8 @@ class Food {
     this.isVegan,
     this.amount,
     this.emoji = '🍽️',
+    this.source = FoodSource.ai,
+    this.sourceId,
     this.nutrients,
     this.foodRegions,
     this.foodAllergens,
@@ -78,6 +112,8 @@ class Food {
       isVegan: json['is_vegan'] ?? json['isVegan'],
       amount: json['amount'],
       emoji: json['emoji'] ?? '🍽️',
+      source: foodSourceFromString(json['source'] as String?),
+      sourceId: json['sourceId'] as int?,
       nutrients: (json['nutrient'] as List<dynamic>?)
           ?.map((n) => Nutrient.fromJson(n))
           .toList(),
@@ -101,6 +137,8 @@ class Food {
       if (isVegan != null) 'is_vegan': isVegan,
       if (amount != null) 'amount': amount,
       'emoji': emoji,
+      'source': foodSourceToString(source),
+      if (sourceId != null) 'sourceId': sourceId,
       if (nutrients != null)
         'nutrient': nutrients!.map((n) => n.toJson()).toList(),
       if (foodRegions != null)
@@ -120,6 +158,8 @@ class Food {
     String? isVegan,
     String? amount,
     String? emoji,
+    FoodSource? source,
+    int? sourceId,
     List<Nutrient>? nutrients,
     List<FoodRegion>? foodRegions,
     List<FoodAllergen>? foodAllergens,
@@ -134,6 +174,8 @@ class Food {
       isVegan: isVegan ?? this.isVegan,
       amount: amount ?? this.amount,
       emoji: emoji ?? this.emoji,
+      source: source ?? this.source,
+      sourceId: sourceId ?? this.sourceId,
       nutrients: nutrients ?? this.nutrients,
       foodRegions: foodRegions ?? this.foodRegions,
       foodAllergens: foodAllergens ?? this.foodAllergens,

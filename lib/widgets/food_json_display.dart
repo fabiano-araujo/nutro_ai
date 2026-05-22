@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/food_model.dart';
 import '../models/meal_model.dart';
 import '../models/Nutrient.dart';
 import '../utils/food_json_parser.dart';
@@ -7,6 +8,7 @@ import '../providers/daily_meals_provider.dart';
 import '../utils/ai_interaction_helper.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
+import '../services/ad_manager.dart';
 import 'meal_card.dart';
 
 /// Widget que exibe alimentos parseados do JSON da IA
@@ -186,12 +188,17 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
       });
     }
 
+    // Conta + tenta mostrar intersticial após N refeições
+    AdManager.notifyMealRegistered();
+    AdManager.maybeShowMealDoneInterstitial();
+
     // Fire-and-forget: salva nos recentes e aplica macros dos favoritos
     _processWithFavorites(mealToAdd);
   }
 
   /// Envia os alimentos para o servidor, salva nos recentes e, se houver
-  /// match com favoritos, atualiza os macros da refeição já adicionada.
+  /// match com favoritos ou recentes, atualiza os macros e marca a fonte
+  /// (favorito > recente > IA) na refeicao ja adicionada.
   Future<void> _processWithFavorites(Meal meal) async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
@@ -222,18 +229,24 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
       final processed = await service.processAiResponse(foods);
       if (processed == null || !mounted) return;
 
-      // Verifica se algum alimento teve macros substituídos pelos favoritos
-      final hasMatch = processed.any((f) => f['fromFavorite'] == true);
-      if (!hasMatch) return;
-
-      // Reconstrói a lista de Food com os macros atualizados
+      // Reconstroi a lista de Food com source + macros (quando aplicavel).
+      // Mesmo sem match (source = ai) atualizamos para gravar a fonte no Food.
       final updatedFoods = List.generate(meal.foods.length, (i) {
         if (i >= processed.length) return meal.foods[i];
         final p = processed[i];
-        if (p['fromFavorite'] != true) return meal.foods[i];
-
-        final macros = p['macros'] as Map<String, dynamic>;
+        final source = foodSourceFromString(p['source'] as String?);
+        final sourceId = p['sourceId'] as int?;
         final original = meal.foods[i];
+
+        if (source == FoodSource.ai) {
+          return original.copyWith(source: source, sourceId: sourceId);
+        }
+
+        final macros = p['macros'] as Map<String, dynamic>?;
+        if (macros == null) {
+          return original.copyWith(source: source, sourceId: sourceId);
+        }
+
         final originalNutrient = original.nutrients?.isNotEmpty == true
             ? original.nutrients!.first
             : null;
@@ -249,7 +262,11 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           dietaryFiber: (macros['fiber'] as num?)?.toDouble(),
         );
 
-        return original.copyWith(nutrients: [updatedNutrient]);
+        return original.copyWith(
+          nutrients: [updatedNutrient],
+          source: source,
+          sourceId: sourceId,
+        );
       });
 
       final updatedMeal = meal.copyWith(foods: updatedFoods);

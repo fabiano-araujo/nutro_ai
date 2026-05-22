@@ -350,6 +350,18 @@ class _MainNavigationState extends State<MainNavigation> {
     _scaffoldKey.currentState?.openDrawer();
   }
 
+  /// Fecha o drawer somente se ele estiver aberto. Em telas largas o painel
+  /// lateral é persistente (não é um Drawer), então não há nada para fechar.
+  void _closeDrawerIfOpen() {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.pop(context);
+    }
+  }
+
+  /// Breakpoint a partir do qual o app exibe o layout de tela larga
+  /// (menu lateral sempre visível, sem barra de navegação inferior).
+  static const double _wideLayoutBreakpoint = 900;
+
   void _openSocialOverview() {
     setState(() {
       _selectedIndex = 2;
@@ -360,14 +372,14 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   void _startNewFreeChat() {
-    Navigator.pop(context); // Fechar drawer
+    _closeDrawerIfOpen();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const FreeChatScreen()),
     );
   }
 
   void _switchToDiary() {
-    Navigator.pop(context); // Fechar drawer
+    _closeDrawerIfOpen();
     setState(() {
       _currentMode = 'diary';
       _currentFreeChatId = null;
@@ -376,7 +388,7 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   void _openFreeChat(String chatId, String title) {
-    Navigator.pop(context); // Fechar drawer
+    _closeDrawerIfOpen();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => FreeChatScreen(freeChatId: chatId)),
     );
@@ -406,296 +418,455 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return PopScope(
-      canPop: _selectedIndex == 0,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          // Se não está na aba inicial, voltar para ela
-          setState(() {
-            _selectedIndex = 0;
-          });
-        }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= _wideLayoutBreakpoint;
+
+        return PopScope(
+          canPop: _selectedIndex == 0,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) {
+              // Se não está na aba inicial, voltar para ela
+              setState(() {
+                _selectedIndex = 0;
+              });
+            }
+          },
+          child: isWide
+              ? _buildWideLayout(isDarkMode)
+              : _buildNarrowLayout(isDarkMode),
+        );
       },
-      child: Scaffold(
-        key: _scaffoldKey,
-        drawer: _buildDrawer(isDarkMode),
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            // Aba 0: Início / Chat
-            NutritionAssistantScreen(
-              key: _nutritionAssistantKey,
-              isFreeChat: _currentMode == 'free_chat',
-              freeChatId: _currentFreeChatId,
-              onOpenDrawer: _openDrawer,
-            ),
+    );
+  }
 
-            // Aba 1: Minha Dieta
-            PersonalizedDietScreen(
-              onOpenDrawer: _openDrawer,
-              onSearchPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FoodSearchScreen(),
-                  ),
-                );
-              },
-            ),
-
-            // Aba 2: Social
-            SocialHubScreen(onOpenDrawer: _openDrawer),
-
-            // Aba 3: Perfil
-            ProfileTabWrapper(
-              onOpenDrawer: _openDrawer,
-              onOpenSocialHub: _openSocialOverview,
-            ),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          backgroundColor: isDarkMode
-              ? AppTheme.darkBackgroundColor
-              : Theme.of(context).scaffoldBackgroundColor,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          selectedItemColor: isDarkMode ? Colors.white : Colors.black,
-          unselectedItemColor: isDarkMode ? Colors.grey[600] : Colors.grey[700],
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
-              label: context.tr.translate('home'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.restaurant_menu_outlined),
-              activeIcon: Icon(Icons.restaurant_menu),
-              label: context.tr.translate('my_diet'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.people_outline),
-              activeIcon: Icon(Icons.people),
-              label: 'Social',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: context.tr.translate('profile'),
-            ),
-          ],
-        ),
+  /// Layout original para celulares: Drawer + BottomNavigationBar.
+  Widget _buildNarrowLayout(bool isDarkMode) {
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildDrawer(isDarkMode),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _buildScreens(onOpenDrawer: _openDrawer),
       ),
+      bottomNavigationBar: _buildBottomNavigationBar(isDarkMode),
+    );
+  }
+
+  /// Layout para tablets/desktop: painel lateral fixo (sem Drawer) e sem
+  /// BottomNavigationBar — os itens de navegação ficam no rodapé do painel.
+  Widget _buildWideLayout(bool isDarkMode) {
+    return Scaffold(
+      key: _scaffoldKey,
+      body: Row(
+        children: [
+          SizedBox(
+            width: 304,
+            child: Material(
+              color: isDarkMode
+                  ? AppTheme.darkBackgroundColor
+                  : AppTheme.backgroundColor,
+              child: _buildSidePanelBody(isDarkMode, isPersistent: true),
+            ),
+          ),
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: isDarkMode ? Colors.white12 : Colors.black12,
+          ),
+          Expanded(
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _buildScreens(onOpenDrawer: null),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Constrói as 4 abas do app. Em telas largas, [onOpenDrawer] é null para
+  /// que as telas escondam o botão de menu hambúrguer.
+  List<Widget> _buildScreens({required VoidCallback? onOpenDrawer}) {
+    return [
+      // Aba 0: Início / Chat
+      NutritionAssistantScreen(
+        key: _nutritionAssistantKey,
+        isFreeChat: _currentMode == 'free_chat',
+        freeChatId: _currentFreeChatId,
+        onOpenDrawer: onOpenDrawer,
+      ),
+
+      // Aba 1: Minha Dieta
+      PersonalizedDietScreen(
+        onOpenDrawer: onOpenDrawer,
+        onSearchPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const FoodSearchScreen(),
+            ),
+          );
+        },
+      ),
+
+      // Aba 2: Social
+      SocialHubScreen(onOpenDrawer: onOpenDrawer),
+
+      // Aba 3: Perfil
+      ProfileTabWrapper(
+        onOpenDrawer: onOpenDrawer,
+        onOpenSocialHub: _openSocialOverview,
+      ),
+    ];
+  }
+
+  Widget _buildBottomNavigationBar(bool isDarkMode) {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+      backgroundColor: isDarkMode
+          ? AppTheme.darkBackgroundColor
+          : Theme.of(context).scaffoldBackgroundColor,
+      elevation: 0,
+      type: BottomNavigationBarType.fixed,
+      showSelectedLabels: true,
+      showUnselectedLabels: true,
+      selectedItemColor: isDarkMode ? Colors.white : Colors.black,
+      unselectedItemColor: isDarkMode ? Colors.grey[600] : Colors.grey[700],
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat_bubble_outline),
+          activeIcon: Icon(Icons.chat_bubble),
+          label: context.tr.translate('home'),
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.restaurant_menu_outlined),
+          activeIcon: Icon(Icons.restaurant_menu),
+          label: context.tr.translate('my_diet'),
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.people_outline),
+          activeIcon: Icon(Icons.people),
+          label: 'Social',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
+          label: context.tr.translate('profile'),
+        ),
+      ],
     );
   }
 
   Widget _buildDrawer(bool isDarkMode) {
     return Drawer(
-      backgroundColor: isDarkMode ? const Color(0xFF171717) : Colors.white,
-      child: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header: Nutro + search (sem avatar)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Nutro',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? const Color(0xFF2A2A2A)
-                              : const Color(0xFFEFEFEF),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.search,
-                            size: 20,
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => UnifiedSearchScreen(
-                                  onOpenFreeChat: (id, title) =>
-                                      _openFreeChatFromSearch(id, title),
-                                  onOpenDiaryDate: (date) =>
-                                      _openDiaryForDate(date),
-                                ),
-                              ),
-                            );
-                          },
-                          tooltip: 'Buscar',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                  ),
-                ),
+      backgroundColor:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      child: _buildSidePanelBody(isDarkMode, isPersistent: false),
+    );
+  }
 
-                // Cards de acesso rápido: Diário + Conversa livre
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _drawerQuickCard(
-                          icon: Icons.calendar_today,
-                          label: context.tr.translate('diary'),
-                          isDarkMode: isDarkMode,
-                          isSelected: _currentMode == 'diary',
-                          onTap: _switchToDiary,
-                        ),
+  /// Conteúdo compartilhado entre o Drawer (mobile) e o painel lateral fixo
+  /// (tablet/desktop). Quando [isPersistent] for `true`, o FAB redundante é
+  /// omitido e os itens de navegação ficam fixos no rodapé do painel.
+  Widget _buildSidePanelBody(bool isDarkMode, {required bool isPersistent}) {
+    return SafeArea(
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Nutro + search (sem avatar)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+                child: Row(
+                  children: [
+                    Text(
+                      'Nutro',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: isDarkMode ? Colors.white : Colors.black87,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _drawerQuickCard(
-                          icon: Icons.chat_bubble_outline,
-                          label: 'Conversa livre',
-                          isDarkMode: isDarkMode,
-                          isSelected: _currentMode == 'free_chat' &&
-                              _currentFreeChatId == null,
-                          onTap: _startNewFreeChat,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Subtítulo Recentes (conversas livres)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                  child: Text(
-                    'Recentes',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white54 : Colors.black54,
                     ),
-                  ),
-                ),
-
-                // Lista de conversas livres (estilo ChatGPT: título puro)
-                Expanded(
-                  child: Consumer<FreeChatProvider>(
-                    builder: (context, freeChatProvider, child) {
-                      final conversations = freeChatProvider.conversations;
-
-                      if (conversations.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 8),
-                          child: Text(
-                            context.tr.translate('no_conversations'),
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white38 : Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 90),
-                        itemCount: conversations.length,
-                        itemBuilder: (context, index) {
-                          final chat = conversations[index];
-                          final isSelected = _currentMode == 'free_chat' &&
-                              _currentFreeChatId == chat.id;
-                          return InkWell(
-                            onTap: () => _openFreeChat(chat.id, chat.title),
-                            onLongPress: () => _showDeleteConfirmation(
-                                chat.id, chat.title, freeChatProvider),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
-                              color: isSelected
-                                  ? Theme.of(context)
-                                      .primaryColor
-                                      .withValues(alpha: 0.12)
-                                  : null,
-                              child: Text(
-                                chat.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                ),
+                    const Spacer(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? const Color(0xFF2A2A2A)
+                            : const Color(0xFFEFEFEF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.search,
+                          size: 20,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                        onPressed: () {
+                          _closeDrawerIfOpen();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UnifiedSearchScreen(
+                                onOpenFreeChat: (id, title) =>
+                                    _openFreeChatFromSearch(id, title),
+                                onOpenDiaryDate: (date) =>
+                                    _openDiaryForDate(date),
                               ),
                             ),
                           );
                         },
-                      );
-                    },
-                  ),
+                        tooltip: 'Buscar',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ),
+
+              // Cards de acesso rápido: Diário + Conversa livre
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _drawerQuickCard(
+                        icon: Icons.calendar_today,
+                        label: context.tr.translate('diary'),
+                        isDarkMode: isDarkMode,
+                        isSelected: _currentMode == 'diary',
+                        onTap: _switchToDiary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _drawerQuickCard(
+                        icon: Icons.chat_bubble_outline,
+                        label: 'Conversa livre',
+                        isDarkMode: isDarkMode,
+                        isSelected: _currentMode == 'free_chat' &&
+                            _currentFreeChatId == null,
+                        onTap: _startNewFreeChat,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Itens de navegação (apenas tela larga) — acima das conversas.
+              if (isPersistent) ...[
+                _buildSidePanelNavItems(isDarkMode),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: isDarkMode ? Colors.white12 : Colors.black12,
                 ),
               ],
-            ),
 
-            // Botão flutuante "+ Chat" (nova conversa livre)
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(100),
-                color: isDarkMode ? Colors.white : Colors.black,
-                child: InkWell(
-                  onTap: _startNewFreeChat,
-                  borderRadius: BorderRadius.circular(100),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.edit_outlined,
-                          size: 18,
-                          color: isDarkMode ? Colors.black : Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Conversa livre',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: isDarkMode ? Colors.black : Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
+              // Subtítulo Recentes (conversas livres)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Text(
+                  'Recentes',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode ? Colors.white54 : Colors.black54,
                   ),
                 ),
               ),
+
+              // Lista de conversas livres (estilo ChatGPT: título puro)
+              Expanded(
+                child: Consumer<FreeChatProvider>(
+                  builder: (context, freeChatProvider, child) {
+                    final conversations = freeChatProvider.conversations;
+
+                    if (conversations.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
+                        child: Text(
+                          context.tr.translate('no_conversations'),
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white38 : Colors.grey,
+                            fontSize: 13,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: EdgeInsets.only(
+                        bottom: isPersistent ? 8 : 90,
+                      ),
+                      itemCount: conversations.length,
+                      itemBuilder: (context, index) {
+                        final chat = conversations[index];
+                        final isSelected = _currentMode == 'free_chat' &&
+                            _currentFreeChatId == chat.id;
+                        return InkWell(
+                          onTap: () => _openFreeChat(chat.id, chat.title),
+                          onLongPress: () => _showDeleteConfirmation(
+                              chat.id, chat.title, freeChatProvider),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            color: isSelected
+                                ? Theme.of(context)
+                                    .primaryColor
+                                    .withValues(alpha: 0.12)
+                                : null,
+                            child: Text(
+                              chat.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+            ],
+          ),
+
+          // Botão flutuante "+ Chat" — só aparece no Drawer (mobile).
+          if (!isPersistent)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: _buildNewChatFab(isDarkMode),
             ),
-          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewChatFab(bool isDarkMode) {
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(100),
+      color: isDarkMode ? Colors.white : Colors.black,
+      child: InkWell(
+        onTap: _startNewFreeChat,
+        borderRadius: BorderRadius.circular(100),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: isDarkMode ? Colors.black : Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Conversa livre',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isDarkMode ? Colors.black : Colors.white,
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  /// Itens de navegação (Início, Minha Dieta, Social, Perfil) exibidos no
+  /// rodapé do painel lateral quando o layout é de tela larga.
+  Widget _buildSidePanelNavItems(bool isDarkMode) {
+    final items = <_SidePanelNavItem>[
+      _SidePanelNavItem(
+        icon: Icons.chat_bubble_outline,
+        activeIcon: Icons.chat_bubble,
+        label: context.tr.translate('home'),
+      ),
+      _SidePanelNavItem(
+        icon: Icons.restaurant_menu_outlined,
+        activeIcon: Icons.restaurant_menu,
+        label: context.tr.translate('my_diet'),
+      ),
+      _SidePanelNavItem(
+        icon: Icons.people_outline,
+        activeIcon: Icons.people,
+        label: 'Social',
+      ),
+      _SidePanelNavItem(
+        icon: Icons.person_outline,
+        activeIcon: Icons.person,
+        label: context.tr.translate('profile'),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(items.length, (i) {
+          final item = items[i];
+          final selected = _selectedIndex == i;
+          final selectedBg = isDarkMode
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06);
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: InkWell(
+              onTap: () => _onItemTapped(i),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: selected ? selectedBg : null,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      selected ? item.activeIcon : item.icon,
+                      size: 20,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight:
+                              selected ? FontWeight.w600 : FontWeight.w500,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -788,4 +959,16 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
     );
   }
+}
+
+class _SidePanelNavItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _SidePanelNavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
 }

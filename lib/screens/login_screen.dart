@@ -214,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    context.tr.translate('app_subtitle'),
+                                    context.tr.translate('welcome_description'),
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 15,
@@ -224,29 +224,6 @@ class _LoginScreenState extends State<LoginScreen>
                                     ),
                                   ),
                                   const SizedBox(height: 34),
-                                  Text(
-                                    context.tr.translate('welcome'),
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                      color:
-                                          AppTheme.getSoftTextColor(isDarkMode),
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    context.tr.translate('welcome_description'),
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color:
-                                          textSecondary.withValues(alpha: 0.82),
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 28),
                                   if (_isLoading)
                                     SizedBox(
                                       height: 52,

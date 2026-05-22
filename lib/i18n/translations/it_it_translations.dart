@@ -49,7 +49,7 @@ final Map<String, String> itITTranslations = {
   'enjoying_app': 'Ti piace l\'app?',
   'rate_app_description':
       'Se ti sta piacendo, possiamo aprire subito la richiesta di valutazione. Se invece no, vogliamo sapere come migliorare.',
-  'rate_app_yes': 'Sì, valuta',
+  'rate_app_yes': 'Sì',
   'rate_app_no': 'No',
   'rate_app_not_now': 'Non ora',
   'rate_app_send_email': 'Invia e-mail',
@@ -344,6 +344,10 @@ final Map<String, String> itITTranslations = {
   'feature_not_available_web':
       'Questa funzionalità non è disponibile nella versione web.',
   'plan': 'Piano',
+  'profile_account_type': 'Tipo di account',
+  'profile_free_user': 'Utente gratuito',
+  'profile_premium_user': 'Abbonamento attivo',
+  'profile_subscription_free_hint': 'Tocca per vedere i piani Premium',
 
   // Schermata del tutor AI
   'ai_tutor_title': 'Assistente Nutrizionale',
@@ -361,6 +365,7 @@ final Map<String, String> itITTranslations = {
   'secure_google_play':
       'Pagamento sicuro con Google Play. Annulla quando vuoi.',
   'free_plan': 'Gratis',
+  'weekly': 'Settimanale',
   'monthly': 'Mensile',
   'per_month': 'al mese',
   'yearly': 'Annuale',
@@ -687,4 +692,8 @@ final Map<String, String> itITTranslations = {
   'challenge_update_progress': 'Aggiorna progresso',
   'challenge_progress_done_today': 'Progresso già aggiornato oggi',
   'challenge_progress_pending_today': 'Registra qualcosa oggi per aggiornare',
+  'configure_goals': 'Configura obiettivi',
+  'profile_complete_goals_title': 'Completa i tuoi obiettivi',
+  'profile_complete_goals_description':
+      'Configura i tuoi dati per vedere le calorie e i macronutrienti giornalieri.',
 };

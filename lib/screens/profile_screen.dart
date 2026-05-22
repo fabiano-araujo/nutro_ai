@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
 import '../services/storage_service.dart';
+import '../models/user_model.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/credit_provider.dart';
@@ -13,6 +15,7 @@ import '../providers/food_history_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/free_chat_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
@@ -194,16 +197,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        // Profile Header
+        // Profile Header (includes subscription + BMI chips)
         _buildProfileHeader(user, theme, colorScheme, isDarkMode),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
 
-        // Goal Card
-        _buildGoalCard(theme, colorScheme, isDarkMode),
-        const SizedBox(height: 12),
-
-        // Quick Stats
-        _buildQuickStats(theme, colorScheme, isDarkMode),
+        // Goals section — show CTA when not configured, otherwise show goal cards
+        Consumer<NutritionGoalsProvider>(
+          builder: (context, nutritionProvider, child) {
+            if (!nutritionProvider.hasConfiguredGoals) {
+              return _buildCompleteGoalsCard(theme, colorScheme, isDarkMode);
+            }
+            return Column(
+              children: [
+                _buildGoalCard(theme, colorScheme, isDarkMode),
+                const SizedBox(height: 12),
+                _buildMacroGoalsCard(theme, colorScheme, isDarkMode),
+              ],
+            );
+          },
+        ),
         const SizedBox(height: 16),
 
         // Settings Section
@@ -218,7 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(
-      user, ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
+      User user, ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
     return Consumer<NutritionGoalsProvider>(
       builder: (context, nutritionProvider, child) {
         final bmi =
@@ -279,34 +291,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Name
-            Text(
-              user.name,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // BMI Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color:
-                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'IMC ${bmi.toStringAsFixed(1)} · $bmiCategory',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+            // Name + subscription chip side by side
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    user.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                _buildSubscriptionChip(user, theme, colorScheme, isDarkMode),
+              ],
             ),
+
+            // BMI chip (only when goals are configured)
+            if (nutritionProvider.hasConfiguredGoals) ...[
+              const SizedBox(height: 10),
+              _buildBmiChip(bmi, bmiCategory, theme, colorScheme),
+            ],
           ],
         );
       },
+    );
+  }
+
+  Widget _buildSubscriptionChip(
+      User user, ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
+    return Consumer<PurchaseService>(
+      builder: (context, purchaseService, child) {
+        final isPremium =
+            purchaseService.isPremium || user.subscription.isPremium;
+        final accentColor =
+            isPremium ? const Color(0xFF22C55E) : colorScheme.primary;
+        final label = isPremium
+            ? context.tr.translate('premium')
+            : context.tr.translate('free');
+        final icon = isPremium
+            ? Icons.workspace_premium_rounded
+            : Icons.lock_open_rounded;
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => Navigator.of(context).pushNamed('/subscription'),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color:
+                      accentColor.withValues(alpha: isDarkMode ? 0.45 : 0.32),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 14, color: accentColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: accentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBmiChip(
+      double bmi, String bmiCategory, ThemeData theme, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        'IMC ${bmi.toStringAsFixed(1)} · $bmiCategory',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
@@ -337,6 +420,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   value: _getGoalText(nutritionProvider.fitnessGoal, context),
                   theme: theme,
                   colorScheme: colorScheme,
+                  iconColor: const Color(0xFF42A5F5),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -357,11 +441,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Daily Calories
               Expanded(
                 child: _buildGoalItem(
-                  icon: Icons.local_fire_department_rounded,
+                  icon: MacroTheme.caloriesIcon,
                   label: context.tr.translate('profile_daily_target'),
                   value: '${nutritionProvider.caloriesGoal} kcal',
                   theme: theme,
                   colorScheme: colorScheme,
+                  iconColor: MacroTheme.caloriesColor,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -385,7 +470,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required ThemeData theme,
     required ColorScheme colorScheme,
     required VoidCallback onTap,
+    Color? iconColor,
   }) {
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final adaptiveTextColor =
+        isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -396,13 +485,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(
               icon,
               size: 24,
-              color: colorScheme.primary,
+              color: iconColor ?? colorScheme.primary,
             ),
             const SizedBox(height: 8),
             Text(
               label,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+                color: adaptiveTextColor,
               ),
             ),
             const SizedBox(height: 4),
@@ -410,7 +499,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               value,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
+                color: adaptiveTextColor,
               ),
               textAlign: TextAlign.center,
             ),
@@ -420,69 +509,197 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildQuickStats(
+  Widget _buildMacroGoalsCard(
       ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
-    return Consumer<DailyMealsProvider>(
-      builder: (context, mealsProvider, child) {
-        final avgCalories = mealsProvider.getAverageCalories(7);
-
-        return _buildStatCard(
-          icon: Icons.show_chart_rounded,
-          value: avgCalories > 0 ? '${avgCalories.toStringAsFixed(0)}' : '-',
-          label: context.tr.translate('profile_avg_cal'),
-          theme: theme,
-          colorScheme: colorScheme,
-          cardColor: cardColor,
-          isDarkMode: isDarkMode,
+    return Consumer<NutritionGoalsProvider>(
+      builder: (context, nutritionProvider, child) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildGoalItem(
+                  icon: MacroTheme.proteinIcon,
+                  label: context.tr.translate('protein'),
+                  value: '${nutritionProvider.proteinGoal} g',
+                  theme: theme,
+                  colorScheme: colorScheme,
+                  iconColor: MacroTheme.proteinColor,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NutritionGoalsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 50,
+                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+              Expanded(
+                child: _buildGoalItem(
+                  icon: MacroTheme.carbsIcon,
+                  label: context.tr.translate('carbs'),
+                  value: '${nutritionProvider.carbsGoal} g',
+                  theme: theme,
+                  colorScheme: colorScheme,
+                  iconColor: MacroTheme.carbsColor,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NutritionGoalsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 50,
+                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+              Expanded(
+                child: _buildGoalItem(
+                  icon: MacroTheme.fatIcon,
+                  label: context.tr.translate('fats'),
+                  value: '${nutritionProvider.fatGoal} g',
+                  theme: theme,
+                  colorScheme: colorScheme,
+                  iconColor: MacroTheme.fatColor,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NutritionGoalsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String value,
-    required String label,
-    required ThemeData theme,
-    required ColorScheme colorScheme,
-    required Color cardColor,
-    required bool isDarkMode,
-  }) {
+  Widget _buildCompleteGoalsCard(
+      ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.05),
+          color: colorScheme.primary.withValues(alpha: 0.35),
+          width: 1.2,
         ),
       ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            size: 28,
-            color: colorScheme.primary,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NutritionGoalsWizardScreen(
+                  startStep: 0,
+                  fromProfile: true,
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.flag_rounded,
+                        size: 22,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        context.tr.translate('profile_complete_goals_title'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 22,
+                      color:
+                          colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  context.tr.translate('profile_complete_goals_description'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.tune_rounded,
+                        size: 16,
+                        color: colorScheme.onPrimary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.tr.translate('configure_goals'),
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -569,7 +786,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required ThemeData theme,
     required ColorScheme colorScheme,
     required VoidCallback onTap,
+    Color? iconColor,
   }) {
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final adaptiveColor =
+        isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+    final effectiveIconColor = iconColor ?? adaptiveColor;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -583,13 +805,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  color: effectiveIconColor.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
                   size: 18,
-                  color: colorScheme.primary,
+                  color: effectiveIconColor,
                 ),
               ),
               const SizedBox(width: 14),
@@ -597,6 +819,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   title,
                   style: theme.textTheme.bodyLarge?.copyWith(
+                    color: adaptiveColor,
                     fontWeight: FontWeight.w500,
                     fontSize: 15,
                   ),

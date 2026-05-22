@@ -230,56 +230,62 @@ class _RateAppBottomSheetState extends State<RateAppBottomSheet>
           ),
         ),
         const SizedBox(height: 28),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isHandlingPrimaryAction ? null : _handlePositiveAction,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              elevation: 1,
-              shadowColor: primaryColor.withValues(alpha: 0.5),
-            ),
-            child: Text(
-              context.tr.translate('rate_app_yes'),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () {
-              setState(() {
-                _currentStep = _RateAppStep.feedback;
-              });
-            },
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(
-                color: isDarkMode ? Colors.white24 : Colors.black12,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed:
+                    _isHandlingPrimaryAction ? null : _handlePositiveAction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 1,
+                  shadowColor: primaryColor.withValues(alpha: 0.5),
+                ),
+                child: Text(
+                  context.tr.translate('rate_app_yes'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeData.estimateBrightnessForColor(primaryColor) ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
               ),
             ),
-            child: Text(
-              context.tr.translate('rate_app_no'),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDarkMode ? Colors.white : Colors.black87,
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    _currentStep = _RateAppStep.feedback;
+                  });
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: isDarkMode ? Colors.white24 : Colors.black12,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: Text(
+                  context.tr.translate('rate_app_no'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 8),
         TextButton(

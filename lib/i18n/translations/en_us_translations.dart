@@ -101,7 +101,7 @@ final Map<String, String> enUSTranslations = {
   'enjoying_app': 'Are you enjoying the app?',
   'rate_app_description':
       'If you are enjoying it, we can open the rating flow right now. If not, we want to know how to improve.',
-  'rate_app_yes': 'Yes, rate it',
+  'rate_app_yes': 'Yes',
   'rate_app_no': 'No',
   'rate_app_not_now': 'Not now',
   'rate_app_send_email': 'Send email',
@@ -629,6 +629,10 @@ final Map<String, String> enUSTranslations = {
   'feature_not_available_web':
       'This feature is not available in the web version.',
   'plan': 'Plan',
+  'profile_account_type': 'Account type',
+  'profile_free_user': 'Free user',
+  'profile_premium_user': 'Active subscription',
+  'profile_subscription_free_hint': 'Tap to view Premium plans',
 
   // Subscription Screen
   'premium_plans': 'Premium Plans',
@@ -639,6 +643,7 @@ final Map<String, String> enUSTranslations = {
   'hide_other_plans': 'Show fewer plans',
   'secure_google_play': 'Secure with Google Play. Cancel anytime.',
   'free_plan': 'Free',
+  'weekly': 'Weekly',
   'monthly': 'Monthly',
   'per_month': 'per month',
   'yearly': 'Yearly',
@@ -978,6 +983,9 @@ final Map<String, String> enUSTranslations = {
   'profile_on_target': 'On target',
   'profile_over_goal': 'Over',
   'profile_goal_adherence': 'Goal Adherence',
+  'profile_complete_goals_title': 'Complete your goals',
+  'profile_complete_goals_description':
+      'Set up your information to see your daily calories and macronutrients.',
   'profile_last_30_days': 'Last 30 days',
   'profile_adherence': 'adherence',
   'profile_days_suffix': 'days',
@@ -1141,6 +1149,8 @@ final Map<String, String> enUSTranslations = {
   'generating_meals': 'Preparing meals...',
   'create_weekly_diet': 'Create Weekly Diet',
   'generate_diet_ai': 'Create my Menu',
+  'diet_generated_success': 'Diet generated successfully!',
+  'diet_generation_error': 'Error generating diet. Please try again.',
   'daily_diet_premium_required': 'Daily diet available only for subscribers',
   'daily_diet_premium_title': 'Premium Feature',
   'daily_diet_premium_description':

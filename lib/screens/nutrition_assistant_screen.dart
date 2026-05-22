@@ -47,6 +47,7 @@ import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import '../utils/food_json_parser.dart';
+import '../models/meal_model.dart';
 import '../widgets/recent_foods_sheet.dart';
 import '../widgets/macro_edit_bottom_sheet.dart';
 import '../widgets/header_streak_badge.dart';
@@ -1030,7 +1031,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     style: TextStyle(
                         color: Theme.of(context).textTheme.bodyLarge?.color)),
                 onTap: () {
-                  Clipboard.setData(ClipboardData(text: message));
+                  final readable = isUser ? message : _getReadableMessage(message);
+                  Clipboard.setData(ClipboardData(text: readable));
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -1050,7 +1052,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                   Navigator.pop(context);
                   // Implementar seleção de texto: copiar para a área de transferência
                   // e mostrar diálogo para facilitar a seleção
-                  _showSelectableTextDialog(message);
+                  _showSelectableTextDialog(
+                      isUser ? message : _getReadableMessage(message));
                 },
               ),
               // Opção de editar - apenas para mensagens do usuário
@@ -1099,15 +1102,20 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                         }
                       }
 
+                      final readable = _getReadableMessage(message);
+
                       if (messageIndex >= 0) {
                         _chatController.handleVoiceButtonPressed(
-                            messageIndex, context);
+                          messageIndex,
+                          context,
+                          overrideText: readable,
+                        );
                       } else {
                         // Se não encontrar a mensagem específica, lê o texto atual
                         if (isSpeaking) {
                           stopSpeech();
                         } else {
-                          speak(message).catchError((error) {
+                          speak(readable).catchError((error) {
                             print('Erro ao iniciar leitura: $error');
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -2124,47 +2132,58 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                         ),
                                       ),
 
-                                      // Botão de microfone ou enviar
+                                      // Botão de microfone (sempre visível)
                                       IconButton(
                                         icon: Icon(
-                                          isLoading
-                                              ? Icons.stop_circle
-                                              : isTranscribingAudio
-                                                  ? Icons.hourglass_top
-                                                  : _messageController.text
-                                                              .trim()
-                                                              .isEmpty &&
-                                                          !hasSelectedImage
-                                                      ? Icons.mic
-                                                      : Icons.send,
-                                          color: isLoading
-                                              ? isDarkMode
-                                                  ? Colors.white
-                                                  : Colors.red
-                                              : isTranscribingAudio
-                                                  ? Colors.orange
-                                                  : isDarkMode
-                                                      ? Colors.grey[400]
-                                                      : AppTheme
-                                                          .textSecondaryColor,
+                                          isTranscribingAudio
+                                              ? Icons.hourglass_top
+                                              : Icons.mic,
+                                          color: isTranscribingAudio
+                                              ? Colors.orange
+                                              : isDarkMode
+                                                  ? Colors.grey[400]
+                                                  : AppTheme
+                                                      .textSecondaryColor,
                                         ),
                                         onPressed: () async {
-                                          if (isLoading) {
-                                            // Se estiver carregando, interromper a geração
-                                            _chatController.stopGeneration();
-                                          } else if (isTranscribingAudio) {
+                                          if (isTranscribingAudio) {
                                             return;
-                                          } else if (_messageController.text
-                                                  .trim()
-                                                  .isEmpty &&
-                                              !hasSelectedImage) {
-                                            startListening();
-                                          } else {
-                                            _handleSendMessage();
                                           }
+                                          startListening();
                                         },
                                         splashRadius: 20,
+                                        tooltip: 'Microfone',
                                       ),
+
+                                      // Botão de enviar/parar (aparece quando há texto, imagem ou está gerando)
+                                      if (isLoading ||
+                                          _messageController.text
+                                              .trim()
+                                              .isNotEmpty ||
+                                          hasSelectedImage)
+                                        IconButton(
+                                          icon: Icon(
+                                            isLoading
+                                                ? Icons.stop_circle
+                                                : Icons.send,
+                                            color: isLoading
+                                                ? isDarkMode
+                                                    ? Colors.white
+                                                    : Colors.red
+                                                : isDarkMode
+                                                    ? Colors.grey[400]
+                                                    : AppTheme
+                                                        .textSecondaryColor,
+                                          ),
+                                          onPressed: () async {
+                                            if (isLoading) {
+                                              _chatController.stopGeneration();
+                                            } else {
+                                              _handleSendMessage();
+                                            }
+                                          },
+                                          splashRadius: 20,
+                                        ),
                                     ],
                                   ),
                           ),
@@ -2540,6 +2559,30 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
   }
 
+  /// Converte uma mensagem da IA em texto amigavel para copiar/ler em voz alta.
+  /// Quando a mensagem contem o JSON de um card de alimentos, o JSON e
+  /// substituido por um resumo (kcal + alimentos + tipo de refeicao).
+  String _getReadableMessage(String rawMessage) {
+    return FoodJsonParser.toReadableMessage(
+      rawMessage,
+      mealTypeNameResolver: (type) {
+        final l = AppLocalizations.of(context);
+        switch (type) {
+          case MealType.breakfast:
+            return l.translate('breakfast');
+          case MealType.lunch:
+            return l.translate('lunch');
+          case MealType.dinner:
+            return l.translate('dinner');
+          case MealType.snack:
+            return l.translate('snack');
+          case MealType.freeMeal:
+            return l.translate('free_meal');
+        }
+      },
+    );
+  }
+
   // Método para criar um botão de ação com cor baseada no tema
   Widget _buildActionIcon(IconData icon, VoidCallback onPressed) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -2574,7 +2617,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 } else if (messages[lastAIIndex].containsKey('notifier')) {
                   message = messages[lastAIIndex]['notifier'].message;
                 }
-                Clipboard.setData(ClipboardData(text: message));
+                final readable = _getReadableMessage(message);
+                Clipboard.setData(ClipboardData(text: readable));
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -2593,9 +2637,21 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                         currentlySpeakingMessageIndex == messages.length - 1
                     ? Icons.stop
                     : Icons.volume_up_outlined, () {
-              // Ler ou parar a leitura da mensagem da IA
+              // Ler ou parar a leitura da mensagem da IA.
+              // Se a mensagem contem JSON de card de alimentos, lemos
+              // apenas o conteudo do card (kcal + alimentos + tipo).
+              final lastIndex = messages.length - 1;
+              String rawText = '';
+              if (messages[lastIndex].containsKey('message')) {
+                rawText = messages[lastIndex]['message'] ?? '';
+              } else if (messages[lastIndex].containsKey('notifier')) {
+                rawText = messages[lastIndex]['notifier'].message ?? '';
+              }
               _chatController.handleVoiceButtonPressed(
-                  messages.length - 1, context);
+                lastIndex,
+                context,
+                overrideText: _getReadableMessage(rawText),
+              );
             }),
           ),
           SizedBox(width: 16),
@@ -3002,12 +3058,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(
           children: [
-            IconButton(
-              icon: Icon(widget.isFreeChat ? Icons.arrow_back : Icons.menu,
-                  color: isDarkMode ? Colors.white : Colors.black87),
-              onPressed: widget.onOpenDrawer,
-              tooltip: widget.isFreeChat ? 'Voltar' : 'Menu',
-            ),
+            if (widget.onOpenDrawer != null)
+              IconButton(
+                icon: Icon(widget.isFreeChat ? Icons.arrow_back : Icons.menu,
+                    color: isDarkMode ? Colors.white : Colors.black87),
+                onPressed: widget.onOpenDrawer,
+                tooltip: widget.isFreeChat ? 'Voltar' : 'Menu',
+              )
+            else
+              const SizedBox(width: 12),
             Expanded(
               child: Center(
                 child: widget.isFreeChat

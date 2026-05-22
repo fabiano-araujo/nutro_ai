@@ -104,7 +104,7 @@ final Map<String, String> ptBRTranslations = {
   'enjoying_app': 'Você está gostando do app?',
   'rate_app_description':
       'Se estiver gostando, podemos abrir a avaliação agora mesmo. Se ainda não, queremos saber como melhorar.',
-  'rate_app_yes': 'Sim, avaliar',
+  'rate_app_yes': 'Sim',
   'rate_app_no': 'Não',
   'rate_app_not_now': 'Agora não',
   'rate_app_send_email': 'Enviar e-mail',
@@ -806,6 +806,10 @@ final Map<String, String> ptBRTranslations = {
   'feature_not_available_web':
       'Esta funcionalidade não está disponível na versão web.',
   'plan': 'Plano',
+  'profile_account_type': 'Tipo de usuário',
+  'profile_free_user': 'Usuário gratuito',
+  'profile_premium_user': 'Assinatura ativa',
+  'profile_subscription_free_hint': 'Toque para ver os planos Premium',
 
   // Tela AI Tutor
   'ai_tutor_title': 'Assistente de Nutrição',
@@ -820,6 +824,7 @@ final Map<String, String> ptBRTranslations = {
   'hide_other_plans': 'Mostrar menos planos',
   'secure_google_play': 'Seguro com Google Play. Cancele quando quiser.',
   'free_plan': 'Grátis',
+  'weekly': 'Semanal',
   'monthly': 'Mensal',
   'per_month': 'por mês',
   'yearly': 'Anual',
@@ -1170,6 +1175,9 @@ final Map<String, String> ptBRTranslations = {
   'profile_on_target': 'Na meta',
   'profile_over_goal': 'Acima',
   'profile_goal_adherence': 'Aderência à Meta',
+  'profile_complete_goals_title': 'Complete suas metas',
+  'profile_complete_goals_description':
+      'Configure suas informações para ver suas calorias e macronutrientes diários.',
   'profile_last_30_days': 'Últimos 30 dias',
   'profile_adherence': 'aderência',
   'profile_days_suffix': 'dias',
@@ -1344,6 +1352,8 @@ final Map<String, String> ptBRTranslations = {
   'generating_meals': 'Preparando refeições...',
   'create_weekly_diet': 'Criar Dieta Semanal',
   'generate_diet_ai': 'Criar meu Cardápio',
+  'diet_generated_success': 'Dieta gerada com sucesso!',
+  'diet_generation_error': 'Erro ao gerar a dieta. Tente novamente.',
   'daily_diet_premium_required':
       'Dieta diária disponível apenas para assinantes',
   'daily_diet_premium_title': 'Recurso Premium',

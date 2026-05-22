@@ -102,7 +102,7 @@ final Map<String, String> deDETranslations = {
   'enjoying_app': 'Gefällt dir die App?',
   'rate_app_description':
       'Wenn sie dir gefällt, können wir die Bewertung jetzt direkt öffnen. Wenn nicht, möchten wir wissen, wie wir besser werden können.',
-  'rate_app_yes': 'Ja, bewerten',
+  'rate_app_yes': 'Ja',
   'rate_app_no': 'Nein',
   'rate_app_not_now': 'Jetzt nicht',
   'rate_app_send_email': 'E-Mail senden',
@@ -398,6 +398,10 @@ final Map<String, String> deDETranslations = {
   'feature_not_available_web':
       'Diese Funktion ist in der Webversion nicht verfügbar.',
   'plan': 'Plan',
+  'profile_account_type': 'Kontotyp',
+  'profile_free_user': 'Kostenloser Nutzer',
+  'profile_premium_user': 'Aktives Abonnement',
+  'profile_subscription_free_hint': 'Tippe, um Premium-Pläne zu sehen',
 
   // KI-Tutor-Bildschirm
   'ai_tutor_title': 'Ernährungsassistent',
@@ -413,6 +417,7 @@ final Map<String, String> deDETranslations = {
   'hide_other_plans': 'Weniger Pläne anzeigen',
   'secure_google_play': 'Sicher mit Google Play. Jederzeit kündbar.',
   'free_plan': 'Gratis',
+  'weekly': 'Wöchentlich',
   'monthly': 'Monatlich',
   'per_month': 'pro Monat',
   'yearly': 'Jährlich',
@@ -689,4 +694,8 @@ final Map<String, String> deDETranslations = {
   'challenge_update_progress': 'Fortschritt aktualisieren',
   'challenge_progress_done_today': 'Heute bereits aktualisiert',
   'challenge_progress_pending_today': 'Heute etwas protokollieren',
+  'configure_goals': 'Ziele einrichten',
+  'profile_complete_goals_title': 'Vervollständige deine Ziele',
+  'profile_complete_goals_description':
+      'Richte deine Daten ein, um deine täglichen Kalorien und Makronährstoffe zu sehen.',
 };
