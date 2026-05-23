@@ -262,10 +262,15 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           dietaryFiber: (macros['fiber'] as num?)?.toDouble(),
         );
 
+        // Preserva os macros originais da IA para permitir voltar via
+        // "Estimativa da IA" no source picker (ver meal_card.dart).
+        final aiSnapshot = original.aiNutrients ?? original.nutrients;
+
         return original.copyWith(
           nutrients: [updatedNutrient],
           source: source,
           sourceId: sourceId,
+          aiNutrients: aiSnapshot,
         );
       });
 

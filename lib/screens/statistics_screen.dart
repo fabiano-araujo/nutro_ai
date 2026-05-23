@@ -7,6 +7,7 @@ import '../providers/daily_meals_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/streak_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/streak_helper.dart';
 import '../i18n/app_localizations_extension.dart';
 
 class StatisticsScreen extends StatefulWidget {
@@ -133,7 +134,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
     // Calculate stats
     final daysWithData = history.where((d) => d['hasData'] == true).length;
-    final streak = context.watch<StreakProvider>().registrationStreak;
+    final streak = effectiveRegistrationStreak(
+      context.watch<StreakProvider>(),
+      mealsProvider,
+    );
 
     // Calculate adherence percentage
     int onTarget = 0;

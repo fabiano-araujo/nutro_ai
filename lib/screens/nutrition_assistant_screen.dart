@@ -713,7 +713,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
       // Fallback: usar estimativa se não conseguir pegar a posição real
       final adjustedIndex =
-          _toolData != null ? lastAiMessageIndex + 1 : lastAiMessageIndex;
+          _shouldShowToolCard ? lastAiMessageIndex + 1 : lastAiMessageIndex;
       final estimatedItemHeight = 80.0;
       final targetPosition = (adjustedIndex * estimatedItemHeight) * 0.7;
       final maxScroll = _scrollController.position.maxScrollExtent;
@@ -1386,20 +1386,20 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                               padding: EdgeInsets.all(16),
                               // Adicionar +1 para o card de ferramentas quando existir
                               itemCount: messages.length +
-                                  (_toolData != null ? 1 : 0) +
+                                  (_shouldShowToolCard ? 1 : 0) +
                                   (messages.isNotEmpty &&
                                           !messages.last['isUser']
                                       ? 1
                                       : 0),
                               itemBuilder: (context, index) {
                                 // Mostrar o card de ferramentas como primeiro item
-                                if (_toolData != null && index == 0) {
+                                if (_shouldShowToolCard && index == 0) {
                                   return _buildToolCard(isDarkMode);
                                 }
 
                                 // Ajustar índice para compensar o card de ferramentas
                                 final adjustedIndex =
-                                    _toolData != null ? index - 1 : index;
+                                    _shouldShowToolCard ? index - 1 : index;
 
                                 if (adjustedIndex < messages.length) {
                                   // Verificar se é a última mensagem da IA
@@ -2043,8 +2043,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                                     .textPrimaryColor)),
                                                     onTap: () {
                                                       Navigator.pop(context);
-                                                      _handleImageSelection(
-                                                          ImageSource.camera);
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              CameraScanScreen(),
+                                                        ),
+                                                      );
                                                     },
                                                   ),
                                                   ListTile(
@@ -2514,7 +2519,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       // Se não for notificador, usamos a forma tradicional
       // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
       final bool showMessageBubble =
-          displayMessage.trim().isNotEmpty || isStreaming;
+          displayMessage.trim().isNotEmpty || isStreaming || imageBytes != null;
       final bool showsMealCard = hasFoodJson && !isStreaming;
       final contextualActions = _buildContextualMessageActions(
         rawMessage: message,
@@ -2696,6 +2701,42 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         _isInterstitialAdReady = false;
       },
     );
+  }
+
+  bool get _shouldShowToolCard {
+    if (_toolData == null) return false;
+    return _toolData?['sourceType'] != 'camera';
+  }
+
+  // Recebe uma imagem capturada pela câmera e injeta no chat atual.
+  // Usado quando o usuário tira foto a partir deste chat — em vez de
+  // criar um novo NutritionAssistantScreen, a foto entra como mensagem
+  // do usuário aqui e dispara a resposta da IA.
+  void submitCapturedImage(Uint8List imageBytes, String scanMode) {
+    if (!mounted) return;
+
+    String toolTitle;
+    switch (scanMode) {
+      case 'ai_macros':
+        toolTitle = 'Macros com IA';
+        break;
+      case 'barcode':
+        toolTitle = 'Código de Barras';
+        break;
+      default:
+        toolTitle = 'Digitalização';
+    }
+
+    final String prompt =
+        'Analise esta imagem capturada com a câmera no modo "$toolTitle" e forneça uma resposta detalhada.';
+
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (!mounted) return;
+      _chatController.processSilently(prompt, context, imageBytes: imageBytes);
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted) _scrollToLastAiResponse(animate: true);
+      });
+    });
   }
 
   // Método público que pode ser chamado de fora para simular o comportamento do deactivate
@@ -3052,106 +3093,113 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       label =
           '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}';
     }
+    final titleWidget = widget.isFreeChat
+        ? Builder(builder: (ctx) {
+            final provider = Provider.of<FreeChatProvider>(ctx);
+            String? title;
+            if (_currentFreeChatId != null) {
+              title = provider.getConversation(_currentFreeChatId!)?.title;
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Conversa livre',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                if (title != null &&
+                    title.isNotEmpty &&
+                    title != 'Nova conversa')
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color:
+                          isDarkMode ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+              ],
+            );
+          })
+        : InkWell(
+            onTap: onDateTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  if (onDateTap != null) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 20,
+                      color:
+                          isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+
     return SizedBox(
       height: 52,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            if (widget.onOpenDrawer != null)
-              IconButton(
-                icon: Icon(widget.isFreeChat ? Icons.arrow_back : Icons.menu,
-                    color: isDarkMode ? Colors.white : Colors.black87),
-                onPressed: widget.onOpenDrawer,
-                tooltip: widget.isFreeChat ? 'Voltar' : 'Menu',
-              )
-            else
-              const SizedBox(width: 12),
-            Expanded(
-              child: Center(
-                child: widget.isFreeChat
-                    ? Builder(builder: (ctx) {
-                        final provider = Provider.of<FreeChatProvider>(ctx);
-                        String? title;
-                        if (_currentFreeChatId != null) {
-                          title = provider
-                              .getConversation(_currentFreeChatId!)
-                              ?.title;
-                        }
-                        return Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Conversa livre',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color:
-                                    isDarkMode ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            if (title != null &&
-                                title.isNotEmpty &&
-                                title != 'Nova conversa')
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDarkMode
-                                      ? Colors.white60
-                                      : Colors.black54,
-                                ),
-                              ),
-                          ],
-                        );
-                      })
-                    : InkWell(
-                        onTap: onDateTap,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                label,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87,
-                                ),
-                              ),
-                              if (onDateTap != null) ...[
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.keyboard_arrow_down,
-                                  size: 20,
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (widget.onOpenDrawer != null)
+                  IconButton(
+                    icon: Icon(
+                        widget.isFreeChat ? Icons.arrow_back : Icons.menu,
+                        color: isDarkMode ? Colors.white : Colors.black87),
+                    onPressed: widget.onOpenDrawer,
+                    tooltip: widget.isFreeChat ? 'Voltar' : 'Menu',
+                  )
+                else
+                  const SizedBox(width: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const HeaderStreakBadge(
+                        margin: EdgeInsets.only(right: 4)),
+                    if (onSearchTap != null)
+                      IconButton(
+                        icon: Icon(Icons.search,
+                            color: isDarkMode
+                                ? Colors.white
+                                : Colors.black87),
+                        onPressed: onSearchTap,
+                        tooltip: 'Pesquisar alimentos',
+                      )
+                    else
+                      const SizedBox(width: 8),
+                  ],
+                ),
+              ],
             ),
-            const HeaderStreakBadge(margin: EdgeInsets.only(right: 4)),
-            if (onSearchTap != null)
-              IconButton(
-                icon: Icon(Icons.search,
-                    color: isDarkMode ? Colors.white : Colors.black87),
-                onPressed: onSearchTap,
-                tooltip: 'Pesquisar alimentos',
-              )
-            else
-              const SizedBox(width: 8),
+            titleWidget,
           ],
         ),
       ),

@@ -443,9 +443,9 @@ class _SocialFriendsHeaderActions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: const [
-        _FriendsHeaderIconButton(),
-        SizedBox(width: 6),
         HeaderStreakBadge(),
+        SizedBox(width: 6),
+        _FriendsHeaderIconButton(),
       ],
     );
   }
@@ -469,7 +469,7 @@ class _SocialHero extends StatelessWidget {
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 18),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
       child: Column(
         children: [
           Container(
@@ -524,7 +524,7 @@ class _SocialModeTabs extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 10, 24, 14),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -627,7 +627,7 @@ class _SocialTabContent extends StatelessWidget {
           children: [
             if (feedProvider.error != null && feedProvider.activities.isEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: _InfoCard(
                   icon: Icons.cloud_off_rounded,
                   message: 'Não foi possível carregar. Puxe para atualizar.',
@@ -635,12 +635,12 @@ class _SocialTabContent extends StatelessWidget {
               )
             else if (feedProvider.isEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: _EmptyFriendsCard(),
               )
             else ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Column(
                   children: [
                     ...feedProvider.activities.map((activity) {
@@ -1624,7 +1624,7 @@ class _ChallengesContentState extends State<_ChallengesContent> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 2, 24, 14),
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
               child: _ChallengeToolbar(
                 showPublic: widget.showPublic,
                 onChanged: widget.onShowPublicChanged,
@@ -1710,7 +1710,7 @@ class _MyChallengesList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (provider.myChallenges.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           children: [
             _EmptyChallengesCard(
@@ -1722,7 +1722,7 @@ class _MyChallengesList extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       child: Column(
         children: provider.myChallenges.map((challenge) {
           return _ChallengeCard(
@@ -1750,7 +1750,7 @@ class _PublicChallengesList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (provider.publicChallenges.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: _InfoCard(
           icon: Icons.emoji_events_rounded,
           message: 'Nenhum desafio público disponível no momento.',
@@ -1759,7 +1759,7 @@ class _PublicChallengesList extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       child: Column(
         children: provider.publicChallenges.map((challenge) {
           return _ChallengeCard(

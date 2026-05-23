@@ -201,8 +201,7 @@ class _NutritionGoalsWizardScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
 
@@ -500,7 +499,7 @@ class _NutritionGoalsWizardScreenState
           ),
           child: Icon(
             icon,
-            color: textColor.withValues(alpha: 0.82),
+            color: textColor,
             size: 22,
           ),
         ),
@@ -511,7 +510,7 @@ class _NutritionGoalsWizardScreenState
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppTheme.getSoftTextColor(isDarkMode),
+            color: textColor,
             height: 1.3,
           ),
         ),

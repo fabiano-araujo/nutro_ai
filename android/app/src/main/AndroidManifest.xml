@@ -10,6 +10,10 @@
     <uses-permission android:name="com.android.vending.BILLING" />
     <!-- Permissão para notificações push (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Permissão para salvar imagens na galeria (Android 9 e abaixo) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     
     <application
         android:label="Nutro AI"

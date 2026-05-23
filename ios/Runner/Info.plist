@@ -26,6 +26,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>O Nutro AI usa o microfone para gravar seu áudio e transcrever suas mensagens no chat.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>O Nutro AI precisa de acesso para salvar imagens na sua galeria.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

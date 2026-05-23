@@ -28,15 +28,14 @@ class CameraTipsScreen extends StatelessWidget {
 
             // Conteúdo principal
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: 32),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Ilustração
                     Container(
-                      width: 280,
-                      height: 280,
+                      width: 240,
+                      height: 240,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Color(0xFFFFF8E1),
@@ -46,34 +45,34 @@ class CameraTipsScreen extends StatelessWidget {
                         children: [
                           // Frame de captura roxo
                           CustomPaint(
-                            size: Size(200, 200),
+                            size: Size(180, 180),
                             painter: _FramePainter(),
                           ),
                           // Emoji de comida (prato de salada)
                           Center(
                             child: Text(
                               '🥗',
-                              style: TextStyle(fontSize: 100),
+                              style: TextStyle(fontSize: 90),
                             ),
                           ),
                         ],
                       ),
                     ),
 
-                    SizedBox(height: 40),
+                    SizedBox(height: 32),
 
                     // Título
                     Text(
                       'Algumas dicas rápidas',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
                       textAlign: TextAlign.center,
                     ),
 
-                    SizedBox(height: 32),
+                    SizedBox(height: 24),
 
                     // Lista de dicas
                     _buildTipCard(
@@ -82,22 +81,20 @@ class CameraTipsScreen extends StatelessWidget {
                       iconColor: AppTheme.primaryColor,
                       isDarkMode: isDarkMode,
                     ),
-                    SizedBox(height: 16),
+                    SizedBox(height: 12),
                     _buildTipCard(
                       icon: Icons.remove_red_eye_outlined,
                       text: 'Mostre cada item nitidamente',
                       iconColor: Color(0xFF7C4DFF),
                       isDarkMode: isDarkMode,
                     ),
-                    SizedBox(height: 16),
+                    SizedBox(height: 12),
                     _buildTipCard(
                       icon: Icons.lightbulb_outline,
                       text: 'Garanta uma boa iluminação',
                       iconColor: Color(0xFFFFA726),
                       isDarkMode: isDarkMode,
                     ),
-
-                    Spacer(),
                   ],
                 ),
               ),

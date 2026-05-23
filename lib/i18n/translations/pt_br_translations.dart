@@ -221,14 +221,14 @@ final Map<String, String> ptBRTranslations = {
   'chat_goals_setup_banner_button': 'Configurar',
   'chat_action_continue_goals_chat': 'Continuar no chat',
   'chat_action_edit_macros_ui': 'Editar macros na interface',
-  'chat_action_continue_macros_chat': 'Ajustar macros no chat',
+  'chat_action_continue_macros_chat': 'Ajustar metas com IA',
   'chat_setup_reminder_prefix': 'Vamos terminar de configurar suas informações',
   'chat_setup_reminder_with_fields':
       'Vamos terminar de configurar suas informações. Ainda faltam: {fields}.',
   'chat_goal_setup_chat_prompt':
       'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faca uma pergunta por vez e comece pela idade, altura, peso e genero.',
   'chat_macro_edit_chat_prompt':
-      'Quero ajustar meus macronutrientes por aqui. Veja meus macros atuais e me conduza pelo melhor formato entre porcentagem, g/kg ou gramas.',
+      'Quero ajustar meus macronutrientes e objetivos nutricionais por aqui. Use meus dados atuais do app, verifique minhas metas atuais e me conduza com uma pergunta por vez. Se eu disser que quero perder peso, ganhar massa, gerar uma dieta ou bater alvos como 120 g de proteína, calcule e aplique os macros pelo app quando tiver informação suficiente.',
   'diet_generation_preferences_title': 'Antes de montar sua dieta',
   'diet_generation_preferences_description':
       'Me conte as particularidades que devo considerar para escolher melhor os alimentos. Se algum campo nao se aplicar, deixe em branco e eu vou entender como nenhum.',

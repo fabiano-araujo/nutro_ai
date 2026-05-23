@@ -48,6 +48,10 @@ class Food {
   final FoodSource source;
   final int? sourceId;
 
+  // Snapshot dos macros originais da IA, preservado quando o usuario troca
+  // a fonte (favorito/recente/manual) para permitir voltar ao valor da IA.
+  final List<Nutrient>? aiNutrients;
+
   // Relationships
   final List<Nutrient>? nutrients;
   final List<FoodRegion>? foodRegions;
@@ -65,6 +69,7 @@ class Food {
     this.emoji = '🍽️',
     this.source = FoodSource.ai,
     this.sourceId,
+    this.aiNutrients,
     this.nutrients,
     this.foodRegions,
     this.foodAllergens,
@@ -114,6 +119,11 @@ class Food {
       emoji: json['emoji'] ?? '🍽️',
       source: foodSourceFromString(json['source'] as String?),
       sourceId: json['sourceId'] as int?,
+      aiNutrients: (json['ai_nutrient'] ?? json['aiNutrient']) is List
+          ? ((json['ai_nutrient'] ?? json['aiNutrient']) as List<dynamic>)
+              .map((n) => Nutrient.fromJson(n))
+              .toList()
+          : null,
       nutrients: (json['nutrient'] as List<dynamic>?)
           ?.map((n) => Nutrient.fromJson(n))
           .toList(),
@@ -139,6 +149,8 @@ class Food {
       'emoji': emoji,
       'source': foodSourceToString(source),
       if (sourceId != null) 'sourceId': sourceId,
+      if (aiNutrients != null)
+        'ai_nutrient': aiNutrients!.map((n) => n.toJson()).toList(),
       if (nutrients != null)
         'nutrient': nutrients!.map((n) => n.toJson()).toList(),
       if (foodRegions != null)
@@ -160,6 +172,7 @@ class Food {
     String? emoji,
     FoodSource? source,
     int? sourceId,
+    List<Nutrient>? aiNutrients,
     List<Nutrient>? nutrients,
     List<FoodRegion>? foodRegions,
     List<FoodAllergen>? foodAllergens,
@@ -176,6 +189,7 @@ class Food {
       emoji: emoji ?? this.emoji,
       source: source ?? this.source,
       sourceId: sourceId ?? this.sourceId,
+      aiNutrients: aiNutrients ?? this.aiNutrients,
       nutrients: nutrients ?? this.nutrients,
       foodRegions: foodRegions ?? this.foodRegions,
       foodAllergens: foodAllergens ?? this.foodAllergens,

@@ -711,20 +711,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
       ),
       child: Column(
         children: [
           const SizedBox(height: 6),
           _buildSettingsItem(
-            icon: Icons.bar_chart_rounded,
-            title: context.tr.translate('statistics'),
+            icon: Icons.restaurant_menu_rounded,
+            title: context.tr.translate('nutrition_goals'),
             theme: theme,
             colorScheme: colorScheme,
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const StatisticsScreen(),
+                  builder: (context) => const NutritionGoalsScreen(),
                 ),
               );
             },
@@ -748,14 +753,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           _buildDivider(colorScheme),
           _buildSettingsItem(
-            icon: Icons.restaurant_menu_rounded,
-            title: context.tr.translate('nutrition_goals'),
+            icon: Icons.bar_chart_rounded,
+            title: context.tr.translate('statistics'),
             theme: theme,
             colorScheme: colorScheme,
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const NutritionGoalsScreen(),
+                  builder: (context) => const StatisticsScreen(),
                 ),
               );
             },
@@ -763,7 +768,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildDivider(colorScheme),
           _buildSettingsItem(
             icon: Icons.settings_outlined,
-            title: context.tr.translate('settings'),
+            title: context.tr.translate('settings_title'),
             theme: theme,
             colorScheme: colorScheme,
             onTap: () {
@@ -855,12 +860,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           onTap: () async {
             final shouldLogout = await showDialog<bool>(
               context: context,

@@ -218,11 +218,11 @@ final Map<String, String> deDETranslations = {
   'chat_goals_setup_banner_button': 'Einrichten',
   'chat_action_continue_goals_chat': 'Im Chat fortfahren',
   'chat_action_edit_macros_ui': 'Makros in der App bearbeiten',
-  'chat_action_continue_macros_chat': 'Makros im Chat anpassen',
+  'chat_action_continue_macros_chat': 'Ziele mit KI anpassen',
   'chat_goal_setup_chat_prompt':
       'Ich mochte meine Ernahrungsziele im Chat einrichten. Nutze bei Bedarf die App-Befehle, stelle jeweils nur eine Frage und beginne mit Alter, Grosse, Gewicht und Geschlecht.',
   'chat_macro_edit_chat_prompt':
-      'Ich mochte meine Makronahrstoffe hier anpassen. Prufe meine aktuellen Makros und fuhre mich durch Prozent, g/kg oder Gramm.',
+      'Ich mochte meine Makronahrstoffe und Ernahrungsziele hier anpassen. Nutze meine aktuellen App-Daten, prufe meine aktuellen Ziele und fuhre mich mit jeweils nur einer Frage. Wenn ich sage, dass ich abnehmen, Muskeln aufbauen, einen Ernahrungsplan erstellen oder Ziele wie 120 g Protein erreichen mochte, berechne und speichere die Makros in der App, sobald du genug Informationen hast.',
   'error_occurred': 'Ein Fehler ist aufgetreten',
   'try_again': 'Erneut versuchen',
   'no_results': 'Keine Ergebnisse gefunden',

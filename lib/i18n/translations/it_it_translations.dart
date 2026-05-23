@@ -164,11 +164,11 @@ final Map<String, String> itITTranslations = {
   'chat_goals_setup_banner_button': 'Configura',
   'chat_action_continue_goals_chat': 'Continua in chat',
   'chat_action_edit_macros_ui': 'Modifica i macro nell\'app',
-  'chat_action_continue_macros_chat': 'Regola i macro in chat',
+  'chat_action_continue_macros_chat': 'Regola gli obiettivi con IA',
   'chat_goal_setup_chat_prompt':
       'Voglio configurare i miei obiettivi nutrizionali in chat. Usa i comandi dell\'app quando serve, fai una domanda alla volta e inizia da eta, altezza, peso e genere.',
   'chat_macro_edit_chat_prompt':
-      'Voglio regolare i miei macronutrienti qui. Controlla i miei macro attuali e guidami tra percentuale, g/kg o grammi.',
+      'Voglio regolare i miei macronutrienti e obiettivi nutrizionali qui. Usa i miei dati attuali dell\'app, controlla i miei obiettivi attuali e guidami con una domanda alla volta. Se dico che voglio perdere peso, aumentare massa muscolare, generare una dieta o raggiungere obiettivi come 120 g di proteine, calcola e applica i macro nell\'app quando hai informazioni sufficienti.',
   'error_occurred': 'Si è verificato un errore',
   'try_again': 'Riprova',
   'no_results': 'Nessun risultato trovato',

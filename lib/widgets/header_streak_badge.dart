@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/daily_meals_provider.dart';
 import '../providers/streak_provider.dart';
 import '../screens/streak_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
+import '../utils/streak_helper.dart';
 import '../i18n/app_localizations_extension.dart';
 
 class HeaderStreakBadge extends StatelessWidget {
@@ -27,8 +29,9 @@ class HeaderStreakBadge extends StatelessWidget {
     }
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final streak = context.select<StreakProvider, int>(
-      (provider) => provider.registrationStreak,
+    final streak = effectiveRegistrationStreak(
+      context.watch<StreakProvider>(),
+      context.watch<DailyMealsProvider>(),
     );
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     final surfaceColor = isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;

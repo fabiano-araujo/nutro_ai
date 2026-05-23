@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'ad_manager.dart';
 import 'api_service.dart';
 import 'auth_service.dart';
+import '../models/user_model.dart';
 
 class PurchaseService with ChangeNotifier {
   static const String keyPremiumStatus = 'premium_status';
@@ -80,7 +81,8 @@ class PurchaseService with ChangeNotifier {
     final userChanged =
         previousUserId != currentUserId || _lastSyncedUserId != currentUserId;
     final shouldApplySnapshot =
-        authSubscription.isPremium || !_isPremium || userChanged;
+        (userChanged || authSubscription.isPremium || !_isPremium) &&
+            !_matchesSubscriptionSnapshot(authSubscription);
 
     if (shouldApplySnapshot) {
       unawaited(
@@ -388,11 +390,20 @@ class PurchaseService with ChangeNotifier {
     required int? remainingDays,
     bool shouldNotify = true,
   }) async {
-    _isPremium = isPremium;
-    _subscriptionType = isPremium ? planType : 'free';
-    _subscriptionExpiryDate = isPremium ? expirationDate : null;
+    final nextIsPremium = isPremium;
+    final nextSubscriptionType = isPremium ? planType : 'free';
+    final nextSubscriptionExpiryDate = isPremium ? expirationDate : null;
+    final statusChanged = _isPremium != nextIsPremium ||
+        _subscriptionType != nextSubscriptionType ||
+        !_sameDate(_subscriptionExpiryDate, nextSubscriptionExpiryDate);
 
-    AdManager.setPremiumStatus(_isPremium);
+    _isPremium = nextIsPremium;
+    _subscriptionType = nextSubscriptionType;
+    _subscriptionExpiryDate = nextSubscriptionExpiryDate;
+
+    if (statusChanged) {
+      AdManager.setPremiumStatus(_isPremium);
+    }
 
     await _saveSubscriptionStatus(
       _isPremium,
@@ -401,7 +412,17 @@ class PurchaseService with ChangeNotifier {
     );
 
     final authService = _authService;
-    if (authService != null && authService.isAuthenticated) {
+    final shouldUpdateAuth = authService != null &&
+        authService.isAuthenticated &&
+        !_authSubscriptionMatches(
+          authService,
+          isPremium: _isPremium,
+          planType: _subscriptionType,
+          expirationDate: _subscriptionExpiryDate,
+          remainingDays: remainingDays,
+        );
+
+    if (shouldUpdateAuth) {
       await authService.updateSubscriptionStatus(
         isPremium: _isPremium,
         planType: _subscriptionType,
@@ -410,9 +431,44 @@ class PurchaseService with ChangeNotifier {
       );
     }
 
-    if (shouldNotify) {
+    if (shouldNotify && (statusChanged || shouldUpdateAuth)) {
       notifyListeners();
     }
+  }
+
+  bool _matchesSubscriptionSnapshot(Subscription subscription) {
+    final snapshotIsPremium = subscription.isPremium;
+    final snapshotPlanType = snapshotIsPremium ? subscription.planType : 'free';
+    final snapshotExpirationDate =
+        snapshotIsPremium ? subscription.expirationDate : null;
+
+    return _isPremium == snapshotIsPremium &&
+        _subscriptionType == snapshotPlanType &&
+        _sameDate(_subscriptionExpiryDate, snapshotExpirationDate);
+  }
+
+  bool _authSubscriptionMatches(
+    AuthService authService, {
+    required bool isPremium,
+    required String planType,
+    required DateTime? expirationDate,
+    required int? remainingDays,
+  }) {
+    final subscription = authService.currentUser?.subscription;
+    if (subscription == null) return false;
+
+    final normalizedPlanType = isPremium ? planType : 'free';
+    final normalizedExpirationDate = isPremium ? expirationDate : null;
+
+    return subscription.isPremium == isPremium &&
+        subscription.planType == normalizedPlanType &&
+        _sameDate(subscription.expirationDate, normalizedExpirationDate) &&
+        subscription.remainingDays == remainingDays;
+  }
+
+  bool _sameDate(DateTime? a, DateTime? b) {
+    if (a == null || b == null) return a == b;
+    return a.millisecondsSinceEpoch == b.millisecondsSinceEpoch;
   }
 
   bool _hasAuthenticatedUser() {

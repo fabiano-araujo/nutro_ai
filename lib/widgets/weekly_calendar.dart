@@ -158,26 +158,23 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     final isDarkMode = brightness == Brightness.dark;
     final isToday = _isSameDay(_selectedDate, DateTime.now());
 
-    return Container(
-      height: 56,
-      color:
-          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      padding: EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          // Botão do menu (drawer) à esquerda
-          if (widget.onOpenDrawer != null)
-            IconButton(
-              icon: Icon(
-                Icons.menu,
-                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-              ),
-              onPressed: widget.onOpenDrawer,
-              tooltip: 'Menu',
-            ),
+    final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
 
-          // Se estiver no modo conversa livre, mostrar título diferente
-          if (widget.isFreeChat) ...[
+    if (widget.isFreeChat) {
+      return Container(
+        height: 56,
+        color: isDarkMode
+            ? AppTheme.darkBackgroundColor
+            : AppTheme.backgroundColor,
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            if (widget.onOpenDrawer != null)
+              IconButton(
+                icon: Icon(Icons.menu, color: textColor),
+                onPressed: widget.onOpenDrawer,
+                tooltip: 'Menu',
+              ),
             Expanded(
               child: Center(
                 child: Text(
@@ -185,86 +182,108 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color:
-                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  ),
-                ),
-              ),
-            ),
-          ] else ...[
-            // Botão "Hoje" (só aparece quando não está no dia atual)
-            if (!isToday)
-              SizedBox(
-                width: 70,
-                child: InkWell(
-                  onTap: _goToToday,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withAlpha(38),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          context.tr.translate('today'),
-                          style: TextStyle(
-                            color: Theme.of(context).primaryColor,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(width: 2),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 10,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-            // Título centralizado (data selecionada)
-            Expanded(
-              child: Center(
-                child: InkWell(
-                  onTap: _showDatePicker,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Text(
-                      _formatDateTitle(context),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: isDarkMode
-                            ? Colors.white
-                            : AppTheme.textPrimaryColor,
-                      ),
-                    ),
+                    color: textColor,
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      );
+    }
 
-          const HeaderStreakBadge(margin: EdgeInsets.only(right: 4)),
-
-          // Ícone de pesquisa à direita
-          if (widget.onSearchPressed != null && !widget.isFreeChat)
-            IconButton(
-              icon: Icon(
-                Icons.search,
-                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+    return Container(
+      height: 56,
+      color:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      padding: EdgeInsets.symmetric(horizontal: 4),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.onOpenDrawer != null)
+                    IconButton(
+                      icon: Icon(Icons.menu, color: textColor),
+                      onPressed: widget.onOpenDrawer,
+                      tooltip: 'Menu',
+                    )
+                  else
+                    const SizedBox(width: 48),
+                  if (!isToday)
+                    SizedBox(
+                      width: 70,
+                      child: InkWell(
+                        onTap: _goToToday,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).primaryColor.withAlpha(38),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                context.tr.translate('today'),
+                                style: TextStyle(
+                                  color: Theme.of(context).primaryColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 10,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              tooltip: 'Pesquisar alimentos',
-              onPressed: widget.onSearchPressed,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const HeaderStreakBadge(margin: EdgeInsets.only(right: 4)),
+                  if (widget.onSearchPressed != null)
+                    IconButton(
+                      icon: Icon(Icons.search, color: textColor),
+                      tooltip: 'Pesquisar alimentos',
+                      onPressed: widget.onSearchPressed,
+                    ),
+                ],
+              ),
+            ],
+          ),
+          Center(
+            child: InkWell(
+              onTap: _showDatePicker,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Text(
+                  _formatDateTitle(context),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ),
             ),
+          ),
         ],
       ),
     );

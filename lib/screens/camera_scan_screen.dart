@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
+import 'dart:convert';
+import 'package:image/image.dart' as img;
 import '../image_upload.dart';
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
@@ -12,8 +14,9 @@ import 'package:camera/camera.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/credit_indicator.dart';
-import 'image_edit_screen.dart';
+import '../utils/media_picker_helper.dart';
 import 'camera_tips_screen.dart';
+import 'nutrition_assistant_screen.dart';
 
 class CameraScanScreen extends StatefulWidget {
   const CameraScanScreen({Key? key}) : super(key: key);
@@ -26,7 +29,6 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     with WidgetsBindingObserver {
   String _selectedScanMode = 'ai_macros'; // 'ai_macros', 'barcode'
   bool _flashEnabled = false;
-  Uint8List? _capturedImage;
   String _selectedLanguage = 'en'; // Idioma padrão para tradução (ex: inglês)
 
   CameraController? _cameraController;
@@ -76,6 +78,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   bool _isMinimized = false;
   bool _isResuming = false;
   int _resumeAttempts = 0;
+  bool _isProcessingCapture = false;
 
   @override
   void initState() {
@@ -541,106 +544,191 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     }
   }
 
+  Rect _currentCutOutRect() {
+    final Size screenSize = MediaQuery.of(context).size;
+    const double padding = 32.0;
+    final double squareSize = screenSize.width - (padding * 2);
+    final double appBarHeight = AppBar().preferredSize.height;
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    const double buttonsAreaHeight = 180.0;
+    final double availableHeight =
+        screenSize.height - appBarHeight - statusBarHeight - buttonsAreaHeight;
+    final double topOffset =
+        appBarHeight + statusBarHeight + (availableHeight * 0.25);
+    return Rect.fromLTWH(padding, topOffset, squareSize, squareSize);
+  }
+
+  /// Corta a imagem para a região do quadrado de overlay e otimiza para upload.
+  /// Mantém a mesma lógica de mapeamento screen→image usada antes pela
+  /// ImageEditScreen (BoxFit.cover sobre a área disponível).
+  Future<Uint8List?> _cropAndOptimize(
+      Uint8List imageBytes, Rect cropRectScreen) async {
+    try {
+      final img.Image? originalImage = img.decodeImage(imageBytes);
+      if (originalImage == null) {
+        print('[CROP] Falha ao decodificar imagem');
+        return null;
+      }
+
+      final Size screenSize = MediaQuery.of(context).size;
+      final double navBarHeight =
+          56.0 + MediaQuery.of(context).padding.bottom;
+      final double availableHeight = screenSize.height - navBarHeight;
+
+      final double screenRatio = screenSize.width / availableHeight;
+      final double imageRatio = originalImage.width / originalImage.height;
+
+      double displayWidth, displayHeight;
+      if (screenRatio > imageRatio) {
+        displayWidth = screenSize.width;
+        displayHeight = displayWidth / imageRatio;
+        if (displayHeight < availableHeight) {
+          displayHeight = availableHeight;
+          displayWidth = displayHeight * imageRatio;
+        }
+      } else {
+        displayHeight = availableHeight;
+        displayWidth = displayHeight * imageRatio;
+        if (displayWidth < screenSize.width) {
+          displayWidth = screenSize.width;
+          displayHeight = displayWidth / imageRatio;
+        }
+      }
+
+      final double left = (screenSize.width - displayWidth) / 2;
+      final Rect displayRect =
+          Rect.fromLTWH(left, 0, displayWidth, availableHeight);
+
+      final double relativeCropX = (cropRectScreen.left - displayRect.left)
+          .clamp(0.0, displayRect.width);
+      final double relativeCropY = (cropRectScreen.top - displayRect.top)
+          .clamp(0.0, displayRect.height);
+      final double relativeCropWidth =
+          cropRectScreen.width.clamp(0.0, displayRect.width - relativeCropX);
+      final double relativeCropHeight = cropRectScreen.height
+          .clamp(0.0, displayRect.height - relativeCropY);
+
+      final double cropStartX =
+          (relativeCropX / displayRect.width) * originalImage.width;
+      final double cropStartY =
+          (relativeCropY / displayRect.height) * originalImage.height;
+      final double cropWidth =
+          (relativeCropWidth / displayRect.width) * originalImage.width;
+      final double cropHeight =
+          (relativeCropHeight / displayRect.height) * originalImage.height;
+
+      final img.Image cropped = img.copyCrop(
+        originalImage,
+        x: cropStartX.round().clamp(0, originalImage.width - 1),
+        y: cropStartY.round().clamp(0, originalImage.height - 1),
+        width: cropWidth
+            .round()
+            .clamp(1, originalImage.width - cropStartX.round()),
+        height: cropHeight
+            .round()
+            .clamp(1, originalImage.height - cropStartY.round()),
+      );
+
+      final croppedBytes =
+          Uint8List.fromList(img.encodeJpg(cropped, quality: 90));
+      return MediaPickerHelper.optimizeImageForUpload(croppedBytes);
+    } catch (e) {
+      print('[CROP] Erro: $e');
+      return null;
+    }
+  }
+
+  /// Entrega a imagem ao chat existente ou abre um novo chat com ela.
+  void _sendImageToChat(Uint8List processedImage) {
+    final activeChat = nutritionAssistantManager.activeState;
+    if (activeChat != null) {
+      activeChat.submitCapturedImage(processedImage, _selectedScanMode);
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+
+    String toolTitle;
+    switch (_selectedScanMode) {
+      case 'ai_macros':
+        toolTitle = 'Macros com IA';
+        break;
+      case 'barcode':
+        toolTitle = 'Código de Barras';
+        break;
+      default:
+        toolTitle = 'Digitalização';
+    }
+
+    final Map<String, dynamic> toolData = {
+      'toolName': 'Camera Scan',
+      'toolTab': toolTitle,
+      'sourceType': 'camera',
+      'scanMode': _selectedScanMode,
+      'imageData': base64Encode(processedImage),
+      'userInput': 'Análise de imagem: $toolTitle',
+      'fullPrompt':
+          'Analise esta imagem capturada com a câmera no modo "$toolTitle" e forneça uma resposta detalhada.',
+      'hasImage': true,
+    };
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            NutritionAssistantScreen(initialPrompt: jsonEncode(toolData)),
+      ),
+    );
+  }
+
   Future<void> _captureImage() async {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       _showErrorSnackBar(
           context.tr.translate('camera_not_ready') ?? 'Câmera não está pronta');
       return;
     }
+    if (_isProcessingCapture) return;
 
+    setState(() => _isProcessingCapture = true);
     try {
-      // Definir as dimensões do quadrado de corte
-      final Size screenSize = MediaQuery.of(context).size;
-      final double padding = 32.0;
-      final double squareSize = screenSize.width - (padding * 2);
-
-      // Calcular a posição vertical do quadrado para centralizá-lo
-      final double appBarHeight = AppBar().preferredSize.height;
-      final double statusBarHeight = MediaQuery.of(context).padding.top;
-      final double buttonsAreaHeight =
-          180.0; // Altura estimada da área inferior
-      final double availableHeight = screenSize.height -
-          appBarHeight -
-          statusBarHeight -
-          buttonsAreaHeight;
-      // Posicionar mais para cima, usando 0.25 em vez de 0.3 da altura disponível
-      final double topOffset =
-          appBarHeight + statusBarHeight + (availableHeight * 0.25);
-
-      final Rect cutOutRect = Rect.fromLTWH(
-          padding, topOffset, squareSize, squareSize); // Quadrado
-
-      // Capturar imagem
+      final Rect cutOutRect = _currentCutOutRect();
       final XFile photo = await _cameraController!.takePicture();
       final Uint8List imageBytes = await photo.readAsBytes();
 
-      setState(() {
-        _capturedImage = imageBytes;
-      });
-
-      // Navegar para a tela de edição de imagem
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImageEditScreen(
-            image: _capturedImage!,
-            initialCropRect: cutOutRect,
-            scanMode: _selectedScanMode,
-          ),
-        ),
-      ).then((_) {
-        // Quando voltar à tela da câmera, reinicializá-la
-        if (mounted) {
-          _initializeCamera();
-        }
-      });
+      final Uint8List? processed =
+          await _cropAndOptimize(imageBytes, cutOutRect);
+      if (processed == null) {
+        _showErrorSnackBar('Falha ao processar imagem');
+        return;
+      }
+      if (mounted) _sendImageToChat(processed);
     } catch (e) {
       _showErrorSnackBar(
           '${context.tr.translate('failed_to_capture_image') ?? 'Falha ao capturar imagem'}: $e');
+    } finally {
+      if (mounted) setState(() => _isProcessingCapture = false);
     }
   }
 
   void _openGallery() async {
+    if (_isProcessingCapture) return;
     try {
       final imageBytes = await ImageUploadHelper.pickImageFromGallery();
-      if (imageBytes != null) {
-        final Size screenSize = MediaQuery.of(context).size;
-        final double padding = 32.0;
-        final double squareSize = screenSize.width - (padding * 2);
+      if (imageBytes == null) return;
 
-        // Calcular a posição vertical do quadrado
-        final double appBarHeight = AppBar().preferredSize.height;
-        final double statusBarHeight = MediaQuery.of(context).padding.top;
-        final double buttonsAreaHeight = 180.0;
-        final double availableHeight = screenSize.height -
-            appBarHeight -
-            statusBarHeight -
-            buttonsAreaHeight;
-        // Centralizar verticalmente na área disponível
-        final double topOffset =
-            appBarHeight + statusBarHeight + (availableHeight * 0.25);
+      final Rect cutOutRect = _currentCutOutRect();
+      setState(() => _isProcessingCapture = true);
 
-        final Rect cutOutRect = Rect.fromLTWH(padding, topOffset, squareSize,
-            squareSize); // Quadrado
-
-        setState(() {
-          _capturedImage = imageBytes;
-        });
-
-        // Navegar para a tela de edição de imagem
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ImageEditScreen(
-              image: _capturedImage!,
-              initialCropRect: cutOutRect,
-              scanMode: _selectedScanMode,
-            ),
-          ),
-        );
+      final Uint8List? processed =
+          await _cropAndOptimize(imageBytes, cutOutRect);
+      if (processed == null) {
+        _showErrorSnackBar('Falha ao processar imagem');
+        return;
       }
+      if (mounted) _sendImageToChat(processed);
     } catch (e) {
       _showErrorSnackBar('${context.tr.translate('failed_to_pick_image')}: $e');
+    } finally {
+      if (mounted) setState(() => _isProcessingCapture = false);
     }
   }
 
@@ -813,7 +901,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
             // Mensagem informativa acima do retângulo
             Positioned(
-              top: cutOutRect.top - 60,
+              top: cutOutRect.top - 85,
               left: padding,
               right: padding,
               child: Container(
@@ -890,7 +978,10 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
                         // Botão de captura grande com a cor e ícone do modo selecionado
                         GestureDetector(
-                          onTap: _isCameraInitialized ? _captureImage : null,
+                          onTap:
+                              (_isCameraInitialized && !_isProcessingCapture)
+                                  ? _captureImage
+                                  : null,
                           child: Container(
                             width: 85,
                             height: 85,
@@ -910,11 +1001,19 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                                   color: _getModeColor(_selectedScanMode),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(
-                                  _getModeIcon(_selectedScanMode),
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
+                                child: _isProcessingCapture
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(22),
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 3,
+                                        ),
+                                      )
+                                    : Icon(
+                                        _getModeIcon(_selectedScanMode),
+                                        color: Colors.white,
+                                        size: 30,
+                                      ),
                               ),
                             ),
                           ),

@@ -254,6 +254,14 @@ class AuthService with ChangeNotifier {
     }
 
     try {
+      final currentUserJson = jsonEncode(_currentUser!.toJson());
+      final updatedUserJson = jsonEncode(updatedUser.toJson());
+
+      if (currentUserJson == updatedUserJson) {
+        print('[AuthService] Usuário local já estava atualizado');
+        return;
+      }
+
       print(
           '[AuthService] Atualizando usuário localmente: ${updatedUser.name}');
 
@@ -291,14 +299,29 @@ class AuthService with ChangeNotifier {
     }
 
     try {
+      final normalizedPlanType = isPremium ? planType : 'free';
+      final normalizedExpirationDate = isPremium ? expirationDate : null;
+      final currentSubscription = _currentUser!.subscription;
+
+      if (currentSubscription.isPremium == isPremium &&
+          currentSubscription.planType == normalizedPlanType &&
+          _sameDate(
+            currentSubscription.expirationDate,
+            normalizedExpirationDate,
+          ) &&
+          currentSubscription.remainingDays == remainingDays) {
+        print('[AuthService] Status de assinatura já estava atualizado');
+        return;
+      }
+
       print(
-          '[AuthService] Atualizando status de assinatura para isPremium=$isPremium, planType=$planType');
+          '[AuthService] Atualizando status de assinatura para isPremium=$isPremium, planType=$normalizedPlanType');
 
       // Criar nova assinatura com os dados atualizados
       final updatedSubscription = Subscription(
         isPremium: isPremium,
-        planType: planType,
-        expirationDate: expirationDate,
+        planType: normalizedPlanType,
+        expirationDate: normalizedExpirationDate,
         remainingDays: remainingDays,
       );
 
@@ -314,13 +337,14 @@ class AuthService with ChangeNotifier {
 
       // Chamar o método updateUserLocally que já cuida de salvar e notificar
       await updateUserLocally(updatedUser);
-
-      // Forçar uma notificação adicional para garantir
-      print('[AuthService] Notificando assinatura atualizada para Premium');
-      Future.delayed(Duration.zero, () => notifyListeners());
     } catch (e) {
       print('[AuthService] Erro ao atualizar status de assinatura: $e');
     }
+  }
+
+  bool _sameDate(DateTime? a, DateTime? b) {
+    if (a == null || b == null) return a == b;
+    return a.millisecondsSinceEpoch == b.millisecondsSinceEpoch;
   }
 
   // Verificar a idade do token e limpar se for muito antigo (usado quando o app é reaberto)

@@ -10,6 +10,7 @@ import '../screens/document_scan_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../theme/app_theme.dart';
 import 'dart:convert';
+import '../utils/media_picker_helper.dart';
 import '../screens/nutrition_assistant_screen.dart';
 
 class ImageEditScreen extends StatefulWidget {
@@ -170,8 +171,12 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
       print(
           '[PROCESS] Imagem cortada: ${croppedImage.width}x${croppedImage.height}');
 
-      Uint8List processedImage =
+      final croppedBytes =
           Uint8List.fromList(img.encodeJpg(croppedImage, quality: 90));
+      final processedImage =
+          MediaPickerHelper.optimizeImageForUpload(croppedBytes);
+      print(
+          '[PROCESS] Imagem final otimizada: ${croppedBytes.length} -> ${processedImage.length} bytes');
 
       if (mounted) {
         // Enviar diretamente para o Assistente de Nutrição
@@ -192,7 +197,17 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
 
   // Novo método para enviar para NutritionAssistantScreen
   void _sendToNutritionAssistant(Uint8List processedImage) async {
-    print('[PROCESS] Navegando para NutritionAssistantScreen');
+    // Se há um chat ativo (na aba Início), entrega a foto nele em vez de
+    // abrir uma nova instância.
+    final activeChat = nutritionAssistantManager.activeState;
+    if (activeChat != null) {
+      print('[PROCESS] Entregando imagem ao chat existente');
+      activeChat.submitCapturedImage(processedImage, widget.scanMode);
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+
+    print('[PROCESS] Sem chat ativo — abrindo novo NutritionAssistantScreen');
 
     // Converter a imagem para base64 para incluir no JSON
     final String base64Image = base64Encode(processedImage);
@@ -695,4 +710,3 @@ class CropOverlayPainter extends CustomPainter {
         borderRadius != oldDelegate.borderRadius;
   }
 }
-

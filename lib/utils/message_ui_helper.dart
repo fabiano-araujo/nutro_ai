@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import '../theme/app_theme.dart';
 import '../utils/code_detector.dart';
 import '../utils/message_formatter.dart';
+import '../screens/image_viewer_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Classe utilitária para construir elementos de UI relacionados a mensagens
@@ -118,28 +119,39 @@ class MessageUIHelper {
       );
     } else if (imageBytes != null) {
       // Mostrar imagem com o texto abaixo
+      final hasCaption = message.trim().isNotEmpty;
       messageContent = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.memory(
-              imageBytes,
-              width: 200,
-              height: 150,
-              fit: BoxFit.cover,
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ImageViewerScreen(imageBytes: imageBytes),
+                ),
+              );
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                imageBytes,
+                width: 200,
+                height: 150,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
-          SizedBox(height: 8),
-          // Usar o formatador para o texto abaixo da imagem
-          MessageFormatter.buildFormattedText(
-            message,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-              fontSize: 16,
+          if (hasCaption) ...[
+            SizedBox(height: 8),
+            MessageFormatter.buildFormattedText(
+              message,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                fontSize: 16,
+              ),
+              isDarkMode: isDarkMode,
             ),
-            isDarkMode: isDarkMode,
-          ),
+          ],
         ],
       );
     } else {
@@ -154,8 +166,10 @@ class MessageUIHelper {
       );
     }
 
-    // Mensagem do usuário: balão cinza arredondado, alinhado à direita
+    // Mensagem do usuário: balão cinza arredondado, alinhado à direita.
+    // Quando é só imagem (sem texto), exibe a imagem sem o balão.
     if (isUser) {
+      final bool imageOnly = imageBytes != null && message.trim().isEmpty;
       return GestureDetector(
         onLongPress: onLongPress,
         child: Align(
@@ -166,14 +180,17 @@ class MessageUIHelper {
             ),
             child: Container(
               margin: EdgeInsets.only(bottom: safeBottomSpacing, left: 48),
-              padding:
-                  EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? AppTheme.darkCardColor
-                    : const Color(0xFFEFEFEF),
-                borderRadius: BorderRadius.circular(18),
-              ),
+              padding: imageOnly
+                  ? EdgeInsets.zero
+                  : EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: imageOnly
+                  ? null
+                  : BoxDecoration(
+                      color: isDarkMode
+                          ? AppTheme.darkCardColor
+                          : const Color(0xFFEFEFEF),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
               child: DefaultTextStyle.merge(
                 style: TextStyle(
                   color: isDarkMode

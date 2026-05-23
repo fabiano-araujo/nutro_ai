@@ -168,11 +168,11 @@ final Map<String, String> frFRTranslations = {
   'chat_goals_setup_banner_button': 'Configurer',
   'chat_action_continue_goals_chat': 'Continuer dans le chat',
   'chat_action_edit_macros_ui': 'Modifier les macros dans l\'app',
-  'chat_action_continue_macros_chat': 'Ajuster les macros dans le chat',
+  'chat_action_continue_macros_chat': 'Ajuster les objectifs avec l\'IA',
   'chat_goal_setup_chat_prompt':
       'Je veux configurer mes objectifs nutritionnels dans le chat. Utilise les commandes de l\'app si besoin, pose une seule question a la fois et commence par mon age, ma taille, mon poids et mon genre.',
   'chat_macro_edit_chat_prompt':
-      'Je veux ajuster mes macronutriments ici. Verifie mes macros actuels et guide-moi entre pourcentage, g/kg ou grammes.',
+      'Je veux ajuster mes macronutriments et objectifs nutritionnels ici. Utilise mes donnees actuelles dans l\'app, verifie mes objectifs actuels et guide-moi avec une question a la fois. Si je dis que je veux perdre du poids, prendre du muscle, generer un regime ou atteindre des objectifs comme 120 g de proteines, calcule et applique les macros dans l\'app quand tu as assez d\'informations.',
   'error_occurred': 'Une erreur s\'est produite',
   'try_again': 'Réessayer',
   'no_results': 'Aucun résultat trouvé',

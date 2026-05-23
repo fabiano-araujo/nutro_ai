@@ -875,9 +875,9 @@ class _MealCard extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildMacroCardCompact(
                 icon: MacroTheme.caloriesIcon,
@@ -885,21 +885,18 @@ class _MealCard extends StatelessWidget {
                 unit: 'kcal',
                 color: MacroTheme.caloriesColor,
               ),
-              const SizedBox(width: 18),
               _buildMacroCardCompact(
                 icon: MacroTheme.proteinIcon,
                 value: meal!.totalProtein.toStringAsFixed(1),
                 unit: 'g prot',
                 color: MacroTheme.proteinColor,
               ),
-              const SizedBox(width: 18),
               _buildMacroCardCompact(
                 icon: MacroTheme.carbsIcon,
                 value: meal!.totalCarbs.toStringAsFixed(1),
                 unit: 'g carb',
                 color: MacroTheme.carbsColor,
               ),
-              const SizedBox(width: 18),
               _buildMacroCardCompact(
                 icon: MacroTheme.fatIcon,
                 value: meal!.totalFat.toStringAsFixed(1),

@@ -567,8 +567,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final nutritionProvider = Provider.of<NutritionGoalsProvider>(context);
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
-    final textColor =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -824,8 +823,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildThemeRow(ThemeData theme, ColorScheme colorScheme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
     final themeOptions = {
       ThemeMode.light: context.tr.translate('light_theme'),
       ThemeMode.dark: context.tr.translate('dark_theme'),
@@ -910,8 +908,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildLeadingIcon(IconData icon, ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Container(
       width: 34,
@@ -1078,8 +1075,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildNotificationRow(ThemeData theme, ColorScheme colorScheme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Material(
       color: Colors.transparent,
@@ -1184,8 +1180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isAction = false,
   }) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
     final mutedColor = _mutedTextColor(isDarkMode);
 
     return Material(

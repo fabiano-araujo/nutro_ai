@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../i18n/app_localizations_extension.dart';
 import '../providers/challenges_provider.dart';
+import '../providers/daily_meals_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/streak_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/streak_helper.dart';
 
 class SocialSummaryCard extends StatelessWidget {
   final VoidCallback? onOpenSocialHub;
@@ -106,7 +108,8 @@ class SocialSummaryCard extends StatelessWidget {
                         icon: Icons.local_fire_department_rounded,
                         color: const Color(0xFFFF6B35),
                         label: context.tr.translate('social_summary_streak'),
-                        value: '${streakProvider.primaryStreak}',
+                        value:
+                            '${effectiveRegistrationStreak(streakProvider, context.watch<DailyMealsProvider>())}',
                       ),
                     ),
                     const SizedBox(width: 12),

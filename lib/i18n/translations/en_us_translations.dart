@@ -213,14 +213,14 @@ final Map<String, String> enUSTranslations = {
   'chat_goals_setup_banner_button': 'Set up',
   'chat_action_continue_goals_chat': 'Continue in chat',
   'chat_action_edit_macros_ui': 'Edit macros in the app',
-  'chat_action_continue_macros_chat': 'Adjust macros in chat',
+  'chat_action_continue_macros_chat': 'Adjust goals with AI',
   'chat_setup_reminder_prefix': 'Let’s finish setting up your information',
   'chat_setup_reminder_with_fields':
       'Let’s finish setting up your information. Still missing: {fields}.',
   'chat_goal_setup_chat_prompt':
       'I want to set up my nutrition goals through chat. Use the app commands when needed, ask one question at a time, and start with my age, height, weight, and gender.',
   'chat_macro_edit_chat_prompt':
-      'I want to adjust my macronutrients here. Check my current macros and guide me through the best format between percentage, g/kg, or grams.',
+      'I want to adjust my macronutrients and nutrition goals here. Use my current app data, check my current targets, and guide me with one question at a time. If I say I want to lose weight, gain muscle, generate a diet, or hit targets like 120 g of protein, calculate and apply the macros in the app when you have enough information.',
   'diet_generation_preferences_title': 'Before generating your diet',
   'diet_generation_preferences_description':
       'Tell me the details that should influence your food choices. If a field does not apply, leave it blank and it will be treated as none.',

@@ -176,6 +176,25 @@ class DailyMealsProvider extends ChangeNotifier {
     return false;
   }
 
+  /// Conta dias consecutivos com refeições registradas (a partir de hoje, ou
+  /// ontem se hoje ainda não tem registro). Usado para manter o contador da
+  /// tela de Sequência consistente com o calendário, mesmo quando o backend
+  /// ainda não processou o check-in do dia.
+  int getCurrentRegistrationStreak() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    DateTime cursor =
+        hasMealsOn(today) ? today : today.subtract(const Duration(days: 1));
+
+    int count = 0;
+    while (hasMealsOn(cursor) && count < 365) {
+      count++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return count;
+  }
+
   List<Meal> get todayMeals {
     final dateKey = _formatDate(_selectedDate);
     return _mealsByDate[dateKey] ?? [];

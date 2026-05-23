@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:flutter/material.dart';
 import 'dart:async';
 
 class AdManager {
@@ -12,6 +11,8 @@ class AdManager {
   static bool _isPremium = false;
   static bool get isPremium => _isPremium;
   static void setPremiumStatus(bool premium) {
+    if (_isPremium == premium) return;
+
     _isPremium = premium;
     debugPrint('AdManager: premium status atualizado para $premium');
   }
@@ -263,7 +264,6 @@ class AdManager {
     }
 
     final completer = Completer<RewardedAd?>();
-    RewardedAd? rewardedAd;
 
     try {
       debugPrint(
@@ -302,7 +302,6 @@ class AdManager {
               return;
             }
 
-            rewardedAd = ad;
             debugPrint('AdManager: Anúncio premiado carregado com sucesso');
 
             // Configurar callback para quando o anúncio for fechado
@@ -433,8 +432,7 @@ class AdManager {
   static bool _isLoadingMealDoneInterstitial = false;
   static DateTime? _lastMealInterstitialAt;
 
-  static const int _mealsThreshold =
-      3; // mostra a cada 3 refeições registradas
+  static const int _mealsThreshold = 3; // mostra a cada 3 refeições registradas
   static const Duration _mealInterstitialCooldown = Duration(minutes: 2);
 
   /// Chamado sempre que uma refeição é registrada. Conta + pré-carrega ad quando

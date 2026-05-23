@@ -438,10 +438,13 @@ class NutritionAssistantController with ChangeNotifier {
                       children: [
                         Icon(Icons.play_arrow, size: 20),
                         SizedBox(width: 8),
-                        Text(
-                          'Assistir anúncio • +7 créditos grátis',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
+                        Flexible(
+                          child: Text(
+                            'Assistir anúncio • +7 créditos grátis',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ],
                     ),
@@ -1475,10 +1478,13 @@ class NutritionAssistantController with ChangeNotifier {
                       children: [
                         Icon(Icons.play_arrow, size: 20),
                         SizedBox(width: 8),
-                        Text(
-                          'Assistir anúncio • +7 créditos grátis',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
+                        Flexible(
+                          child: Text(
+                            'Assistir anúncio • +7 créditos grátis',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ],
                     ),
@@ -1553,7 +1559,20 @@ class NutritionAssistantController with ChangeNotifier {
     _messageNotifier = MessageNotifier();
     _messageNotifier!.setStreaming(true);
 
-    // Adicionar a mensagem da IA (sem adicionar a mensagem do usuário)
+    // Se a interação silenciosa veio com imagem (ex: câmera), exibir bolha
+    // do usuário com a foto. O prompt textual segue oculto.
+    if (imageBytes != null) {
+      _messages.add({
+        'isUser': true,
+        'message': '',
+        'hasImage': true,
+        'imageBytes': imageBytes,
+        'timestamp': DateTime.now(),
+      });
+      _userSentMessage = true;
+    }
+
+    // Adicionar a mensagem da IA
     _messages.add({
       'isUser': false,
       'notifier': _messageNotifier,
@@ -1795,10 +1814,13 @@ class NutritionAssistantController with ChangeNotifier {
                       children: [
                         Icon(Icons.play_arrow, size: 20),
                         SizedBox(width: 8),
-                        Text(
-                          'Assistir anúncio • +7 créditos grátis',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
+                        Flexible(
+                          child: Text(
+                            'Assistir anúncio • +7 créditos grátis',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ],
                     ),

@@ -20,6 +20,7 @@ import '../screens/subscription_screen.dart';
 import '../i18n/app_localizations.dart';
 import '../widgets/diet_style_message_state.dart';
 import '../widgets/native_ad_widget.dart';
+import '../widgets/header_streak_badge.dart';
 import '../services/ad_manager.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
@@ -61,6 +62,56 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         _scrollController.hasClients && _scrollController.offset > 12;
     if (shouldCollapse == _isHeaderCollapsed) return;
     setState(() => _isHeaderCollapsed = shouldCollapse);
+  }
+
+  Widget _buildWeeklyFixedHeader(bool isDarkMode, AppLocalizations l10n) {
+    final bgColor =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    return Container(
+      height: 56,
+      color: bgColor,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (widget.onOpenDrawer != null)
+                IconButton(
+                  icon: Icon(Icons.menu, color: textColor),
+                  onPressed: widget.onOpenDrawer,
+                  tooltip: 'Menu',
+                )
+              else
+                const SizedBox(width: 48),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const HeaderStreakBadge(margin: EdgeInsets.only(right: 4)),
+                  if (widget.onSearchPressed != null)
+                    IconButton(
+                      icon: Icon(Icons.search, color: textColor),
+                      tooltip: 'Pesquisar alimentos',
+                      onPressed: widget.onSearchPressed,
+                    ),
+                ],
+              ),
+            ],
+          ),
+          Text(
+            l10n.translate('my_diet'),
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Generate diet plan for selected date
@@ -775,31 +826,33 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
             return Column(
               children: [
-                // AppBar/calendário some ao rolar; os chips seguem fixos.
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  height:
-                      _isHeaderCollapsed ? 0 : (isWeeklyMode ? 56.0 : 112.0),
-                  child: ClipRect(
-                    child: OverflowBox(
-                      minHeight: 0,
-                      maxHeight: isWeeklyMode ? 56 : 112,
-                      alignment: Alignment.topCenter,
-                      child: WeeklyCalendar(
-                        selectedDate: dietProvider.selectedDate,
-                        onDaySelected: (date) {
-                          setState(() => _isHeaderCollapsed = false);
-                          dietProvider.setSelectedDate(date);
-                        },
-                        showAppBar: true,
-                        showCalendar: !isWeeklyMode,
-                        onOpenDrawer: widget.onOpenDrawer,
-                        onSearchPressed: widget.onSearchPressed,
+                if (isWeeklyMode)
+                  _buildWeeklyFixedHeader(isDarkMode, l10n)
+                else
+                  // AppBar/calendário some ao rolar; os chips seguem fixos.
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    height: _isHeaderCollapsed ? 0 : 112.0,
+                    child: ClipRect(
+                      child: OverflowBox(
+                        minHeight: 0,
+                        maxHeight: 112,
+                        alignment: Alignment.topCenter,
+                        child: WeeklyCalendar(
+                          selectedDate: dietProvider.selectedDate,
+                          onDaySelected: (date) {
+                            setState(() => _isHeaderCollapsed = false);
+                            dietProvider.setSelectedDate(date);
+                          },
+                          showAppBar: true,
+                          showCalendar: true,
+                          onOpenDrawer: widget.onOpenDrawer,
+                          onSearchPressed: widget.onSearchPressed,
+                        ),
                       ),
                     ),
                   ),
-                ),
 
                 // Chips sempre visíveis
                 Padding(
@@ -1242,12 +1295,12 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: isSmall ? 13 : 18),
-        SizedBox(height: isSmall ? 2 : 4),
+        Icon(icon, color: color, size: isSmall ? 15 : 18),
+        SizedBox(height: isSmall ? 3 : 4),
         Text(
           value,
           style: GoogleFonts.inter(
-            fontSize: isSmall ? 11 : 15,
+            fontSize: isSmall ? 13 : 15,
             fontWeight: FontWeight.w700,
             color: color,
           ),
@@ -1255,7 +1308,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         Text(
           unit,
           style: GoogleFonts.inter(
-            fontSize: isSmall ? 8 : 10,
+            fontSize: isSmall ? 9.5 : 10,
             color: secondaryColor,
           ),
         ),
@@ -1544,12 +1597,18 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                   ],
                 ),
               ),
-              Text(
-                '${food.calories} kcal',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: textColor.withValues(alpha: 0.7),
+              const SizedBox(width: 40),
+              SizedBox(
+                width: 64,
+                child: Text(
+                  '${food.calories} kcal',
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: textColor.withValues(alpha: 0.7),
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
