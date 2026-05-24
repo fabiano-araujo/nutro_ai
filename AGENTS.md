@@ -34,6 +34,8 @@ This file guides coding agents working in this repository.
   - Includes `POST /ai/transcribe-audio` for chat audio transcription on the server.
 - Subscription purchase confirmation: `POST /subscription/google-play/confirm`
   - Validates the Google Play `purchaseToken` on the backend and upserts the user subscription as premium.
+- Rewarded ad credit grant: `POST /credits/rewarded-ad`
+  - Requires auth token, credits the authenticated user with the server-side rewarded ad amount, and returns the updated credit balance.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.

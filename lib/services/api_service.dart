@@ -252,6 +252,36 @@ class ApiService {
     return responseData['data'] as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> grantRewardedAdCredits({
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/credits/rewarded-ad'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({}),
+    );
+
+    final responseData = response.body.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        responseData['success'] != true ||
+        responseData['data'] is! Map<String, dynamic>) {
+      throw Exception(
+        responseData['message'] ??
+            responseData['error'] ??
+            'Falha ao adicionar créditos do anúncio premiado',
+      );
+    }
+
+    return responseData['data'] as Map<String, dynamic>;
+  }
+
   // Criar pagamento de assinatura
   static Future<PaymentData> createSubscriptionPayment({
     required String token,

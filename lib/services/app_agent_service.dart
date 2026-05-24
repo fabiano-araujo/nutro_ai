@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../i18n/app_localizations.dart';
 import '../models/diet_plan_model.dart';
 import '../providers/diet_plan_provider.dart';
+import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import 'auth_service.dart';
@@ -567,6 +568,7 @@ class AppAgentUiHint {
   static const actionLogin = 'login';
   static const actionConfigureGoalsUi = 'configure_goals_ui';
   static const actionEditMacrosUi = 'edit_macros_ui';
+  static const actionWatchRewardedAd = 'watch_rewarded_ad';
 
   final List<String> actions;
   final String rawBlock;
@@ -680,6 +682,13 @@ class AppAgentUiHint {
       case 'editmacros':
       case 'macroeditorui':
         return actionEditMacrosUi;
+      case 'watchrewardedad':
+      case 'watchad':
+      case 'watchadforcredits':
+      case 'rewardedad':
+      case 'earncredits':
+      case 'getcredits':
+        return actionWatchRewardedAd;
       default:
         return null;
     }
@@ -839,6 +848,105 @@ class AppAgentService {
         return l10n.translate('agent_loading_update_macros_per_kg');
       default:
         return l10n.translate('agent_loading_generic');
+    }
+  }
+
+  static String? buildMacroGoalsCommandResultMessage({
+    required BuildContext context,
+    required List<AppAgentExecutionResult> executionResults,
+  }) {
+    if (executionResults.isEmpty) {
+      return null;
+    }
+
+    final isPortuguese =
+        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
+              'pt',
+            );
+    final successfulResults =
+        executionResults.where((result) => result.success).toList();
+
+    if (successfulResults.isEmpty) {
+      final lastError = executionResults.last.errorMessage ??
+          executionResults.last.payload['reason']?.toString();
+      if (lastError == 'login_required') {
+        return isPortuguese
+            ? 'Faça login para eu acessar e atualizar suas metas de calorias e macros.'
+            : 'Log in so I can access and update your calorie and macro goals.';
+      }
+      return isPortuguese
+          ? 'Não consegui acessar suas metas agora. Tente novamente em instantes.'
+          : 'I could not access your goals right now. Please try again in a moment.';
+    }
+
+    final lastResult = successfulResults.last;
+    final payload = lastResult.payload;
+    final caloriesGoal = _tryParseInt(payload['caloriesGoal']) ?? 0;
+    final grams = (payload['grams'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    final protein = _tryParseDouble(grams['protein']) ??
+        _tryParseDouble(payload['proteinGoal']) ??
+        0;
+    final carbs = _tryParseDouble(grams['carbs']) ??
+        _tryParseDouble(payload['carbsGoal']) ??
+        0;
+    final fat = _tryParseDouble(grams['fat']) ??
+        _tryParseDouble(payload['fatGoal']) ??
+        0;
+
+    switch (lastResult.commandName) {
+      case getDailyNutritionStatus:
+        final caloriesRemaining =
+            _tryParseInt(payload['caloriesRemaining']) ?? 0;
+        final proteinRemaining =
+            _tryParseDouble(payload['proteinRemaining']) ?? 0;
+        final carbsRemaining = _tryParseDouble(payload['carbsRemaining']) ?? 0;
+        final fatRemaining = _tryParseDouble(payload['fatRemaining']) ?? 0;
+        if (isPortuguese) {
+          return 'Hoje você ainda pode consumir $caloriesRemaining kcal, '
+              '${_formatOneDecimal(proteinRemaining)}g de proteína, '
+              '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
+              '${_formatOneDecimal(fatRemaining)}g de gorduras.';
+        }
+        return 'Today you still have $caloriesRemaining kcal, '
+            '${_formatOneDecimal(proteinRemaining)}g protein, '
+            '${_formatOneDecimal(carbsRemaining)}g carbs, and '
+            '${_formatOneDecimal(fatRemaining)}g fat remaining.';
+      case updateMacroTargetsPercentage:
+      case updateMacroTargetsGrams:
+      case updateMacroTargetsGramsPerKg:
+      case recalculateNutritionGoals:
+        if (isPortuguese) {
+          return 'Pronto, atualizei suas metas para $caloriesGoal kcal: '
+              '${_formatOneDecimal(protein)}g de proteína, '
+              '${_formatOneDecimal(carbs)}g de carboidratos e '
+              '${_formatOneDecimal(fat)}g de gorduras.';
+        }
+        return 'Done, I updated your goals to $caloriesGoal kcal: '
+            '${_formatOneDecimal(protein)}g protein, '
+            '${_formatOneDecimal(carbs)}g carbs, and '
+            '${_formatOneDecimal(fat)}g fat.';
+      case getMacroTargetsStatus:
+        if (isPortuguese) {
+          return 'Suas metas atuais são $caloriesGoal kcal: '
+              '${_formatOneDecimal(protein)}g de proteína, '
+              '${_formatOneDecimal(carbs)}g de carboidratos e '
+              '${_formatOneDecimal(fat)}g de gorduras. '
+              'Me diga se quer reduzir ou aumentar calorias, ou mudar algum macro.';
+        }
+        return 'Your current goals are $caloriesGoal kcal: '
+            '${_formatOneDecimal(protein)}g protein, '
+            '${_formatOneDecimal(carbs)}g carbs, and '
+            '${_formatOneDecimal(fat)}g fat. '
+            'Tell me if you want to lower or raise calories, or change any macro.';
+      case getDietGenerationPreferencesStatus:
+      case updateDietGenerationPreferences:
+      case generateNewDietPlan:
+        return isPortuguese
+            ? 'Neste chat eu ajusto metas, calorias e macros. Me diga se você quer reduzir ou aumentar calorias, ou mudar proteína, carboidratos ou gorduras.'
+            : 'In this chat I adjust goals, calories, and macros. Tell me if you want to lower or raise calories, or change protein, carbs, or fat.';
+      default:
+        return null;
     }
   }
 
@@ -1052,6 +1160,7 @@ class AppAgentService {
     required BuildContext context,
     String conversationContext = '',
   }) async {
+    final appReplyLanguage = _promptLanguageTag(context);
     final resultJson = jsonEncode(
       executionResults.map(_summarizeExecutionResultForPrompt).toList(),
     );
@@ -1076,13 +1185,21 @@ $resultJson
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
 
-${sanitizedConversationContext.isEmpty ? '' : 'Contexto recente da conversa:\n$sanitizedConversationContext\n'}
+App reply language: $appReplyLanguage.
 
-Pedido do usuário:
+${sanitizedConversationContext.isEmpty ? '' : 'Recent conversation context:\n$sanitizedConversationContext\n'}
+
+User request:
 $originalUserMessage
 
-Use APP_COMMAND_RESULTS e APP_CURRENT_STATE como fonte de verdade. Se outra ação de app ainda for necessária para concluir o pedido, retorne somente app_command/app_commands válidos. Caso contrário, responda naturalmente sem JSON nem nomes internos de comando.
-Responda no mesmo idioma do pedido original do usuário.
+Use APP_COMMAND_RESULTS and APP_CURRENT_STATE as the source of truth. If another app action is still required to complete the request, return only valid app_command/app_commands. Otherwise, answer naturally without JSON or internal command names.
+The final visible reply must be written by the assistant in natural language, not as a template.
+If APP_COMMAND_RESULTS contains errorMessage "confirmation_required", do not return another mutating command. Tell the user that you did not change the saved goals yet, then ask one short confirmation or target question.
+For daily status results, answer the user's exact question with the remaining values from APP_COMMAND_RESULTS. If the user asks only about fat/gordura, answer the remaining fat first, then optionally mention calories briefly.
+For calorie/macro target results, mention only the saved values from APP_COMMAND_RESULTS or APP_CURRENT_STATE. Do not repeat numbers requested by the user unless they match the saved values.
+After a calorie/macro target update, stop after the saved values. Do not ask about diet personalization, restrictions, meal plans, or generation unless the user explicitly asked for a diet plan in the latest message.
+Do not append edit_macros_ui hints after successful target updates or daily status answers.
+Reply in App reply language.
 ''';
   }
 
@@ -1090,6 +1207,7 @@ Responda no mesmo idioma do pedido original do usuário.
     required BuildContext context,
     required String basePrompt,
   }) async {
+    final appReplyLanguage = _promptLanguageTag(context);
     final authService = Provider.of<AuthService>(context, listen: false);
     if (!authService.isAuthenticated || authService.token == null) {
       const currentAppStateJson = '{"auth":{"isAuthenticated":false}}';
@@ -1097,6 +1215,8 @@ Responda no mesmo idioma do pedido original do usuário.
 [APP_CURRENT_STATE_BEGIN]
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
+
+App reply language: $appReplyLanguage.
 
 $basePrompt
 ''';
@@ -1111,8 +1231,35 @@ $basePrompt
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
 
+App reply language: $appReplyLanguage.
+
 $basePrompt
 ''';
+  }
+
+  static String _promptLanguageTag(BuildContext context) {
+    final locale = Localizations.localeOf(context);
+    final language = locale.languageCode.toLowerCase();
+    final country = locale.countryCode?.toUpperCase();
+    if (country != null && country.isNotEmpty) {
+      return '$language-$country';
+    }
+    switch (language) {
+      case 'pt':
+        return 'pt-BR';
+      case 'en':
+        return 'en-US';
+      case 'es':
+        return 'es-ES';
+      case 'fr':
+        return 'fr-FR';
+      case 'de':
+        return 'de-DE';
+      case 'it':
+        return 'it-IT';
+      default:
+        return language;
+    }
   }
 
   static Map<String, dynamic> _buildPromptStatePayload(
@@ -1125,6 +1272,8 @@ $basePrompt
     final setupCompletionStatus =
         (goalSetup['setupCompletionStatus'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
+    final profile = (goalSetup['profile'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
     final goalSetupMacroTargets =
         (goalSetup['macroTargets'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
@@ -1141,8 +1290,8 @@ $basePrompt
         (state['dietGenerationPreferences'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{};
     final setupStatusValues = setupCompletionStatus.values.toList();
-    final hasCompleteSetup =
-        setupStatusValues.isNotEmpty && setupStatusValues.every((v) => v == true);
+    final hasCompleteSetup = setupStatusValues.isNotEmpty &&
+        setupStatusValues.every((v) => v == true);
     final hasConfiguredGoals =
         goalSetup['configurationStatus'] == 'configured' ||
             goalSetup['hasConfiguredGoals'] == true ||
@@ -1160,6 +1309,16 @@ $basePrompt
         'defaultMacroTargetsApplied':
             goalSetup['defaultMacroTargetsApplied'] == true ||
                 !hasConfiguredGoals,
+        if (hasConfiguredGoals)
+          'profile': _pruneNullEntries({
+            'sex': profile['sex'],
+            'age': profile['age'],
+            'weightKg': profile['weightKg'],
+            'heightCm': profile['heightCm'],
+            'activityLevel': profile['activityLevel'],
+            'fitnessGoal': profile['fitnessGoal'],
+          }),
+        if (hasConfiguredGoals) 'dietType': goalSetup['dietType'],
         if (hasConfiguredGoals)
           'macroSummary': _pruneNullEntries({
             'goalMode':
@@ -1663,7 +1822,61 @@ $basePrompt
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    return _executeServerStateCommand(command, context);
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
+    final goalsProvider =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
+    await mealsProvider.ready;
+    await goalsProvider.ensureLoaded();
+
+    final caloriesGoal = goalsProvider.caloriesGoal;
+    final proteinGoal = goalsProvider.proteinGoal;
+    final carbsGoal = goalsProvider.carbsGoal;
+    final fatGoal = goalsProvider.fatGoal;
+    final caloriesRemaining = caloriesGoal - mealsProvider.totalCalories;
+    final proteinRemaining = proteinGoal - mealsProvider.totalProtein.toInt();
+    final carbsRemaining = carbsGoal - mealsProvider.totalCarbs.toInt();
+    final fatRemaining = fatGoal - mealsProvider.totalFat.toInt();
+
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: true,
+      payload: {
+        'selectedDate': mealsProvider.selectedDate.toIso8601String(),
+        'caloriesGoal': caloriesGoal,
+        'proteinGoal': proteinGoal,
+        'carbsGoal': carbsGoal,
+        'fatGoal': fatGoal,
+        'waterGoal': mealsProvider.waterGoal,
+        'caloriesConsumed': mealsProvider.totalCalories,
+        'proteinConsumed': _round1(mealsProvider.totalProtein),
+        'carbsConsumed': _round1(mealsProvider.totalCarbs),
+        'fatConsumed': _round1(mealsProvider.totalFat),
+        'waterConsumed': mealsProvider.todayWaterGlasses,
+        'caloriesRemaining': caloriesRemaining,
+        'proteinRemaining': proteinRemaining,
+        'carbsRemaining': carbsRemaining,
+        'fatRemaining': fatRemaining,
+        'waterRemaining':
+            (mealsProvider.waterGoal - mealsProvider.todayWaterGlasses)
+                .clamp(0, mealsProvider.waterGoal),
+        'meals': mealsProvider.todayMeals
+            .map((meal) => {
+                  'type': meal.type.name,
+                  'calories': meal.totalCalories,
+                  'protein': _round1(meal.totalProtein),
+                  'carbs': _round1(meal.totalCarbs),
+                  'fat': _round1(meal.totalFat),
+                  'foods': meal.foods
+                      .map((food) => {
+                            'name': food.name,
+                            'calories': food.calories,
+                          })
+                      .toList(),
+                })
+            .toList(),
+      },
+    );
   }
 
   static Future<AppAgentExecutionResult> _getWeeklyNutritionSummary(
@@ -1949,6 +2162,76 @@ $basePrompt
       default:
         return false;
     }
+  }
+
+  static bool shouldBlockAmbiguousGoalMutation(
+    AppAgentCommand command,
+    String originalUserMessage,
+  ) {
+    if (!_isGoalMutationCommand(command.name)) {
+      return false;
+    }
+
+    return !_hasExplicitGoalMutationConsent(originalUserMessage);
+  }
+
+  static AppAgentExecutionResult buildBlockedGoalMutationResult(
+    AppAgentCommand command,
+  ) {
+    return AppAgentExecutionResult(
+      commandName: command.name,
+      success: false,
+      errorMessage: 'confirmation_required',
+      payload: {
+        'reason': 'confirmation_required',
+        'blockedCommand': command.name,
+        'proposedArguments': command.arguments,
+        'guidance':
+            'Do not change saved calorie or macro targets until the user confirms or provides explicit target numbers.',
+      },
+    );
+  }
+
+  static bool _isGoalMutationCommand(String commandName) {
+    switch (commandName) {
+      case recalculateNutritionGoals:
+      case updateMacroTargetsPercentage:
+      case updateMacroTargetsGrams:
+      case updateMacroTargetsGramsPerKg:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static bool _hasExplicitGoalMutationConsent(String userMessage) {
+    final normalized = userMessage.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    if (RegExp(r'\d').hasMatch(normalized)) {
+      return true;
+    }
+
+    if (RegExp(
+      r'\b(g/kg|por\s+(quilo|kg)|por\s+quilo\s+de\s+peso)\b',
+      caseSensitive: false,
+    ).hasMatch(normalized)) {
+      return true;
+    }
+
+    if (RegExp(
+      r'^\s*(sim|ok|okay|pode|pode sim|isso|isso mesmo|confirmo|confirmar|fa[çc]a isso|faz isso|aplica|aplique|aplicar|salva|salve|salvar|yes|do it|apply|save)\s*[.!?]*\s*$',
+      caseSensitive: false,
+    ).hasMatch(normalized)) {
+      return true;
+    }
+
+    return RegExp(
+      r'\b(pode aplicar|pode atualizar|aplica isso|aplique isso|salva isso|salve isso|fa[çc]a essa mudan[çc]a|confirmo essa mudan[çc]a|apply it|save it|update it)\b',
+      caseSensitive: false,
+    ).hasMatch(normalized);
   }
 
   static String _formatOneDecimal(double value) {

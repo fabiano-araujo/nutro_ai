@@ -160,6 +160,12 @@ final Map<String, String> frFRTranslations = {
   'agent_loading_generic': 'Consultation de vos donnees dans l\'app...',
   'agent_command_limit_reached':
       'Je n\'ai pas pu terminer l\'action interne. Reessayez.',
+  'agent_macro_scope_fallback':
+      'Dans ce chat, j\'ajuste les objectifs, calories et macros. Dites-moi si vous voulez baisser ou augmenter les calories, ou changer proteines, glucides ou lipides.',
+  'agent_empty_response_fallback':
+      'Je n\'ai pas recu de reponse de l\'IA. Essayez de l\'envoyer a nouveau.',
+  'chat_credit_exhausted_inline':
+      'Vous n\'avez plus de credits pour le moment. Regardez une courte video pour gagner plus de credits.',
   'chat_action_login': 'Se connecter',
   'chat_action_configure_goals_ui': 'Configurer dans l\'app',
   'chat_goals_setup_banner_title': 'Completez vos objectifs',
@@ -172,7 +178,7 @@ final Map<String, String> frFRTranslations = {
   'chat_goal_setup_chat_prompt':
       'Je veux configurer mes objectifs nutritionnels dans le chat. Utilise les commandes de l\'app si besoin, pose une seule question a la fois et commence par mon age, ma taille, mon poids et mon genre.',
   'chat_macro_edit_chat_prompt':
-      'Je veux ajuster mes macronutriments et objectifs nutritionnels ici. Utilise mes donnees actuelles dans l\'app, verifie mes objectifs actuels et guide-moi avec une question a la fois. Si je dis que je veux perdre du poids, prendre du muscle, generer un regime ou atteindre des objectifs comme 120 g de proteines, calcule et applique les macros dans l\'app quand tu as assez d\'informations.',
+      'Je veux revoir mes calories et macros actuelles avec l\'IA.',
   'error_occurred': 'Une erreur s\'est produite',
   'try_again': 'Réessayer',
   'no_results': 'Aucun résultat trouvé',
@@ -401,6 +407,8 @@ final Map<String, String> frFRTranslations = {
   'loading_ad': 'Chargement de la publicité...',
   'congrats': 'Félicitations!',
   'earned_credits': 'Vous avez gagné 7 crédits!',
+  'reward_credit_sync_error':
+      'Impossible d\'ajouter les crédits. Veuillez réessayer.',
   'ad_load_error':
       'Erreur lors du chargement de la publicité. Veuillez réessayer plus tard.',
   'ad_failed': 'Échec du chargement de la publicité',

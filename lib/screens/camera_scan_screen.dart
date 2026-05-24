@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:image/image.dart' as img;
@@ -838,7 +839,9 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         break;
     }
 
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar:
           true, // Permite que o corpo se estenda atrás do AppBar
@@ -1048,6 +1051,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             ),
           ],
         ],
+      ),
       ),
     );
   }

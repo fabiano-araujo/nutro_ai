@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/credit_model.dart';
+import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
 class CreditProvider extends ChangeNotifier {
@@ -87,13 +88,30 @@ class CreditProvider extends ChangeNotifier {
   }
 
   /// Adiciona créditos após assistir um anúncio premiado
-  Future<void> addRewardedCredits(int amount) async {
-    // Atualizar o modelo com a quantidade adicionada
+  Future<void> addRewardedCredits(int amount, {String? token}) async {
+    if (token != null && token.isNotEmpty) {
+      final creditData = await ApiService.grantRewardedAdCredits(token: token);
+      final availableCredits = _readInt(creditData['availableCredits']);
+      final lastResetStr = creditData['lastReset']?.toString();
+
+      if (availableCredits == null || lastResetStr == null) {
+        throw Exception('Resposta inválida ao adicionar créditos');
+      }
+
+      _creditModel = CreditModel(
+        creditsRemaining: availableCredits,
+        lastResetDate: DateTime.parse(lastResetStr),
+      );
+
+      notifyListeners();
+      await _saveCredits();
+      return;
+    }
+
     _creditModel = _creditModel.copyWith(
       creditsRemaining: _creditModel.creditsRemaining + amount,
     );
 
-    // Notificar os ouvintes e salvar
     notifyListeners();
     await _saveCredits();
   }
@@ -138,5 +156,12 @@ class CreditProvider extends ChangeNotifier {
     await _saveCredits();
     notifyListeners();
     print('[CreditProvider] Dados de crédito limpos');
+  }
+
+  int? _readInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }

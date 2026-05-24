@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'diet_type_selection_screen.dart';
+import 'free_chat_screen.dart';
 import 'nutrition_assistant_screen.dart';
 import '../i18n/app_localizations.dart';
 
@@ -473,9 +474,11 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NutritionAssistantScreen(
+        builder: (context) => FreeChatScreen(
           initialPrompt: AppLocalizations.of(context)
               .translate('chat_macro_edit_chat_prompt'),
+          toolType: NutritionAssistantScreen.macroGoalsToolType,
+          forceNewConversation: true,
         ),
       ),
     );

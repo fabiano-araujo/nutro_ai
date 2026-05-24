@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import '../theme/app_theme.dart';
-import '../utils/code_detector.dart';
 import '../utils/message_formatter.dart';
 import '../screens/image_viewer_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -11,7 +9,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// Classe utilitária para construir elementos de UI relacionados a mensagens
 class MessageUIHelper {
   /// Constrói o indicador de digitação (três pontos animados)
-  static Widget buildTypingIndicator() {
+  static Widget buildTypingIndicator({Color? color}) {
+    final indicatorColor = color ?? AppTheme.primaryColor;
+
     return Row(
       children: List.generate(
         3,
@@ -20,7 +20,7 @@ class MessageUIHelper {
           height: 6,
           width: 6,
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.5),
+            color: indicatorColor.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
         ),
@@ -65,7 +65,7 @@ class MessageUIHelper {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppTheme.errorColor
-                    .withOpacity(animationController.value * 0.7 + 0.3),
+                    .withValues(alpha: animationController.value * 0.7 + 0.3),
               ),
             ),
             // Círculo exterior para feedback adicional
@@ -77,8 +77,8 @@ class MessageUIHelper {
                   shape: BoxShape.circle,
                   color: Colors.transparent,
                   border: Border.all(
-                    color: AppTheme.errorColor
-                        .withOpacity(0.5 - (animationController.value * 0.2)),
+                    color: AppTheme.errorColor.withValues(
+                        alpha: 0.5 - (animationController.value * 0.2)),
                     width: 1.5,
                   ),
                 ),
@@ -100,8 +100,7 @@ class MessageUIHelper {
     Uint8List? imageBytes,
     double bottomSpacing = 8,
   }) {
-    final double safeBottomSpacing =
-        bottomSpacing < 0 ? 0 : bottomSpacing;
+    final double safeBottomSpacing = bottomSpacing < 0 ? 0 : bottomSpacing;
 
     // Verificar se o tema é escuro ou claro
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -114,7 +113,7 @@ class MessageUIHelper {
       messageContent = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          buildTypingIndicator(), // Usar o método da própria classe
+          buildTypingIndicator(color: Theme.of(context).colorScheme.primary),
         ],
       );
     } else if (imageBytes != null) {
@@ -193,9 +192,7 @@ class MessageUIHelper {
                     ),
               child: DefaultTextStyle.merge(
                 style: TextStyle(
-                  color: isDarkMode
-                      ? Colors.white
-                      : AppTheme.textPrimaryColor,
+                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
@@ -208,7 +205,8 @@ class MessageUIHelper {
     }
 
     // Mensagem da IA: sem balão, estilo ChatGPT
-    final errorBackgroundColor = isDarkMode ? Color(0xFF3B2532) : Color(0xFFFFF0F0);
+    final errorBackgroundColor =
+        isDarkMode ? Color(0xFF3B2532) : Color(0xFFFFF0F0);
 
     return GestureDetector(
       onLongPress: onLongPress,

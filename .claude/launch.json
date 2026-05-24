@@ -12,6 +12,12 @@
       "runtimeExecutable": "flutter",
       "runtimeArgs": ["run", "-d", "emulator-5554", "--target", "lib/main.dart"],
       "port": 8080
+    },
+    {
+      "name": "Flutter Web Build",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "build/web", "-p", "51604", "-c-1", "--cors"],
+      "port": 51604
     }
   ]
 }

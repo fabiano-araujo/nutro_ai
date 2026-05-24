@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'nutrition_assistant_screen.dart';
 import 'profile_screen.dart';
@@ -418,7 +419,9 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return LayoutBuilder(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isDarkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= _wideLayoutBreakpoint;
 
@@ -437,6 +440,7 @@ class _MainNavigationState extends State<MainNavigation> {
               : _buildNarrowLayout(isDarkMode),
         );
       },
+      ),
     );
   }
 

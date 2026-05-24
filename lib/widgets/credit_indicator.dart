@@ -134,8 +134,10 @@ class CreditIndicator extends StatelessWidget {
       return;
     }
 
+    final parentContext = context;
+
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -203,7 +205,8 @@ class CreditIndicator extends StatelessWidget {
                       onPressed: () {
                         Navigator.of(context).pop();
                         // Chamar o RewardAdDialog corretamente
-                        RewardAdDialog.showRewardedAd(context, retryAttempt: 0);
+                        RewardAdDialog.showRewardedAd(parentContext,
+                            retryAttempt: 0);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -246,7 +249,7 @@ class CreditIndicator extends StatelessWidget {
                   child: TextButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.of(context).pushNamed('/subscription');
+                      Navigator.of(parentContext).pushNamed('/subscription');
                     },
                     child: Text(
                       'Ou assine o plano Premium',

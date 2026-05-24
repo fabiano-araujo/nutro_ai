@@ -214,6 +214,12 @@ final Map<String, String> ptBRTranslations = {
       'Nao consegui concluir a acao interna. Tente novamente.',
   'agent_command_invalid_response':
       'Nao consegui interpretar a acao interna solicitada. Tente novamente.',
+  'agent_macro_scope_fallback':
+      'Neste chat eu ajusto metas, calorias e macros. Me diga se voce quer reduzir ou aumentar calorias, mudar proteina, carboidratos ou gorduras.',
+  'agent_empty_response_fallback':
+      'Nao recebi uma resposta da IA. Tente enviar novamente.',
+  'chat_credit_exhausted_inline':
+      'Você está sem créditos para continuar agora. Assista a um vídeo curto para ganhar mais créditos.',
   'chat_action_login': 'Fazer login',
   'chat_action_configure_goals_ui': 'Configurar na interface',
   'chat_goals_setup_banner_title': 'Complete suas metas',
@@ -228,7 +234,7 @@ final Map<String, String> ptBRTranslations = {
   'chat_goal_setup_chat_prompt':
       'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faca uma pergunta por vez e comece pela idade, altura, peso e genero.',
   'chat_macro_edit_chat_prompt':
-      'Quero ajustar meus macronutrientes e objetivos nutricionais por aqui. Use meus dados atuais do app, verifique minhas metas atuais e me conduza com uma pergunta por vez. Se eu disser que quero perder peso, ganhar massa, gerar uma dieta ou bater alvos como 120 g de proteína, calcule e aplique os macros pelo app quando tiver informação suficiente.',
+      'Quero revisar minhas calorias e macros atuais com IA.',
   'diet_generation_preferences_title': 'Antes de montar sua dieta',
   'diet_generation_preferences_description':
       'Me conte as particularidades que devo considerar para escolher melhor os alimentos. Se algum campo nao se aplicar, deixe em branco e eu vou entender como nenhum.',
@@ -856,6 +862,8 @@ final Map<String, String> ptBRTranslations = {
   'loading_ad': 'Carregando anúncio...',
   'congrats': 'Parabéns!',
   'earned_credits': 'Você ganhou 7 créditos!',
+  'reward_credit_sync_error':
+      'Não foi possível adicionar os créditos. Tente novamente.',
   'ad_load_error': 'Erro ao carregar o anúncio. Tente novamente mais tarde.',
   'ad_failed': 'Falha ao carregar anúncio',
   'retry': 'Tentar novamente',

@@ -209,6 +209,12 @@ final Map<String, String> esESTranslations = {
   'agent_loading_generic': 'Consultando tus datos de la app...',
   'agent_command_limit_reached':
       'No pude completar la accion interna. Intentalo de nuevo.',
+  'agent_macro_scope_fallback':
+      'En este chat ajusto metas, calorias y macros. Dime si quieres bajar o subir calorias, o cambiar proteinas, carbohidratos o grasas.',
+  'agent_empty_response_fallback':
+      'No recibi una respuesta de la IA. Intenta enviarlo de nuevo.',
+  'chat_credit_exhausted_inline':
+      'Te quedaste sin creditos por ahora. Mira un video corto para ganar mas creditos.',
   'chat_action_login': 'Iniciar sesion',
   'chat_action_configure_goals_ui': 'Configurar en la app',
   'chat_goals_setup_banner_title': 'Completa tus metas',
@@ -220,7 +226,7 @@ final Map<String, String> esESTranslations = {
   'chat_goal_setup_chat_prompt':
       'Quiero configurar mis metas nutricionales por el chat. Usa los comandos de la app cuando haga falta, haz una pregunta por vez y empieza por mi edad, altura, peso y genero.',
   'chat_macro_edit_chat_prompt':
-      'Quiero ajustar mis macronutrientes y metas nutricionales por aqui. Usa mis datos actuales de la app, revisa mis metas actuales y guiame con una pregunta por vez. Si digo que quiero perder peso, ganar musculo, generar una dieta o llegar a objetivos como 120 g de proteina, calcula y aplica los macros en la app cuando tengas informacion suficiente.',
+      'Quiero revisar mis calorias y macros actuales con IA.',
   'error_occurred': 'Se ha producido un error',
   'try_again': 'Intentar de nuevo',
   'no_results': 'No se encontraron resultados',
@@ -582,6 +588,8 @@ final Map<String, String> esESTranslations = {
   'loading_ad': 'Cargando anuncio...',
   'congrats': '¡Felicidades!',
   'earned_credits': '¡Has ganado 7 créditos!',
+  'reward_credit_sync_error':
+      'No se pudieron agregar los créditos. Inténtalo de nuevo.',
   'ad_load_error':
       'Error al cargar el anuncio. Por favor, inténtalo de nuevo más tarde.',
   'ad_failed': 'Error al cargar el anuncio',

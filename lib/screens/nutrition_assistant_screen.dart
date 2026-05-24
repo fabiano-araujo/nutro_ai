@@ -51,6 +51,7 @@ import '../models/meal_model.dart';
 import '../widgets/recent_foods_sheet.dart';
 import '../widgets/macro_edit_bottom_sheet.dart';
 import '../widgets/header_streak_badge.dart';
+import '../widgets/reward_ad_dialog.dart';
 import '../services/app_agent_service.dart';
 import '../services/auth_service.dart';
 
@@ -89,6 +90,9 @@ class NutritionAssistantManager {
 final nutritionAssistantManager = NutritionAssistantManager();
 
 class NutritionAssistantScreen extends StatefulWidget {
+  static const macroGoalsToolType =
+      NutritionAssistantController.macroGoalsToolType;
+
   final String? conversationId; // ID da conversa a ser carregada
   final String?
       initialPrompt; // Prompt inicial a ser processado (pode ser JSON de ferramenta)
@@ -96,6 +100,7 @@ class NutritionAssistantScreen extends StatefulWidget {
       initialToolResponse; // NOVO: Resposta da IA para o initialPrompt da ferramenta
   final bool isFreeChat; // Indica se é modo conversa livre (sem JSON)
   final String? freeChatId; // ID da conversa livre
+  final bool forceNewFreeChat;
   final VoidCallback? onOpenDrawer;
   final String? toolType;
 
@@ -106,6 +111,7 @@ class NutritionAssistantScreen extends StatefulWidget {
     this.initialToolResponse,
     this.isFreeChat = false,
     this.freeChatId,
+    this.forceNewFreeChat = false,
     this.onOpenDrawer,
     this.toolType,
   }) : super(key: key);
@@ -172,6 +178,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   // Flag para controlar se já fizemos o scroll inicial após carregar mensagens
   bool _hasScrolledToInitialMessages = false;
+  bool _pinChatToBottom = false;
+  int _lastAutoScrollMessageCount = 0;
+  bool _lastAutoScrollLoadingState = false;
 
   // Banner de login (só aparece após enviar mensagem; dispensável)
   bool _loginBannerDismissed = false;
@@ -518,6 +527,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   void _initFreeChatMode() {
     // Determinar o toolType baseado no parâmetro widget.toolType
     final effectiveToolType = widget.toolType ?? 'free_chat';
+    final initialPrompt = widget.initialPrompt?.trim() ?? '';
+    final hasInitialPrompt = initialPrompt.isNotEmpty;
     print(
         '💬 NutritionAssistantScreen: Iniciando modo conversa livre (toolType: $effectiveToolType)');
 
@@ -538,10 +549,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           '📂 NutritionAssistantScreen: Carregando conversa livre existente: ${widget.freeChatId}');
     } else {
       // Criar nova conversa
-      _currentFreeChatId = freeChatProvider.createConversation();
+      _currentFreeChatId = freeChatProvider.createConversation(
+        reuseEmpty: !widget.forceNewFreeChat,
+      );
+      initialMessages = <Map<String, dynamic>>[];
       print(
           '📝 NutritionAssistantScreen: Nova conversa livre criada: $_currentFreeChatId');
     }
+
+    final loadedInitialMessages = initialMessages ?? <Map<String, dynamic>>[];
 
     // Inicializar controller para conversa livre
     _chatController = NutritionAssistantController(
@@ -549,12 +565,22 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       ttsRef: _ttsMixinRef,
       toolType: effectiveToolType,
       storageScope: storageScope,
-      showWelcomeMessage: initialMessages == null || initialMessages.isEmpty,
-      initialMessages: initialMessages,
+      showWelcomeMessage: loadedInitialMessages.isEmpty && !hasInitialPrompt,
+      initialMessages: loadedInitialMessages,
     );
 
     // Sincronizar mensagens com FreeChatProvider para persistir
     _chatController.addListener(_syncFreeChatMessages);
+
+    if (widget.freeChatId == null && hasInitialPrompt) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted) {
+          return;
+        }
+        _messageController.text = initialPrompt;
+        _handleSendMessage();
+      });
+    }
 
     if (!kIsWeb && Platform.isAndroid) {
       Future.delayed(Duration(milliseconds: 1000), () {
@@ -738,6 +764,65 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         });
       }
     });
+  }
+
+  void _scrollToBottom({bool animate = false, int retries = 2}) {
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients || !mounted) return;
+
+      final targetPosition = _scrollController.position.maxScrollExtent;
+      _isScrollingProgrammatically = true;
+
+      final Future<void> scrollOperation;
+      if (animate) {
+        scrollOperation = _scrollController.animateTo(
+          targetPosition,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scrollController.jumpTo(targetPosition);
+        scrollOperation = Future<void>.value();
+      }
+
+      scrollOperation.whenComplete(() {
+        if (!mounted) return;
+        if (retries > 0) {
+          Future.delayed(const Duration(milliseconds: 140), () {
+            _scrollToBottom(retries: retries - 1);
+          });
+        } else {
+          _isScrollingProgrammatically = false;
+        }
+      });
+    });
+  }
+
+  void _handleChatAutoScroll(
+    List<Map<String, dynamic>> messages,
+    bool isLoading,
+  ) {
+    final messageCountChanged = messages.length != _lastAutoScrollMessageCount;
+    final loadingChanged = isLoading != _lastAutoScrollLoadingState;
+
+    _lastAutoScrollMessageCount = messages.length;
+    _lastAutoScrollLoadingState = isLoading;
+
+    if (!_pinChatToBottom || messages.isEmpty) {
+      return;
+    }
+
+    if (messageCountChanged) {
+      _scrollToBottom(animate: true, retries: 4);
+      return;
+    }
+
+    if (loadingChanged && !isLoading) {
+      _scrollToBottom(animate: true, retries: 3);
+      _pinChatToBottom = false;
+    }
   }
 
   // Método simples para controlar visibilidade do header baseado na direção do scroll
@@ -957,11 +1042,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   // Método para lidar com o envio de mensagem (botão Enviar ou Enter)
   Future<void> _handleSendMessage() async {
     final message = _messageController.text;
+    final shouldScrollAfterSend =
+        message.trim().isNotEmpty || _chatController.hasSelectedImage;
 
     // Incrementar contador de mensagens do usuário se a mensagem não estiver vazia
     if (message.trim().isNotEmpty) {
       _userMessageCount++;
       print("Contador de mensagens incrementado: $_userMessageCount");
+    }
+
+    if (shouldScrollAfterSend) {
+      _pinChatToBottom = true;
     }
 
     // Enviar a mensagem e verificar se foi processada (se tinha créditos suficientes)
@@ -972,9 +1063,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     if (hadEnoughCredits) {
       _messageController.clear();
 
-      // Rolar até o início da última resposta da IA com animação
-      Future.delayed(Duration(milliseconds: 100), () {
-        _scrollToLastAiResponse(animate: true);
+      // Keep the newest user message and streaming answer visible.
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _scrollToBottom(animate: true, retries: 4);
+      });
+    } else if (shouldScrollAfterSend) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _scrollToBottom(animate: true, retries: 2);
       });
     }
   }
@@ -1031,7 +1126,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     style: TextStyle(
                         color: Theme.of(context).textTheme.bodyLarge?.color)),
                 onTap: () {
-                  final readable = isUser ? message : _getReadableMessage(message);
+                  final readable =
+                      isUser ? message : _getReadableMessage(message);
                   Clipboard.setData(ClipboardData(text: readable));
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1259,6 +1355,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               _scrollToLastAiResponse();
             });
           }
+          _handleChatAutoScroll(messages, isLoading);
 
           return PopScope(
             canPop: _suggestions.isEmpty,
@@ -2147,8 +2244,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                               ? Colors.orange
                                               : isDarkMode
                                                   ? Colors.grey[400]
-                                                  : AppTheme
-                                                      .textSecondaryColor,
+                                                  : AppTheme.textSecondaryColor,
                                         ),
                                         onPressed: () async {
                                           if (isTranscribingAudio) {
@@ -2346,6 +2442,44 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     );
   }
 
+  bool _isCreditExhaustedMessage(String rawMessage) {
+    final normalized = rawMessage.toLowerCase();
+    return normalized.contains('sem créditos') ||
+        normalized.contains('sem creditos') ||
+        normalized.contains('créditos acabaram') ||
+        normalized.contains('creditos acabaram') ||
+        normalized.contains('créditos insuficientes') ||
+        normalized.contains('creditos insuficientes') ||
+        normalized.contains('out of credits') ||
+        normalized.contains('insufficient credits');
+  }
+
+  bool _isDailyRemainingStatusMessage(String rawMessage) {
+    final visibleMessage =
+        AppAgentUiHint.removeHintBlock(rawMessage).toLowerCase();
+    final hasTodayContext = visibleMessage.contains('hoje') ||
+        visibleMessage.contains('today') ||
+        visibleMessage.contains('agora') ||
+        visibleMessage.contains('now');
+    final hasRemainingContext = RegExp(
+      r'\b(ainda|restante|restantes|livre|livres|sobrou|sobram|resta|restam|remaining|left|still)\b',
+      caseSensitive: false,
+    ).hasMatch(visibleMessage);
+    final hasNutritionContext = RegExp(
+      r'\b(caloria|calorias|kcal|prote[ií]na|proteinas|proteínas|protein|carbo|carbos|carboidrato|carboidratos|gordura|gorduras|fat|fats|macro|macros)\b',
+      caseSensitive: false,
+    ).hasMatch(visibleMessage);
+    final hasTargetEditContext = RegExp(
+      r'\b(meta|metas|alvo|alvos|objetivo|objetivos|target|targets|goal|goals|editar|ajustar|alterar|mudar|definir|edit|change|update|set)\b',
+      caseSensitive: false,
+    ).hasMatch(visibleMessage);
+
+    return hasTodayContext &&
+        hasRemainingContext &&
+        hasNutritionContext &&
+        !hasTargetEditContext;
+  }
+
   Widget? _buildContextualMessageActions({
     required String rawMessage,
     required bool isUser,
@@ -2363,10 +2497,16 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     final actions = {
       ...?uiHint?.actions,
     };
+    if (_isCreditExhaustedMessage(rawMessage)) {
+      actions.add(AppAgentUiHint.actionWatchRewardedAd);
+    }
     // Login agora aparece como banner acima do input, não como ação inline.
     actions.remove(AppAgentUiHint.actionLogin);
     if (goalsProvider.hasConfiguredGoals) {
       actions.remove(AppAgentUiHint.actionConfigureGoalsUi);
+    }
+    if (_isDailyRemainingStatusMessage(rawMessage)) {
+      actions.remove(AppAgentUiHint.actionEditMacrosUi);
     }
     if (actions.isEmpty) {
       return null;
@@ -2398,6 +2538,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               icon: const Icon(Icons.tune_rounded, size: 18),
               label: Text(
                 appLocalizations.translate('chat_action_edit_macros_ui'),
+              ),
+            ),
+          if (actions.contains(AppAgentUiHint.actionWatchRewardedAd))
+            FilledButton.tonalIcon(
+              onPressed: () => RewardAdDialog.showRewardedAd(context),
+              icon: const Icon(Icons.play_circle_fill_rounded, size: 18),
+              label: Text(
+                appLocalizations.translate('watch_ad_for_credits'),
               ),
             ),
         ],
@@ -3121,8 +3269,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color:
-                          isDarkMode ? Colors.white60 : Colors.black54,
+                      color: isDarkMode ? Colors.white60 : Colors.black54,
                     ),
                   ),
               ],
@@ -3132,8 +3279,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             onTap: onDateTap,
             borderRadius: BorderRadius.circular(20),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -3150,8 +3296,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     Icon(
                       Icons.keyboard_arrow_down,
                       size: 20,
-                      color:
-                          isDarkMode ? Colors.white70 : Colors.black54,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
                   ],
                 ],
@@ -3182,14 +3327,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const HeaderStreakBadge(
-                        margin: EdgeInsets.only(right: 4)),
+                    if (!widget.isFreeChat)
+                      const HeaderStreakBadge(
+                          margin: EdgeInsets.only(right: 4)),
                     if (onSearchTap != null)
                       IconButton(
                         icon: Icon(Icons.search,
-                            color: isDarkMode
-                                ? Colors.white
-                                : Colors.black87),
+                            color: isDarkMode ? Colors.white : Colors.black87),
                         onPressed: onSearchTap,
                         tooltip: 'Pesquisar alimentos',
                       )

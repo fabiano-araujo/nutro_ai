@@ -5,8 +5,17 @@ import 'nutrition_assistant_screen.dart';
 /// Abre como rota push por cima da MainNavigation.
 class FreeChatScreen extends StatelessWidget {
   final String? freeChatId;
+  final String? initialPrompt;
+  final String? toolType;
+  final bool forceNewConversation;
 
-  const FreeChatScreen({super.key, this.freeChatId});
+  const FreeChatScreen({
+    super.key,
+    this.freeChatId,
+    this.initialPrompt,
+    this.toolType,
+    this.forceNewConversation = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +23,9 @@ class FreeChatScreen extends StatelessWidget {
       body: NutritionAssistantScreen(
         isFreeChat: true,
         freeChatId: freeChatId,
+        initialPrompt: initialPrompt,
+        toolType: toolType,
+        forceNewFreeChat: forceNewConversation,
         onOpenDrawer: () => Navigator.of(context).pop(),
       ),
     );

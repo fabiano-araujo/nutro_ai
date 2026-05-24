@@ -31,6 +31,8 @@ import '../utils/food_json_parser.dart';
 
 /// Controller para gerenciar o estado e a lógica do Assistente de Nutrição
 class NutritionAssistantController with ChangeNotifier {
+  static const macroGoalsToolType = 'macro_goals_chat';
+
   // Serviços
   final AIService _aiService = AIService();
   final StorageService _storageService = StorageService();
@@ -95,6 +97,33 @@ class NutritionAssistantController with ChangeNotifier {
   int? get currentlySpeakingMessageIndex => _currentlySpeakingMessageIndex;
   DateTime get selectedDate => _selectedDate;
 
+  bool get _usesFreeNutritionAgent =>
+      toolType == 'free_chat' ||
+      toolType == 'my_diet' ||
+      toolType == macroGoalsToolType;
+
+  bool get _shouldAutoRegisterFoods =>
+      toolType != 'free_chat' && toolType != macroGoalsToolType;
+
+  String _buildToolScopedInstructions() {
+    if (toolType != macroGoalsToolType) {
+      return '';
+    }
+
+    return '''
+Conversation mode: nutrition goal and macro target review.
+- Scope: goals, calories, macros, and weight-goal discussion only. Do not collect diet preferences or generate meal plans unless explicitly asked.
+- Use APP_CURRENT_STATE for current calories, macros, weight, and profile. Never ask setup fields already present.
+- Broad goals like "quero perder peso" are requests to discuss targets, not consent to save. Ask one short target/deficit confirmation.
+- Save targets only when the latest user message gives explicit numbers/g/kg values or confirms a proposed change.
+- Explicit macro numbers are consent to save; do not ask for confirmation. "O app conduz", "resto carbo", or "resto o app calcula" means keep current calories and fill missing macros.
+- For partial grams or g/kg such as "180g protein" or "2g/kg protein, 1g/kg fat, rest carbs", return the matching update command with only provided values; the app fills the rest using current calories unless the user gives a new calorie target.
+- If a phrase establishes g/kg, apply that unit to later bare macro numbers in the same phrase, such as "2g/kg protein, 1 fat".
+- For remaining-today questions or short macro follow-ups, use get_daily_nutrition_status.
+- After app results, answer briefly with only the saved or remaining values.
+''';
+  }
+
   NutritionAssistantController({
     required this.speechMixin,
     required this.ttsRef,
@@ -114,9 +143,9 @@ class NutritionAssistantController with ChangeNotifier {
 
     print(
         '🤖 NutritionAssistantController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, storageScope: $storageScope, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}, selectedDate: ${_formatDateKey(_selectedDate)}');
-    if (initialMessages != null && initialMessages.isNotEmpty) {
+    if (initialMessages != null) {
       // Prioridade máxima: se mensagens iniciais são fornecidas, usá-las.
-      _messages = initialMessages;
+      _messages = List<Map<String, dynamic>>.from(initialMessages);
 
       // Log formatado das mensagens iniciais
       print('\n');
@@ -241,6 +270,18 @@ class NutritionAssistantController with ChangeNotifier {
     notifyListeners();
   }
 
+  void _addCreditExhaustedAssistantMessage(BuildContext context) {
+    final message =
+        AppLocalizations.of(context).translate('chat_credit_exhausted_inline');
+    _messages.add({
+      'isUser': false,
+      'message': message,
+      'timestamp': DateTime.now(),
+    });
+    _isLoading = false;
+    notifyListeners();
+  }
+
   /// Atualiza a mensagem de boas-vindas com o idioma correto
   void updateWelcomeMessage(BuildContext context) {
     if (_messages.isEmpty || _currentConversationId != null) return;
@@ -354,6 +395,7 @@ class NutritionAssistantController with ChangeNotifier {
     }
 
     if (!hasSufficientCredits) {
+      _addCreditExhaustedAssistantMessage(context);
       // Mostrar diálogo personalizado com RewardAdDialog e botão PRO
       showDialog(
         context: context,
@@ -420,7 +462,7 @@ class NutritionAssistantController with ChangeNotifier {
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(context);
+                      RewardAdDialog.showRewardedAd(_lastContext ?? context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
@@ -561,7 +603,7 @@ class NutritionAssistantController with ChangeNotifier {
       // Se a mensagem anterior contém uma imagem, processe a imagem
       final imageBytes = _messages[aiMessageIndex - 1]['imageBytes'];
       final prompt = message.isEmpty
-          ? "Analise esta imagem e explique o que está vendo." // Prompt oculto para a IA, não aparece na bolha do usuário
+          ? "Analyze this image and explain what you see." // Hidden AI prompt; not shown in the user bubble
           : message;
       _processImageForAI(imageBytes, prompt, context);
     } else {
@@ -629,9 +671,16 @@ class NutritionAssistantController with ChangeNotifier {
       await goalsProvider.ensureLoaded();
       await dietProvider.ensureLoaded();
 
-      final basePrompt = contextPrompt.isNotEmpty
-          ? 'Contexto recente da conversa:\n$contextPrompt\n\nPedido do usuário:\n$message'
-          : 'Pedido do usuário:\n$message';
+      final promptSections = <String>[];
+      final toolScopedInstructions = _buildToolScopedInstructions();
+      if (toolScopedInstructions.isNotEmpty) {
+        promptSections.add(toolScopedInstructions);
+      }
+      if (contextPrompt.isNotEmpty) {
+        promptSections.add('Recent conversation context:\n$contextPrompt');
+      }
+      promptSections.add('User request:\n$message');
+      final basePrompt = promptSections.join('\n\n');
       final prompt = await AppAgentService.buildPromptWithCurrentAppState(
         context: context,
         basePrompt: basePrompt,
@@ -661,6 +710,11 @@ class NutritionAssistantController with ChangeNotifier {
         provider =
             ''; // Deixar vazio para escolher automaticamente (geralmente o mais barato/disponível)
         print('📱 Usando modelo Gemini 2.5 Flash Lite para Free Chat');
+      } else if (toolType == macroGoalsToolType) {
+        quality = 'google/gemini-2.5-flash-lite-preview-09-2025';
+        provider = '';
+        print(
+            '📱 Usando modelo Gemini 2.5 Flash Lite para conversa de metas/macros');
       } else {
         print(
             '📱 Usando qualidade padrão (modelo padrão do servidor) para o tutor de nutrição');
@@ -669,9 +723,8 @@ class NutritionAssistantController with ChangeNotifier {
 
       // Determinar o agentType baseado no toolType
       // free_chat e my_diet usam o agent 'free-nutrition' que não retorna JSON formatado
-      String agentType = (toolType == 'free_chat' || toolType == 'my_diet')
-          ? 'free-nutrition'
-          : 'nutrition';
+      String agentType =
+          _usesFreeNutritionAgent ? 'free-nutrition' : 'nutrition';
       print('🤖 Usando agentType: $agentType para toolType: $toolType');
 
       // Obter o usuário logado para pegar o ID
@@ -752,10 +805,10 @@ class NutritionAssistantController with ChangeNotifier {
         },
         toolDataJson: toolDataForHistory,
         // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
-        autoRegisterFoods: toolType != 'free_chat',
+        autoRegisterFoods: _shouldAutoRegisterFoods,
         displayContentBuilder: (rawContent) => _buildTextDisplayContent(
           rawContent,
-          autoRegisterFoods: toolType != 'free_chat',
+          autoRegisterFoods: _shouldAutoRegisterFoods,
         ),
         interceptFinalResponse: (responseContent, notifier) =>
             _handleAgenticCommandResponse(
@@ -860,6 +913,16 @@ class NutritionAssistantController with ChangeNotifier {
     try {
       final executionResults = <AppAgentExecutionResult>[];
       for (final command in commandBatch.commands) {
+        if (AppAgentService.shouldBlockAmbiguousGoalMutation(
+          command,
+          originalUserMessage,
+        )) {
+          executionResults.add(
+            AppAgentService.buildBlockedGoalMutationResult(command),
+          );
+          continue;
+        }
+
         if (AppAgentService.shouldSkipCommand(command)) {
           print(
               '⚠️ NutritionAssistantController - Ignorando comando agêntico sem argumentos úteis: ${command.name}');
@@ -872,12 +935,28 @@ class NutritionAssistantController with ChangeNotifier {
       }
 
       if (executionResults.isEmpty) {
+        final fallbackKey = toolType == macroGoalsToolType
+            ? 'agent_macro_scope_fallback'
+            : 'agent_command_invalid_response';
         _finalizeInterceptedMessage(
           notifier,
-          AppLocalizations.of(context)
-              .translate('agent_command_invalid_response'),
+          AppLocalizations.of(context).translate(fallbackKey),
         );
         return true;
+      }
+
+      if (toolType == macroGoalsToolType &&
+          executionResults.any((result) => result.success)) {
+        final directMessage =
+            AppAgentService.buildMacroGoalsCommandResultMessage(
+          context: context,
+          executionResults: executionResults,
+        );
+        if (directMessage != null) {
+          _finalizeInterceptedMessage(notifier, directMessage);
+          _saveMessagesForCurrentDate();
+          return true;
+        }
       }
 
       final followUpPrompt = await AppAgentService.buildFollowUpPrompt(
@@ -925,10 +1004,10 @@ class NutritionAssistantController with ChangeNotifier {
           setActiveConnectionId(id);
         },
         toolDataJson: toolDataForHistory,
-        autoRegisterFoods: toolType != 'free_chat',
+        autoRegisterFoods: _shouldAutoRegisterFoods,
         displayContentBuilder: (rawContent) => _buildTextDisplayContent(
           rawContent,
-          autoRegisterFoods: toolType != 'free_chat',
+          autoRegisterFoods: _shouldAutoRegisterFoods,
         ),
         interceptFinalResponse: (responseContent, followUpNotifier) =>
             _handleAgenticCommandResponse(
@@ -1081,7 +1160,7 @@ class NutritionAssistantController with ChangeNotifier {
         },
         toolDataJson: toolDataForHistory,
         // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
-        autoRegisterFoods: toolType != 'free_chat',
+        autoRegisterFoods: _shouldAutoRegisterFoods,
         onStreamComplete: () {
           // Salvar mensagens após cada resposta da IA
           _saveMessagesForCurrentDate();
@@ -1394,6 +1473,7 @@ class NutritionAssistantController with ChangeNotifier {
     }
 
     if (!hasSufficientCredits) {
+      _addCreditExhaustedAssistantMessage(context);
       // Mostrar diálogo modificado com RewardAdDialog
       showDialog(
         context: context,
@@ -1460,7 +1540,7 @@ class NutritionAssistantController with ChangeNotifier {
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(context);
+                      RewardAdDialog.showRewardedAd(_lastContext ?? context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
@@ -1587,7 +1667,7 @@ class NutritionAssistantController with ChangeNotifier {
       print('📸 Processando imagem silenciosamente...');
       // Usar o prompt fornecido ou um padrão se estiver vazio
       final imagePrompt = prompt.isEmpty
-          ? "Analise esta imagem e explique o que está vendo."
+          ? "Analyze this image and explain what you see."
           : prompt;
       _processImageForAI(imageBytes, imagePrompt, context);
     } else {
@@ -1662,7 +1742,7 @@ class NutritionAssistantController with ChangeNotifier {
           },
           toolDataJson: toolDataForHistory,
           // Não auto-registrar alimentos no modo Conversa Livre (free_chat)
-          autoRegisterFoods: toolType != 'free_chat',
+          autoRegisterFoods: _shouldAutoRegisterFoods,
           onStreamComplete: () {
             // Salvar mensagens após cada resposta da IA
             _saveMessagesForCurrentDate();
@@ -1730,6 +1810,7 @@ class NutritionAssistantController with ChangeNotifier {
     }
 
     if (!hasSufficientCredits) {
+      _addCreditExhaustedAssistantMessage(context);
       // Mostrar diálogo personalizado com RewardAdDialog e botão PRO
       showDialog(
         context: context,
@@ -1796,7 +1877,7 @@ class NutritionAssistantController with ChangeNotifier {
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(context);
+                      RewardAdDialog.showRewardedAd(_lastContext ?? context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
@@ -1907,7 +1988,7 @@ class NutritionAssistantController with ChangeNotifier {
     if (hasImage && imageBytes != null) {
       // Se a mensagem contém uma imagem, processe a imagem
       final prompt = userMessage.isEmpty
-          ? "Analise esta imagem e explique o que está vendo."
+          ? "Analyze this image and explain what you see."
           : userMessage;
       _processImageForAI(imageBytes, prompt, context);
     } else {

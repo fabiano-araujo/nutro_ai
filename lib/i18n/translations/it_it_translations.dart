@@ -157,6 +157,12 @@ final Map<String, String> itITTranslations = {
   'agent_loading_generic': 'Sto recuperando i tuoi dati nell\'app...',
   'agent_command_limit_reached':
       'Non sono riuscito a completare l\'azione interna. Riprova.',
+  'agent_macro_scope_fallback':
+      'In questa chat regolo obiettivi, calorie e macro. Dimmi se vuoi abbassare o aumentare le calorie, o cambiare proteine, carboidrati o grassi.',
+  'agent_empty_response_fallback':
+      'Non ho ricevuto una risposta dall\'IA. Prova a inviarlo di nuovo.',
+  'chat_credit_exhausted_inline':
+      'Hai finito i crediti per ora. Guarda un breve video per ottenere altri crediti.',
   'chat_action_login': 'Accedi',
   'chat_action_configure_goals_ui': 'Configura nell\'app',
   'chat_goals_setup_banner_title': 'Completa i tuoi obiettivi',
@@ -168,7 +174,7 @@ final Map<String, String> itITTranslations = {
   'chat_goal_setup_chat_prompt':
       'Voglio configurare i miei obiettivi nutrizionali in chat. Usa i comandi dell\'app quando serve, fai una domanda alla volta e inizia da eta, altezza, peso e genere.',
   'chat_macro_edit_chat_prompt':
-      'Voglio regolare i miei macronutrienti e obiettivi nutrizionali qui. Usa i miei dati attuali dell\'app, controlla i miei obiettivi attuali e guidami con una domanda alla volta. Se dico che voglio perdere peso, aumentare massa muscolare, generare una dieta o raggiungere obiettivi come 120 g di proteine, calcola e applica i macro nell\'app quando hai informazioni sufficienti.',
+      'Voglio rivedere calorie e macro attuali con IA.',
   'error_occurred': 'Si è verificato un errore',
   'try_again': 'Riprova',
   'no_results': 'Nessun risultato trovato',
@@ -398,6 +404,7 @@ final Map<String, String> itITTranslations = {
   'loading_ad': 'Caricamento dell\'annuncio...',
   'congrats': 'Congratulazioni!',
   'earned_credits': 'Hai guadagnato 7 crediti!',
+  'reward_credit_sync_error': 'Impossibile aggiungere i crediti. Riprova.',
   'ad_load_error':
       'Errore durante il caricamento dell\'annuncio. Riprova più tardi.',
   'ad_failed': 'Impossibile caricare l\'annuncio',

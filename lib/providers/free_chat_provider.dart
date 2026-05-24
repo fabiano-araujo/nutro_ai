@@ -266,17 +266,17 @@ class FreeChatProvider extends ChangeNotifier {
   }
 
   /// Cria uma nova conversa e retorna o ID.
-  /// Se já existir uma conversa vazia (sem mensagens do usuário), reutiliza ela
+  /// Se já existir uma conversa vazia, reutiliza ela
   /// para evitar acumular "Nova conversa" duplicadas no histórico.
-  String createConversation() {
-    try {
-      final empty = _conversations.firstWhere(
-        (c) => c.messages.where((m) => m['isUser'] == true).isEmpty,
-      );
-      print('♻️ FreeChatProvider: Reutilizando conversa vazia: ${empty.id}');
-      return empty.id;
-    } catch (_) {
-      // nenhuma vazia encontrada → cria nova abaixo
+  String createConversation({bool reuseEmpty = true}) {
+    if (reuseEmpty) {
+      try {
+        final empty = _conversations.firstWhere((c) => c.messages.isEmpty);
+        print('♻️ FreeChatProvider: Reutilizando conversa vazia: ${empty.id}');
+        return empty.id;
+      } catch (_) {
+        // nenhuma vazia encontrada -> cria nova abaixo
+      }
     }
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final conversation = FreeChatConversation(

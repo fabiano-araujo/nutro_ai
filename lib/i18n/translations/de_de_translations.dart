@@ -210,6 +210,12 @@ final Map<String, String> deDETranslations = {
   'agent_loading_generic': 'Deine App-Daten werden geladen...',
   'agent_command_limit_reached':
       'Die interne Aktion konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
+  'agent_macro_scope_fallback':
+      'In diesem Chat passe ich Ziele, Kalorien und Makros an. Sag mir, ob du Kalorien senken oder erhoehen oder Protein, Kohlenhydrate oder Fett aendern moechtest.',
+  'agent_empty_response_fallback':
+      'Ich habe keine KI-Antwort erhalten. Bitte sende es erneut.',
+  'chat_credit_exhausted_inline':
+      'Du hast im Moment keine Credits mehr. Sieh dir ein kurzes Video an, um weitere Credits zu erhalten.',
   'chat_action_login': 'Einloggen',
   'chat_action_configure_goals_ui': 'In der App einrichten',
   'chat_goals_setup_banner_title': 'Ziele vervollstaendigen',
@@ -222,7 +228,7 @@ final Map<String, String> deDETranslations = {
   'chat_goal_setup_chat_prompt':
       'Ich mochte meine Ernahrungsziele im Chat einrichten. Nutze bei Bedarf die App-Befehle, stelle jeweils nur eine Frage und beginne mit Alter, Grosse, Gewicht und Geschlecht.',
   'chat_macro_edit_chat_prompt':
-      'Ich mochte meine Makronahrstoffe und Ernahrungsziele hier anpassen. Nutze meine aktuellen App-Daten, prufe meine aktuellen Ziele und fuhre mich mit jeweils nur einer Frage. Wenn ich sage, dass ich abnehmen, Muskeln aufbauen, einen Ernahrungsplan erstellen oder Ziele wie 120 g Protein erreichen mochte, berechne und speichere die Makros in der App, sobald du genug Informationen hast.',
+      'Ich mochte meine aktuellen Kalorien und Makros mit KI prufen.',
   'error_occurred': 'Ein Fehler ist aufgetreten',
   'try_again': 'Erneut versuchen',
   'no_results': 'Keine Ergebnisse gefunden',
@@ -450,6 +456,8 @@ final Map<String, String> deDETranslations = {
   'loading_ad': 'Werbung wird geladen...',
   'congrats': 'Glückwunsch!',
   'earned_credits': 'Du hast 7 Credits verdient!',
+  'reward_credit_sync_error':
+      'Credits konnten nicht hinzugefügt werden. Bitte versuche es erneut.',
   'ad_load_error':
       'Fehler beim Laden der Werbung. Bitte versuche es später erneut.',
   'ad_failed': 'Fehler beim Laden der Werbung',

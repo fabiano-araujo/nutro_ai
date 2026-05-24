@@ -206,6 +206,12 @@ final Map<String, String> enUSTranslations = {
       'I could not complete the in-app action. Please try again.',
   'agent_command_invalid_response':
       'I could not interpret the requested in-app action. Please try again.',
+  'agent_macro_scope_fallback':
+      'In this chat I adjust goals, calories, and macros. Tell me if you want to lower or raise calories, or change protein, carbs, or fat.',
+  'agent_empty_response_fallback':
+      'I did not receive an AI response. Please try sending it again.',
+  'chat_credit_exhausted_inline':
+      'You are out of credits right now. Watch a short video to earn more credits.',
   'chat_action_login': 'Log in',
   'chat_action_configure_goals_ui': 'Set up in the app',
   'chat_goals_setup_banner_title': 'Complete your goals',
@@ -220,7 +226,7 @@ final Map<String, String> enUSTranslations = {
   'chat_goal_setup_chat_prompt':
       'I want to set up my nutrition goals through chat. Use the app commands when needed, ask one question at a time, and start with my age, height, weight, and gender.',
   'chat_macro_edit_chat_prompt':
-      'I want to adjust my macronutrients and nutrition goals here. Use my current app data, check my current targets, and guide me with one question at a time. If I say I want to lose weight, gain muscle, generate a diet, or hit targets like 120 g of protein, calculate and apply the macros in the app when you have enough information.',
+      'I want to review my current calories and macros with AI.',
   'diet_generation_preferences_title': 'Before generating your diet',
   'diet_generation_preferences_description':
       'Tell me the details that should influence your food choices. If a field does not apply, leave it blank and it will be treated as none.',
@@ -673,6 +679,7 @@ final Map<String, String> enUSTranslations = {
   'loading_ad': 'Loading ad...',
   'congrats': 'Congratulations!',
   'earned_credits': 'You earned 7 credits!',
+  'reward_credit_sync_error': 'Could not add credits. Please try again.',
   'ad_load_error': 'Error loading the ad. Please try again later.',
   'ad_failed': 'Failed to load ad',
   'retry': 'Try again',

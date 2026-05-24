@@ -218,7 +218,7 @@ class AIInteractionHelper {
         print(
             '✅ AIInteractionHelper - Streaming concluído (stream: ${aiStream.hashCode}), total de $receivedChunks chunks');
 
-        final responseContent = messageNotifier.message;
+        var responseContent = messageNotifier.message;
         print(
             '📊 AIInteractionHelper - Resposta final: ${responseContent.length} caracteres');
 
@@ -235,6 +235,18 @@ class AIInteractionHelper {
             print(
                 '❌ AIInteractionHelper - Erro ao interceptar resposta final: $e');
           }
+        }
+
+        if (responseContent.trim().isEmpty) {
+          final fallbackMessage = context.mounted
+              ? AppLocalizations.of(context)
+                  .translate('agent_empty_response_fallback')
+              : 'Não recebi uma resposta da IA. Tente enviar novamente.';
+          messageNotifier.updateMessage(
+            fallbackMessage,
+            displayContent: fallbackMessage,
+          );
+          responseContent = fallbackMessage;
         }
 
         // NOTA: A adição de alimentos é feita pelo FoodJsonDisplay quando renderizado

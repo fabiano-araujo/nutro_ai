@@ -54,7 +54,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
         name: 'Egg',
         amount: '1 large',
         emoji: '🥚',
-        photo: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
+        photo:
+            'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
         brand: 'Organic Farm',
         nutrients: [
           Nutrient(
@@ -117,7 +118,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
         name: 'Couscous',
         amount: '100g',
         emoji: '🍚',
-        photo: 'https://images.unsplash.com/photo-1596040033229-a0b0d1f6e2e3?w=200&h=200&fit=crop',
+        photo:
+            'https://images.unsplash.com/photo-1596040033229-a0b0d1f6e2e3?w=200&h=200&fit=crop',
         brand: 'Mediterranean',
         nutrients: [
           Nutrient(
@@ -145,7 +147,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
         name: 'Milk',
         amount: '200ml',
         emoji: '🥛',
-        photo: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop',
+        photo:
+            'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop',
         brand: 'Dairy Fresh',
         nutrients: [
           Nutrient(
@@ -809,10 +812,11 @@ class _ToolsScreenState extends State<ToolsScreen> {
       return;
     }
 
-    final theme = Theme.of(context);
+    final parentContext = context;
+    final theme = Theme.of(parentContext);
 
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -879,7 +883,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
                     ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        RewardAdDialog.showRewardedAd(context, retryAttempt: 0);
+                        RewardAdDialog.showRewardedAd(parentContext,
+                            retryAttempt: 0);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -922,7 +927,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                   child: TextButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.of(context).pushNamed('/subscription');
+                      Navigator.of(parentContext).pushNamed('/subscription');
                     },
                     child: Text(
                       'Ou assine o plano Premium',

@@ -3,26 +3,17 @@ import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/ad_manager.dart';
+import '../services/auth_service.dart';
 import '../providers/credit_provider.dart';
 import 'package:nutro_ai/i18n/app_localizations_extension.dart';
 
 class RewardAdDialog {
   static void show(BuildContext context) {
-    // Se estiver na web, apenas mostre mensagem
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr.translate('feature_not_available_web')),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final theme = Theme.of(context);
+    final parentContext = context;
+    final theme = Theme.of(parentContext);
 
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -89,7 +80,7 @@ class RewardAdDialog {
                     ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        showRewardedAd(context);
+                        showRewardedAd(parentContext);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -137,56 +128,62 @@ class RewardAdDialog {
   static Future<void> showRewardedAd(BuildContext context,
       {int retryAttempt = 0}) async {
     final creditProvider = Provider.of<CreditProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final token = authService.isAuthenticated ? authService.token : null;
     final maxRetryAttempt = 3;
 
-    // Se estiver na web, apenas mostre mensagem
     if (kIsWeb) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr.translate('feature_not_available_web')),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      await _grantRewardedCreditsForWeb(context, creditProvider, token);
       return;
     }
 
     // Mostrar indicador de carregamento
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr.translate('loading_ad')),
-        duration: Duration(seconds: 1),
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr.translate('loading_ad')),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
 
     try {
-      // Variável para verificar se a recompensa já foi processada
       bool rewardProcessed = false;
+      bool rewardProcessing = false;
 
-      // Função para processar a recompensa apenas uma vez
       Future<void> processReward() async {
-        // Verificar se a recompensa já foi processada
-        if (rewardProcessed) {
+        if (rewardProcessed || rewardProcessing) {
           debugPrint(
               'Recompensa já foi processada anteriormente, ignorando...');
           return;
         }
 
-        // Marcar como processada para evitar duplicação
-        rewardProcessed = true;
+        rewardProcessing = true;
 
-        // Adicionar créditos
-        await creditProvider.addRewardedCredits(7);
+        try {
+          await creditProvider.addRewardedCredits(7, token: token);
+          rewardProcessed = true;
 
-        // Mostrar mensagem de sucesso
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr.translate('earned_credits')),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.tr.translate('earned_credits')),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint('Erro ao adicionar créditos do anúncio premiado: $e');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.tr.translate('reward_credit_sync_error')),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } finally {
+          rewardProcessing = false;
         }
       }
 
@@ -306,6 +303,44 @@ class RewardAdDialog {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro inesperado: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  static Future<void> _grantRewardedCreditsForWeb(
+    BuildContext context,
+    CreditProvider creditProvider,
+    String? token,
+  ) async {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr.translate('loading_ad')),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+
+    try {
+      await creditProvider.addRewardedCredits(7, token: token);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr.translate('earned_credits')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Erro ao adicionar créditos simulados no web: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr.translate('reward_credit_sync_error')),
             backgroundColor: Colors.red,
           ),
         );
