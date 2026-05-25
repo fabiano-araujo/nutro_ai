@@ -219,6 +219,9 @@ final Map<String, String> enUSTranslations = {
   'chat_goals_setup_banner_button': 'Set up',
   'chat_action_continue_goals_chat': 'Continue in chat',
   'chat_action_edit_macros_ui': 'Edit macros in the app',
+  'chat_action_view_my_diet_ui': 'View in My Diet',
+  'chat_diet_personalization_question':
+      'I can generate a standard diet now. If you want it more personalized, tell me in one sentence: vegetarian or vegan, intolerances or allergies, health conditions, foods you prefer or avoid, and routine. Do you want to add anything, or should I generate the standard diet?',
   'chat_action_continue_macros_chat': 'Adjust goals with AI',
   'chat_setup_reminder_prefix': 'Let’s finish setting up your information',
   'chat_setup_reminder_with_fields':
@@ -915,17 +918,25 @@ final Map<String, String> enUSTranslations = {
   // Nutrition Goals Screen
   'nutrition_goals': 'Nutrition Goals',
   'your_daily_goals': 'Your Daily Goals',
+  'nutrition_goals_daily_target': 'Daily target',
+  'nutrition_goals_macros_per_day': 'Protein, carbs, and fat per day',
+  'nutrition_goals_calculation_data': 'Data used for the calculation',
+  'nutrition_goals_calculation_data_hint': 'Tap a row to change it.',
   'kcal_per_day': 'kcal / day',
   'carbohydrates': 'Carbohydrates',
   'diet_type': 'Diet Type',
   'edit_macronutrients': 'Edit Macronutrients',
   'macro_editor_subtitle':
       'Choose the most intuitive format to adjust your macros.',
+  'macro_editor_adjust_method': 'Choose how to edit',
   'macro_mode_percentage': '%',
+  'macro_mode_percentage_title': 'Percentages',
   'macro_mode_percentage_hint': 'Most common day to day',
   'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_title': 'Per kg',
   'macro_mode_grams_per_kg_hint': 'Great for protein and performance',
   'macro_mode_grams': 'g',
+  'macro_mode_grams_title': 'Grams',
   'macro_mode_grams_hint': 'Full control in grams',
   'macro_editor_percentage_error': 'The percentage total must close at 100%.',
   'macro_editor_positive_error':
@@ -1158,6 +1169,12 @@ final Map<String, String> enUSTranslations = {
   'generate_diet_ai': 'Create my Menu',
   'diet_generated_success': 'Diet generated successfully!',
   'diet_generation_error': 'Error generating diet. Please try again.',
+  'diet_outdated_title': 'Update your diet',
+  'diet_outdated_description':
+      'Your targets changed after this menu was generated.',
+  'diet_outdated_generated_targets': 'Target used for this diet',
+  'diet_outdated_current_targets': 'Current target',
+  'diet_outdated_generate_new': 'Generate new diet',
   'daily_diet_premium_required': 'Daily diet available only for subscribers',
   'daily_diet_premium_title': 'Premium Feature',
   'daily_diet_premium_description':

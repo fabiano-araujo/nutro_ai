@@ -420,26 +420,27 @@ class _MainNavigationState extends State<MainNavigation> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDarkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value:
+          isDarkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= _wideLayoutBreakpoint;
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= _wideLayoutBreakpoint;
 
-        return PopScope(
-          canPop: _selectedIndex == 0,
-          onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) {
-              // Se não está na aba inicial, voltar para ela
-              setState(() {
-                _selectedIndex = 0;
-              });
-            }
-          },
-          child: isWide
-              ? _buildWideLayout(isDarkMode)
-              : _buildNarrowLayout(isDarkMode),
-        );
-      },
+          return PopScope(
+            canPop: _selectedIndex == 0,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop) {
+                // Se não está na aba inicial, voltar para ela
+                setState(() {
+                  _selectedIndex = 0;
+                });
+              }
+            },
+            child: isWide
+                ? _buildWideLayout(isDarkMode)
+                : _buildNarrowLayout(isDarkMode),
+          );
+        },
       ),
     );
   }
@@ -499,6 +500,7 @@ class _MainNavigationState extends State<MainNavigation> {
         isFreeChat: _currentMode == 'free_chat',
         freeChatId: _currentFreeChatId,
         onOpenDrawer: onOpenDrawer,
+        onOpenMyDiet: () => _onItemTapped(1),
       ),
 
       // Aba 1: Minha Dieta
@@ -745,7 +747,6 @@ class _MainNavigationState extends State<MainNavigation> {
                   },
                 ),
               ),
-
             ],
           ),
 

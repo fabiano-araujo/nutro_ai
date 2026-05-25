@@ -134,9 +134,8 @@ class MealTypesProvider extends ChangeNotifier {
 
       if (storedData != null && storedData.isNotEmpty) {
         final List<dynamic> jsonList = json.decode(storedData);
-        _mealTypes = jsonList
-            .map((json) => MealTypeConfig.fromJson(json))
-            .toList();
+        _mealTypes =
+            jsonList.map((json) => MealTypeConfig.fromJson(json)).toList();
 
         // Sort by order
         _mealTypes.sort((a, b) => a.order.compareTo(b.order));
@@ -154,38 +153,7 @@ class MealTypesProvider extends ChangeNotifier {
   }
 
   void _setDefaultMealTypes() {
-    _mealTypes = [
-      MealTypeConfig(
-        id: 'breakfast',
-        name: 'Café da Manhã',
-        emoji: '🍳',
-        order: 0,
-      ),
-      MealTypeConfig(
-        id: 'lunch',
-        name: 'Almoço',
-        emoji: '🍽️',
-        order: 1,
-      ),
-      MealTypeConfig(
-        id: 'afternoon_snack',
-        name: 'Lanche da Tarde',
-        emoji: '🍎',
-        order: 2,
-      ),
-      MealTypeConfig(
-        id: 'dinner',
-        name: 'Jantar',
-        emoji: '🍝',
-        order: 3,
-      ),
-      MealTypeConfig(
-        id: 'supper',
-        name: 'Ceia',
-        emoji: '🥛',
-        order: 4,
-      ),
-    ];
+    _mealTypes = _defaultMealTypes();
   }
 
   // Save meal types to storage
@@ -286,6 +254,56 @@ class MealTypesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setMealCount(int count) async {
+    final normalizedCount = count.clamp(1, 8).toInt();
+    if (_mealTypes.length == normalizedCount) {
+      return;
+    }
+
+    _mealTypes = _mealTypesForCount(normalizedCount);
+    _stateRevision++;
+    await _saveMealTypes();
+    _scheduleSync();
+    notifyListeners();
+  }
+
+  List<MealTypeConfig> _mealTypesForCount(int count) {
+    final defaultsById = {
+      for (final mealType in _defaultMealTypes()) mealType.id: mealType,
+    };
+
+    final orderedIds = switch (count) {
+      1 => const ['lunch'],
+      2 => const ['lunch', 'dinner'],
+      3 => const ['breakfast', 'lunch', 'dinner'],
+      4 => const ['breakfast', 'lunch', 'afternoon_snack', 'dinner'],
+      _ => const ['breakfast', 'lunch', 'afternoon_snack', 'dinner', 'supper'],
+    };
+
+    final mealTypes = orderedIds
+        .map((id) => defaultsById[id])
+        .whereType<MealTypeConfig>()
+        .toList();
+
+    var extraIndex = 1;
+    while (mealTypes.length < count) {
+      mealTypes.add(
+        MealTypeConfig(
+          id: 'extra_${mealTypes.length + 1}',
+          name: 'Refeição extra $extraIndex',
+          emoji: '🍽️',
+          order: mealTypes.length,
+        ),
+      );
+      extraIndex++;
+    }
+
+    return [
+      for (var index = 0; index < mealTypes.length; index++)
+        mealTypes[index].copyWith(order: index),
+    ];
+  }
+
   // Get meal type by id
   MealTypeConfig? getMealTypeById(String id) {
     try {
@@ -300,7 +318,13 @@ class MealTypesProvider extends ChangeNotifier {
 
   bool get _hasCustomMealTypes {
     final current = jsonEncode(toServerPayload());
-    final defaults = [
+    final defaults =
+        _defaultMealTypes().map((mealType) => mealType.toJson()).toList();
+    return current != jsonEncode(defaults);
+  }
+
+  List<MealTypeConfig> _defaultMealTypes() {
+    return [
       MealTypeConfig(
         id: 'breakfast',
         name: 'Café da Manhã',
@@ -331,8 +355,7 @@ class MealTypesProvider extends ChangeNotifier {
         emoji: '🥛',
         order: 4,
       ),
-    ].map((mealType) => mealType.toJson()).toList();
-    return current != jsonEncode(defaults);
+    ];
   }
 
   Future<void> syncPendingIfNeeded() async {

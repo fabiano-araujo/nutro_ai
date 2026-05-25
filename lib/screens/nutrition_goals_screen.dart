@@ -8,12 +8,31 @@ import 'diet_type_selection_screen.dart';
 import 'free_chat_screen.dart';
 import 'nutrition_assistant_screen.dart';
 import '../i18n/app_localizations.dart';
+import '../widgets/macro_edit_bottom_sheet.dart';
 
 class NutritionGoalsScreen extends StatefulWidget {
   const NutritionGoalsScreen({Key? key}) : super(key: key);
 
   @override
   State<NutritionGoalsScreen> createState() => _NutritionGoalsScreenState();
+}
+
+class _CalculationDataRowData {
+  const _CalculationDataRowData({
+    required this.title,
+    required this.value,
+    required this.details,
+    required this.icon,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  final String title;
+  final String value;
+  final String details;
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback onTap;
 }
 
 class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
@@ -46,8 +65,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                   _buildGoalsHeroCard(provider, isDarkMode, textColor),
                   const SizedBox(height: 14),
                   _buildAiAdjustmentButton(isDarkMode),
-                  const SizedBox(height: 14),
-                  _buildMacroRow(provider, isDarkMode),
                   const SizedBox(height: 24),
                   _buildConfigurationSection(
                     context,
@@ -154,9 +171,12 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     bool isDarkMode,
     Color textColor,
   ) {
+    final goalName = provider.getFitnessGoalName(provider.fitnessGoal, context);
+    final dietName = provider.getDietTypeName(provider.dietType, context);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
         color: _cardSurfaceColor(isDarkMode),
         borderRadius: BorderRadius.circular(20),
@@ -173,8 +193,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      AppLocalizations.of(context)
-                          .translate('your_daily_goals'),
+                      AppLocalizations.of(context).translate(
+                        'nutrition_goals_daily_target',
+                      ),
                       style: TextStyle(
                         color: _mutedTextColor(isDarkMode),
                         fontSize: 13,
@@ -205,110 +226,113 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$goalName • $dietName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _mutedTextColor(isDarkMode),
+                        fontSize: 12,
+                        height: 1.25,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              InkWell(
-                onTap: _openPersonalInfoEditor,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _secondarySurfaceColor(isDarkMode),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: _borderColor(isDarkMode)),
-                  ),
-                  child: Icon(
-                    Icons.edit_outlined,
-                    color: textColor,
-                    size: 20,
+              Tooltip(
+                message: AppLocalizations.of(context)
+                    .translate('edit_macronutrients'),
+                child: InkWell(
+                  onTap: _openMacroEditor,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _secondarySurfaceColor(isDarkMode),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _borderColor(isDarkMode)),
+                    ),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: textColor,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildMetaChip(
-                icon: Icons.track_changes,
-                label:
-                    provider.getFitnessGoalName(provider.fitnessGoal, context),
-                isDarkMode: isDarkMode,
-                textColor: textColor,
-                onTap: _openFitnessGoalEditor,
-              ),
-              _buildMetaChip(
-                icon: Icons.restaurant_menu,
-                label: provider.getDietTypeName(provider.dietType, context),
-                isDarkMode: isDarkMode,
-                textColor: textColor,
-                onTap: _openDietTypeScreen,
-              ),
-              _buildMetaChip(
-                icon: Icons.directions_run,
-                label: provider.getActivityLevelName(
-                  provider.activityLevel,
-                  context,
-                ),
-                isDarkMode: isDarkMode,
-                textColor: textColor,
-                onTap: _openActivityLevelEditor,
-              ),
-            ],
+          const SizedBox(height: 18),
+          Text(
+            AppLocalizations.of(context).translate(
+              'nutrition_goals_macros_per_day',
+            ),
+            style: TextStyle(
+              color: _mutedTextColor(isDarkMode),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
+          const SizedBox(height: 10),
+          _buildMacroSummary(provider, isDarkMode),
         ],
       ),
     );
   }
 
-  Widget _buildMetaChip({
-    required IconData icon,
-    required String label,
-    required bool isDarkMode,
-    required Color textColor,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: _secondarySurfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: _borderColor(isDarkMode)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: textColor.withValues(alpha: 0.72),
+  Widget _buildMacroSummary(
+    NutritionGoalsProvider provider,
+    bool isDarkMode,
+  ) {
+    final dividerColor = _borderColor(isDarkMode);
+
+    return IntrinsicHeight(
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildMacroCardCompact(
+              icon: MacroTheme.proteinIcon,
+              value: '${provider.proteinGoal}g',
+              unit: AppLocalizations.of(context).translate('protein'),
+              color: MacroTheme.proteinColor,
+              isDarkMode: isDarkMode,
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: textColor.withValues(alpha: 0.86),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ),
+          VerticalDivider(
+            color: dividerColor,
+            width: 1,
+            thickness: 1,
+            indent: 4,
+            endIndent: 4,
+          ),
+          Expanded(
+            child: _buildMacroCardCompact(
+              icon: MacroTheme.carbsIcon,
+              value: '${provider.carbsGoal}g',
+              unit: AppLocalizations.of(context).translate('carbs'),
+              color: MacroTheme.carbsColor,
+              isDarkMode: isDarkMode,
             ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 16,
-              color: textColor.withValues(alpha: 0.45),
+          ),
+          VerticalDivider(
+            color: dividerColor,
+            width: 1,
+            thickness: 1,
+            indent: 4,
+            endIndent: 4,
+          ),
+          Expanded(
+            child: _buildMacroCardCompact(
+              icon: MacroTheme.fatIcon,
+              value: '${provider.fatGoal}g',
+              unit: AppLocalizations.of(context).translate('fats'),
+              color: MacroTheme.fatColor,
+              isDarkMode: isDarkMode,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -359,86 +383,6 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     );
   }
 
-  Widget _buildMacroRow(
-    NutritionGoalsProvider provider,
-    bool isDarkMode,
-  ) {
-    final dividerColor = _borderColor(isDarkMode);
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: dividerColor),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.caloriesIcon,
-                  value: '${provider.caloriesGoal}',
-                  unit: 'kcal',
-                  color: MacroTheme.caloriesColor,
-                  isDarkMode: isDarkMode,
-                ),
-              ),
-              VerticalDivider(
-                color: dividerColor,
-                width: 1,
-                thickness: 1,
-                indent: 4,
-                endIndent: 4,
-              ),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.proteinIcon,
-                  value: '${provider.proteinGoal}g',
-                  unit: AppLocalizations.of(context).translate('protein'),
-                  color: MacroTheme.proteinColor,
-                  isDarkMode: isDarkMode,
-                ),
-              ),
-              VerticalDivider(
-                color: dividerColor,
-                width: 1,
-                thickness: 1,
-                indent: 4,
-                endIndent: 4,
-              ),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.carbsIcon,
-                  value: '${provider.carbsGoal}g',
-                  unit: AppLocalizations.of(context).translate('carbs'),
-                  color: MacroTheme.carbsColor,
-                  isDarkMode: isDarkMode,
-                ),
-              ),
-              VerticalDivider(
-                color: dividerColor,
-                width: 1,
-                thickness: 1,
-                indent: 4,
-                endIndent: 4,
-              ),
-              Expanded(
-                child: _buildMacroCardCompact(
-                  icon: MacroTheme.fatIcon,
-                  value: '${provider.fatGoal}g',
-                  unit: AppLocalizations.of(context).translate('fats'),
-                  color: MacroTheme.fatColor,
-                  isDarkMode: isDarkMode,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildMacroCardCompact({
     required IconData icon,
     required String value,
@@ -453,6 +397,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         const SizedBox(height: 4),
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
@@ -461,6 +407,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         ),
         Text(
           unit,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 10,
             color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
@@ -484,17 +433,31 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     );
   }
 
+  void _openMacroEditor() {
+    showMacroEditBottomSheet(
+      context: context,
+      provider: context.read<NutritionGoalsProvider>(),
+    );
+  }
+
   Widget _buildConfigurationSection(
     BuildContext context,
     NutritionGoalsProvider provider,
     bool isDarkMode,
     Color textColor,
   ) {
+    final personalSummary =
+        '${provider.sex == "male" ? AppLocalizations.of(context).translate('male') : AppLocalizations.of(context).translate('female')}, ${provider.age} ${AppLocalizations.of(context).translate('years_old')}';
+    final personalDetails =
+        '${provider.getFormattedHeight()} • ${provider.getFormattedWeight()}';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppLocalizations.of(context).translate('configuration'),
+          AppLocalizations.of(context).translate(
+            'nutrition_goals_calculation_data',
+          ),
           style: TextStyle(
             color: textColor,
             fontSize: 18,
@@ -504,173 +467,133 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          _getGoalDetail(provider.fitnessGoal, context),
+          AppLocalizations.of(context).translate(
+            'nutrition_goals_calculation_data_hint',
+          ),
           style: TextStyle(
             color: _mutedTextColor(isDarkMode),
             fontSize: 13,
             height: 1.35,
           ),
         ),
-        const SizedBox(height: 16),
-        _buildInfoCard(
-          title: AppLocalizations.of(context).translate('personal_information'),
-          subtitle:
-              '${provider.sex == "male" ? AppLocalizations.of(context).translate('male') : AppLocalizations.of(context).translate('female')}, ${provider.age} ${AppLocalizations.of(context).translate('years_old')}',
-          details:
-              '${provider.getFormattedHeight()}  •  ${provider.getFormattedWeight()}',
-          icon: Icons.person,
-          iconColor: const Color(0xFF4DB6AC),
-          isDarkMode: isDarkMode,
-          textColor: textColor,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const NutritionGoalsWizardScreen(startStep: 0),
+        const SizedBox(height: 14),
+        _buildCalculationDataGroup(
+          rows: [
+            _CalculationDataRowData(
+              title: AppLocalizations.of(context)
+                  .translate('personal_information'),
+              value: personalSummary,
+              details: personalDetails,
+              icon: Icons.person,
+              iconColor: const Color(0xFF4DB6AC),
+              onTap: _openPersonalInfoEditor,
+            ),
+            _CalculationDataRowData(
+              title: AppLocalizations.of(context)
+                  .translate('activity_level_title'),
+              value: provider.getActivityLevelName(
+                provider.activityLevel,
+                context,
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildInfoCard(
-          title: AppLocalizations.of(context).translate('activity_level_title'),
-          subtitle: provider.getActivityLevelName(
-            provider.activityLevel,
-            context,
-          ),
-          details: provider.getActivityLevelDescription(
-            provider.activityLevel,
-            context,
-          ),
-          icon: Icons.directions_run,
-          iconColor: const Color(0xFF26A69A),
-          isDarkMode: isDarkMode,
-          textColor: textColor,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const NutritionGoalsWizardScreen(startStep: 1),
+              details: provider.getActivityLevelDescription(
+                provider.activityLevel,
+                context,
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildInfoCard(
-          title: AppLocalizations.of(context).translate('objective'),
-          subtitle: provider.getFitnessGoalName(provider.fitnessGoal, context),
-          details: _getGoalDetail(provider.fitnessGoal, context),
-          icon: Icons.track_changes,
-          iconColor: const Color(0xFFFF6B9D),
-          isDarkMode: isDarkMode,
-          textColor: textColor,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const NutritionGoalsWizardScreen(startStep: 2),
+              icon: Icons.directions_run,
+              iconColor: const Color(0xFF26A69A),
+              onTap: _openActivityLevelEditor,
+            ),
+            _CalculationDataRowData(
+              title: AppLocalizations.of(context).translate('objective'),
+              value: provider.getFitnessGoalName(provider.fitnessGoal, context),
+              details: _getGoalDetail(provider.fitnessGoal, context),
+              icon: Icons.track_changes,
+              iconColor: const Color(0xFFFF6B9D),
+              onTap: _openFitnessGoalEditor,
+            ),
+            _CalculationDataRowData(
+              title: AppLocalizations.of(context).translate('diet_type'),
+              value: provider.getDietTypeName(provider.dietType, context),
+              details: provider.getDietTypeDescription(
+                provider.dietType,
+                context,
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildInfoCard(
-          title: AppLocalizations.of(context).translate('diet_type'),
-          subtitle: provider.getDietTypeName(provider.dietType, context),
-          details: provider.getDietTypeDescription(provider.dietType, context),
-          icon: Icons.restaurant_menu,
-          iconColor: const Color(0xFFFFB74D),
+              icon: Icons.restaurant_menu,
+              iconColor: const Color(0xFFFFB74D),
+              onTap: _openDietTypeScreen,
+            ),
+          ],
           isDarkMode: isDarkMode,
           textColor: textColor,
-          onTap: _openDietTypeScreen,
         ),
-        const SizedBox(height: 16),
-        _buildResetGoalsButton(isDarkMode),
       ],
     );
   }
 
-  Widget _buildResetGoalsButton(bool isDarkMode) {
-    final primaryColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-    final foregroundColor = AppTheme.onColor(primaryColor);
-
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const NutritionGoalsWizardScreen(),
+  Widget _buildCalculationDataGroup({
+    required List<_CalculationDataRowData> rows,
+    required bool isDarkMode,
+    required Color textColor,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _cardSurfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderColor(isDarkMode)),
+      ),
+      child: Column(
+        children: [
+          for (var index = 0; index < rows.length; index++) ...[
+            _buildCalculationDataRow(
+              rows[index],
+              isDarkMode: isDarkMode,
+              textColor: textColor,
             ),
-          );
-        },
-        icon:
-            Icon(Icons.auto_awesome_rounded, size: 18, color: foregroundColor),
-        label: Text(
-          AppLocalizations.of(context).translate('configure_everything_again'),
-          style: TextStyle(
-            color: foregroundColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
-          foregroundColor: foregroundColor,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
+            if (index < rows.length - 1)
+              Divider(
+                height: 1,
+                thickness: 1,
+                indent: 68,
+                color: _borderColor(isDarkMode),
+              ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildInfoCard({
-    required String title,
-    required String subtitle,
-    required String details,
-    required IconData icon,
-    required Color iconColor,
+  Widget _buildCalculationDataRow(
+    _CalculationDataRowData data, {
     required bool isDarkMode,
     required Color textColor,
-    required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: _cardSurfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _borderColor(isDarkMode)),
-        ),
+      onTap: data.onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
+                color:
+                    data.iconColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: iconColor, size: 22),
+              child: Icon(data.icon, color: data.iconColor, size: 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    data.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: _mutedTextColor(isDarkMode),
                       fontSize: 12,
@@ -679,7 +602,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    subtitle,
+                    data.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 15,
@@ -689,8 +614,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    details,
-                    maxLines: 2,
+                    data.details,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: _mutedTextColor(isDarkMode),
@@ -701,10 +626,10 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 16,
+              Icons.chevron_right_rounded,
+              size: 22,
               color: textColor.withValues(alpha: 0.42),
             ),
           ],

@@ -126,11 +126,26 @@ class AppAgentCommand {
 
   static bool containsCommandCandidate(String responseContent) {
     final normalized = responseContent.toLowerCase();
-    return normalized.contains('"app_command"') ||
+    final hasExplicitCommandMarker = normalized.contains('"app_command"') ||
         normalized.contains('"appcommand"') ||
         normalized.contains('"app_commands"') ||
         normalized.contains('"appcommands"') ||
         normalized.contains('"commandname"');
+    if (hasExplicitCommandMarker) {
+      return true;
+    }
+
+    final hasFoodPayloadMarker =
+        RegExp(r'"(?:foods|mealtype)"\s*:').hasMatch(normalized);
+    if (hasFoodPayloadMarker) {
+      return false;
+    }
+
+    return normalized.contains('"name"') &&
+        (normalized.contains('diet') ||
+            normalized.contains('macro') ||
+            normalized.contains('nutrition') ||
+            normalized.contains('goal'));
   }
 
   static String removeCommandJson(String responseContent) {
@@ -143,7 +158,15 @@ class AppAgentCommand {
       return responseContent.substring(0, candidateStart).trimRight();
     }
 
-    return responseContent.replaceAll(jsonString, '').trim();
+    if (responseContent.contains(jsonString)) {
+      return responseContent.replaceAll(jsonString, '').trim();
+    }
+
+    final candidateStart = _findCommandCandidateStart(responseContent);
+    if (candidateStart == null) {
+      return responseContent;
+    }
+    return responseContent.substring(0, candidateStart).trimRight();
   }
 
   static int? _findCommandCandidateStart(String responseContent) {
@@ -186,7 +209,19 @@ class AppAgentCommand {
         RegExp(r'\[\s*\{\s*\\?"(?:commandName|name)"').firstMatch(
       responseContent,
     );
-    return arrayInlineMatch?.start;
+    if (arrayInlineMatch != null) {
+      return arrayInlineMatch.start;
+    }
+
+    final namedObjectMatch =
+        RegExp(r'[\[,]\s*\{\s*\\?"name\\?"\s*:').firstMatch(responseContent);
+    if (namedObjectMatch != null) {
+      return namedObjectMatch.start;
+    }
+
+    final rootNamedObjectMatch =
+        RegExp(r'\{\s*\\?"name\\?"\s*:').firstMatch(responseContent);
+    return rootNamedObjectMatch?.start;
   }
 
   static String? _extractCommandJson(String responseContent) {
@@ -223,6 +258,31 @@ class AppAgentCommand {
     }
 
     if (startIndex == null) {
+      final rootNamedObjectMatch =
+          RegExp(r'^\{\s*\\?"name\\?"\s*:', dotAll: true)
+              .firstMatch(trimmedStart);
+      if (rootNamedObjectMatch != null) {
+        final objectJson = _extractBalancedJsonBlock(
+          sanitized,
+          firstNonWhitespace,
+        );
+        if (objectJson != null) {
+          return '{"app_command":$objectJson}';
+        }
+      }
+
+      final looseNamedObjectMatch = RegExp(
+        r'[\[,]\s*\{\s*\\?"name\\?"\s*:',
+        caseSensitive: false,
+      ).firstMatch(sanitized);
+      if (looseNamedObjectMatch != null) {
+        final objectStart = sanitized.indexOf('{', looseNamedObjectMatch.start);
+        final objectJson = _extractBalancedJsonBlock(sanitized, objectStart);
+        if (objectJson != null) {
+          return '{"app_commands":[$objectJson]}';
+        }
+      }
+
       final looseBatchMatch = RegExp(
         r'\\?"?app_commands\\?"?\s*:\s*\[',
         caseSensitive: false,
@@ -422,11 +482,8 @@ class AppAgentCommand {
         };
 
       case AppAgentService.updateDietGenerationPreferences:
-        final mealsPerDay = AppAgentService._tryParseInt(
-          AppAgentService._readFirstValue(
-            normalized,
-            const ['mealsPerDay', 'meals_per_day'],
-          ),
+        final mealsPerDay = AppAgentService._readRequestedMealsPerDay(
+          normalized,
         );
         final skipPreferenceStep = AppAgentService._tryParseBool(
           AppAgentService._readFirstValue(
@@ -447,27 +504,13 @@ class AppAgentCommand {
             const ['hungriestMealTime', 'hungriest_meal_time', 'hungriestMeal'],
           ),
         );
+        final foodRestrictions =
+            AppAgentService._extractDietRestrictionList(normalized);
 
         return {
           if (skipPreferenceStep == true) 'skipPreferenceStep': true,
           if (mealsPerDay != null) 'mealsPerDay': mealsPerDay,
-          if (AppAgentService._hasAnyKey(normalized, const [
-            'foodRestrictions',
-            'restrictions',
-            'dietaryRestrictions',
-            'allergies',
-          ]))
-            'foodRestrictions': AppAgentService._extractStringList(
-              AppAgentService._readFirstValue(
-                normalized,
-                const [
-                  'foodRestrictions',
-                  'restrictions',
-                  'dietaryRestrictions',
-                  'allergies',
-                ],
-              ),
-            ),
+          if (foodRestrictions.isNotEmpty) 'foodRestrictions': foodRestrictions,
           if (AppAgentService._hasAnyKey(normalized, const [
             'favoriteFoods',
             'preferredFoods',
@@ -500,6 +543,13 @@ class AppAgentCommand {
             'routineConsiderations',
             'routineNotes',
             'appetiteNotes',
+            'healthConditions',
+            'medicalConditions',
+            'medicalIssues',
+            'healthConsiderations',
+            'conditions',
+            'condicoesSaude',
+            'problemasSaude',
           ]))
             'routineConsiderations': AppAgentService._extractStringList(
               AppAgentService._readFirstValue(
@@ -508,10 +558,25 @@ class AppAgentCommand {
                   'routineConsiderations',
                   'routineNotes',
                   'appetiteNotes',
+                  'healthConditions',
+                  'medicalConditions',
+                  'medicalIssues',
+                  'healthConsiderations',
+                  'conditions',
+                  'condicoesSaude',
+                  'problemasSaude',
                 ],
               ),
             ),
           if (mealWindow != null) 'hungriestMealTime': mealWindow,
+        };
+
+      case AppAgentService.generateNewDietPlan:
+        final mealsPerDay = AppAgentService._readRequestedMealsPerDay(
+          normalized,
+        );
+        return {
+          if (mealsPerDay != null) 'mealsPerDay': mealsPerDay,
         };
 
       default:
@@ -569,6 +634,7 @@ class AppAgentUiHint {
   static const actionConfigureGoalsUi = 'configure_goals_ui';
   static const actionEditMacrosUi = 'edit_macros_ui';
   static const actionWatchRewardedAd = 'watch_rewarded_ad';
+  static const actionViewMyDietUi = 'view_my_diet_ui';
 
   final List<String> actions;
   final String rawBlock;
@@ -682,6 +748,12 @@ class AppAgentUiHint {
       case 'editmacros':
       case 'macroeditorui':
         return actionEditMacrosUi;
+      case 'viewmydietui':
+      case 'viewmydiet':
+      case 'openmydiet':
+      case 'mydiet':
+      case 'diettab':
+        return actionViewMyDietUi;
       case 'watchrewardedad':
       case 'watchad':
       case 'watchadforcredits':
@@ -893,6 +965,7 @@ class AppAgentService {
     final fat = _tryParseDouble(grams['fat']) ??
         _tryParseDouble(payload['fatGoal']) ??
         0;
+    final proteinPerKg = _tryParseDouble(payload['proteinPerKg']);
 
     switch (lastResult.commandName) {
       case getDailyNutritionStatus:
@@ -915,7 +988,6 @@ class AppAgentService {
       case updateMacroTargetsPercentage:
       case updateMacroTargetsGrams:
       case updateMacroTargetsGramsPerKg:
-      case recalculateNutritionGoals:
         if (isPortuguese) {
           return 'Pronto, atualizei suas metas para $caloriesGoal kcal: '
               '${_formatOneDecimal(protein)}g de proteína, '
@@ -926,6 +998,27 @@ class AppAgentService {
             '${_formatOneDecimal(protein)}g protein, '
             '${_formatOneDecimal(carbs)}g carbs, and '
             '${_formatOneDecimal(fat)}g fat.';
+      case recalculateNutritionGoals:
+        if (isPortuguese) {
+          final proteinNote = proteinPerKg == null
+              ? ''
+              : ' (${_formatOneDecimal(proteinPerKg)}g/kg)';
+          return 'Pronto, recalculei suas metas com uma recomendação padrão '
+              'para o seu objetivo: $caloriesGoal kcal, '
+              '${_formatOneDecimal(protein)}g de proteína$proteinNote, '
+              '${_formatOneDecimal(carbs)}g de carboidratos e '
+              '${_formatOneDecimal(fat)}g de gorduras. '
+              'Se quiser outro alvo, é só me dizer.';
+        }
+        final proteinNote = proteinPerKg == null
+            ? ''
+            : ' (${_formatOneDecimal(proteinPerKg)}g/kg)';
+        return 'Done, I recalculated your goals with a standard '
+            'recommendation for your objective: $caloriesGoal kcal, '
+            '${_formatOneDecimal(protein)}g protein$proteinNote, '
+            '${_formatOneDecimal(carbs)}g carbs, and '
+            '${_formatOneDecimal(fat)}g fat. '
+            'If you want a different target, just tell me.';
       case getMacroTargetsStatus:
         if (isPortuguese) {
           return 'Suas metas atuais são $caloriesGoal kcal: '
@@ -966,6 +1059,902 @@ class AppAgentService {
     }
 
     return fallbackSanitizer(rawContent).trim();
+  }
+
+  static String? buildDietGeneratedCommandResultMessage({
+    required BuildContext context,
+    required List<AppAgentExecutionResult> executionResults,
+  }) {
+    final successfulDietResults = executionResults.where((item) {
+      return item.success && item.commandName == generateNewDietPlan;
+    }).toList();
+    if (successfulDietResults.isEmpty) {
+      return null;
+    }
+
+    final result = successfulDietResults.last;
+    final isPortuguese =
+        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
+              'pt',
+            );
+    final mealCount = _tryParseInt(result.payload['mealCount']) ?? 0;
+    final totalCalories = _tryParseInt(result.payload['totalCalories']) ?? 0;
+    final totalProtein = _tryParseDouble(result.payload['totalProtein']) ?? 0;
+    final totalCarbs = _tryParseDouble(result.payload['totalCarbs']) ?? 0;
+    final totalFat = _tryParseDouble(result.payload['totalFat']) ?? 0;
+    const hint =
+        '\n\n[APP_UI_HINT_BEGIN]{"actions":["view_my_diet_ui"]}[APP_UI_HINT_END]';
+
+    if (isPortuguese) {
+      return 'Dieta gerada. Montei $mealCount refeições personalizadas, '
+          'com cerca de $totalCalories kcal no dia '
+          '(${_formatOneDecimal(totalProtein)}g proteína, '
+          '${_formatOneDecimal(totalCarbs)}g carboidratos, '
+          '${_formatOneDecimal(totalFat)}g gorduras). '
+          'Você pode ver e ajustar tudo em Minha Dieta.'
+          '$hint';
+    }
+
+    return 'Diet generated. I created $mealCount personalized meals, '
+        'with about $totalCalories kcal for the day '
+        '(${_formatOneDecimal(totalProtein)}g protein, '
+        '${_formatOneDecimal(totalCarbs)}g carbs, '
+        '${_formatOneDecimal(totalFat)}g fat). '
+        'You can view and adjust everything in My Diet.'
+        '$hint';
+  }
+
+  static bool isMacroTargetAdviceQuestion(String userMessage) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty || isDietGenerationRequest(userMessage)) {
+      return false;
+    }
+
+    final hasMacroTopic = _containsAnyTerm(normalized, const [
+      'macro',
+      'macros',
+      'proteina',
+      'protein',
+      'carbo',
+      'carboidrato',
+      'carboidratos',
+      'carb',
+      'carbs',
+      'gordura',
+      'gorduras',
+      'fat',
+      'fats',
+      'caloria',
+      'calorias',
+      'kcal',
+    ]);
+    if (!hasMacroTopic) {
+      return false;
+    }
+
+    final isExplicitMutation = RegExp(
+      r'^\s*(coloque|bote|botar|mude|altere|troque|ajuste|aplique|aplica|salve|salva|atualize|set|change|update|save|apply)\b',
+      caseSensitive: false,
+    ).hasMatch(normalized);
+    if (isExplicitMutation) {
+      return false;
+    }
+
+    return userMessage.trim().endsWith('?') ||
+        _containsAnyTerm(normalized, const [
+          'seria interessante',
+          'vale a pena',
+          'devo',
+          'preciso',
+          'seria bom',
+          'seria melhor',
+          'e melhor',
+          'esta bom',
+          'ta bom',
+          'esta boa',
+          'ta boa',
+          'muito',
+          'pouco',
+          'pouca',
+          'suficiente',
+          'adequado',
+          'adequada',
+          'recomendado',
+          'recomendada',
+          'mais proteina',
+          'menos proteina',
+          'aumentar proteina',
+          'subir proteina',
+          'baixar proteina',
+          'reduzir proteina',
+          'should i',
+          'worth',
+          'enough',
+        ]);
+  }
+
+  static String? buildMacroTargetAdviceFallbackMessage({
+    required BuildContext context,
+    required String userMessage,
+  }) {
+    if (!isMacroTargetAdviceQuestion(userMessage)) {
+      return null;
+    }
+
+    final normalized = _normalizeLooseText(userMessage);
+    final isPortuguese =
+        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
+              'pt',
+            );
+    final goalsProvider = Provider.of<NutritionGoalsProvider>(
+      context,
+      listen: false,
+    );
+    final caloriesGoal = goalsProvider.caloriesGoal;
+    final proteinGoal = goalsProvider.proteinGoal.toDouble();
+    final carbsGoal = goalsProvider.carbsGoal.toDouble();
+    final fatGoal = goalsProvider.fatGoal.toDouble();
+    final weightKg = goalsProvider.weight > 0 ? goalsProvider.weight : 0.0;
+    final proteinPerKg = weightKg > 0 ? proteinGoal / weightKg : 0.0;
+
+    if (_containsAnyTerm(normalized, const ['proteina', 'protein'])) {
+      final range = _recommendedProteinRange(goalsProvider.fitnessGoal);
+      final goalLabel = _fitnessGoalAdviceLabel(
+        goalsProvider.fitnessGoal,
+        isPortuguese: isPortuguese,
+      );
+      final formattedProtein = _formatOneDecimal(proteinGoal);
+      final formattedPerKg =
+          proteinPerKg > 0 ? '${_formatOneDecimal(proteinPerKg)}g/kg' : '';
+      final currentProtein = formattedPerKg.isEmpty
+          ? '${formattedProtein}g'
+          : '${formattedProtein}g ($formattedPerKg)';
+      final formattedMin = _formatOneDecimal(range[0]);
+      final formattedMax = _formatOneDecimal(range[1]);
+
+      if (isPortuguese) {
+        if (proteinPerKg > 0 && proteinPerKg < range[0] - 0.05) {
+          return 'Pode ser interessante subir um pouco. Sua meta atual está em '
+              '$currentProtein, e para $goalLabel uma faixa simples costuma '
+              'ficar perto de $formattedMin a $formattedMax g/kg. '
+              'Para manter $caloriesGoal kcal, eu ajustaria carboidratos ou '
+              'gorduras junto. Se quiser aplicar, diga algo como "coloque '
+              '${_formatOneDecimal((range[0] * weightKg).roundToDouble())}g de proteína".';
+        }
+
+        final qualifier = proteinPerKg > range[1] + 0.05
+            ? 'já está acima da faixa que eu usaria como padrão'
+            : 'já está dentro de uma faixa boa';
+        return 'Não precisa subir por padrão. Sua meta atual está em '
+            '$currentProtein, o que $qualifier para $goalLabel. '
+            'Mais proteína só faz sentido se você sentir mais saciedade ou '
+            'preferir comer assim; mantendo $caloriesGoal kcal, eu teria que '
+            'tirar um pouco de carboidratos ou gorduras. Se quiser testar, '
+            'me diga a nova meta, por exemplo "coloque 185g de proteína".';
+      }
+
+      if (proteinPerKg > 0 && proteinPerKg < range[0] - 0.05) {
+        return 'A small increase may make sense. Your current target is '
+            '$currentProtein, and for $goalLabel a simple range is usually '
+            '$formattedMin to $formattedMax g/kg. To keep $caloriesGoal kcal, '
+            'I would adjust carbs or fat too. If you want to apply it, say '
+            'something like "set protein to '
+            '${_formatOneDecimal((range[0] * weightKg).roundToDouble())}g".';
+      }
+
+      final qualifier = proteinPerKg > range[1] + 0.05
+          ? 'already above the range I would use by default'
+          : 'already in a good range';
+      return 'You do not need to raise it by default. Your current target is '
+          '$currentProtein, which is $qualifier for $goalLabel. More protein '
+          'only makes sense if it helps your satiety or preference; keeping '
+          '$caloriesGoal kcal means I would need to take some calories from '
+          'carbs or fat. If you want to test it, tell me the new target, for '
+          'example "set protein to 185g".';
+    }
+
+    if (isPortuguese) {
+      return 'Esses macros podem funcionar. Hoje suas metas estão em '
+          '$caloriesGoal kcal, ${_formatOneDecimal(proteinGoal)}g de proteína, '
+          '${_formatOneDecimal(carbsGoal)}g de carboidratos e '
+          '${_formatOneDecimal(fatGoal)}g de gorduras. Se quiser mudar algum '
+          'valor, me diga o alvo exato.';
+    }
+
+    return 'Those macros can work. Your current targets are $caloriesGoal kcal, '
+        '${_formatOneDecimal(proteinGoal)}g protein, '
+        '${_formatOneDecimal(carbsGoal)}g carbs, and '
+        '${_formatOneDecimal(fatGoal)}g fat. If you want to change a value, '
+        'tell me the exact target.';
+  }
+
+  static List<double> _recommendedProteinRange(FitnessGoal goal) {
+    switch (goal) {
+      case FitnessGoal.loseWeight:
+        return const [1.8, 2.2];
+      case FitnessGoal.loseWeightSlowly:
+        return const [1.7, 2.1];
+      case FitnessGoal.gainWeight:
+      case FitnessGoal.gainWeightSlowly:
+        return const [1.6, 2.0];
+      case FitnessGoal.maintainWeight:
+        return const [1.4, 1.8];
+    }
+  }
+
+  static String _fitnessGoalAdviceLabel(
+    FitnessGoal goal, {
+    required bool isPortuguese,
+  }) {
+    switch (goal) {
+      case FitnessGoal.loseWeight:
+        return isPortuguese ? 'perder peso' : 'weight loss';
+      case FitnessGoal.loseWeightSlowly:
+        return isPortuguese ? 'perder peso devagar' : 'slow weight loss';
+      case FitnessGoal.gainWeight:
+        return isPortuguese ? 'ganhar peso' : 'weight gain';
+      case FitnessGoal.gainWeightSlowly:
+        return isPortuguese ? 'ganhar massa aos poucos' : 'lean mass gain';
+      case FitnessGoal.maintainWeight:
+        return isPortuguese ? 'manutenção' : 'maintenance';
+    }
+  }
+
+  static String buildDietPersonalizationQuestion(BuildContext context) {
+    return AppLocalizations.of(context).translate(
+      'chat_diet_personalization_question',
+    );
+  }
+
+  static bool shouldAskDietPersonalizationQuestion(
+    AppAgentCommand command,
+    String originalUserMessage,
+  ) {
+    return command.name == updateDietGenerationPreferences &&
+        command.arguments.isEmpty &&
+        isDietGenerationRequest(originalUserMessage) &&
+        !isDietDefaultApproval(originalUserMessage);
+  }
+
+  static bool shouldAskDietPersonalizationBeforeGeneration(
+    AppAgentCommand command,
+    String originalUserMessage,
+    BuildContext context,
+  ) {
+    if (command.name != generateNewDietPlan ||
+        !isDietGenerationRequest(originalUserMessage) ||
+        isDietDefaultApproval(originalUserMessage)) {
+      return false;
+    }
+
+    if (buildDietPreferenceUpdateFromUserMessage(
+          originalUserMessage,
+          rawJson: command.rawJson,
+        ) !=
+        null) {
+      return false;
+    }
+
+    final dietProvider = Provider.of<DietPlanProvider>(
+      context,
+      listen: false,
+    );
+    return !dietProvider.hasReviewedDietGenerationPreferences &&
+        !dietProvider.hasCompletedDietPersonalization;
+  }
+
+  static AppAgentCommand normalizeDietPreferenceApprovalCommand(
+    AppAgentCommand command,
+    String originalUserMessage,
+  ) {
+    if (command.name != updateDietGenerationPreferences ||
+        command.arguments.isNotEmpty ||
+        !isDietDefaultApproval(originalUserMessage)) {
+      return command;
+    }
+
+    return AppAgentCommand(
+      name: command.name,
+      arguments: const {'skipPreferenceStep': true},
+      rawJson: command.rawJson,
+    );
+  }
+
+  static AppAgentCommand? buildDietPreferenceUpdateFromUserMessage(
+    String userMessage, {
+    required String rawJson,
+  }) {
+    if (!isDietGenerationRequest(userMessage)) {
+      return null;
+    }
+
+    final normalized = _normalizeLooseText(userMessage);
+    final arguments = <String, dynamic>{};
+
+    final mealCountMatch = RegExp(
+      r'\b([2-8])\s*(refeicoes|refeicao|refeicoes|meals|meal)\b',
+    ).firstMatch(normalized);
+    if (mealCountMatch != null) {
+      arguments['mealsPerDay'] = int.tryParse(mealCountMatch.group(1) ?? '');
+    }
+
+    final restrictions = <String>{};
+    if (_containsAnyTerm(normalized, const ['vegano', 'vegana', 'vegan'])) {
+      restrictions.add('vegano');
+    } else if (_containsAnyTerm(normalized, const [
+      'vegetariano',
+      'vegetariana',
+      'vegetarian',
+    ])) {
+      restrictions.add('vegetariano');
+    }
+    if (_containsAnyTerm(normalized, const [
+      'sem lactose',
+      'intolerancia lactose',
+      'intolerante lactose',
+      'intolerante a lactose',
+      'derivados de leite',
+      'laticinios',
+      'lacteos',
+      'nao posso lactose',
+      'nao posso leite',
+      'nao pode lactose',
+      'nao pode leite',
+      'sem leite',
+      'sem derivados de leite',
+      'sem laticinios',
+      'sem lacteos',
+      'lactose free',
+      'dairy free',
+    ])) {
+      restrictions.add('sem lactose');
+    }
+    if (_containsAnyTerm(normalized, const [
+      'sem gluten',
+      'sem glutem',
+      'intolerancia gluten',
+      'intolerante gluten',
+      'intolerante a gluten',
+      'nao posso gluten',
+      'nao posso glutem',
+      'nao pode gluten',
+      'nao pode glutem',
+      'celiaco',
+      'celiaca',
+      'gluten free',
+    ])) {
+      restrictions.add('sem gluten');
+    }
+    if (restrictions.isNotEmpty) {
+      arguments['foodRestrictions'] = restrictions.toList();
+    }
+
+    final favoriteFoods = <String>{};
+    if (_containsAnyTerm(normalized, const [
+      'prefiro',
+      'preferencia',
+      'preferencias',
+      'gosto de',
+      'inclua',
+      'use',
+    ])) {
+      void addFavoriteIfMentioned(String food, List<String> terms) {
+        if (_containsAnyTerm(normalized, terms)) {
+          favoriteFoods.add(food);
+        }
+      }
+
+      addFavoriteIfMentioned('frango', const ['frango']);
+      addFavoriteIfMentioned('peixe', const ['peixe', 'tilapia', 'salmao']);
+      addFavoriteIfMentioned('arroz', const ['arroz']);
+      addFavoriteIfMentioned('batata', const ['batata', 'batata doce']);
+      addFavoriteIfMentioned('frutas', const ['fruta', 'frutas']);
+      addFavoriteIfMentioned('legumes', const ['legume', 'legumes']);
+      addFavoriteIfMentioned('verduras', const ['verdura', 'verduras']);
+      addFavoriteIfMentioned('carne', const ['carne', 'patinho']);
+      addFavoriteIfMentioned('aveia sem gluten', const [
+        'aveia sem gluten',
+        'aveia gluten free',
+      ]);
+    }
+    if (favoriteFoods.isNotEmpty) {
+      arguments['favoriteFoods'] = favoriteFoods.toList();
+    }
+
+    final avoidedFoods = <String>{};
+    final hasFoodAversion = _containsAnyTerm(normalized, const [
+      'faz mal',
+      'fazem mal',
+      'cai mal',
+      'me cai mal',
+      'me sinto mal',
+      'passo mal',
+      'enjoo',
+      'enjoa',
+      'enjoado',
+      'me da enjoo',
+      'me da nausea',
+      'nausea',
+      'pesa',
+      'pesado',
+      'pesada',
+      'nao gosto',
+      'nao posso',
+      'nao pode',
+      'evitar',
+      'evite',
+      'alergia',
+      'alergico',
+      'alergica',
+    ]);
+
+    void addAvoidedIfMentioned(String food, List<String> terms) {
+      if (hasFoodAversion && _containsAnyTerm(normalized, terms)) {
+        avoidedFoods.add(food);
+      }
+    }
+
+    addAvoidedIfMentioned('ovo', const ['ovo', 'ovos']);
+    addAvoidedIfMentioned('feijao', const ['feijao', 'feijoes']);
+    addAvoidedIfMentioned('leite', const ['leite']);
+    addAvoidedIfMentioned('queijo', const ['queijo', 'cottage', 'ricota']);
+    addAvoidedIfMentioned('iogurte', const ['iogurte']);
+    addAvoidedIfMentioned('laticinios', const [
+      'laticinio',
+      'laticinios',
+      'lacteo',
+      'lacteos',
+      'derivados de leite',
+    ]);
+    addAvoidedIfMentioned('trigo', const ['trigo']);
+    addAvoidedIfMentioned('pao', const ['pao', 'paes']);
+    addAvoidedIfMentioned('massa com gluten', const [
+      'macarrao',
+      'massa',
+      'pasta',
+    ]);
+
+    if (restrictions.contains('sem lactose')) {
+      avoidedFoods.addAll(const [
+        'leite',
+        'queijo',
+        'iogurte',
+        'cottage',
+        'ricota',
+        'laticinios',
+      ]);
+    }
+    if (restrictions.contains('sem gluten')) {
+      avoidedFoods.addAll(const [
+        'trigo',
+        'pao',
+        'macarrao comum',
+        'farinha de trigo',
+        'aveia comum',
+      ]);
+    }
+    if (avoidedFoods.isNotEmpty) {
+      arguments['avoidedFoods'] = avoidedFoods.toList();
+    }
+
+    final routineConsiderations = <String>{};
+    if (_containsAnyTerm(normalized, const [
+      'renal',
+      'rim',
+      'rins',
+      'kidney',
+    ])) {
+      routineConsiderations.add('problema renal informado pelo usuario');
+    }
+    if (_containsAnyTerm(normalized, const [
+      'diabetes',
+      'diabetico',
+      'diabetica',
+      'diabetic',
+    ])) {
+      routineConsiderations.add('diabetes informado pelo usuario');
+    }
+    if (_containsAnyTerm(normalized, const [
+      'hipertensao',
+      'pressao alta',
+      'hypertension',
+      'high blood pressure',
+    ])) {
+      routineConsiderations.add('hipertensao informada pelo usuario');
+    }
+    if (_containsAnyTerm(normalized, const [
+      'gravida',
+      'gestante',
+      'pregnant',
+    ])) {
+      routineConsiderations.add('gestacao informada pelo usuario');
+    }
+    if (routineConsiderations.isNotEmpty) {
+      arguments['routineConsiderations'] = routineConsiderations.toList();
+    }
+
+    arguments.removeWhere((_, value) => value == null);
+    if (arguments.isEmpty) {
+      return null;
+    }
+
+    return AppAgentCommand(
+      name: updateDietGenerationPreferences,
+      arguments: arguments,
+      rawJson: rawJson,
+    );
+  }
+
+  static List<String> _extractDietRestrictionList(
+    Map<String, dynamic> normalized,
+  ) {
+    final restrictions = <String>{};
+    final explicitRestrictions = AppAgentService._readFirstValue(
+      normalized,
+      const [
+        'foodRestrictions',
+        'restrictions',
+        'dietaryRestrictions',
+        'allergies',
+        'intolerances',
+        'foodIntolerances',
+      ],
+    );
+    for (final item
+        in AppAgentService._extractStringList(explicitRestrictions)) {
+      final canonical = AppAgentService._canonicalDietRestriction(item);
+      if (canonical != null) {
+        restrictions.add(canonical);
+      }
+    }
+
+    final dietStyle = AppAgentService._readFirstValue(
+      normalized,
+      const ['dietType', 'dietStyle', 'eatingStyle'],
+    );
+    for (final item in AppAgentService._extractStringList(dietStyle)) {
+      final canonical = AppAgentService._canonicalDietRestriction(item);
+      if (canonical != null) {
+        restrictions.add(canonical);
+      }
+    }
+
+    return restrictions.toList();
+  }
+
+  static String? _canonicalDietRestriction(dynamic value) {
+    final normalized = _normalizeLooseText(value);
+    if (normalized.isEmpty ||
+        _containsAnyTerm(normalized, const [
+          'custom',
+          'personalizado',
+          'padrao',
+          'normal',
+          'standard',
+          'none',
+          'nenhuma',
+          'nenhum',
+        ])) {
+      return null;
+    }
+    if (_containsAnyTerm(normalized, const ['vegan', 'vegano', 'vegana'])) {
+      return 'vegano';
+    }
+    if (_containsAnyTerm(normalized, const [
+      'vegetarian',
+      'vegetariano',
+      'vegetariana',
+    ])) {
+      return 'vegetariano';
+    }
+    if (_containsAnyTerm(normalized, const [
+      'lactose',
+      'leite',
+      'dairy free',
+      'sem laticinios',
+      'laticinio',
+      'laticinios',
+      'lacteo',
+      'lacteos',
+      'derivados de leite',
+    ])) {
+      return 'sem lactose';
+    }
+    if (_containsAnyTerm(normalized, const [
+      'gluten',
+      'glutem',
+      'celiaco',
+      'celiaca',
+      'celiac',
+    ])) {
+      return 'sem gluten';
+    }
+    return value.toString().trim();
+  }
+
+  static int? _readRequestedMealsPerDay(Map<String, dynamic> arguments) {
+    final mealsPerDay = _tryParseInt(
+      _readFirstValue(arguments, const [
+        'mealsPerDay',
+        'meals_per_day',
+        'mealCount',
+        'meal_count',
+        'meals',
+        'refeicoes',
+        'refeições',
+      ]),
+    );
+    if (mealsPerDay == null || mealsPerDay <= 0) {
+      return null;
+    }
+    return mealsPerDay.clamp(1, 8).toInt();
+  }
+
+  static bool isDietGenerationRequest(String userMessage) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    final hasDietTerm = _containsAnyTerm(normalized, const [
+      'dieta',
+      'diet',
+      'cardapio',
+      'plano alimentar',
+      'meal plan',
+    ]);
+    if (!hasDietTerm) {
+      return false;
+    }
+
+    return _containsAnyTerm(normalized, const [
+      'gera',
+      'gerar',
+      'gere',
+      'cria',
+      'criar',
+      'crie',
+      'monta',
+      'montar',
+      'monte',
+      'faz',
+      'fazer',
+      'faca',
+      'generate',
+      'create',
+      'build',
+    ]);
+  }
+
+  static bool shouldTreatAsMacroRecalculationApproval(
+    String userMessage,
+    String conversationContext,
+  ) {
+    final normalizedMessage = _normalizeLooseText(userMessage);
+    if (normalizedMessage.isEmpty || isDietGenerationRequest(userMessage)) {
+      return false;
+    }
+
+    if (_containsAnyTerm(normalizedMessage, const [
+      'dieta',
+      'cardapio',
+      'plano alimentar',
+      'refeicao',
+      'refeicoes',
+      'meal plan',
+    ])) {
+      return false;
+    }
+
+    final isApprovalOrRecalcRequest =
+        _isMacroRecalculationApproval(normalizedMessage) ||
+            _containsAnyTerm(normalizedMessage, const [
+              'recalcule',
+              'recalcula',
+              'recalcular',
+              'recalculo',
+              'ajuste automatico',
+              'ajustar automatico',
+              'calcule automatico',
+              'calcular automatico',
+            ]);
+    if (!isApprovalOrRecalcRequest) {
+      return false;
+    }
+
+    final normalizedContext = _normalizeLooseText(conversationContext);
+    if (normalizedContext.isEmpty) {
+      return _containsAnyTerm(normalizedMessage, const [
+        'macro',
+        'macros',
+        'caloria',
+        'calorias',
+        'meta',
+        'metas',
+        'objetivo',
+        'objetivos',
+      ]);
+    }
+
+    final hasMacroTopic = _containsAnyTerm(normalizedContext, const [
+      'macro',
+      'macros',
+      'caloria',
+      'calorias',
+      'proteina',
+      'carboidrato',
+      'gordura',
+      'meta',
+      'metas',
+      'objetivo',
+      'objetivos',
+      'alvo',
+      'alvos',
+      'target',
+      'targets',
+    ]);
+    final hasRecalculationIntent = _containsAnyTerm(normalizedContext, const [
+      'recalcule',
+      'recalcula',
+      'recalcular',
+      'recalculo',
+      'automatico',
+      'automaticamente',
+      'alterar esses valores',
+      'mudar esses valores',
+      'ganhar massa',
+      'perder peso',
+      'superavit',
+      'deficit',
+      'manutencao',
+      'bulking',
+      'cutting',
+      'aplicar a meta',
+      'aplicar esses valores',
+    ]);
+
+    return hasMacroTopic && hasRecalculationIntent;
+  }
+
+  static bool shouldRedirectDietCommandToMacroRecalculation(
+    AppAgentCommand command,
+    String originalUserMessage,
+    String conversationContext,
+  ) {
+    if (command.name != generateNewDietPlan &&
+        command.name != getDietGenerationPreferencesStatus &&
+        command.name != updateDietGenerationPreferences) {
+      return false;
+    }
+
+    return shouldTreatAsMacroRecalculationApproval(
+      originalUserMessage,
+      conversationContext,
+    );
+  }
+
+  static AppAgentCommand? buildMacroRecalculationCommandFromContext(
+    String originalUserMessage,
+    String conversationContext, {
+    required String rawJson,
+  }) {
+    if (!shouldTreatAsMacroRecalculationApproval(
+      originalUserMessage,
+      conversationContext,
+    )) {
+      return null;
+    }
+
+    final fitnessGoal = _parseFitnessGoal(
+      '$originalUserMessage\n$conversationContext',
+    );
+    return AppAgentCommand(
+      name: recalculateNutritionGoals,
+      arguments: <String, dynamic>{
+        if (fitnessGoal != null) 'fitnessGoal': fitnessGoal.name,
+      },
+      rawJson: rawJson,
+    );
+  }
+
+  static bool _isMacroRecalculationApproval(String normalizedMessage) {
+    const shortApprovals = {
+      'sim',
+      'ok',
+      'pode',
+      'pode sim',
+      'isso',
+      'isso mesmo',
+      'confirmo',
+      'confirmar',
+      'automatico',
+      'automaticamente',
+      'faca automatico',
+      'faz automatico',
+      'fazer automatico',
+      'pode recalcular',
+      'pode calcular',
+      'pode ajustar',
+      'sim recalcula',
+      'sim recalcule',
+      'sim automatico',
+      'recalcule automatico',
+      'recalcula automatico',
+      'calcule automatico',
+      'calcula automatico',
+    };
+    if (shortApprovals.contains(normalizedMessage)) {
+      return true;
+    }
+
+    return _containsAnyTerm(normalizedMessage, const [
+      'faca automaticamente',
+      'faz automaticamente',
+      'pode recalcular',
+      'pode calcular automatico',
+      'pode ajustar automatico',
+      'recalcule automaticamente',
+      'recalcula automaticamente',
+      'calcule automaticamente',
+      'calcula automaticamente',
+      'do it automatically',
+      'recalculate automatically',
+    ]);
+  }
+
+  static bool isDietDefaultApproval(String userMessage) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    const shortApprovals = {
+      'sim',
+      'ok',
+      'certo',
+      'pode',
+      'pode sim',
+      'nao',
+      'no',
+      'nada',
+      'nenhum',
+      'nenhuma',
+      'continue',
+      'segue',
+    };
+    if (shortApprovals.contains(normalized)) {
+      return true;
+    }
+
+    return _containsAnyTerm(normalized, const [
+      'pode gerar',
+      'pode seguir',
+      'pode continuar',
+      'pode montar',
+      'pode fazer',
+      'gera padrao',
+      'gerar padrao',
+      'dieta padrao',
+      'plano padrao',
+      'padrao',
+      'default',
+      'standard',
+      'sem detalhes',
+      'sem mais detalhes',
+      'nao quero passar',
+      'nao quero detalhes',
+      'nao tenho detalhes',
+      'sem restricao',
+      'sem restricoes',
+      'sem preferencia',
+      'sem preferencias',
+      'nada a adicionar',
+      'nao tenho restricao',
+      'nao tenho alergia',
+      'tanto faz',
+      'qualquer uma',
+      'qualquer um',
+    ]);
   }
 
   static String _removeAgentArtifacts(String rawContent) {
@@ -1180,25 +2169,17 @@ class AppAgentService {
 [APP_COMMAND_RESULTS_BEGIN]
 $resultJson
 [APP_COMMAND_RESULTS_END]
-
 [APP_CURRENT_STATE_BEGIN]
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
-
 App reply language: $appReplyLanguage.
-
 ${sanitizedConversationContext.isEmpty ? '' : 'Recent conversation context:\n$sanitizedConversationContext\n'}
-
 User request:
 $originalUserMessage
-
-Use APP_COMMAND_RESULTS and APP_CURRENT_STATE as the source of truth. If another app action is still required to complete the request, return only valid app_command/app_commands. Otherwise, answer naturally without JSON or internal command names.
-The final visible reply must be written by the assistant in natural language, not as a template.
-If APP_COMMAND_RESULTS contains errorMessage "confirmation_required", do not return another mutating command. Tell the user that you did not change the saved goals yet, then ask one short confirmation or target question.
-For daily status results, answer the user's exact question with the remaining values from APP_COMMAND_RESULTS. If the user asks only about fat/gordura, answer the remaining fat first, then optionally mention calories briefly.
-For calorie/macro target results, mention only the saved values from APP_COMMAND_RESULTS or APP_CURRENT_STATE. Do not repeat numbers requested by the user unless they match the saved values.
-After a calorie/macro target update, stop after the saved values. Do not ask about diet personalization, restrictions, meal plans, or generation unless the user explicitly asked for a diet plan in the latest message.
-Do not append edit_macros_ui hints after successful target updates or daily status answers.
+Rules: trust APP_COMMAND_RESULTS and APP_CURRENT_STATE. Return another app_command/app_commands only if one more app action is required; otherwise answer naturally without internal command names.
+If errorMessage is "confirmation_required", do not mutate again; say nothing was saved yet and ask one short confirmation/target question.
+Daily status: answer the exact remaining values asked. Macro target results: report only saved/current values. After successful macro updates or daily status, no edit_macros_ui hint.
+Do not ask diet-personalization/meal-plan follow-ups unless the latest user request explicitly asked for a diet plan.
 Reply in App reply language.
 ''';
   }
@@ -1215,9 +2196,7 @@ Reply in App reply language.
 [APP_CURRENT_STATE_BEGIN]
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
-
 App reply language: $appReplyLanguage.
-
 $basePrompt
 ''';
     }
@@ -1230,9 +2209,7 @@ $basePrompt
 [APP_CURRENT_STATE_BEGIN]
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
-
 App reply language: $appReplyLanguage.
-
 $basePrompt
 ''';
   }
@@ -1455,6 +2432,9 @@ $basePrompt
             'proteinGoal': payload['proteinGoal'],
             'carbsGoal': payload['carbsGoal'],
             'fatGoal': payload['fatGoal'],
+            'proteinPerKg': payload['proteinPerKg'],
+            'fatPerKg': payload['fatPerKg'],
+            'macroStrategy': payload['macroStrategy'],
             'activityLevel': payload['activityLevel'],
             'fitnessGoal': payload['fitnessGoal'],
             'dietType': payload['dietType'],
@@ -1679,6 +2659,11 @@ $basePrompt
       'esses',
       'agora',
       'depois',
+      'pode',
+      'ele',
+      'ela',
+      'eles',
+      'elas',
     }.contains(firstWord);
   }
 
@@ -1962,6 +2947,11 @@ $basePrompt
     final languageCode =
         '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
     final userId = authService.currentUser?.id.toString() ?? '';
+    final requestedMealsPerDay = _readRequestedMealsPerDay(command.arguments);
+    if (requestedMealsPerDay != null) {
+      await mealTypesProvider.setMealCount(requestedMealsPerDay);
+      await mealTypesProvider.ensureLoaded();
+    }
 
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
@@ -2035,7 +3025,120 @@ $basePrompt
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    return _executeServerStateCommand(command, context);
+    final requestedMealsPerDay = _readRequestedMealsPerDay(command.arguments);
+    if (requestedMealsPerDay != null) {
+      final mealTypesProvider =
+          Provider.of<MealTypesProvider>(context, listen: false);
+      await mealTypesProvider.ensureLoaded();
+      await mealTypesProvider.setMealCount(requestedMealsPerDay);
+    }
+
+    _applyDietGenerationPreferencesLocally(command, context);
+    final result = await _executeServerStateCommand(command, context);
+    _applyDietGenerationPreferencesLocally(command, context);
+    return result;
+  }
+
+  static void _applyDietGenerationPreferencesLocally(
+    AppAgentCommand command,
+    BuildContext context,
+  ) {
+    final args = command.arguments;
+    if (args.isEmpty) {
+      return;
+    }
+
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+    final mealsPerDay = _readRequestedMealsPerDay(args);
+    final hungriestMealTime = _normalizeMealWindow(
+      _readFirstValue(
+        args,
+        const ['hungriestMealTime', 'hungriest_meal_time', 'hungriestMeal'],
+      ),
+    );
+    final foodRestrictions = _extractDietRestrictionList(args);
+    final favoriteFoods = _extractStringList(
+      _readFirstValue(
+        args,
+        const [
+          'favoriteFoods',
+          'preferredFoods',
+          'likedFoods',
+          'foodPreferences',
+        ],
+      ),
+    );
+    final avoidedFoods = _extractStringList(
+      _readFirstValue(
+        args,
+        const ['avoidedFoods', 'dislikedFoods', 'foodsToAvoid'],
+      ),
+    );
+    final routineConsiderations = _extractStringList(
+      _readFirstValue(
+        args,
+        const [
+          'routineConsiderations',
+          'routineNotes',
+          'appetiteNotes',
+          'healthConditions',
+          'medicalConditions',
+          'medicalIssues',
+          'healthConsiderations',
+          'conditions',
+          'condicoesSaude',
+          'problemasSaude',
+        ],
+      ),
+    );
+    final skipPreferenceStep = _tryParseBool(
+      _readFirstValue(
+        args,
+        const [
+          'skipPreferenceStep',
+          'skip_preference_step',
+          'markAllReviewed',
+          'mark_all_reviewed',
+          'noExtraPreferences',
+          'no_extra_preferences',
+        ],
+      ),
+    );
+
+    final hasAnyPreference = mealsPerDay != null ||
+        hungriestMealTime != null ||
+        foodRestrictions.isNotEmpty ||
+        favoriteFoods.isNotEmpty ||
+        avoidedFoods.isNotEmpty ||
+        routineConsiderations.isNotEmpty ||
+        skipPreferenceStep == true;
+    if (!hasAnyPreference) {
+      return;
+    }
+
+    dietProvider.updateDietGenerationPreferences(
+      mealsPerDay: mealsPerDay,
+      hungriestMealTime: hungriestMealTime,
+      foodRestrictions: foodRestrictions.isEmpty ? null : foodRestrictions,
+      favoriteFoods: favoriteFoods.isEmpty ? null : favoriteFoods,
+      avoidedFoods: avoidedFoods.isEmpty ? null : avoidedFoods,
+      routineConsiderations:
+          routineConsiderations.isEmpty ? null : routineConsiderations,
+      reviewedRestrictions:
+          skipPreferenceStep == true || foodRestrictions.isNotEmpty
+              ? true
+              : null,
+      reviewedFoodPreferences: skipPreferenceStep == true ||
+              favoriteFoods.isNotEmpty ||
+              avoidedFoods.isNotEmpty
+          ? true
+          : null,
+      reviewedRoutineNeeds: skipPreferenceStep == true ||
+              routineConsiderations.isNotEmpty ||
+              hungriestMealTime != null
+          ? true
+          : null,
+    );
   }
 
   static Future<AppAgentExecutionResult> _getMacroTargetsStatus(
@@ -2222,14 +3325,14 @@ $basePrompt
     }
 
     if (RegExp(
-      r'^\s*(sim|ok|okay|pode|pode sim|isso|isso mesmo|confirmo|confirmar|fa[çc]a isso|faz isso|aplica|aplique|aplicar|salva|salve|salvar|yes|do it|apply|save)\s*[.!?]*\s*$',
+      r'^\s*(sim|ok|okay|pode|pode sim|isso|isso mesmo|confirmo|confirmar|fa[çc]a isso|faz isso|fa[çc]a autom[aá]tico|faz autom[aá]tico|autom[aá]tico|automaticamente|recalcule autom[aá]tico|recalcula autom[aá]tico|recalcule automaticamente|recalcula automaticamente|aplica|aplique|aplicar|salva|salve|salvar|yes|do it|apply|save)\s*[.!?]*\s*$',
       caseSensitive: false,
     ).hasMatch(normalized)) {
       return true;
     }
 
     return RegExp(
-      r'\b(pode aplicar|pode atualizar|aplica isso|aplique isso|salva isso|salve isso|fa[çc]a essa mudan[çc]a|confirmo essa mudan[çc]a|apply it|save it|update it)\b',
+      r'\b(pode aplicar|pode atualizar|pode recalcular|pode calcular|pode ajustar|aplica isso|aplique isso|salva isso|salve isso|fa[çc]a essa mudan[çc]a|confirmo essa mudan[çc]a|apply it|save it|update it|recalculate it)\b',
       caseSensitive: false,
     ).hasMatch(normalized);
   }

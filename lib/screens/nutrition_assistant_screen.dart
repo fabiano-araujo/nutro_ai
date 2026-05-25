@@ -102,6 +102,7 @@ class NutritionAssistantScreen extends StatefulWidget {
   final String? freeChatId; // ID da conversa livre
   final bool forceNewFreeChat;
   final VoidCallback? onOpenDrawer;
+  final VoidCallback? onOpenMyDiet;
   final String? toolType;
 
   const NutritionAssistantScreen({
@@ -113,6 +114,7 @@ class NutritionAssistantScreen extends StatefulWidget {
     this.freeChatId,
     this.forceNewFreeChat = false,
     this.onOpenDrawer,
+    this.onOpenMyDiet,
     this.toolType,
   }) : super(key: key);
 
@@ -820,7 +822,6 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
 
     if (loadingChanged && !isLoading) {
-      _scrollToBottom(animate: true, retries: 3);
       _pinChatToBottom = false;
     }
   }
@@ -2538,6 +2539,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               icon: const Icon(Icons.tune_rounded, size: 18),
               label: Text(
                 appLocalizations.translate('chat_action_edit_macros_ui'),
+              ),
+            ),
+          if (actions.contains(AppAgentUiHint.actionViewMyDietUi))
+            FilledButton.tonalIcon(
+              onPressed: widget.onOpenMyDiet,
+              icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+              label: Text(
+                appLocalizations.translate('chat_action_view_my_diet_ui'),
               ),
             ),
           if (actions.contains(AppAgentUiHint.actionWatchRewardedAd))

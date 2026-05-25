@@ -112,15 +112,12 @@ class NutritionAssistantController with ChangeNotifier {
 
     return '''
 Conversation mode: nutrition goal and macro target review.
-- Scope: goals, calories, macros, and weight-goal discussion only. Do not collect diet preferences or generate meal plans unless explicitly asked.
-- Use APP_CURRENT_STATE for current calories, macros, weight, and profile. Never ask setup fields already present.
-- Broad goals like "quero perder peso" are requests to discuss targets, not consent to save. Ask one short target/deficit confirmation.
-- Save targets only when the latest user message gives explicit numbers/g/kg values or confirms a proposed change.
-- Explicit macro numbers are consent to save; do not ask for confirmation. "O app conduz", "resto carbo", or "resto o app calcula" means keep current calories and fill missing macros.
-- For partial grams or g/kg such as "180g protein" or "2g/kg protein, 1g/kg fat, rest carbs", return the matching update command with only provided values; the app fills the rest using current calories unless the user gives a new calorie target.
-- If a phrase establishes g/kg, apply that unit to later bare macro numbers in the same phrase, such as "2g/kg protein, 1 fat".
-- For remaining-today questions or short macro follow-ups, use get_daily_nutrition_status.
-- After app results, answer briefly with only the saved or remaining values.
+Scope: goals/calories/macros/weight targets only; no diet-preference or meal-plan flow unless explicitly asked.
+Use APP_CURRENT_STATE. Broad goals need one target/deficit confirmation before saving.
+Save only explicit calories/macros/g/kg or clear approval. Explicit macro numbers are consent.
+"O app conduz", "resto carbo", or "resto o app calcula" means keep calories and fill missing macros.
+Partial grams/g/kg may omit fields; the app fills missing macros. If a phrase establishes g/kg, apply it to later bare macro numbers.
+Remaining-today or short macro follow-ups use get_daily_nutrition_status. After app results, answer briefly with only saved/remaining values.
 ''';
   }
 
@@ -637,24 +634,32 @@ Conversation mode: nutrition goal and macro target review.
       // Usar uma cópia da lista para evitar modificação concorrente durante a compilação do prompt
       final currentMessagesForPrompt =
           List<Map<String, dynamic>>.from(_messages);
-      if (currentMessagesForPrompt.length > 2 &&
-          AppAgentService.shouldIncludeConversationContext(message)) {
+      if (currentMessagesForPrompt.length > 2) {
         // Obter o histórico exceto a mensagem do usuário atual e a mensagem de resposta da IA
         // que está sendo gerada (as duas últimas mensagens)
         final messageHistory = currentMessagesForPrompt.sublist(
             0, currentMessagesForPrompt.length - 2);
-        final recentMessageHistory = messageHistory.length <= 4
-            ? messageHistory
-            : messageHistory.sublist(messageHistory.length - 4);
-        contextPrompt = await _aiService.limitConversationHistory(
-          recentMessageHistory,
-          maxTokenLimit: 260,
-        );
-        contextPrompt = AppAgentService.compactConversationContext(
-          contextPrompt,
-          maxBlocks: 3,
-          maxChars: 420,
-        );
+        final shouldIncludeContext =
+            _shouldIncludeConversationContextForPrompt(message, messageHistory);
+        final historyLimit = toolType == 'free_chat' ? 12 : 4;
+        final tokenLimit = toolType == 'free_chat' ? 1200 : 260;
+        final blockLimit = toolType == 'free_chat' ? 10 : 3;
+        final charLimit = toolType == 'free_chat' ? 1800 : 420;
+
+        if (shouldIncludeContext) {
+          final recentMessageHistory = messageHistory.length <= historyLimit
+              ? messageHistory
+              : messageHistory.sublist(messageHistory.length - historyLimit);
+          contextPrompt = await _aiService.limitConversationHistory(
+            recentMessageHistory,
+            maxTokenLimit: tokenLimit,
+          );
+          contextPrompt = AppAgentService.compactConversationContext(
+            contextPrompt,
+            maxBlocks: blockLimit,
+            maxChars: charLimit,
+          );
+        }
       }
 
       // Registrar tempo
@@ -844,10 +849,36 @@ Conversation mode: nutrition goal and macro target review.
     }
   }
 
+  bool _shouldIncludeConversationContextForPrompt(
+    String userMessage,
+    List<Map<String, dynamic>> messageHistory,
+  ) {
+    if (messageHistory.isEmpty) {
+      return false;
+    }
+
+    final hasPriorUserMessage =
+        messageHistory.any((message) => message['isUser'] == true);
+    if (!hasPriorUserMessage) {
+      return false;
+    }
+
+    if (toolType == 'free_chat') {
+      return true;
+    }
+
+    return AppAgentService.shouldIncludeConversationContext(userMessage);
+  }
+
   String _buildTextDisplayContent(
     String rawContent, {
     required bool autoRegisterFoods,
   }) {
+    final commandPlaceholder = _buildStreamingCommandPlaceholder(rawContent);
+    if (commandPlaceholder != null) {
+      return commandPlaceholder;
+    }
+
     return AppAgentService.sanitizeDisplayMessage(
       rawContent,
       autoRegisterFoods: autoRegisterFoods,
@@ -858,6 +889,30 @@ Conversation mode: nutrition goal and macro target review.
         return FoodJsonParser.removeJsonCandidateFromMessage(content);
       },
     );
+  }
+
+  String? _buildStreamingCommandPlaceholder(String rawContent) {
+    final normalized = rawContent.toLowerCase();
+    final looksLikeCommand = AppAgentCommand.containsCommandCandidate(
+          rawContent,
+        ) ||
+        RegExp(
+          r'^\s*[,{\[]?\s*\\?"(?:name|app_?commands?)\\?"',
+          caseSensitive: false,
+        ).hasMatch(rawContent);
+    if (!looksLikeCommand) {
+      return null;
+    }
+
+    final context = _lastContext;
+    if (context == null) {
+      return '';
+    }
+
+    final key = normalized.contains('diet') || normalized.contains('dieta')
+        ? 'agent_loading_generate_diet'
+        : 'agent_loading_generic';
+    return AppLocalizations.of(context).translate(key);
   }
 
   Future<bool> _handleAgenticCommandResponse({
@@ -877,6 +932,92 @@ Conversation mode: nutrition goal and macro target review.
   }) async {
     final commandBatch = AppAgentCommand.tryParseBatch(responseContent);
     if (commandBatch == null || commandBatch.commands.isEmpty) {
+      final fallbackRecalculationCommand =
+          AppAgentService.buildMacroRecalculationCommandFromContext(
+        originalUserMessage,
+        conversationContext,
+        rawJson: responseContent,
+      );
+      if (fallbackRecalculationCommand != null) {
+        final executionResult = await AppAgentService.executeCommand(
+          fallbackRecalculationCommand,
+          context,
+        );
+        final directMessage =
+            AppAgentService.buildMacroGoalsCommandResultMessage(
+          context: context,
+          executionResults: [executionResult],
+        );
+        if (directMessage != null) {
+          _finalizeInterceptedMessage(notifier, directMessage);
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+      }
+
+      if (AppAgentCommand.containsCommandCandidate(responseContent) &&
+          AppAgentService.isDietGenerationRequest(originalUserMessage)) {
+        final executionResults = <AppAgentExecutionResult>[];
+        final inferredPreferencesCommand =
+            AppAgentService.buildDietPreferenceUpdateFromUserMessage(
+          originalUserMessage,
+          rawJson: responseContent,
+        );
+
+        var requestedMealsPerDay =
+            inferredPreferencesCommand?.arguments['mealsPerDay'];
+        if (inferredPreferencesCommand != null) {
+          final inferredResult = await AppAgentService.executeCommand(
+            inferredPreferencesCommand,
+            context,
+          );
+          executionResults.add(inferredResult);
+        }
+
+        final generateCommand = AppAgentCommand(
+          name: AppAgentService.generateNewDietPlan,
+          arguments: <String, dynamic>{
+            if (requestedMealsPerDay != null)
+              'mealsPerDay': requestedMealsPerDay,
+          },
+          rawJson: responseContent,
+        );
+
+        if (AppAgentService.shouldAskDietPersonalizationBeforeGeneration(
+          generateCommand,
+          originalUserMessage,
+          context,
+        )) {
+          _finalizeInterceptedMessage(
+            notifier,
+            AppAgentService.buildDietPersonalizationQuestion(context),
+          );
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+
+        final generateResult = await AppAgentService.executeCommand(
+          generateCommand,
+          context,
+        );
+        executionResults.add(generateResult);
+
+        final dietGeneratedMessage =
+            AppAgentService.buildDietGeneratedCommandResultMessage(
+          context: context,
+          executionResults: executionResults,
+        );
+        _finalizeInterceptedMessage(
+          notifier,
+          dietGeneratedMessage ??
+              AppLocalizations.of(context).translate(
+                'agent_command_invalid_response',
+              ),
+        );
+        _saveMessagesForCurrentDate();
+        return true;
+      }
+
       final fallbackMessage = priorExecutionResults == null
           ? null
           : AppAgentService.buildCreditExhaustedFallbackMessage(
@@ -887,6 +1028,24 @@ Conversation mode: nutrition goal and macro target review.
       if (fallbackMessage != null && fallbackMessage.trim().isNotEmpty) {
         _finalizeInterceptedMessage(notifier, fallbackMessage);
         return true;
+      }
+
+      final visibleContent = _buildTextDisplayContent(
+        responseContent,
+        autoRegisterFoods: _shouldAutoRegisterFoods,
+      ).trim();
+      if (visibleContent.isEmpty) {
+        final macroAdviceFallback =
+            AppAgentService.buildMacroTargetAdviceFallbackMessage(
+          context: context,
+          userMessage: originalUserMessage,
+        );
+        if (macroAdviceFallback != null &&
+            macroAdviceFallback.trim().isNotEmpty) {
+          _finalizeInterceptedMessage(notifier, macroAdviceFallback);
+          _saveMessagesForCurrentDate();
+          return true;
+        }
       }
       return false;
     }
@@ -900,10 +1059,24 @@ Conversation mode: nutrition goal and macro target review.
 
     _agenticCommandExecutions++;
 
+    final shouldUseMacroRecalculationFromContext =
+        AppAgentService.shouldTreatAsMacroRecalculationApproval(
+      originalUserMessage,
+      conversationContext,
+    );
+    final firstCommandName = commandBatch.commands.isNotEmpty &&
+            shouldUseMacroRecalculationFromContext &&
+            AppAgentService.shouldRedirectDietCommandToMacroRecalculation(
+              commandBatch.commands.first,
+              originalUserMessage,
+              conversationContext,
+            )
+        ? AppAgentService.recalculateNutritionGoals
+        : commandBatch.commands.first.name;
     final loadingMessage = commandBatch.commands.length == 1
         ? AppAgentService.buildLoadingMessage(
             context,
-            commandBatch.commands.first.name,
+            firstCommandName,
           )
         : AppLocalizations.of(context).translate('agent_loading_generic');
     notifier.updateMessage(commandBatch.rawJson,
@@ -912,7 +1085,83 @@ Conversation mode: nutrition goal and macro target review.
 
     try {
       final executionResults = <AppAgentExecutionResult>[];
-      for (final command in commandBatch.commands) {
+      var appliedInferredDietPreferences = false;
+      var redirectedDietCommandToMacroRecalculation = false;
+      final batchAlreadyGeneratesDiet = commandBatch.commands.any(
+        (command) => command.name == AppAgentService.generateNewDietPlan,
+      );
+      for (final rawCommand in commandBatch.commands) {
+        var command = AppAgentService.normalizeDietPreferenceApprovalCommand(
+          rawCommand,
+          originalUserMessage,
+        );
+
+        final inferredPreferencesCommand =
+            AppAgentService.buildDietPreferenceUpdateFromUserMessage(
+          originalUserMessage,
+          rawJson: command.rawJson,
+        );
+        final inferredPreferencesFromMessage =
+            command.name == AppAgentService.updateDietGenerationPreferences &&
+                command.arguments.isEmpty &&
+                inferredPreferencesCommand != null;
+        if (inferredPreferencesFromMessage) {
+          command = inferredPreferencesCommand;
+        }
+
+        if (shouldUseMacroRecalculationFromContext &&
+            AppAgentService.shouldRedirectDietCommandToMacroRecalculation(
+              command,
+              originalUserMessage,
+              conversationContext,
+            )) {
+          if (redirectedDietCommandToMacroRecalculation) {
+            continue;
+          }
+          command = AppAgentCommand(
+            name: AppAgentService.recalculateNutritionGoals,
+            arguments: const {},
+            rawJson: command.rawJson,
+          );
+          redirectedDietCommandToMacroRecalculation = true;
+        }
+
+        if (AppAgentService.shouldAskDietPersonalizationQuestion(
+          command,
+          originalUserMessage,
+        )) {
+          _finalizeInterceptedMessage(
+            notifier,
+            AppAgentService.buildDietPersonalizationQuestion(context),
+          );
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+
+        if (AppAgentService.shouldAskDietPersonalizationBeforeGeneration(
+          command,
+          originalUserMessage,
+          context,
+        )) {
+          _finalizeInterceptedMessage(
+            notifier,
+            AppAgentService.buildDietPersonalizationQuestion(context),
+          );
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+
+        if (command.name == AppAgentService.generateNewDietPlan &&
+            inferredPreferencesCommand != null &&
+            !appliedInferredDietPreferences) {
+          final inferredResult = await AppAgentService.executeCommand(
+            inferredPreferencesCommand,
+            context,
+          );
+          executionResults.add(inferredResult);
+          appliedInferredDietPreferences = true;
+        }
+
         if (AppAgentService.shouldBlockAmbiguousGoalMutation(
           command,
           originalUserMessage,
@@ -932,6 +1181,28 @@ Conversation mode: nutrition goal and macro target review.
         final executionResult =
             await AppAgentService.executeCommand(command, context);
         executionResults.add(executionResult);
+        if (inferredPreferencesFromMessage && executionResult.success) {
+          appliedInferredDietPreferences = true;
+        }
+
+        if (inferredPreferencesFromMessage &&
+            executionResult.success &&
+            !batchAlreadyGeneratesDiet &&
+            AppAgentService.isDietGenerationRequest(originalUserMessage)) {
+          final mealsPerDay = command.arguments['mealsPerDay'];
+          final generateArguments = <String, dynamic>{
+            if (mealsPerDay != null) 'mealsPerDay': mealsPerDay,
+          };
+          final generateResult = await AppAgentService.executeCommand(
+            AppAgentCommand(
+              name: AppAgentService.generateNewDietPlan,
+              arguments: generateArguments,
+              rawJson: command.rawJson,
+            ),
+            context,
+          );
+          executionResults.add(generateResult);
+        }
       }
 
       if (executionResults.isEmpty) {
@@ -957,6 +1228,17 @@ Conversation mode: nutrition goal and macro target review.
           _saveMessagesForCurrentDate();
           return true;
         }
+      }
+
+      final dietGeneratedMessage =
+          AppAgentService.buildDietGeneratedCommandResultMessage(
+        context: context,
+        executionResults: executionResults,
+      );
+      if (dietGeneratedMessage != null) {
+        _finalizeInterceptedMessage(notifier, dietGeneratedMessage);
+        _saveMessagesForCurrentDate();
+        return true;
       }
 
       final followUpPrompt = await AppAgentService.buildFollowUpPrompt(
@@ -1046,7 +1328,11 @@ Conversation mode: nutrition goal and macro target review.
     MessageNotifier notifier,
     String finalContent,
   ) {
-    notifier.updateMessage(finalContent, displayContent: finalContent);
+    final displayContent = _buildTextDisplayContent(
+      finalContent,
+      autoRegisterFoods: _shouldAutoRegisterFoods,
+    );
+    notifier.updateMessage(finalContent, displayContent: displayContent);
     notifier.setStreaming(false);
     _isLoading = false;
     _agenticCommandExecutions = 0;

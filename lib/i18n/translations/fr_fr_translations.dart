@@ -174,6 +174,9 @@ final Map<String, String> frFRTranslations = {
   'chat_goals_setup_banner_button': 'Configurer',
   'chat_action_continue_goals_chat': 'Continuer dans le chat',
   'chat_action_edit_macros_ui': 'Modifier les macros dans l\'app',
+  'chat_action_view_my_diet_ui': 'Voir dans Mon Régime',
+  'chat_diet_personalization_question':
+      'Je peux generer un regime standard maintenant. Si vous voulez le personnaliser, dites-moi en une phrase: vegetarien ou vegan, intolerances ou allergies, problemes de sante, aliments preferes ou a eviter, et routine. Voulez-vous ajouter quelque chose ou generer le standard?',
   'chat_action_continue_macros_chat': 'Ajuster les objectifs avec l\'IA',
   'chat_goal_setup_chat_prompt':
       'Je veux configurer mes objectifs nutritionnels dans le chat. Utilise les commandes de l\'app si besoin, pose une seule question a la fois et commence par mon age, ma taille, mon poids et mon genre.',
@@ -584,6 +587,12 @@ final Map<String, String> frFRTranslations = {
   'yes_generate_new': 'Oui, Générer Nouveau',
   'no_diet_plan_for_day': 'Aucun plan de régime pour ce jour',
   'generate_diet_plan': 'Générer un Plan de Régime',
+  'diet_outdated_title': 'Mettez à jour votre régime',
+  'diet_outdated_description':
+      'Vos objectifs ont changé depuis la génération de ce menu.',
+  'diet_outdated_generated_targets': 'Objectif utilisé pour ce régime',
+  'diet_outdated_current_targets': 'Objectif actuel',
+  'diet_outdated_generate_new': 'Générer un nouveau régime',
 
   // Streaks
   'streak_hero_title': 'Votre série',
@@ -610,11 +619,15 @@ final Map<String, String> frFRTranslations = {
   'activate': 'Activer',
   'macro_editor_subtitle':
       'Choisissez le format le plus intuitif pour ajuster vos macros.',
+  'macro_editor_adjust_method': 'Choisissez comment modifier',
   'macro_mode_percentage': '%',
+  'macro_mode_percentage_title': 'Pourcentages',
   'macro_mode_percentage_hint': 'Le plus courant au quotidien',
   'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_title': 'Par kg',
   'macro_mode_grams_per_kg_hint': 'Ideal pour les proteines et la performance',
   'macro_mode_grams': 'g',
+  'macro_mode_grams_title': 'Grammes',
   'macro_mode_grams_hint': 'Controle total en grammes',
   'macro_editor_percentage_error': 'La somme des pourcentages doit faire 100%.',
   'macro_editor_positive_error':
@@ -634,6 +647,11 @@ final Map<String, String> frFRTranslations = {
   'macro_editor_fix_total': 'Ramener a 100%',
   'macro_editor_switches_manual_mode':
       'En enregistrant en g ou g/kg, l\'app passera en objectifs manuels avec ce nouveau total calorique.',
+  'nutrition_goals_daily_target': 'Objectif quotidien',
+  'nutrition_goals_macros_per_day': 'Proteines, glucides et lipides par jour',
+  'nutrition_goals_calculation_data': 'Donnees utilisees pour le calcul',
+  'nutrition_goals_calculation_data_hint':
+      'Touchez une ligne pour la modifier.',
   'streak_checkin_action': 'Mettre à jour la série',
   'streak_checkin_success': 'Série mise à jour avec succès.',
   'streak_checkin_error': 'Impossible de mettre à jour votre série maintenant.',

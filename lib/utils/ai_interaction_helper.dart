@@ -237,7 +237,9 @@ class AIInteractionHelper {
           }
         }
 
-        if (responseContent.trim().isEmpty) {
+        final finalDisplayContent = buildDisplayContent(responseContent);
+        if (responseContent.trim().isEmpty ||
+            finalDisplayContent.trim().isEmpty) {
           final fallbackMessage = context.mounted
               ? AppLocalizations.of(context)
                   .translate('agent_empty_response_fallback')
@@ -247,6 +249,12 @@ class AIInteractionHelper {
             displayContent: fallbackMessage,
           );
           responseContent = fallbackMessage;
+        } else if (messageNotifier.displayMessage.trim() !=
+            finalDisplayContent.trim()) {
+          messageNotifier.updateMessage(
+            responseContent,
+            displayContent: finalDisplayContent,
+          );
         }
 
         // NOTA: A adição de alimentos é feita pelo FoodJsonDisplay quando renderizado

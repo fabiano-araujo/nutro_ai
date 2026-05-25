@@ -63,6 +63,10 @@ Para configurar seus objetivos, preciso validar os dados.
       isTrue,
     );
     expect(
+      AppAgentService.shouldIncludeConversationContext('Pode matar?'),
+      isTrue,
+    );
+    expect(
       AppAgentService.shouldIncludeConversationContext('Qual a minha idade?'),
       isFalse,
     );
@@ -106,5 +110,86 @@ Resposta da IA:
 ''';
 
     expect(AppAgentCommand.tryParseBatch(response), isNull);
+  });
+
+  test('routes automatic approval back to macro recalculation context', () {
+    const context = '''
+User: eu quero ganhar massa agora, recalcule
+Assistant: Para ganhar massa, normalmente é necessário superávit calórico e mais carboidratos. Confirme se quer que eu recalcule automaticamente com base no seu perfil.
+''';
+    const command = AppAgentCommand(
+      name: AppAgentService.generateNewDietPlan,
+      arguments: <String, dynamic>{},
+      rawJson: '{}',
+    );
+
+    expect(
+      AppAgentService.shouldTreatAsMacroRecalculationApproval(
+        'faça automatico',
+        context,
+      ),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldRedirectDietCommandToMacroRecalculation(
+        command,
+        'faça automatico',
+        context,
+      ),
+      isTrue,
+    );
+
+    final fallbackCommand =
+        AppAgentService.buildMacroRecalculationCommandFromContext(
+      'faça automatico',
+      context,
+      rawJson: 'texto sem comando',
+    );
+    expect(fallbackCommand, isNotNull);
+    expect(fallbackCommand!.name, AppAgentService.recalculateNutritionGoals);
+    expect(fallbackCommand.arguments['fitnessGoal'], 'gainWeightSlowly');
+
+    final shortConfirmation =
+        AppAgentService.buildMacroRecalculationCommandFromContext(
+      'sim',
+      context,
+      rawJson: 'texto sem comando',
+    );
+    expect(shortConfirmation, isNotNull);
+    expect(shortConfirmation!.arguments['fitnessGoal'], 'gainWeightSlowly');
+  });
+
+  test('does not treat diet default approval as macro recalculation', () {
+    const context = '''
+User: gera uma dieta para mim
+Assistant: Quer passar detalhes como restrições, alimentos preferidos ou rotina, ou prefere que eu gere uma dieta padrão?
+''';
+
+    expect(
+      AppAgentService.shouldTreatAsMacroRecalculationApproval(
+        'pode gerar',
+        context,
+      ),
+      isFalse,
+    );
+  });
+
+  test('detects macro advice questions without treating them as mutations', () {
+    expect(
+      AppAgentService.isMacroTargetAdviceQuestion(
+        'seria interessante mais proteina?',
+      ),
+      isTrue,
+    );
+    expect(
+      AppAgentService.isMacroTargetAdviceQuestion('devo subir carbo?'),
+      isTrue,
+    );
+    expect(
+      AppAgentService.isMacroTargetAdviceQuestion(
+        'coloque 185g de proteina',
+      ),
+      isFalse,
+    );
   });
 }

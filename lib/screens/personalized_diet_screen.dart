@@ -1099,6 +1099,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
 
   Widget _buildDietContent(bool isDarkMode, AppLocalizations l10n,
       DietPlanProvider dietProvider, DietPlan dietPlan) {
+    final goalsProvider = Provider.of<NutritionGoalsProvider>(context);
+    final currentTargets = DailyNutrition(
+      calories: goalsProvider.caloriesGoal,
+      protein: goalsProvider.proteinGoal.toDouble(),
+      carbs: goalsProvider.carbsGoal.toDouble(),
+      fat: goalsProvider.fatGoal.toDouble(),
+    );
+    final isDietOutdated = dietPlan.isOutdatedFor(currentTargets);
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final secondaryTextColor =
@@ -1116,6 +1124,13 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           // Cards de macros nutricionais
           _buildMacroCards(dietPlan.totalNutrition, isDarkMode),
           const SizedBox(height: 12),
+          if (isDietOutdated) ...[
+            _buildOutdatedDietNotice(
+              isDarkMode: isDarkMode,
+              l10n: l10n,
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Título da seção de refeições + ações alinhadas
           Row(
@@ -1180,6 +1195,97 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                 )),
 
           const SizedBox(height: 80), // Espaço para o FAB
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutdatedDietNotice({
+    required bool isDarkMode,
+    required AppLocalizations l10n,
+  }) {
+    final accentColor =
+        isDarkMode ? const Color(0xFFFFC46B) : const Color(0xFFC87500);
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+    final titleColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final bodyColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.refresh_rounded,
+                  color: accentColor,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.translate('diet_outdated_title'),
+                      style: GoogleFonts.inter(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      l10n.translate('diet_outdated_description'),
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        height: 1.3,
+                        color: bodyColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 38,
+            child: OutlinedButton.icon(
+              onPressed: _replaceAllMeals,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: Text(l10n.translate('diet_outdated_generate_new')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: accentColor,
+                visualDensity: VisualDensity.compact,
+                side: BorderSide(color: accentColor.withValues(alpha: 0.45)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

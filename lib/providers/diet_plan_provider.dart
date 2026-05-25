@@ -31,6 +31,7 @@ class DietPlanProvider extends ChangeNotifier {
 
   // Chave fixa para dieta semanal única
   static const String _weeklyKey = 'weekly';
+  static const String _dietGenerationModel = 'deepseek/deepseek-v4-flash';
 
   // Autenticação
   String? _authToken;
@@ -250,7 +251,36 @@ class DietPlanProvider extends ChangeNotifier {
             ? double.tryParse(data['totalFat']) ?? 0
             : (data['totalFat'] as num?)?.toDouble() ?? 0,
       ),
+      generatedForNutrition: _parseGeneratedForNutrition(data),
       meals: meals,
+    );
+  }
+
+  DailyNutrition? _parseGeneratedForNutrition(Map<String, dynamic> data) {
+    final hasGeneratedTargets = data['generatedForCalories'] != null ||
+        data['generatedForProtein'] != null ||
+        data['generatedForCarbs'] != null ||
+        data['generatedForFat'] != null;
+    if (!hasGeneratedTargets) {
+      return null;
+    }
+
+    double readDouble(String key) {
+      final value = data[key];
+      if (value is num) {
+        return value.toDouble();
+      }
+      if (value is String) {
+        return double.tryParse(value) ?? 0;
+      }
+      return 0;
+    }
+
+    return DailyNutrition(
+      calories: readDouble('generatedForCalories').round(),
+      protein: readDouble('generatedForProtein'),
+      carbs: readDouble('generatedForCarbs'),
+      fat: readDouble('generatedForFat'),
     );
   }
 
@@ -272,6 +302,10 @@ class DietPlanProvider extends ChangeNotifier {
         'totalProtein': plan.totalNutrition.protein,
         'totalCarbs': plan.totalNutrition.carbs,
         'totalFat': plan.totalNutrition.fat,
+        'generatedForCalories': plan.generatedForNutrition?.calories,
+        'generatedForProtein': plan.generatedForNutrition?.protein,
+        'generatedForCarbs': plan.generatedForNutrition?.carbs,
+        'generatedForFat': plan.generatedForNutrition?.fat,
         'meals': plan.meals.asMap().entries.map((entry) {
           final index = entry.key;
           final meal = entry.value;
@@ -470,14 +504,16 @@ class DietPlanProvider extends ChangeNotifier {
     _activeMealTypes = _resolveMealTypes(mealTypes);
     _expectedMealsCount = _activeMealTypes.length;
     _parsedMealIndices.clear(); // Reset parsed meals tracker
+    final targetNutrition = DailyNutrition(
+      calories: nutritionGoals.caloriesGoal,
+      protein: nutritionGoals.proteinGoal.toDouble(),
+      carbs: nutritionGoals.carbsGoal.toDouble(),
+      fat: nutritionGoals.fatGoal.toDouble(),
+    );
     _partialDietPlan = DietPlan(
       date: _formatDate(date),
-      totalNutrition: DailyNutrition(
-        calories: nutritionGoals.caloriesGoal,
-        protein: nutritionGoals.proteinGoal.toDouble(),
-        carbs: nutritionGoals.carbsGoal.toDouble(),
-        fat: nutritionGoals.fatGoal.toDouble(),
-      ),
+      totalNutrition: targetNutrition,
+      generatedForNutrition: targetNutrition,
       meals: [],
     );
     notifyListeners();
@@ -493,7 +529,7 @@ class DietPlanProvider extends ChangeNotifier {
       print('📋 Prompt: $prompt');
       print('🌍 Locale: $languageCode');
       print('👤 UserId: $userId');
-      print('🤖 AgentType: diet, Model: google/gemini-3-flash-preview');
+      print('🤖 AgentType: diet, Model: $_dietGenerationModel');
 
       // Call backend API using NDJSON streaming for diet agent
       print('⏳ Iniciando stream NDJSON da API...');
@@ -509,7 +545,7 @@ class DietPlanProvider extends ChangeNotifier {
       final requestBody = {
         'prompt': prompt,
         'temperature': 0.5,
-        'model': 'google/gemini-3-flash-preview',
+        'model': _dietGenerationModel,
         'streaming': true,
         'userId': userId,
         'agentType': 'diet',
@@ -618,10 +654,15 @@ class DietPlanProvider extends ChangeNotifier {
 
       // Create diet plan from JSON
       print('🍱 Criando objeto DietPlan a partir do JSON...');
-      final dietPlan = DietPlan.fromAiJson(
+      final parsedDietPlan = DietPlan.fromAiJson(
         jsonData,
         date: _formatDate(date),
         mealNames: _buildMealNameMap(_activeMealTypes),
+        generatedForNutrition: targetNutrition,
+      );
+      final dietPlan = _normalizeDietPlanToTargets(
+        parsedDietPlan,
+        targetNutrition,
       );
       print('✓ DietPlan criado: ${dietPlan.meals.length} refeições');
 
@@ -803,51 +844,68 @@ class DietPlanProvider extends ChangeNotifier {
   String _repairAiJson(String jsonString) {
     final sanitized = jsonString
         .replaceAll(RegExp(r',\s*([\]}])'), r'$1')
+        .replaceAll(RegExp(r'\]\s*(?=\[)'), '],')
+        .replaceAll(RegExp(r'\}\s*(?=\{)'), '},')
         .replaceAll('```json', '')
         .replaceAll('```', '')
         .trim();
 
     final stack = <String>[];
-    final buffer = StringBuffer(sanitized);
+    final buffer = StringBuffer();
     var inString = false;
     var escaped = false;
 
+    String closeFor(String open) => open == '{' ? '}' : ']';
+
     for (final char in sanitized.split('')) {
       if (escaped) {
+        buffer.write(char);
         escaped = false;
         continue;
       }
 
       if (char == r'\') {
-        escaped = true;
+        buffer.write(char);
+        escaped = inString;
         continue;
       }
 
       if (char == '"') {
+        buffer.write(char);
         inString = !inString;
         continue;
       }
 
       if (inString) {
+        buffer.write(char);
         continue;
       }
 
       if (char == '{' || char == '[') {
         stack.add(char);
+        buffer.write(char);
         continue;
       }
 
-      if ((char == '}' || char == ']') && stack.isNotEmpty) {
+      if (char == '}' || char == ']') {
         final expected = char == '}' ? '{' : '[';
-        if (stack.last == expected) {
-          stack.removeLast();
+
+        while (stack.isNotEmpty && stack.last != expected) {
+          buffer.write(closeFor(stack.removeLast()));
         }
+
+        if (stack.isNotEmpty && stack.last == expected) {
+          stack.removeLast();
+          buffer.write(char);
+        }
+        continue;
       }
+
+      buffer.write(char);
     }
 
     while (stack.isNotEmpty) {
-      final open = stack.removeLast();
-      buffer.write(open == '{' ? '}' : ']');
+      buffer.write(closeFor(stack.removeLast()));
     }
 
     return buffer.toString();
@@ -932,9 +990,9 @@ class DietPlanProvider extends ChangeNotifier {
     final preferenceLines = _buildDietPreferenceLines();
 
     return '''
-Create a daily diet using $country foods.
+Create a professional personalized daily diet using $country foods.
 
-Target near: $calories kcal, ${protein}p, ${carbs}c, ${fat}f.
+Target near: $calories kcal, ${protein}p, ${carbs}c, ${fat}f. Calculate totals silently before answering. Final kcal must be within 5% and macros should be as close as realistic.
 Meals: exactly $mealsCount using these t values only: [$mealIds].
 $preferenceLines
 
@@ -945,6 +1003,7 @@ Rules:
 - meal = [type, time, foods]
 - food = [name, amount, unit, kcal, protein, carbs, fat]
 - Use realistic portions
+- Adjust portions until the whole day is close to the target; do not overshoot calories by more than 5%
 - Adapt food choices, portion density, and meal timing to the personalization notes above
 - If breakfast appetite is low or there is morning sleepiness, keep breakfast simpler and easier to consume
 - If hunger is high, prefer higher-satiety foods; if eating is difficult or weight gain is hard, prefer more practical and energy-dense foods
@@ -1009,7 +1068,7 @@ Rules:
       final requestBody = {
         'prompt': prompt,
         'temperature': 0.5,
-        'model': 'google/gemini-3-flash-preview',
+        'model': _dietGenerationModel,
         'streaming': true,
         'userId': userId,
         'agentType': 'diet',
@@ -1264,6 +1323,108 @@ Rules:
       carbs: totalCarbs,
       fat: totalFat,
     );
+  }
+
+  DietPlan _normalizeDietPlanToTargets(
+    DietPlan plan,
+    DailyNutrition targetNutrition,
+  ) {
+    if (targetNutrition.calories <= 0 || plan.meals.isEmpty) {
+      return plan.copyWith(generatedForNutrition: targetNutrition);
+    }
+
+    final actualNutrition = plan.totalNutrition.calories > 0
+        ? plan.totalNutrition
+        : _calculateTotalNutrition(plan.meals);
+    if (actualNutrition.calories <= 0) {
+      return plan.copyWith(
+        totalNutrition: actualNutrition,
+        generatedForNutrition: targetNutrition,
+      );
+    }
+
+    final calorieDelta =
+        (actualNutrition.calories - targetNutrition.calories).abs() /
+            targetNutrition.calories;
+    if (calorieDelta <= 0.05) {
+      return plan.copyWith(
+        totalNutrition: actualNutrition,
+        generatedForNutrition: targetNutrition,
+      );
+    }
+
+    final scale = (targetNutrition.calories / actualNutrition.calories)
+        .clamp(0.65, 1.35)
+        .toDouble();
+    final scaledMeals = plan.meals.map((meal) {
+      final scaledFoods = meal.foods
+          .map((food) => PlannedFood(
+                name: food.name,
+                emoji: food.emoji,
+                amount: _scaleFoodAmount(food.amount, scale),
+                unit: food.unit,
+                calories: _scaleCalories(food.calories, scale),
+                protein: _scaleMacro(food.protein, scale),
+                carbs: _scaleMacro(food.carbs, scale),
+                fat: _scaleMacro(food.fat, scale),
+              ))
+          .toList();
+
+      return meal.copyWith(
+        foods: scaledFoods,
+        mealTotals: _calculateFoodTotals(scaledFoods),
+      );
+    }).toList();
+    final scaledNutrition = _calculateTotalNutrition(scaledMeals);
+
+    print(
+      '⚖️ Dieta ajustada para meta: '
+      '${actualNutrition.calories} -> ${scaledNutrition.calories} kcal',
+    );
+
+    return plan.copyWith(
+      totalNutrition: scaledNutrition,
+      generatedForNutrition: targetNutrition,
+      meals: scaledMeals,
+    );
+  }
+
+  DailyNutrition _calculateFoodTotals(List<PlannedFood> foods) {
+    var calories = 0;
+    var protein = 0.0;
+    var carbs = 0.0;
+    var fat = 0.0;
+
+    for (final food in foods) {
+      calories += food.calories;
+      protein += food.protein;
+      carbs += food.carbs;
+      fat += food.fat;
+    }
+
+    return DailyNutrition(
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+    );
+  }
+
+  int _scaleCalories(int value, double scale) {
+    if (value <= 0) return 0;
+    return (value * scale).round().clamp(1, 10000);
+  }
+
+  double _scaleMacro(double value, double scale) {
+    if (value <= 0) return 0;
+    return double.parse((value * scale).toStringAsFixed(1));
+  }
+
+  double _scaleFoodAmount(double value, double scale) {
+    if (value <= 0) return 0;
+    final scaled = value * scale;
+    final decimals = value < 10 ? 1 : 0;
+    return double.parse(scaled.toStringAsFixed(decimals));
   }
 
   // Delete diet plan for a date (or weekly plan if in weekly mode)
@@ -1545,7 +1706,7 @@ Rules:
   }) {
     final normalizedIncoming = incoming
         .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
+        .where((item) => _isMeaningfulPreferenceToken(item))
         .toList();
     if (!merge) {
       return normalizedIncoming;
@@ -1555,7 +1716,7 @@ Rules:
     final merged = <String>[];
     for (final item in [...current, ...normalizedIncoming]) {
       final trimmed = item.trim();
-      if (trimmed.isEmpty) {
+      if (!_isMeaningfulPreferenceToken(trimmed)) {
         continue;
       }
       final key = trimmed.toLowerCase();
@@ -1566,28 +1727,84 @@ Rules:
     return merged;
   }
 
+  bool _isMeaningfulPreferenceToken(String value) {
+    final normalized = _normalizePreferenceToken(value);
+    return normalized.isNotEmpty &&
+        normalized != 'custom' &&
+        normalized != 'personalizado' &&
+        normalized != 'padrao' &&
+        normalized != 'normal' &&
+        normalized != 'standard' &&
+        normalized != 'none' &&
+        normalized != 'nenhum' &&
+        normalized != 'nenhuma';
+  }
+
   String _buildDietPreferenceLines() {
     final lines = <String>[];
+    final foodRestrictions = _preferences.foodRestrictions
+        .where(_isMeaningfulPreferenceToken)
+        .toList();
+    final favoriteFoods =
+        _preferences.favoriteFoods.where(_isMeaningfulPreferenceToken).toList();
+    final avoidedFoods =
+        _preferences.avoidedFoods.where(_isMeaningfulPreferenceToken).toList();
+    final routineConsiderations = _preferences.routineConsiderations
+        .where(_isMeaningfulPreferenceToken)
+        .toList();
+    final normalizedRestrictions =
+        foodRestrictions.map(_normalizePreferenceToken).join(' ');
+    final normalizedAvoidedFoods =
+        avoidedFoods.map(_normalizePreferenceToken).join(' ');
+    final requiresGlutenFree = normalizedRestrictions.contains('sem gluten') ||
+        normalizedRestrictions.contains('gluten free') ||
+        normalizedRestrictions.contains('celiac') ||
+        normalizedRestrictions.contains('celiaco');
+    final requiresLactoseFree =
+        normalizedRestrictions.contains('sem lactose') ||
+            normalizedRestrictions.contains('lactose free') ||
+            normalizedRestrictions.contains('dairy free');
 
     if (_preferences.hasReviewedRestrictions) {
-      lines.add(_preferences.foodRestrictions.isEmpty
+      lines.add(foodRestrictions.isEmpty
           ? '- Restrictions: none reported'
-          : '- Restrictions: ${_preferences.foodRestrictions.join(', ')}');
+          : '- Restrictions: ${foodRestrictions.join(', ')}');
+      if (requiresGlutenFree) {
+        lines.add(
+          '- Strict gluten-free: never use wheat, wheat flour, bread, regular pasta, barley, rye, regular oats, or gluten-containing foods.',
+        );
+      }
+      if (requiresLactoseFree) {
+        lines.add(
+          '- Strict lactose-free: never use milk, cheese, yogurt, cottage, ricotta, butter, or whey with lactose.',
+        );
+      }
     }
 
     if (_preferences.hasReviewedFoodPreferences) {
-      lines.add(_preferences.favoriteFoods.isEmpty
+      lines.add(favoriteFoods.isEmpty
           ? '- Preferred foods: none specifically requested'
-          : '- Preferred foods: ${_preferences.favoriteFoods.join(', ')}');
-      lines.add(_preferences.avoidedFoods.isEmpty
+          : '- Preferred foods: ${favoriteFoods.join(', ')}');
+      lines.add(avoidedFoods.isEmpty
           ? '- Foods to avoid by preference: none reported'
-          : '- Foods to avoid by preference: ${_preferences.avoidedFoods.join(', ')}');
+          : '- Foods to avoid by preference: ${avoidedFoods.join(', ')}');
+      if (avoidedFoods.isNotEmpty) {
+        lines.add(
+          '- Strictly avoid these foods and close variants: ${avoidedFoods.join(', ')}.',
+        );
+      }
+      if (normalizedAvoidedFoods.contains('ovo')) {
+        lines.add('- No eggs or egg-based dishes.');
+      }
+      if (normalizedAvoidedFoods.contains('feijao')) {
+        lines.add('- No beans or bean-based dishes.');
+      }
     }
 
     if (_preferences.hasReviewedRoutineNeeds) {
-      lines.add(_preferences.routineConsiderations.isEmpty
+      lines.add(routineConsiderations.isEmpty
           ? '- Appetite/routine considerations: none reported'
-          : '- Appetite/routine considerations: ${_preferences.routineConsiderations.join(', ')}');
+          : '- Appetite/routine considerations: ${routineConsiderations.join(', ')}');
       lines.add('- Hungriest meal window: ${_preferences.hungriestMealTime}');
     }
 
@@ -1596,5 +1813,28 @@ Rules:
     }
 
     return 'Personalization notes:\n${lines.join('\n')}';
+  }
+
+  String _normalizePreferenceToken(String value) {
+    const replacements = {
+      'á': 'a',
+      'à': 'a',
+      'ã': 'a',
+      'â': 'a',
+      'é': 'e',
+      'ê': 'e',
+      'í': 'i',
+      'ó': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ú': 'u',
+      'ç': 'c',
+    };
+
+    var normalized = value.toLowerCase();
+    replacements.forEach((from, to) {
+      normalized = normalized.replaceAll(from, to);
+    });
+    return normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 }

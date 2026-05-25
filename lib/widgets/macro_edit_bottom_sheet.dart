@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import '../utils/ui_utils.dart';
 
 enum _MacroInputMode {
@@ -345,6 +346,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         ? AppTheme.primaryColorDarkMode
         : AppTheme.primaryColor;
     final accentForegroundColor = AppTheme.onColor(accentColor);
+    final dividerColor = _borderColor();
 
     return Container(
       decoration: BoxDecoration(
@@ -372,7 +374,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 18, 18),
+                padding: const EdgeInsets.fromLTRB(24, 0, 18, 16),
                 child: Row(
                   children: [
                     Expanded(
@@ -381,37 +383,53 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
                         children: [
                           Text(
                             context.tr.translate('edit_macronutrients'),
-                            style:
-                                widget.theme.textTheme.headlineSmall?.copyWith(
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: widget.theme.textTheme.titleLarge?.copyWith(
                               color: widget.textColor,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             context.tr.translate('macro_editor_subtitle'),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: widget.theme.textTheme.bodyMedium?.copyWith(
                               color: widget.textColor.withValues(alpha: 0.68),
+                              height: 1.35,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.close_rounded, color: widget.textColor),
+                    const SizedBox(width: 12),
+                    Tooltip(
+                      message: context.tr.translate('cancel'),
+                      child: IconButton.filledTonal(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: widget.textColor,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              widget.textColor.withValues(alpha: 0.08),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
               Divider(
                 height: 1,
-                color: widget.textColor.withValues(alpha: 0.08),
+                color: dividerColor,
               ),
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -463,7 +481,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
                   color: widget.cardColor,
                   border: Border(
                     top: BorderSide(
-                      color: widget.textColor.withValues(alpha: 0.08),
+                      color: dividerColor,
                     ),
                   ),
                 ),
@@ -520,97 +538,170 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     required double difference,
   }) {
     final toneColor = difference.abs() <= 1
-        ? Colors.green
+        ? AppTheme.successColor
         : difference > 0
-            ? Colors.orange
-            : accentColor;
+            ? AppTheme.warningColor
+            : AppTheme.infoColor;
+    final modeLabel = context.tr.translate(
+      widget.provider.useCalculatedGoals
+          ? 'macro_editor_goal_mode_calculated'
+          : 'macro_editor_goal_mode_manual',
+    );
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: widget.isDarkMode ? 0.16 : 0.08),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: accentColor.withValues(alpha: widget.isDarkMode ? 0.24 : 0.14),
-        ),
+        color: _panelColor(),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderColor()),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr.translate('macro_editor_current_target'),
-            style: widget.theme.textTheme.bodySmall?.copyWith(
-              color: widget.textColor.withValues(alpha: 0.68),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
-                child: _buildMetricBlock(
-                  label: context.tr.translate('macro_editor_goal_mode_label'),
-                  value: context.tr.translate(
-                    widget.provider.useCalculatedGoals
-                        ? 'macro_editor_goal_mode_calculated'
-                        : 'macro_editor_goal_mode_manual',
+                child: Text(
+                  context.tr.translate('macro_editor_current_target'),
+                  style: widget.theme.textTheme.titleSmall?.copyWith(
+                    color: widget.textColor,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
-              Expanded(
-                child: _buildMetricBlock(
-                  label: context.tr.translate('macro_editor_current_target'),
-                  value: '${targetCalories.round()} kcal',
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.16),
+                  ),
+                ),
+                child: Text(
+                  modeLabel,
+                  style: widget.theme.textTheme.labelSmall?.copyWith(
+                    color: widget.textColor.withValues(alpha: 0.82),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildCaloriesBlock(
+                    label: context.tr.translate('macro_editor_current_target'),
+                    value: targetCalories.round(),
+                    color: widget.textColor,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 22,
+                    color: widget.textColor.withValues(alpha: 0.38),
+                  ),
+                ),
+                Expanded(
+                  child: _buildCaloriesBlock(
+                    label: context.tr.translate('macro_editor_new_target'),
+                    value: previewCalories.round(),
+                    color: toneColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetricBlock(
-                  label: context.tr.translate('macro_editor_new_target'),
-                  value: '${previewCalories.round()} kcal',
-                  valueColor: toneColor,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color:
+                  toneColor.withValues(alpha: widget.isDarkMode ? 0.14 : 0.1),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: toneColor.withValues(alpha: 0.24)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  difference.abs() <= 1
+                      ? Icons.check_circle_rounded
+                      : Icons.info_outline_rounded,
+                  color: toneColor,
+                  size: 18,
                 ),
-              ),
-              Expanded(
-                child: _buildMetricBlock(
-                  label: context.tr.translate('macro_editor_difference'),
-                  value:
-                      '${difference >= 0 ? '+' : ''}${difference.round()} kcal',
-                  valueColor: toneColor,
+                const SizedBox(width: 8),
+                Text(
+                  context.tr.translate('macro_editor_difference'),
+                  style: widget.theme.textTheme.bodySmall?.copyWith(
+                    color: widget.textColor.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
+                const Spacer(),
+                Text(
+                  '${difference >= 0 ? '+' : ''}${difference.round()} kcal',
+                  style: widget.theme.textTheme.titleSmall?.copyWith(
+                    color: toneColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMetricBlock({
+  Widget _buildCaloriesBlock({
     required String label,
-    required String value,
-    Color? valueColor,
+    required int value,
+    required Color color,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: widget.theme.textTheme.bodySmall?.copyWith(
             color: widget.textColor.withValues(alpha: 0.62),
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: widget.theme.textTheme.titleMedium?.copyWith(
-            color: valueColor ?? widget.textColor,
-            fontWeight: FontWeight.w700,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: '$value'),
+                TextSpan(
+                  text: ' kcal',
+                  style: widget.theme.textTheme.titleSmall?.copyWith(
+                    color: color.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            maxLines: 1,
+            style: widget.theme.textTheme.headlineSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+            ),
           ),
         ),
       ],
@@ -618,43 +709,76 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
   }
 
   Widget _buildModeSelector(Color accentColor) {
+    final selectedHint = _modeHint(_selectedMode);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          context.tr.translate('adjust_percentages_or_grams'),
+          context.tr.translate('macro_editor_adjust_method'),
           style: widget.theme.textTheme.titleSmall?.copyWith(
             color: widget.textColor,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: _panelColor(),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _borderColor()),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildModeSegment(
+                  mode: _MacroInputMode.percentage,
+                  title: context.tr.translate('macro_mode_percentage_title'),
+                  unit: context.tr.translate('macro_mode_percentage'),
+                  icon: Icons.percent_rounded,
+                  accentColor: accentColor,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildModeSegment(
+                  mode: _MacroInputMode.gramsPerKg,
+                  title: context.tr.translate('macro_mode_grams_per_kg_title'),
+                  unit: context.tr.translate('macro_mode_grams_per_kg'),
+                  icon: Icons.monitor_weight_outlined,
+                  accentColor: accentColor,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildModeSegment(
+                  mode: _MacroInputMode.grams,
+                  title: context.tr.translate('macro_mode_grams_title'),
+                  unit: context.tr.translate('macro_mode_grams'),
+                  icon: Icons.edit_note_rounded,
+                  accentColor: accentColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(
-              child: _buildModeCard(
-                mode: _MacroInputMode.percentage,
-                label: context.tr.translate('macro_mode_percentage'),
-                hint: context.tr.translate('macro_mode_percentage_hint'),
-                accentColor: accentColor,
-              ),
+            Icon(
+              Icons.info_outline_rounded,
+              size: 16,
+              color: widget.textColor.withValues(alpha: 0.56),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
-              child: _buildModeCard(
-                mode: _MacroInputMode.gramsPerKg,
-                label: context.tr.translate('macro_mode_grams_per_kg'),
-                hint: context.tr.translate('macro_mode_grams_per_kg_hint'),
-                accentColor: accentColor,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildModeCard(
-                mode: _MacroInputMode.grams,
-                label: context.tr.translate('macro_mode_grams'),
-                hint: context.tr.translate('macro_mode_grams_hint'),
-                accentColor: accentColor,
+              child: Text(
+                selectedHint,
+                style: widget.theme.textTheme.bodySmall?.copyWith(
+                  color: widget.textColor.withValues(alpha: 0.68),
+                  height: 1.25,
+                ),
               ),
             ),
           ],
@@ -663,13 +787,16 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     );
   }
 
-  Widget _buildModeCard({
+  Widget _buildModeSegment({
     required _MacroInputMode mode,
-    required String label,
-    required String hint,
+    required String title,
+    required String unit,
+    required IconData icon,
     required Color accentColor,
   }) {
     final isSelected = _selectedMode == mode;
+    final foregroundColor =
+        isSelected ? AppTheme.onColor(accentColor) : widget.textColor;
 
     return InkWell(
       onTap: () {
@@ -678,45 +805,66 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           _errorMessage = null;
         });
       },
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(14),
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected
-              ? accentColor.withValues(alpha: widget.isDarkMode ? 0.22 : 0.14)
-              : widget.isDarkMode
-                  ? Colors.white.withValues(alpha: 0.03)
-                  : Colors.black.withValues(alpha: 0.02),
-          borderRadius: BorderRadius.circular(18),
+          color: isSelected ? accentColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? accentColor
-                : widget.textColor.withValues(alpha: 0.08),
+                : widget.textColor.withValues(alpha: 0.04),
           ),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Icon(
+              icon,
+              color: foregroundColor.withValues(alpha: isSelected ? 0.92 : 0.7),
+              size: 18,
+            ),
+            const SizedBox(height: 6),
             Text(
-              label,
-              style: widget.theme.textTheme.bodyMedium?.copyWith(
-                color: widget.textColor,
-                fontWeight: FontWeight.w700,
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: widget.theme.textTheme.bodySmall?.copyWith(
+                color: foregroundColor,
+                fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
-              hint,
-              style: widget.theme.textTheme.bodySmall?.copyWith(
-                color: widget.textColor.withValues(alpha: 0.64),
-                height: 1.2,
+              unit,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: widget.theme.textTheme.labelSmall?.copyWith(
+                color:
+                    foregroundColor.withValues(alpha: isSelected ? 0.78 : 0.5),
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _modeHint(_MacroInputMode mode) {
+    switch (mode) {
+      case _MacroInputMode.percentage:
+        return context.tr.translate('macro_mode_percentage_hint');
+      case _MacroInputMode.gramsPerKg:
+        return context.tr.translate('macro_mode_grams_per_kg_hint');
+      case _MacroInputMode.grams:
+        return context.tr.translate('macro_mode_grams_hint');
+    }
   }
 
   Widget _buildPresetSection(Color accentColor) {
@@ -781,11 +929,13 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     return ActionChip(
       onPressed: onTap,
       label: Text(label),
-      backgroundColor: widget.isDarkMode
-          ? Colors.white.withValues(alpha: 0.06)
-          : Colors.black.withValues(alpha: 0.04),
+      labelStyle: widget.theme.textTheme.bodySmall?.copyWith(
+        color: widget.textColor,
+        fontWeight: FontWeight.w700,
+      ),
+      backgroundColor: _panelColor(),
       side: BorderSide(
-        color: widget.textColor.withValues(alpha: 0.1),
+        color: _borderColor(),
       ),
     );
   }
@@ -796,8 +946,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         return [
           _buildMacroFieldCard(
             label: context.tr.translate('carbohydrates'),
-            icon: Icons.grain_rounded,
-            accentColor: const Color(0xFFB08968),
+            icon: MacroTheme.carbsIcon,
+            accentColor: MacroTheme.carbsColor,
             controller: _carbsPercentageController,
             suffix: '%',
             helper:
@@ -812,8 +962,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           const SizedBox(height: 12),
           _buildMacroFieldCard(
             label: context.tr.translate('protein_full'),
-            icon: Icons.fitness_center_rounded,
-            accentColor: const Color(0xFF8E6CEF),
+            icon: MacroTheme.proteinIcon,
+            accentColor: MacroTheme.proteinColor,
             controller: _proteinPercentageController,
             suffix: '%',
             helper:
@@ -828,8 +978,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           const SizedBox(height: 12),
           _buildMacroFieldCard(
             label: context.tr.translate('fats'),
-            icon: Icons.water_drop_rounded,
-            accentColor: const Color(0xFF7DA0B6),
+            icon: MacroTheme.fatIcon,
+            accentColor: MacroTheme.fatColor,
             controller: _fatPercentageController,
             suffix: '%',
             helper:
@@ -848,8 +998,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         return [
           _buildMacroFieldCard(
             label: context.tr.translate('carbohydrates'),
-            icon: Icons.grain_rounded,
-            accentColor: const Color(0xFFB08968),
+            icon: MacroTheme.carbsIcon,
+            accentColor: MacroTheme.carbsColor,
             controller: _carbsPerKgController,
             suffix: 'g/kg',
             helper:
@@ -864,8 +1014,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           const SizedBox(height: 12),
           _buildMacroFieldCard(
             label: context.tr.translate('protein_full'),
-            icon: Icons.fitness_center_rounded,
-            accentColor: const Color(0xFF8E6CEF),
+            icon: MacroTheme.proteinIcon,
+            accentColor: MacroTheme.proteinColor,
             controller: _proteinPerKgController,
             suffix: 'g/kg',
             helper:
@@ -880,8 +1030,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           const SizedBox(height: 12),
           _buildMacroFieldCard(
             label: context.tr.translate('fats'),
-            icon: Icons.water_drop_rounded,
-            accentColor: const Color(0xFF7DA0B6),
+            icon: MacroTheme.fatIcon,
+            accentColor: MacroTheme.fatColor,
             controller: _fatPerKgController,
             suffix: 'g/kg',
             helper:
@@ -898,8 +1048,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         return [
           _buildMacroFieldCard(
             label: context.tr.translate('carbohydrates'),
-            icon: Icons.grain_rounded,
-            accentColor: const Color(0xFFB08968),
+            icon: MacroTheme.carbsIcon,
+            accentColor: MacroTheme.carbsColor,
             controller: _carbsGramsController,
             suffix: 'g',
             helper: '${(_carbsGrams * 4).round()} kcal',
@@ -913,8 +1063,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           const SizedBox(height: 12),
           _buildMacroFieldCard(
             label: context.tr.translate('protein_full'),
-            icon: Icons.fitness_center_rounded,
-            accentColor: const Color(0xFF8E6CEF),
+            icon: MacroTheme.proteinIcon,
+            accentColor: MacroTheme.proteinColor,
             controller: _proteinGramsController,
             suffix: 'g',
             helper: '${(_proteinGrams * 4).round()} kcal',
@@ -928,8 +1078,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           const SizedBox(height: 12),
           _buildMacroFieldCard(
             label: context.tr.translate('fats'),
-            icon: Icons.water_drop_rounded,
-            accentColor: const Color(0xFF7DA0B6),
+            icon: MacroTheme.fatIcon,
+            accentColor: MacroTheme.fatColor,
             controller: _fatGramsController,
             suffix: 'g',
             helper: '${(_fatGrams * 9).round()} kcal',
@@ -954,23 +1104,20 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     required ValueChanged<double> onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: widget.isDarkMode
-            ? Colors.white.withValues(alpha: 0.03)
-            : Colors.black.withValues(alpha: 0.02),
+        color: _panelColor(),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: widget.textColor.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: _borderColor()),
       ),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.14),
+              color:
+                  accentColor.withValues(alpha: widget.isDarkMode ? 0.2 : 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: accentColor, size: 22),
@@ -982,9 +1129,11 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
               children: [
                 Text(
                   label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: widget.theme.textTheme.titleSmall?.copyWith(
                     color: widget.textColor,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -999,7 +1148,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 110,
+            width: 102,
             child: TextField(
               controller: controller,
               keyboardType:
@@ -1012,14 +1161,20 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
               decoration: InputDecoration(
                 isDense: true,
                 suffixText: suffix,
+                suffixStyle: widget.theme.textTheme.titleSmall?.copyWith(
+                  color: widget.textColor.withValues(alpha: 0.58),
+                  fontWeight: FontWeight.w800,
+                ),
                 filled: true,
-                fillColor: widget.cardColor,
+                fillColor: widget.isDarkMode
+                    ? Colors.black.withValues(alpha: 0.12)
+                    : Colors.white,
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(
-                    color: widget.textColor.withValues(alpha: 0.12),
+                    color: widget.textColor.withValues(alpha: 0.1),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -1043,7 +1198,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
   Widget _buildPercentageTotalCard() {
     final total = _percentageTotal();
     final isValid = (total - 100).abs() < 0.01;
-    final toneColor = isValid ? Colors.green : Colors.orange;
+    final toneColor = isValid ? AppTheme.successColor : AppTheme.warningColor;
+    final progress = (total / 100).clamp(0.0, 1.0);
 
     return Container(
       width: double.infinity,
@@ -1063,19 +1219,31 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
                   context.tr.translate('macro_editor_total_percentage'),
                   style: widget.theme.textTheme.bodyMedium?.copyWith(
                     color: widget.textColor.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${total.round()}%',
-                  style: widget.theme.textTheme.titleLarge?.copyWith(
-                    color: toneColor,
-                    fontWeight: FontWeight.w800,
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    backgroundColor: widget.textColor.withValues(alpha: 0.08),
+                    valueColor: AlwaysStoppedAnimation<Color>(toneColor),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 14),
+          Text(
+            '${total.round()}%',
+            style: widget.theme.textTheme.titleLarge?.copyWith(
+              color: toneColor,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 8),
           if (!isValid)
             TextButton(
               onPressed: () {
@@ -1106,10 +1274,10 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.08),
+        color: accentColor.withValues(alpha: widget.isDarkMode ? 0.1 : 0.06),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: accentColor.withValues(alpha: 0.2),
+          color: accentColor.withValues(alpha: 0.18),
         ),
       ),
       child: Row(
@@ -1157,5 +1325,15 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         ],
       ),
     );
+  }
+
+  Color _panelColor() {
+    return widget.isDarkMode
+        ? Colors.white.withValues(alpha: 0.045)
+        : Colors.black.withValues(alpha: 0.025);
+  }
+
+  Color _borderColor() {
+    return widget.textColor.withValues(alpha: widget.isDarkMode ? 0.1 : 0.08);
   }
 }

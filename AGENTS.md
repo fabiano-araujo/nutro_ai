@@ -37,6 +37,7 @@ This file guides coding agents working in this repository.
 - Rewarded ad credit grant: `POST /credits/rewarded-ad`
   - Requires auth token, credits the authenticated user with the server-side rewarded ad amount, and returns the updated credit balance.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
+  - Temporary diet generation model override: `deepseek/deepseek-v4-flash` for My Diet generation and the backend `diet` alias.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.
 - Prisma access: `dieta_api/src/services/prisma.ts`, schema at `dieta_api/prisma/schema.prisma`.

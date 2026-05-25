@@ -227,6 +227,9 @@ final Map<String, String> ptBRTranslations = {
   'chat_goals_setup_banner_button': 'Configurar',
   'chat_action_continue_goals_chat': 'Continuar no chat',
   'chat_action_edit_macros_ui': 'Editar macros na interface',
+  'chat_action_view_my_diet_ui': 'Ver em Minha Dieta',
+  'chat_diet_personalization_question':
+      'Posso gerar uma dieta padrao agora. Se quiser personalizar, me diga em uma frase: vegetariana ou vegana, intolerancias ou alergias, condicoes de saude, alimentos que prefere ou evita e rotina. Quer adicionar algo ou posso gerar padrao?',
   'chat_action_continue_macros_chat': 'Ajustar metas com IA',
   'chat_setup_reminder_prefix': 'Vamos terminar de configurar suas informações',
   'chat_setup_reminder_with_fields':
@@ -1107,17 +1110,26 @@ final Map<String, String> ptBRTranslations = {
   // Nutrition Goals Screen
   'nutrition_goals': 'Metas Nutricionais',
   'your_daily_goals': 'Suas Metas Diárias',
+  'nutrition_goals_daily_target': 'Meta diária',
+  'nutrition_goals_macros_per_day':
+      'Proteínas, carboidratos e gorduras por dia',
+  'nutrition_goals_calculation_data': 'Dados usados no cálculo',
+  'nutrition_goals_calculation_data_hint': 'Toque em uma linha para alterar.',
   'kcal_per_day': 'kcal / dia',
   'carbohydrates': 'Carboidratos',
   'diet_type': 'Tipo de Dieta',
   'edit_macronutrients': 'Editar Macronutrientes',
   'macro_editor_subtitle':
       'Escolha o formato mais intuitivo para ajustar seus macros.',
+  'macro_editor_adjust_method': 'Escolha o jeito de editar',
   'macro_mode_percentage': '%',
+  'macro_mode_percentage_title': 'Percentuais',
   'macro_mode_percentage_hint': 'Mais usado no dia a dia',
   'macro_mode_grams_per_kg': 'g/kg',
+  'macro_mode_grams_per_kg_title': 'Por kg',
   'macro_mode_grams_per_kg_hint': 'Bom para proteína e performance',
   'macro_mode_grams': 'g',
+  'macro_mode_grams_title': 'Gramas',
   'macro_mode_grams_hint': 'Controle total em gramas',
   'macro_editor_percentage_error':
       'A soma dos percentuais precisa fechar em 100%.',
@@ -1362,6 +1374,12 @@ final Map<String, String> ptBRTranslations = {
   'generate_diet_ai': 'Criar meu Cardápio',
   'diet_generated_success': 'Dieta gerada com sucesso!',
   'diet_generation_error': 'Erro ao gerar a dieta. Tente novamente.',
+  'diet_outdated_title': 'Atualize sua dieta',
+  'diet_outdated_description':
+      'Suas metas mudaram desde que este cardápio foi gerado.',
+  'diet_outdated_generated_targets': 'Meta usada nessa dieta',
+  'diet_outdated_current_targets': 'Meta atual',
+  'diet_outdated_generate_new': 'Gerar nova dieta',
   'daily_diet_premium_required':
       'Dieta diária disponível apenas para assinantes',
   'daily_diet_premium_title': 'Recurso Premium',

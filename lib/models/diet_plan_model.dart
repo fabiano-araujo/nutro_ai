@@ -177,11 +177,13 @@ DailyNutrition _sumMeals(List<PlannedMeal> meals) {
 class DietPlan {
   final String date;
   final DailyNutrition totalNutrition;
+  final DailyNutrition? generatedForNutrition;
   final List<PlannedMeal> meals;
 
   DietPlan({
     required this.date,
     required this.totalNutrition,
+    this.generatedForNutrition,
     required this.meals,
   });
 
@@ -189,6 +191,7 @@ class DietPlan {
     return DietPlan(
       date: json['date'] ?? DateTime.now().toIso8601String().split('T')[0],
       totalNutrition: DailyNutrition.fromJson(json['totalNutrition'] ?? {}),
+      generatedForNutrition: _readGeneratedNutrition(json),
       meals: (json['meals'] as List<dynamic>?)
               ?.map((meal) => PlannedMeal.fromJson(meal))
               .toList() ??
@@ -200,6 +203,7 @@ class DietPlan {
     Map<String, dynamic> json, {
     required String date,
     Map<String, String> mealNames = const {},
+    DailyNutrition? generatedForNutrition,
   }) {
     if (json.containsKey('m')) {
       final meals = (json['m'] as List<dynamic>? ?? const [])
@@ -209,6 +213,7 @@ class DietPlan {
       return DietPlan(
         date: date,
         totalNutrition: _sumMeals(meals),
+        generatedForNutrition: generatedForNutrition,
         meals: meals,
       );
     }
@@ -224,6 +229,8 @@ class DietPlan {
     return plan.copyWith(
       date: date,
       totalNutrition: totalNutrition,
+      generatedForNutrition:
+          generatedForNutrition ?? plan.generatedForNutrition,
     );
   }
 
@@ -231,6 +238,8 @@ class DietPlan {
     return {
       'date': date,
       'totalNutrition': totalNutrition.toJson(),
+      if (generatedForNutrition != null)
+        'generatedForNutrition': generatedForNutrition!.toJson(),
       'meals': meals.map((meal) => meal.toJson()).toList(),
     };
   }
@@ -238,12 +247,32 @@ class DietPlan {
   DietPlan copyWith({
     String? date,
     DailyNutrition? totalNutrition,
+    DailyNutrition? generatedForNutrition,
     List<PlannedMeal>? meals,
   }) {
     return DietPlan(
       date: date ?? this.date,
       totalNutrition: totalNutrition ?? this.totalNutrition,
+      generatedForNutrition:
+          generatedForNutrition ?? this.generatedForNutrition,
       meals: meals ?? this.meals,
+    );
+  }
+
+  bool isOutdatedFor(
+    DailyNutrition currentTargets, {
+    int caloriesTolerance = 5,
+    double macroTolerance = 1,
+  }) {
+    final generatedTargets = generatedForNutrition;
+    if (generatedTargets == null) {
+      return false;
+    }
+
+    return !generatedTargets.isCloseTo(
+      currentTargets,
+      caloriesTolerance: caloriesTolerance,
+      macroTolerance: macroTolerance,
     );
   }
 }
@@ -278,6 +307,39 @@ class DailyNutrition {
       'fat': fat,
     };
   }
+
+  bool isCloseTo(
+    DailyNutrition other, {
+    int caloriesTolerance = 5,
+    double macroTolerance = 1,
+  }) {
+    return (calories - other.calories).abs() <= caloriesTolerance &&
+        (protein - other.protein).abs() <= macroTolerance &&
+        (carbs - other.carbs).abs() <= macroTolerance &&
+        (fat - other.fat).abs() <= macroTolerance;
+  }
+}
+
+DailyNutrition? _readGeneratedNutrition(Map<String, dynamic> json) {
+  final generated = json['generatedForNutrition'];
+  if (generated is Map) {
+    return DailyNutrition.fromJson(Map<String, dynamic>.from(generated));
+  }
+
+  final hasFlatTargets = json['generatedForCalories'] != null ||
+      json['generatedForProtein'] != null ||
+      json['generatedForCarbs'] != null ||
+      json['generatedForFat'] != null;
+  if (!hasFlatTargets) {
+    return null;
+  }
+
+  return DailyNutrition(
+    calories: _readInt(json, ['generatedForCalories']),
+    protein: _readDouble(json, ['generatedForProtein']),
+    carbs: _readDouble(json, ['generatedForCarbs']),
+    fat: _readDouble(json, ['generatedForFat']),
+  );
 }
 
 class PlannedMeal {
