@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'app_integrity_service.dart';
+import 'app_debug_log_service.dart';
 import '../util/app_constants.dart';
 
 class ServerChatStateService {
@@ -14,10 +15,17 @@ class ServerChatStateService {
   Future<Map<String, dynamic>> fetchState({
     required String token,
   }) async {
+    AppDebugLogService.add('APP_SERVER_CHAT_STATE', 'fetch_state_request', {
+      'url': _chatStateUri.toString(),
+    });
     final response = await http.get(
       _chatStateUri,
       headers: await _headers(token),
     );
+    AppDebugLogService.add('APP_SERVER_CHAT_STATE', 'fetch_state_response', {
+      'status': response.statusCode,
+      'bodyPreview': _preview(response.body),
+    });
 
     return _decodeResponse(
       response,
@@ -30,14 +38,24 @@ class ServerChatStateService {
     required String commandName,
     Map<String, dynamic> arguments = const {},
   }) async {
+    final requestBody = jsonEncode({
+      'commandName': commandName,
+      'arguments': arguments,
+    });
+    AppDebugLogService.add('APP_SERVER_CHAT_STATE', 'execute_command_request', {
+      'url': _chatCommandUri.toString(),
+      'bodyPreview': _preview(requestBody),
+    });
     final response = await http.post(
       _chatCommandUri,
       headers: await _headers(token),
-      body: jsonEncode({
-        'commandName': commandName,
-        'arguments': arguments,
-      }),
+      body: requestBody,
     );
+    AppDebugLogService.add(
+        'APP_SERVER_CHAT_STATE', 'execute_command_response', {
+      'status': response.statusCode,
+      'bodyPreview': _preview(response.body),
+    });
 
     return _decodeResponse(
       response,
@@ -56,7 +74,7 @@ class ServerChatStateService {
     required String fallbackMessage,
   }) {
     final dynamic decoded =
-        response.body.isEmpty ? const {} : jsonDecode(response.body);
+        response.body.isEmpty ? const {} : _decodeJsonBody(response.body);
     final json =
         decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
 
@@ -72,5 +90,25 @@ class ServerChatStateService {
         json['error']?.toString() ??
         fallbackMessage;
     throw Exception(message);
+  }
+
+  dynamic _decodeJsonBody(String body) {
+    try {
+      return jsonDecode(body);
+    } catch (error) {
+      AppDebugLogService.add('APP_SERVER_CHAT_STATE', 'parse_error', {
+        'error': error.toString(),
+        'bodyPreview': _preview(body),
+      });
+      rethrow;
+    }
+  }
+
+  String _preview(String value, {int maxChars = 600}) {
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= maxChars) {
+      return normalized;
+    }
+    return '${normalized.substring(0, maxChars)}...';
   }
 }

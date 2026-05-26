@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../providers/nutrition_goals_provider.dart';
+import '../providers/diet_plan_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
@@ -565,6 +566,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDarkMode = theme.brightness == Brightness.dark;
     final authService = Provider.of<AuthService>(context);
     final nutritionProvider = Provider.of<NutritionGoalsProvider>(context);
+    final dietProvider = Provider.of<DietPlanProvider>(context);
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
     final textColor = isDarkMode ? Colors.white : Colors.black;
@@ -676,6 +678,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               onTap: () => _showEditDietTypeDialog(
                                   theme, nutritionProvider),
                             ),
+                            _buildDietAiModelRow(theme, dietProvider),
                             _buildFormulaRow(theme),
                             if (nutritionProvider.formula ==
                                 CalculationFormula.katchMcArdle)
@@ -958,6 +961,148 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  Widget _buildDietAiModelRow(
+    ThemeData theme,
+    DietPlanProvider dietProvider,
+  ) {
+    return _buildAccountRow(
+      context.tr.translate('diet_ai_model'),
+      dietProvider.getDietGenerationModelName(),
+      Icons.psychology_alt_outlined,
+      theme,
+      onTap: () => _showDietAiModelDialog(theme, dietProvider),
+    );
+  }
+
+  void _showDietAiModelDialog(
+    ThemeData theme,
+    DietPlanProvider dietProvider,
+  ) {
+    final currentModel = dietProvider.dietGenerationModel;
+    final customModelController = TextEditingController(
+      text: dietProvider.isPredefinedDietGenerationModel(currentModel)
+          ? ''
+          : currentModel,
+    );
+    String? customModelError;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        Future<void> saveCustomModel(
+          void Function(void Function()) setDialogState,
+        ) async {
+          final modelId = customModelController.text.trim();
+          if (!DietPlanProvider.isValidOpenRouterModelId(modelId)) {
+            setDialogState(() {
+              customModelError =
+                  dialogContext.tr.translate('invalid_openrouter_model_id');
+            });
+            return;
+          }
+
+          await dietProvider.updateDietGenerationModel(modelId);
+          if (dialogContext.mounted) {
+            Navigator.pop(dialogContext);
+          }
+        }
+
+        return StatefulBuilder(
+          builder: (statefulContext, setDialogState) {
+            return AlertDialog(
+              title: Text(dialogContext.tr.translate('diet_ai_model')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...DietPlanProvider.dietGenerationModelOptions
+                        .map((option) {
+                      final modelId = option['id']!;
+                      final isSelected =
+                          modelId == dietProvider.dietGenerationModel;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.auto_awesome,
+                          color: isSelected ? theme.colorScheme.primary : null,
+                        ),
+                        title: Text(option['name']!),
+                        subtitle: Text(
+                          dietProvider
+                              .getDietGenerationModelDescription(modelId),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check, color: theme.colorScheme.primary)
+                            : null,
+                        onTap: () async {
+                          await dietProvider.updateDietGenerationModel(modelId);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                      );
+                    }),
+                    const Divider(height: 24),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        dialogContext.tr.translate('custom_openrouter_model'),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        dialogContext.tr
+                            .translate('openrouter_model_id_helper'),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: customModelController,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        labelText: dialogContext.tr
+                            .translate('custom_openrouter_model'),
+                        hintText: dialogContext.tr
+                            .translate('openrouter_model_id_hint'),
+                        errorText: customModelError,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (_) {
+                        if (customModelError != null) {
+                          setDialogState(() => customModelError = null);
+                        }
+                      },
+                      onSubmitted: (_) => saveCustomModel(setDialogState),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(dialogContext.tr.translate('cancel')),
+                ),
+                FilledButton(
+                  onPressed: () => saveCustomModel(setDialogState),
+                  child: Text(dialogContext.tr.translate('save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) => customModelController.dispose());
   }
 
   void _showFormulaDialog(ThemeData theme, NutritionGoalsProvider provider) {

@@ -550,6 +550,9 @@ class PlannedFood {
 }
 
 class DietPreferences {
+  static const String defaultDietGenerationModel =
+      'google/gemini-3-flash-preview';
+
   final int mealsPerDay; // 3-6
   final String hungriestMealTime; // breakfast, lunch, dinner, snack
   final List<String> foodRestrictions;
@@ -560,6 +563,7 @@ class DietPreferences {
   final bool hasReviewedFoodPreferences;
   final bool hasReviewedRoutineNeeds;
   final DietMode dietMode; // daily ou weekly
+  final String dietGenerationModel;
 
   DietPreferences({
     this.mealsPerDay = 3,
@@ -572,6 +576,7 @@ class DietPreferences {
     this.hasReviewedFoodPreferences = false,
     this.hasReviewedRoutineNeeds = false,
     this.dietMode = DietMode.weekly, // Padrão: dieta semanal única
+    this.dietGenerationModel = defaultDietGenerationModel,
   });
 
   factory DietPreferences.fromJson(Map<String, dynamic> json) {
@@ -609,6 +614,8 @@ class DietPreferences {
         (e) => e.name == json['dietMode'],
         orElse: () => DietMode.weekly,
       ),
+      dietGenerationModel: json['dietGenerationModel']?.toString() ??
+          defaultDietGenerationModel,
     );
   }
 
@@ -624,6 +631,7 @@ class DietPreferences {
       'hasReviewedFoodPreferences': hasReviewedFoodPreferences,
       'hasReviewedRoutineNeeds': hasReviewedRoutineNeeds,
       'dietMode': dietMode.name,
+      'dietGenerationModel': dietGenerationModel,
     };
   }
 
@@ -638,6 +646,7 @@ class DietPreferences {
     bool? hasReviewedFoodPreferences,
     bool? hasReviewedRoutineNeeds,
     DietMode? dietMode,
+    String? dietGenerationModel,
   }) {
     return DietPreferences(
       mealsPerDay: mealsPerDay ?? this.mealsPerDay,
@@ -654,6 +663,7 @@ class DietPreferences {
       hasReviewedRoutineNeeds:
           hasReviewedRoutineNeeds ?? this.hasReviewedRoutineNeeds,
       dietMode: dietMode ?? this.dietMode,
+      dietGenerationModel: dietGenerationModel ?? this.dietGenerationModel,
     );
   }
 }

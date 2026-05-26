@@ -70,6 +70,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   // Calculated or manual goals
   bool _useCalculatedGoals = false;
+  bool _useExplicitMacroGoals = false;
   int _manualCaloriesGoal = 2000;
   int _manualProteinGoal = 100;
   int _manualCarbsGoal = 250;
@@ -152,13 +153,18 @@ class NutritionGoalsProvider extends ChangeNotifier {
       };
 
   // Calculated goals
-  int get caloriesGoal =>
-      _useCalculatedGoals ? _calculateCalories() : _manualCaloriesGoal;
-  int get proteinGoal =>
-      _useCalculatedGoals ? _calculateProtein() : _manualProteinGoal;
-  int get carbsGoal =>
-      _useCalculatedGoals ? _calculateCarbs() : _manualCarbsGoal;
-  int get fatGoal => _useCalculatedGoals ? _calculateFat() : _manualFatGoal;
+  int get caloriesGoal => _useCalculatedGoals && !_useExplicitMacroGoals
+      ? _calculateCalories()
+      : _manualCaloriesGoal;
+  int get proteinGoal => _useCalculatedGoals && !_useExplicitMacroGoals
+      ? _calculateProtein()
+      : _manualProteinGoal;
+  int get carbsGoal => _useCalculatedGoals && !_useExplicitMacroGoals
+      ? _calculateCarbs()
+      : _manualCarbsGoal;
+  int get fatGoal => _useCalculatedGoals && !_useExplicitMacroGoals
+      ? _calculateFat()
+      : _manualFatGoal;
   Map<String, int> get macroGramTargets => {
         'carbs': carbsGoal,
         'protein': proteinGoal,
@@ -249,6 +255,11 @@ class NutritionGoalsProvider extends ChangeNotifier {
         goalSetup['configurationStatus']?.toString() ??
         'default_template';
     _useCalculatedGoals = goalMode == 'calculated';
+    _useExplicitMacroGoals = _useCalculatedGoals &&
+        _parseServerInt(mergedMacroTargets['caloriesGoal']) != null &&
+        _parseServerInt(grams['carbs']) != null &&
+        _parseServerInt(grams['protein']) != null &&
+        _parseServerInt(grams['fat']) != null;
     _hasConfiguredGoals = _computeHasConfiguredGoals();
     if (clearPendingSync) {
       _hasPendingServerSync = false;
@@ -394,6 +405,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
       _fatPercentage = prefs.getInt('nutrition_fatPercentage') ?? 30;
 
       _useCalculatedGoals = prefs.getBool('nutrition_useCalculated') ?? false;
+      _useExplicitMacroGoals =
+          prefs.getBool('nutrition_useExplicitMacroGoals') ?? false;
       _manualCaloriesGoal = prefs.getInt('nutrition_manualCalories') ?? 2000;
       _manualProteinGoal = prefs.getInt('nutrition_manualProtein') ?? 100;
       _manualCarbsGoal = prefs.getInt('nutrition_manualCarbs') ?? 250;
@@ -456,6 +469,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
       await prefs.setInt('nutrition_fatPercentage', _fatPercentage);
 
       await prefs.setBool('nutrition_useCalculated', _useCalculatedGoals);
+      await prefs.setBool(
+          'nutrition_useExplicitMacroGoals', _useExplicitMacroGoals);
       await prefs.setInt('nutrition_manualCalories', _manualCaloriesGoal);
       await prefs.setInt('nutrition_manualProtein', _manualProteinGoal);
       await prefs.setInt('nutrition_manualCarbs', _manualCarbsGoal);
@@ -515,6 +530,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
       _hasExplicitHeight = true;
     }
     if (bodyFat != null) _bodyFat = bodyFat;
+    _useExplicitMacroGoals = false;
 
     _saveToPreferences();
     _markPendingServerSync();
@@ -537,6 +553,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
       _hasExplicitFitnessGoal = true;
     }
     if (formula != null) _formula = formula;
+    _useExplicitMacroGoals = false;
 
     _saveToPreferences();
     _markPendingServerSync();
@@ -547,6 +564,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
   void updateDietType(DietType dietType) {
     _markStateMutation();
     _dietType = dietType;
+    _useExplicitMacroGoals = false;
 
     // Set default macro percentages for each diet type
     switch (dietType) {
@@ -603,6 +621,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _proteinPercentage = protein;
     _fatPercentage = fat;
     _dietType = DietType.custom;
+    _useExplicitMacroGoals = false;
 
     if (!_useCalculatedGoals) {
       final grams = calculateMacroGramsFromPercentages(
@@ -625,6 +644,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
   void setUseCalculatedGoals(bool value) {
     _markStateMutation();
     _useCalculatedGoals = value;
+    _useExplicitMacroGoals = false;
     _saveToPreferences();
     _markPendingServerSync();
     notifyListeners();
@@ -647,6 +667,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     if (activateManualMode) {
       _useCalculatedGoals = false;
     }
+    _useExplicitMacroGoals = false;
 
     final percentages = calculateMacroPercentagesFromGrams(
       carbsGrams: _manualCarbsGoal.toDouble(),
@@ -1222,6 +1243,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _proteinPercentage = 20;
     _fatPercentage = 30;
     _useCalculatedGoals = false;
+    _useExplicitMacroGoals = false;
     _manualCaloriesGoal = 2000;
     _manualProteinGoal = 100;
     _manualCarbsGoal = 250;

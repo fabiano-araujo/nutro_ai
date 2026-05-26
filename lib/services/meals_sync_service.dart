@@ -57,10 +57,10 @@ class DailySummary {
           nutrients: [], // Nutrientes já calculados, não precisamos do modelo completo
           // Os valores já estão calculados, vamos usar getters customizados
         ).copyWithMacros(
-          calories: (foodJson['calories'] ?? 0).toInt(),
-          protein: (foodJson['protein'] ?? 0).toDouble(),
-          carbs: (foodJson['carbs'] ?? 0).toDouble(),
-          fat: (foodJson['fat'] ?? 0).toDouble(),
+          calories: _readInt(foodJson['calories']),
+          protein: _readDouble(foodJson['protein']),
+          carbs: _readDouble(foodJson['carbs']),
+          fat: _readDouble(foodJson['fat']),
         );
       }).toList();
 
@@ -76,24 +76,59 @@ class DailySummary {
     }).toList();
 
     return DailySummary(
-      id: json['id'] ?? 0,
-      userId: json['userId'] ?? 0,
+      id: _readInt(json['id']),
+      userId: _readInt(json['userId']),
       date: DateTime.parse(json['date']),
-      totalCalories: json['totalCalories'] ?? 0,
-      totalProtein: (json['totalProtein'] ?? 0).toDouble(),
-      totalCarbs: (json['totalCarbs'] ?? 0).toDouble(),
-      totalFat: (json['totalFat'] ?? 0).toDouble(),
-      totalFiber: (json['totalFiber'] ?? 0).toDouble(),
-      calorieGoal: json['calorieGoal'] ?? 2000,
-      proteinGoal: json['proteinGoal'] ?? 150,
-      carbsGoal: json['carbsGoal'] ?? 250,
-      fatGoal: json['fatGoal'] ?? 67,
-      waterGlasses: json['waterGlasses'] ?? 0,
-      waterGoal: json['waterGoal'] ?? 8,
-      hitProtein: json['hitProtein'] ?? false,
-      hitCalories: json['hitCalories'] ?? false,
+      totalCalories: _readInt(json['totalCalories']),
+      totalProtein: _readDouble(json['totalProtein']),
+      totalCarbs: _readDouble(json['totalCarbs']),
+      totalFat: _readDouble(json['totalFat']),
+      totalFiber: _readDouble(json['totalFiber']),
+      calorieGoal: _readInt(json['calorieGoal'], fallback: 2000),
+      proteinGoal: _readInt(json['proteinGoal'], fallback: 150),
+      carbsGoal: _readInt(json['carbsGoal'], fallback: 250),
+      fatGoal: _readInt(json['fatGoal'], fallback: 67),
+      waterGlasses: _readInt(json['waterGlasses']),
+      waterGoal: _readInt(json['waterGoal'], fallback: 8),
+      hitProtein: _readBool(json['hitProtein']),
+      hitCalories: _readBool(json['hitCalories']),
       meals: meals,
     );
+  }
+
+  static int _readInt(dynamic value, {int fallback = 0}) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.round();
+    }
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  static double _readDouble(dynamic value, {double fallback = 0}) {
+    if (value is double) {
+      return value;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString().replaceAll(',', '.') ?? '') ??
+        fallback;
+  }
+
+  static bool _readBool(dynamic value, {bool fallback = false}) {
+    if (value is bool) {
+      return value;
+    }
+    final normalized = value?.toString().trim().toLowerCase();
+    if (normalized == 'true' || normalized == '1') {
+      return true;
+    }
+    if (normalized == 'false' || normalized == '0') {
+      return false;
+    }
+    return fallback;
   }
 
   static MealType _parseMealType(String? type) {

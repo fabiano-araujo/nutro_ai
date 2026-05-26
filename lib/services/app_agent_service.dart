@@ -10,6 +10,7 @@ import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import 'auth_service.dart';
+import 'app_debug_log_service.dart';
 import 'server_chat_state_service.dart';
 
 class AppAgentCommand {
@@ -827,63 +828,116 @@ class AppAgentService {
   static const updateMacroTargetsGramsPerKg =
       'update_macro_targets_grams_per_kg';
 
+  static void logAgentDebug(String event, Map<String, dynamic> data) {
+    AppDebugLogService.add('APP_AGENT_DEBUG', event, data);
+  }
+
+  static String debugPreview(String value, {int maxChars = 500}) {
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= maxChars) {
+      return normalized;
+    }
+    return '${normalized.substring(0, maxChars)}...';
+  }
+
   static Future<AppAgentExecutionResult> executeCommand(
     AppAgentCommand command,
     BuildContext context,
   ) async {
-    switch (command.name) {
-      case getDailyNutritionStatus:
-        return _getDailyNutritionStatus(command, context);
-      case getWeeklyNutritionSummary:
-        return _getWeeklyNutritionSummary(command, context);
-      case getWeightStatus:
-        return _getWeightStatus(command, context);
-      case recalculateNutritionGoals:
-        return _recalculateNutritionGoals(command, context);
-      case generateNewDietPlan:
-        return _generateNewDietPlan(command, context);
-      case getGoalSetupStatus:
-        return _getGoalSetupStatus(command, context);
-      case updateGoalSetupProfile:
-        return _updateGoalSetupProfile(command, context);
-      case updateGoalSetupPreferences:
-        return _updateGoalSetupPreferences(command, context);
-      case getDietGenerationPreferencesStatus:
-        return _getDietGenerationPreferencesStatus(command, context);
-      case updateDietGenerationPreferences:
-        return _updateDietGenerationPreferences(command, context);
-      case getMacroTargetsStatus:
-        return _getMacroTargetsStatus(command, context);
-      case updateMacroTargetsPercentage:
-        return _updateMacroTargetsPercentage(command, context);
-      case updateMacroTargetsGrams:
-        return _updateMacroTargetsGrams(command, context);
-      case updateMacroTargetsGramsPerKg:
-        return _updateMacroTargetsGramsPerKg(command, context);
-      default:
-        return AppAgentExecutionResult(
-          commandName: command.name,
-          success: false,
-          errorMessage: 'Comando do app não suportado',
-          payload: {
-            'supportedCommands': const [
-              getDailyNutritionStatus,
-              getWeeklyNutritionSummary,
-              getWeightStatus,
-              recalculateNutritionGoals,
-              generateNewDietPlan,
-              getGoalSetupStatus,
-              updateGoalSetupProfile,
-              updateGoalSetupPreferences,
-              getDietGenerationPreferencesStatus,
-              updateDietGenerationPreferences,
-              getMacroTargetsStatus,
-              updateMacroTargetsPercentage,
-              updateMacroTargetsGrams,
-              updateMacroTargetsGramsPerKg,
-            ],
-          },
-        );
+    final startedAt = DateTime.now();
+    logAgentDebug('command_start', {
+      'name': command.name,
+      'arguments': command.arguments,
+      'rawJsonPreview': debugPreview(command.rawJson),
+    });
+
+    try {
+      late final AppAgentExecutionResult result;
+      switch (command.name) {
+        case getDailyNutritionStatus:
+          result = await _getDailyNutritionStatus(command, context);
+          break;
+        case getWeeklyNutritionSummary:
+          result = await _getWeeklyNutritionSummary(command, context);
+          break;
+        case getWeightStatus:
+          result = await _getWeightStatus(command, context);
+          break;
+        case recalculateNutritionGoals:
+          result = await _recalculateNutritionGoals(command, context);
+          break;
+        case generateNewDietPlan:
+          result = await _generateNewDietPlan(command, context);
+          break;
+        case getGoalSetupStatus:
+          result = await _getGoalSetupStatus(command, context);
+          break;
+        case updateGoalSetupProfile:
+          result = await _updateGoalSetupProfile(command, context);
+          break;
+        case updateGoalSetupPreferences:
+          result = await _updateGoalSetupPreferences(command, context);
+          break;
+        case getDietGenerationPreferencesStatus:
+          result = await _getDietGenerationPreferencesStatus(command, context);
+          break;
+        case updateDietGenerationPreferences:
+          result = await _updateDietGenerationPreferences(command, context);
+          break;
+        case getMacroTargetsStatus:
+          result = await _getMacroTargetsStatus(command, context);
+          break;
+        case updateMacroTargetsPercentage:
+          result = await _updateMacroTargetsPercentage(command, context);
+          break;
+        case updateMacroTargetsGrams:
+          result = await _updateMacroTargetsGrams(command, context);
+          break;
+        case updateMacroTargetsGramsPerKg:
+          result = await _updateMacroTargetsGramsPerKg(command, context);
+          break;
+        default:
+          result = AppAgentExecutionResult(
+            commandName: command.name,
+            success: false,
+            errorMessage: 'Comando do app não suportado',
+            payload: {
+              'supportedCommands': const [
+                getDailyNutritionStatus,
+                getWeeklyNutritionSummary,
+                getWeightStatus,
+                recalculateNutritionGoals,
+                generateNewDietPlan,
+                getGoalSetupStatus,
+                updateGoalSetupProfile,
+                updateGoalSetupPreferences,
+                getDietGenerationPreferencesStatus,
+                updateDietGenerationPreferences,
+                getMacroTargetsStatus,
+                updateMacroTargetsPercentage,
+                updateMacroTargetsGrams,
+                updateMacroTargetsGramsPerKg,
+              ],
+            },
+          );
+      }
+
+      logAgentDebug('command_result', {
+        'name': result.commandName,
+        'success': result.success,
+        'errorMessage': result.errorMessage,
+        'payloadKeys': result.payload.keys.toList(),
+        'payloadPreview': result.payload,
+        'durationMs': DateTime.now().difference(startedAt).inMilliseconds,
+      });
+      return result;
+    } catch (error) {
+      logAgentDebug('command_throw', {
+        'name': command.name,
+        'error': error.toString(),
+        'durationMs': DateTime.now().difference(startedAt).inMilliseconds,
+      });
+      rethrow;
     }
   }
 
@@ -1041,6 +1095,172 @@ class AppAgentService {
       default:
         return null;
     }
+  }
+
+  static String? buildCommandResultFallbackMessage({
+    required BuildContext context,
+    required List<AppAgentExecutionResult> executionResults,
+    required String originalUserMessage,
+  }) {
+    final successfulResults =
+        executionResults.where((result) => result.success).toList();
+    if (successfulResults.isEmpty) {
+      return null;
+    }
+
+    final lastResult = successfulResults.last;
+    switch (lastResult.commandName) {
+      case getDailyNutritionStatus:
+        return _buildDailyNutritionStatusFallbackMessage(
+          context: context,
+          result: lastResult,
+          originalUserMessage: originalUserMessage,
+        );
+      case updateMacroTargetsPercentage:
+      case updateMacroTargetsGrams:
+      case updateMacroTargetsGramsPerKg:
+      case getMacroTargetsStatus:
+      case recalculateNutritionGoals:
+        return buildMacroGoalsCommandResultMessage(
+          context: context,
+          executionResults: executionResults,
+        );
+      case generateNewDietPlan:
+        return buildDietGeneratedCommandResultMessage(
+          context: context,
+          executionResults: executionResults,
+        );
+      default:
+        return null;
+    }
+  }
+
+  static String _buildDailyNutritionStatusFallbackMessage({
+    required BuildContext context,
+    required AppAgentExecutionResult result,
+    required String originalUserMessage,
+  }) {
+    final payload = result.payload;
+    final isPortuguese =
+        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
+              'pt',
+            );
+    final normalized = _normalizeLooseText(originalUserMessage);
+    final caloriesGoal = _tryParseInt(payload['caloriesGoal']) ?? 0;
+    final proteinGoal = _tryParseDouble(payload['proteinGoal']) ?? 0;
+    final carbsGoal = _tryParseDouble(payload['carbsGoal']) ?? 0;
+    final fatGoal = _tryParseDouble(payload['fatGoal']) ?? 0;
+    final caloriesConsumed = _tryParseInt(payload['caloriesConsumed']) ?? 0;
+    final proteinConsumed = _tryParseDouble(payload['proteinConsumed']) ?? 0;
+    final carbsConsumed = _tryParseDouble(payload['carbsConsumed']) ?? 0;
+    final fatConsumed = _tryParseDouble(payload['fatConsumed']) ?? 0;
+    final caloriesRemaining =
+        _tryParseInt(payload['caloriesRemaining']) ?? caloriesGoal;
+    final proteinRemaining = _tryParseDouble(payload['proteinRemaining']) ??
+        (proteinGoal - proteinConsumed);
+    final carbsRemaining = _tryParseDouble(payload['carbsRemaining']) ??
+        (carbsGoal - carbsConsumed);
+    final fatRemaining =
+        _tryParseDouble(payload['fatRemaining']) ?? (fatGoal - fatConsumed);
+
+    final asksConsumed = _containsAnyTerm(normalized, const [
+      'consumo',
+      'consumi',
+      'consumido',
+      'ingeri',
+      'ingerido',
+      'comi',
+      'comido',
+      'ja estou',
+      'ja bati',
+      'atingi',
+      'progresso',
+      'how much have i had',
+      'consumed',
+    ]);
+    final asksProtein = _containsAnyTerm(normalized, const [
+      'proteina',
+      'protein',
+    ]);
+    final asksCarbs = _containsAnyTerm(normalized, const [
+      'carbo',
+      'carboidrato',
+      'carboidratos',
+      'carb',
+      'carbs',
+    ]);
+    final asksFat = _containsAnyTerm(normalized, const [
+      'gordura',
+      'gorduras',
+      'fat',
+      'fats',
+    ]);
+
+    if (isPortuguese) {
+      if (asksConsumed && asksProtein) {
+        return 'Hoje você consumiu ${_formatOneDecimal(proteinConsumed)}g de '
+            'proteína de uma meta de ${_formatOneDecimal(proteinGoal)}g. '
+            '${_formatRemainingPhrase(proteinRemaining, 'g', 'proteína', true)}';
+      }
+      if (asksConsumed && asksCarbs) {
+        return 'Hoje você consumiu ${_formatOneDecimal(carbsConsumed)}g de '
+            'carboidratos de uma meta de ${_formatOneDecimal(carbsGoal)}g. '
+            '${_formatRemainingPhrase(carbsRemaining, 'g', 'carboidratos', true)}';
+      }
+      if (asksConsumed && asksFat) {
+        return 'Hoje você consumiu ${_formatOneDecimal(fatConsumed)}g de '
+            'gorduras de uma meta de ${_formatOneDecimal(fatGoal)}g. '
+            '${_formatRemainingPhrase(fatRemaining, 'g', 'gorduras', true)}';
+      }
+      if (asksConsumed) {
+        return 'Hoje você consumiu $caloriesConsumed kcal de $caloriesGoal kcal, '
+            '${_formatOneDecimal(proteinConsumed)}g de proteína, '
+            '${_formatOneDecimal(carbsConsumed)}g de carboidratos e '
+            '${_formatOneDecimal(fatConsumed)}g de gorduras. '
+            'Ainda restam $caloriesRemaining kcal.';
+      }
+      return 'Hoje você ainda pode consumir $caloriesRemaining kcal, '
+          '${_formatOneDecimal(proteinRemaining)}g de proteína, '
+          '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
+          '${_formatOneDecimal(fatRemaining)}g de gorduras.';
+    }
+
+    if (asksConsumed && asksProtein) {
+      return 'Today you have consumed ${_formatOneDecimal(proteinConsumed)}g '
+          'of protein out of a ${_formatOneDecimal(proteinGoal)}g target. '
+          '${_formatRemainingPhrase(proteinRemaining, 'g', 'protein', false)}';
+    }
+    if (asksConsumed) {
+      return 'Today you have consumed $caloriesConsumed kcal out of '
+          '$caloriesGoal kcal, ${_formatOneDecimal(proteinConsumed)}g protein, '
+          '${_formatOneDecimal(carbsConsumed)}g carbs, and '
+          '${_formatOneDecimal(fatConsumed)}g fat. You still have '
+          '$caloriesRemaining kcal remaining.';
+    }
+    return 'Today you still have $caloriesRemaining kcal, '
+        '${_formatOneDecimal(proteinRemaining)}g protein, '
+        '${_formatOneDecimal(carbsRemaining)}g carbs, and '
+        '${_formatOneDecimal(fatRemaining)}g fat remaining.';
+  }
+
+  static String _formatRemainingPhrase(
+    double remaining,
+    String unit,
+    String label,
+    bool isPortuguese,
+  ) {
+    final amount = _formatOneDecimal(remaining.abs());
+    if (isPortuguese) {
+      if (remaining >= 0) {
+        return 'Ainda faltam $amount$unit de $label para bater a meta.';
+      }
+      return 'Você já passou $amount$unit da meta de $label.';
+    }
+
+    if (remaining >= 0) {
+      return 'You still have $amount$unit of $label remaining.';
+    }
+    return 'You are $amount$unit over your $label target.';
   }
 
   static String sanitizeDisplayMessage(
@@ -1857,6 +2077,100 @@ class AppAgentService {
     );
   }
 
+  static AppAgentCommand? buildMacroTargetsCommandFromUserMessage(
+    String userMessage, {
+    required String rawJson,
+  }) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty || isDietGenerationRequest(userMessage)) {
+      return null;
+    }
+
+    final caloriesGoal = _extractExplicitCaloriesTarget(normalized);
+    if (caloriesGoal == null) {
+      return null;
+    }
+
+    final hasMutationIntent = _containsAnyTerm(normalized, const [
+      'ajuste',
+      'ajustar',
+      'mude',
+      'mudar',
+      'altere',
+      'alterar',
+      'atualize',
+      'atualizar',
+      'defina',
+      'definir',
+      'coloque',
+      'colocar',
+      'bote',
+      'botar',
+      'meta',
+      'metas',
+      'alvo',
+      'objetivo',
+      'quero comer',
+      'quero consumir',
+      'dieta para',
+      'set',
+      'change',
+      'update',
+      'target',
+    ]);
+    if (!hasMutationIntent) {
+      return null;
+    }
+
+    final looksLikeFoodLog = _containsAnyTerm(normalized, const [
+      'comi',
+      'consumi',
+      'ingeri',
+      'registra',
+      'registrar',
+      'registre',
+      'adicione',
+      'adicionar',
+      'lancar',
+      'lancei',
+      'logged',
+      'ate',
+      'consumed',
+    ]);
+    if (looksLikeFoodLog) {
+      return null;
+    }
+
+    return AppAgentCommand(
+      name: updateMacroTargetsGrams,
+      arguments: <String, dynamic>{
+        'caloriesGoal': caloriesGoal,
+      },
+      rawJson: rawJson,
+    );
+  }
+
+  static int? _extractExplicitCaloriesTarget(String normalizedMessage) {
+    const calorieTerm = r'(?:kcal|cal(?:oria|orias|oia|oias|orie|ories)s?)';
+    final patterns = [
+      RegExp(r'\b(\d{3,5})\s*' + calorieTerm + r'\b'),
+      RegExp(calorieTerm + r'\s*(?:de|para|pra|a|em)?\s*(\d{3,5})\b'),
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(normalizedMessage);
+      if (match == null) {
+        continue;
+      }
+      final value = int.tryParse(match.group(1) ?? '');
+      if (value != null && value >= 800 && value <= 10000) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
   static bool _isMacroRecalculationApproval(String normalizedMessage) {
     const shortApprovals = {
       'sim',
@@ -2153,14 +2467,13 @@ class AppAgentService {
     final resultJson = jsonEncode(
       executionResults.map(_summarizeExecutionResultForPrompt).toList(),
     );
-    final sanitizedConversationContext =
-        shouldIncludeConversationContext(originalUserMessage)
-            ? compactConversationContext(
-                conversationContext,
-                maxBlocks: 2,
-                maxChars: 260,
-              )
-            : '';
+    final sanitizedConversationContext = conversationContext.trim().isEmpty
+        ? ''
+        : compactConversationContext(
+            conversationContext,
+            maxBlocks: 40,
+            maxChars: 8000,
+          );
     final currentAppStateJson = jsonEncode(
       _buildPromptStatePayload(await _getCurrentAppStatePayload(context)),
     );
@@ -2173,7 +2486,7 @@ $resultJson
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
 App reply language: $appReplyLanguage.
-${sanitizedConversationContext.isEmpty ? '' : 'Recent conversation context:\n$sanitizedConversationContext\n'}
+${sanitizedConversationContext.isEmpty ? '' : 'Current chat history, oldest to newest (accessible conversation context):\n$sanitizedConversationContext\n'}
 User request:
 $originalUserMessage
 Rules: trust APP_COMMAND_RESULTS and APP_CURRENT_STATE. Return another app_command/app_commands only if one more app action is required; otherwise answer naturally without internal command names.
@@ -2614,6 +2927,18 @@ $basePrompt
       return false;
     }
 
+    if (const {
+      'sim',
+      'quero',
+      'quero sim',
+      'nao',
+      'não',
+      'ok',
+      'certo',
+    }.contains(normalized)) {
+      return true;
+    }
+
     if (_containsAnyTerm(normalized, const [
       'pode seguir',
       'pode continuar',
@@ -2627,11 +2952,6 @@ $basePrompt
       'sem preferências',
       'sem restricoes',
       'sem restrições',
-      'sim',
-      'nao',
-      'não',
-      'ok',
-      'certo',
       'e agora',
       'e ai',
       'e aí',
@@ -2768,6 +3088,10 @@ $basePrompt
     }
 
     try {
+      logAgentDebug('server_command_request', {
+        'commandName': command.name,
+        'arguments': command.arguments,
+      });
       final response = await _serverChatStateService.executeCommand(
         token: authService.token!,
         commandName: command.name,
@@ -2785,6 +3109,15 @@ $basePrompt
       final success = response['success'] == true;
       final errorMessage = response['errorMessage']?.toString();
 
+      logAgentDebug('server_command_response', {
+        'commandName': commandName,
+        'success': success,
+        'errorMessage': errorMessage,
+        'responseKeys': response.keys.toList(),
+        'stateKeys': state.keys.toList(),
+        'payloadKeys': payload.keys.toList(),
+      });
+
       return AppAgentExecutionResult(
         commandName: commandName,
         success: success,
@@ -2792,6 +3125,10 @@ $basePrompt
         payload: payload,
       );
     } catch (error) {
+      logAgentDebug('server_command_error', {
+        'commandName': command.name,
+        'error': error.toString(),
+      });
       return AppAgentExecutionResult(
         commandName: command.name,
         success: false,

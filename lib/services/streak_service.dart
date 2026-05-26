@@ -141,7 +141,9 @@ class StreakService {
   }
 
   /// Ativar freeze
-  static Future<UserStreak?> activateFreeze({required String token}) async {
+  static Future<({UserStreak? streak, String? error})> activateFreeze({
+    required String token,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/streak/freeze'),
@@ -151,17 +153,35 @@ class StreakService {
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return UserStreak.fromJson(data['data']);
-        }
+      print(
+        '[StreakService] activateFreeze status=${response.statusCode} body=${response.body}',
+      );
+
+      Map<String, dynamic>? data;
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>?;
+      } catch (_) {
+        data = null;
       }
 
-      return null;
+      if (response.statusCode == 200 &&
+          data != null &&
+          data['success'] == true &&
+          data['data'] != null) {
+        return (
+          streak: UserStreak.fromJson(data['data']),
+          error: null,
+        );
+      }
+
+      final serverError = (data?['error'] ?? data?['message'])?.toString();
+      return (
+        streak: null,
+        error: serverError ?? 'HTTP ${response.statusCode}',
+      );
     } catch (e) {
       print('[StreakService] Erro ao ativar freeze: $e');
-      return null;
+      return (streak: null, error: e.toString());
     }
   }
 

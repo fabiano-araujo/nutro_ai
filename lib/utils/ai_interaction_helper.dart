@@ -4,14 +4,12 @@ import '../services/storage_service.dart';
 import '../models/study_item.dart';
 import '../widgets/message_notifier.dart';
 import '../utils/conversation_helper.dart';
-import 'package:provider/provider.dart';
-import '../i18n/language_controller.dart'; // Importar para obter o título traduzido
 import '../i18n/app_localizations.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import '../utils/food_json_parser.dart';
-import '../providers/daily_meals_provider.dart';
 import '../models/meal_model.dart';
+import '../services/app_debug_log_service.dart';
 
 class AIInteractionHelper {
   /// Determina o tipo de refeição com base no horário atual
@@ -76,6 +74,14 @@ class AIInteractionHelper {
       }
 
       return FoodJsonParser.removeJsonCandidateFromMessage(rawContent);
+    }
+
+    String previewForLog(String content) {
+      final normalized = content.replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (normalized.length <= 500) {
+        return normalized;
+      }
+      return '${normalized.substring(0, 500)}...';
     }
 
     subscription = aiStream.listen(
@@ -221,6 +227,10 @@ class AIInteractionHelper {
         var responseContent = messageNotifier.message;
         print(
             '📊 AIInteractionHelper - Resposta final: ${responseContent.length} caracteres');
+        AppDebugLogService.add('APP_AI_STREAM', 'on_done', {
+          'rawLength': responseContent.length,
+          'rawPreview': previewForLog(responseContent),
+        });
 
         if (interceptFinalResponse != null) {
           try {
@@ -228,6 +238,11 @@ class AIInteractionHelper {
               responseContent,
               messageNotifier,
             );
+            AppDebugLogService.add('APP_AI_STREAM', 'intercept_result', {
+              'wasIntercepted': wasIntercepted,
+              'rawLength': messageNotifier.message.length,
+              'displayLength': messageNotifier.displayMessage.length,
+            });
             if (wasIntercepted) {
               return;
             }
@@ -238,12 +253,22 @@ class AIInteractionHelper {
         }
 
         final finalDisplayContent = buildDisplayContent(responseContent);
+        AppDebugLogService.add('APP_AI_STREAM', 'final_display', {
+          'rawLength': responseContent.length,
+          'displayLength': finalDisplayContent.length,
+          'displayPreview': previewForLog(finalDisplayContent),
+        });
+        final hasRenderableFoodJson = autoRegisterFoods &&
+            FoodJsonParser.containsFoodJson(responseContent);
         if (responseContent.trim().isEmpty ||
-            finalDisplayContent.trim().isEmpty) {
+            (finalDisplayContent.trim().isEmpty && !hasRenderableFoodJson)) {
           final fallbackMessage = context.mounted
               ? AppLocalizations.of(context)
                   .translate('agent_empty_response_fallback')
               : 'Não recebi uma resposta da IA. Tente enviar novamente.';
+          AppDebugLogService.add('APP_AI_STREAM', 'empty_visible_response', {
+            'fallback': fallbackMessage,
+          });
           messageNotifier.updateMessage(
             fallbackMessage,
             displayContent: fallbackMessage,
@@ -391,9 +416,8 @@ class AIInteractionHelper {
             if (studyItemType == 'image_analysis') {
               try {
                 if (context.mounted) {
-                  title = AppLocalizations.of(context)
-                          .translate('image_analysis') ??
-                      'Image Analysis';
+                  title =
+                      AppLocalizations.of(context).translate('image_analysis');
                 } else {
                   title = 'Image Analysis';
                 }

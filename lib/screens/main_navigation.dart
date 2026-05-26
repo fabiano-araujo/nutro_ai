@@ -5,6 +5,7 @@ import 'nutrition_assistant_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'personalized_diet_screen.dart';
+import 'diet_benchmark_screen.dart';
 import 'food_search_screen.dart';
 import 'unified_search_screen.dart';
 import 'free_chat_screen.dart';
@@ -26,6 +27,8 @@ import '../providers/meal_types_provider.dart';
 import '../providers/food_history_provider.dart';
 import '../models/user_model.dart';
 import '../theme/app_theme.dart';
+import '../utils/fabiano_access.dart';
+import '../widgets/app_debug_log_overlay.dart';
 
 // Controlador global para gerenciar a navegação entre abas
 class NavigationController {
@@ -402,6 +405,13 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
+  void _openDietBenchmark() {
+    _closeDrawerIfOpen();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const DietBenchmarkScreen()),
+    );
+  }
+
   void _openDiaryForDate(DateTime date) {
     // Muda pra diário e seta data selecionada
     final mealsProvider =
@@ -450,9 +460,11 @@ class _MainNavigationState extends State<MainNavigation> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: _buildDrawer(isDarkMode),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _buildScreens(onOpenDrawer: _openDrawer),
+      body: AppDebugLogOverlay(
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _buildScreens(onOpenDrawer: _openDrawer),
+        ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(isDarkMode),
     );
@@ -480,9 +492,11 @@ class _MainNavigationState extends State<MainNavigation> {
             color: isDarkMode ? Colors.white12 : Colors.black12,
           ),
           Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: _buildScreens(onOpenDrawer: null),
+            child: AppDebugLogOverlay(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: _buildScreens(onOpenDrawer: null),
+              ),
             ),
           ),
         ],
@@ -577,6 +591,9 @@ class _MainNavigationState extends State<MainNavigation> {
   /// (tablet/desktop). Quando [isPersistent] for `true`, o FAB redundante é
   /// omitido e os itens de navegação ficam fixos no rodapé do painel.
   Widget _buildSidePanelBody(bool isDarkMode, {required bool isPersistent}) {
+    final authService = context.watch<AuthService>();
+    final showDietBenchmark = canAccessDietBenchmark(authService.currentUser);
+
     return SafeArea(
       child: Stack(
         children: [
@@ -662,6 +679,13 @@ class _MainNavigationState extends State<MainNavigation> {
               ),
 
               const SizedBox(height: 8),
+
+              if (showDietBenchmark)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: _drawerBenchmarkTile(isDarkMode),
+                ),
 
               // Itens de navegação (apenas tela larga) — acima das conversas.
               if (isPersistent) ...[
@@ -758,6 +782,50 @@ class _MainNavigationState extends State<MainNavigation> {
               child: _buildNewChatFab(isDarkMode),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _drawerBenchmarkTile(bool isDarkMode) {
+    return InkWell(
+      onTap: _openDietBenchmark,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF212121) : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDarkMode ? Colors.white12 : Colors.black12,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.science_outlined,
+              size: 20,
+              color: isDarkMode ? Colors.white : Colors.black87,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                context.tr.translate('diet_benchmark_nav'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: isDarkMode ? Colors.white54 : Colors.black45,
+            ),
+          ],
+        ),
       ),
     );
   }

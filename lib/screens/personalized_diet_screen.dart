@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../theme/macro_theme.dart';
 import 'package:provider/provider.dart';
 import '../providers/diet_plan_provider.dart';
@@ -1165,6 +1166,12 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
+                IconButton(
+                  onPressed: () => _shareDietPlan(dietPlan),
+                  icon: Icon(Icons.ios_share_outlined, color: accentColor),
+                  tooltip: l10n.translate('share_diet'),
+                  visualDensity: VisualDensity.compact,
+                ),
                 TextButton.icon(
                   onPressed: _replaceAllMeals,
                   icon: Icon(Icons.refresh, size: 18, color: accentColor),
@@ -1198,6 +1205,68 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _shareDietPlan(DietPlan dietPlan) async {
+    final l10n = AppLocalizations.of(context);
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+    final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
+    final title = isWeeklyMode
+        ? l10n.translate('professional_weekly_diet_plan')
+        : l10n.translate('professional_daily_diet_plan');
+    final buffer = StringBuffer()
+      ..writeln(title)
+      ..writeln(
+        isWeeklyMode
+            ? l10n.translate('weekly_diet')
+            : DateFormat('dd/MM/yyyy').format(dietProvider.selectedDate),
+      )
+      ..writeln()
+      ..writeln(l10n.translate('daily_macros'))
+      ..writeln(_formatNutritionForShare(dietPlan.totalNutrition))
+      ..writeln()
+      ..writeln(l10n.translate('meals'));
+
+    for (final meal in dietPlan.meals) {
+      buffer
+        ..writeln()
+        ..writeln('${_getMealDisplayName(meal, l10n)} - ${meal.time}')
+        ..writeln(_formatNutritionForShare(meal.mealTotals));
+
+      for (final food in meal.foods) {
+        buffer.writeln(
+          '- ${food.name}: ${_formatFoodPortion(food)} '
+          '(${_formatNutritionInline(food)})',
+        );
+      }
+    }
+
+    await Share.share(
+      buffer.toString().trim(),
+      subject: title,
+    );
+  }
+
+  String _formatNutritionForShare(DailyNutrition nutrition) {
+    final l10n = AppLocalizations.of(context);
+    return '${nutrition.calories} kcal | '
+        '${l10n.translate('protein')} ${nutrition.protein.toStringAsFixed(1)}g | '
+        '${l10n.translate('carbs')} ${nutrition.carbs.toStringAsFixed(1)}g | '
+        '${l10n.translate('fat')} ${nutrition.fat.toStringAsFixed(1)}g';
+  }
+
+  String _formatNutritionInline(PlannedFood food) {
+    return '${food.calories} kcal, '
+        'P ${food.protein.toStringAsFixed(1)}g, '
+        'C ${food.carbs.toStringAsFixed(1)}g, '
+        'G ${food.fat.toStringAsFixed(1)}g';
+  }
+
+  String _formatFoodPortion(PlannedFood food) {
+    final amount = food.amount == food.amount.roundToDouble()
+        ? food.amount.round().toString()
+        : food.amount.toStringAsFixed(1);
+    return '$amount ${food.unit}';
   }
 
   Widget _buildOutdatedDietNotice({

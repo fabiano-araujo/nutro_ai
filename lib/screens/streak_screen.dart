@@ -559,14 +559,18 @@ class _FreezeStatusCard extends StatelessWidget {
     final success = await streakProvider.activateFreeze();
     if (!context.mounted) return;
 
+    final String message;
+    if (success) {
+      message = context.tr.translate('streak_freeze_activated');
+    } else {
+      final serverError = streakProvider.error;
+      message = serverError != null && serverError.isNotEmpty
+          ? '${context.tr.translate('streak_checkin_error')} ($serverError)'
+          : context.tr.translate('streak_checkin_error');
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? context.tr.translate('streak_freeze_activated')
-              : context.tr.translate('streak_checkin_error'),
-        ),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 

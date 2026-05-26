@@ -90,16 +90,23 @@ class StreakProvider extends ChangeNotifier {
     if (freezesAvailable <= 0) return false;
 
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
     try {
-      final streak = await StreakService.activateFreeze(token: _token!);
-      if (streak != null) {
-        _streak = streak;
+      final result = await StreakService.activateFreeze(token: _token!);
+      if (result.streak != null) {
+        _streak = result.streak;
         _error = null;
         notifyListeners();
         return true;
       }
+      final failureError = result.error;
+      print('[StreakProvider] activateFreeze failed: $failureError');
+      // Recarrega para alinhar estado local com servidor.
+      await loadStreak();
+      // loadStreak limpa _error em caso de sucesso; reaplica a mensagem real.
+      _error = failureError;
       return false;
     } catch (e) {
       _error = 'Erro ao ativar freeze: $e';

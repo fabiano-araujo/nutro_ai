@@ -63,6 +63,10 @@ Para configurar seus objetivos, preciso validar os dados.
       isTrue,
     );
     expect(
+      AppAgentService.shouldIncludeConversationContext('quero'),
+      isTrue,
+    );
+    expect(
       AppAgentService.shouldIncludeConversationContext('Pode matar?'),
       isTrue,
     );
@@ -171,6 +175,37 @@ Assistant: Quer passar detalhes como restrições, alimentos preferidos ou rotin
         context,
       ),
       isFalse,
+    );
+  });
+
+  test('builds calorie target fallback command from explicit goal text', () {
+    final command = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'quero comer 2000 caloias',
+      rawJson: '',
+    );
+
+    expect(command, isNotNull);
+    expect(command!.name, AppAgentService.updateMacroTargetsGrams);
+    expect(command.arguments, <String, dynamic>{
+      'caloriesGoal': 2000,
+    });
+
+    final adjustedDiet =
+        AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'ajuste minha dieta para 2000 calorias',
+      rawJson: '',
+    );
+    expect(adjustedDiet, isNotNull);
+    expect(adjustedDiet!.arguments['caloriesGoal'], 2000);
+  });
+
+  test('does not treat logged calories as a goal update', () {
+    expect(
+      AppAgentService.buildMacroTargetsCommandFromUserMessage(
+        'comi 2000 calorias hoje',
+        rawJson: '',
+      ),
+      isNull,
     );
   });
 

@@ -641,17 +641,13 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
             0, currentMessagesForPrompt.length - 2);
         final shouldIncludeContext =
             _shouldIncludeConversationContextForPrompt(message, messageHistory);
-        final historyLimit = toolType == 'free_chat' ? 12 : 4;
-        final tokenLimit = toolType == 'free_chat' ? 1200 : 260;
-        final blockLimit = toolType == 'free_chat' ? 10 : 3;
-        final charLimit = toolType == 'free_chat' ? 1800 : 420;
+        final tokenLimit = toolType == 'free_chat' ? 8000 : 6000;
+        final blockLimit = toolType == 'free_chat' ? 80 : 60;
+        final charLimit = toolType == 'free_chat' ? 16000 : 12000;
 
         if (shouldIncludeContext) {
-          final recentMessageHistory = messageHistory.length <= historyLimit
-              ? messageHistory
-              : messageHistory.sublist(messageHistory.length - historyLimit);
           contextPrompt = await _aiService.limitConversationHistory(
-            recentMessageHistory,
+            messageHistory,
             maxTokenLimit: tokenLimit,
           );
           contextPrompt = AppAgentService.compactConversationContext(
@@ -682,7 +678,11 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         promptSections.add(toolScopedInstructions);
       }
       if (contextPrompt.isNotEmpty) {
-        promptSections.add('Recent conversation context:\n$contextPrompt');
+        promptSections.add(
+          'Current chat history, oldest to newest '
+          '(accessible conversation context):\n'
+          '$contextPrompt',
+        );
       }
       promptSections.add('User request:\n$message');
       final basePrompt = promptSections.join('\n\n');
@@ -863,11 +863,7 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
       return false;
     }
 
-    if (toolType == 'free_chat') {
-      return true;
-    }
-
-    return AppAgentService.shouldIncludeConversationContext(userMessage);
+    return true;
   }
 
   String _buildTextDisplayContent(
@@ -931,7 +927,55 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
     List<AppAgentExecutionResult>? priorExecutionResults,
   }) async {
     final commandBatch = AppAgentCommand.tryParseBatch(responseContent);
+    final initialVisibleContent = _buildTextDisplayContent(
+      responseContent,
+      autoRegisterFoods: _shouldAutoRegisterFoods,
+    ).trim();
+    AppAgentService.logAgentDebug('intercept_final_response', {
+      'toolType': toolType,
+      'agentType': agentType,
+      'rawLength': responseContent.length,
+      'visibleLength': initialVisibleContent.length,
+      'containsCommandCandidate':
+          AppAgentCommand.containsCommandCandidate(responseContent),
+      'commandCount': commandBatch?.commands.length ?? 0,
+      'commandNames':
+          commandBatch?.commands.map((command) => command.name).toList() ??
+              const [],
+      'priorExecutionResults':
+          priorExecutionResults?.map((result) => result.toJson()).toList() ??
+              const [],
+      'rawPreview': AppAgentService.debugPreview(responseContent),
+      'visiblePreview': AppAgentService.debugPreview(initialVisibleContent),
+      'userMessage': originalUserMessage,
+    });
     if (commandBatch == null || commandBatch.commands.isEmpty) {
+      final fallbackMacroTargetsCommand =
+          AppAgentService.buildMacroTargetsCommandFromUserMessage(
+        originalUserMessage,
+        rawJson: responseContent,
+      );
+      if (fallbackMacroTargetsCommand != null) {
+        AppAgentService.logAgentDebug('fallback_macro_targets_from_message', {
+          'userMessage': originalUserMessage,
+          'arguments': fallbackMacroTargetsCommand.arguments,
+        });
+        final executionResult = await AppAgentService.executeCommand(
+          fallbackMacroTargetsCommand,
+          context,
+        );
+        final directMessage =
+            AppAgentService.buildMacroGoalsCommandResultMessage(
+          context: context,
+          executionResults: [executionResult],
+        );
+        if (directMessage != null) {
+          _finalizeInterceptedMessage(notifier, directMessage);
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+      }
+
       final fallbackRecalculationCommand =
           AppAgentService.buildMacroRecalculationCommandFromContext(
         originalUserMessage,
@@ -939,6 +983,11 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         rawJson: responseContent,
       );
       if (fallbackRecalculationCommand != null) {
+        AppAgentService.logAgentDebug('fallback_macro_recalc_from_context', {
+          'userMessage': originalUserMessage,
+          'conversationContext':
+              AppAgentService.debugPreview(conversationContext),
+        });
         final executionResult = await AppAgentService.executeCommand(
           fallbackRecalculationCommand,
           context,
@@ -1026,15 +1075,36 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
               responseContent: responseContent,
             );
       if (fallbackMessage != null && fallbackMessage.trim().isNotEmpty) {
+        AppAgentService.logAgentDebug('fallback_credit_exhausted', {
+          'messagePreview': AppAgentService.debugPreview(fallbackMessage),
+        });
         _finalizeInterceptedMessage(notifier, fallbackMessage);
         return true;
       }
 
-      final visibleContent = _buildTextDisplayContent(
-        responseContent,
-        autoRegisterFoods: _shouldAutoRegisterFoods,
-      ).trim();
+      final visibleContent = initialVisibleContent;
       if (visibleContent.isEmpty) {
+        final commandResultFallback = priorExecutionResults == null
+            ? null
+            : AppAgentService.buildCommandResultFallbackMessage(
+                context: context,
+                executionResults: priorExecutionResults,
+                originalUserMessage: originalUserMessage,
+              );
+        if (commandResultFallback != null &&
+            commandResultFallback.trim().isNotEmpty) {
+          AppAgentService.logAgentDebug('fallback_command_result', {
+            'messagePreview':
+                AppAgentService.debugPreview(commandResultFallback),
+            'priorCommandNames': priorExecutionResults
+                ?.map((result) => result.commandName)
+                .toList(),
+          });
+          _finalizeInterceptedMessage(notifier, commandResultFallback);
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+
         final macroAdviceFallback =
             AppAgentService.buildMacroTargetAdviceFallbackMessage(
           context: context,
@@ -1042,6 +1112,9 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         );
         if (macroAdviceFallback != null &&
             macroAdviceFallback.trim().isNotEmpty) {
+          AppAgentService.logAgentDebug('fallback_macro_advice', {
+            'messagePreview': AppAgentService.debugPreview(macroAdviceFallback),
+          });
           _finalizeInterceptedMessage(notifier, macroAdviceFallback);
           _saveMessagesForCurrentDate();
           return true;
@@ -1173,8 +1246,10 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         }
 
         if (AppAgentService.shouldSkipCommand(command)) {
-          print(
-              '⚠️ NutritionAssistantController - Ignorando comando agêntico sem argumentos úteis: ${command.name}');
+          AppAgentService.logAgentDebug('command_skipped', {
+            'name': command.name,
+            'arguments': command.arguments,
+          });
           continue;
         }
 
@@ -1216,6 +1291,24 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         return true;
       }
 
+      final directCommandMessage =
+          AppAgentService.buildCommandResultFallbackMessage(
+        context: context,
+        executionResults: executionResults,
+        originalUserMessage: originalUserMessage,
+      );
+      if (directCommandMessage != null &&
+          directCommandMessage.trim().isNotEmpty) {
+        AppAgentService.logAgentDebug('direct_command_result_message', {
+          'messagePreview': AppAgentService.debugPreview(directCommandMessage),
+          'commandNames':
+              executionResults.map((result) => result.commandName).toList(),
+        });
+        _finalizeInterceptedMessage(notifier, directCommandMessage);
+        _saveMessagesForCurrentDate();
+        return true;
+      }
+
       if (toolType == macroGoalsToolType &&
           executionResults.any((result) => result.success)) {
         final directMessage =
@@ -1247,6 +1340,12 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         context: context,
         conversationContext: conversationContext,
       );
+      AppAgentService.logAgentDebug('follow_up_prompt_start', {
+        'executionResults':
+            executionResults.map((result) => result.toJson()).toList(),
+        'promptLength': followUpPrompt.length,
+        'promptPreview': AppAgentService.debugPreview(followUpPrompt),
+      });
 
       final followUpStream = _aiService.getAnswerStream(
         followUpPrompt,
