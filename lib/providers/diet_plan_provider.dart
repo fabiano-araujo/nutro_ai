@@ -809,7 +809,7 @@ class DietPlanProvider extends ChangeNotifier {
 
     final requestBody = {
       'prompt': prompt,
-      'temperature': 0.5,
+      'temperature': 0.2,
       'model': selectedModel,
       'streaming': true,
       'userId': userId,
