@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Diet Prompt Tester — Nutro AI</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --border: #2a2f3a;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --accent: #4f9eff;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.4 -apple-system, system-ui, sans-serif;
+  }
+  h1 { font-size: 18px; margin: 0 0 16px; }
+  h2 { font-size: 15px; margin: 16px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+  h3 { font-size: 14px; margin: 12px 0 6px; }
+  .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 420px 1fr; gap: 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  input, select, textarea, button {
+    width: 100%;
+    background: #12141a;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font: inherit;
+  }
+  textarea { font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; min-height: 200px; resize: vertical; }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 10px;
+    margin-top: 12px;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .row4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+  .meals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .meals-grid input { padding: 6px 8px; font-size: 12px; }
+  .results { min-height: 200px; }
+  .run-card { background: #12141a; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; margin-bottom: 8px; }
+  .stat { background: #1a1d24; padding: 4px 8px; border-radius: 4px; }
+  .badge-good { background: var(--good); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-warn { background: var(--warn); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-bad { background: var(--bad); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.good { color: var(--good); }
+  td.warn { color: var(--warn); }
+  td.bad { color: var(--bad); }
+  pre { background: #0a0c10; padding: 10px; border-radius: 4px; font-size: 11px; overflow-x: auto; max-height: 250px; overflow-y: auto; margin: 4px 0; }
+  details { margin: 6px 0; }
+  summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  summary:hover { color: var(--text); }
+  .summary-stats {
+    background: #12141a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .status { font-size: 12px; color: var(--muted); margin: 8px 0; }
+  .meal-block { margin: 8px 0; padding: 6px 8px; background: #1a1d24; border-radius: 4px; }
+  .meal-head { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .err { color: var(--bad); font-size: 12px; padding: 6px; background: rgba(239,68,68,0.1); border-radius: 4px; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>Diet Prompt Tester</h1>
+<div class="container">
+
+<div class="panel">
+  <h2>Config</h2>
+
+  <label>API endpoint</label>
+  <input id="api" value="http://157.230.238.117:3000/ai/generate-text">
+
+  <label>Modelo (OpenRouter id)</label>
+  <select id="model">
+    <optgroup label="Recomendados (testados)">
+      <option value="google/gemini-3-flash-preview">Gemini 3 Flash Preview (rápido, score ~0.12)</option>
+      <option value="google/gemini-3.5-flash">Gemini 3.5 Flash (lento, score ~0.05)</option>
+      <option value="google/gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (caro, score ~0.05)</option>
+      <option value="qwen/qwen3.7-max">Qwen 3.7 Max (lento, score ~0.04)</option>
+      <option value="deepseek/deepseek-v4-flash">DeepSeek V4 Flash (atual prod, score ~0.65)</option>
+      <option value="deepseek/deepseek-v4-pro">DeepSeek V4 Pro (score ~0.36)</option>
+    </optgroup>
+    <optgroup label="Outros">
+      <option value="x-ai/grok-4.3">Grok 4.3 (score ~0.99)</option>
+      <option value="xiaomi/mimo-v2.5-pro">MiMo v2.5 Pro (instável)</option>
+      <option value="google/gemini-2.5-flash-lite-preview-09-2025">Gemini 2.5 Flash Lite</option>
+      <option value="anthropic/claude-sonnet-4-6">Claude Sonnet 4.6</option>
+      <option value="openai/gpt-4o-mini">GPT-4o mini</option>
+    </optgroup>
+  </select>
+
+  <label>Agent type (sistema do backend)</label>
+  <select id="agentType">
+    <option value="diet" selected>diet (clamp temp 0.2, sistema diet)</option>
+    <option value="generic">generic (sem sistema, temp livre)</option>
+  </select>
+
+  <label>Temperatura</label>
+  <input id="temp" type="number" value="0.5" step="0.1" min="0" max="1">
+
+  <h2>Macros do dia</h2>
+  <div class="row4">
+    <div><label>kcal</label><input id="tKcal" type="number" value="3000"></div>
+    <div><label>proteína (g)</label><input id="tP" type="number" value="172"></div>
+    <div><label>carbo (g)</label><input id="tC" type="number" value="385"></div>
+    <div><label>gordura (g)</label><input id="tF" type="number" value="86"></div>
+  </div>
+
+  <h2>Refeições</h2>
+  <div id="mealsList" class="meals-grid"></div>
+  <button id="addMeal" type="button" style="background:#2a2f3a;margin-top:6px;padding:6px;">+ adicionar refeição</button>
+
+  <h2>Prompt</h2>
+  <label>Template</label>
+  <select id="template">
+    <option value="simple">Simples (só day target) — melhor pra Pro/3.5</option>
+    <option value="vc" selected>VC (budget por refeição + cap 110g) — melhor pra Flash</option>
+    <option value="r1">R1 (schema-top + budget + verify)</option>
+    <option value="m4">M4 (day target + verify)</option>
+    <option value="prod">Produção atual (compact array, regras grandes)</option>
+    <option value="grams">Grams-only (sem kcal no target)</option>
+    <option value="custom">Custom (editar livre)</option>
+  </select>
+
+  <label>Prompt (auto-preenchido — edite se Custom)</label>
+  <textarea id="prompt"></textarea>
+  <div class="hint">Use {kcal}, {p}, {c}, {f}, {meals}, {budgets} pra valores que serão substituídos.</div>
+
+  <h2>Execução</h2>
+  <label>Número de chamadas (em paralelo)</label>
+  <input id="runs" type="number" value="3" min="1" max="10">
+
+  <button id="run">Executar testes</button>
+  <div id="status" class="status"></div>
+</div>
+
+<div class="panel results">
+  <h2>Resultados</h2>
+  <div id="summary"></div>
+  <div id="results"></div>
+</div>
+
+</div>
+
+<script>
+const DEFAULT_MEALS = [
+  ['breakfast', 'Café da manhã'],
+  ['lunch', 'Almoço'],
+  ['afternoon_snack', 'Lanche da tarde'],
+  ['dinner', 'Jantar'],
+  ['supper', 'Ceia'],
+];
+
+const TEMPLATES = {
+  simple: `[{"meal":"breakfast","foods":[{"n":"food","a":100,"u":"g","kcal":300,"p":10,"c":40,"f":8}]}]
+
+Build a 1-day meal plan using the format above. {meals_count} meals ({meals_csv}).
+
+Day total must be: {kcal} kcal, {p}g protein, {c}g carbs, {f}g fat (within ±3% on each macro).
+
+You decide the per-meal distribution.`,
+
+  vc: `[{"meal":"breakfast","foods":[{"n":"food","a":100,"u":"g","kcal":300,"p":10,"c":40,"f":8}]}]
+
+Use moderate portions. Do not exceed 110g for any protein source (chicken/beef/fish) in any meal.
+
+Per-meal budget you MUST hit (food sums within ±3%):
+{budgets}
+
+Day total: {kcal} kcal, {p}g protein, {c}g carbs, {f}g fat.`,
+
+  r1: `[{"meal":"breakfast","foods":[{"n":"food","a":100,"u":"g","kcal":300,"p":10,"c":40,"f":8}]}]
+
+Per-meal budget you MUST hit (food sums within ±3%):
+{budgets}
+
+Day total = {kcal} kcal, {p}g protein, {c}g carbs, {f}g fat.
+
+Sum the foods before answering; adjust portions if any total is off by more than 5%.`,
+
+  m4: `{meals_count}-meal day plan: {meals_csv}.
+Day targets (sum of ALL foods): {kcal} kcal, {p}g protein, {c}g carbs, {f}g fat.
+Sum your foods before answering; if any of the four totals is off by more than 3%, adjust portions and re-sum.
+Return JSON: [{"meal":"breakfast","foods":[{"n":"food","a":100,"u":"g","kcal":300,"p":10,"c":40,"f":8}]}]`,
+
+  prod: `Create one daily diet with common, cheap Brazil supermarket foods.
+
+Exact full-day target: {kcal} kcal, {p}g protein, {c}g carbs, {f}g fat.
+Meals: exactly {meals_count}, using only these meal ids: [{meals_csv}].
+Protein distribution: target about {protein_per_meal}g per meal. Keep all meals reasonably close.
+
+Return ONLY compact JSON:
+{"m":[["breakfast","08:00",[["Food",100,"g",300,10,40,8]]]]}
+
+Format:
+- meal = [meal_id, time, foods]
+- food = [name, amount, unit, kcal, protein, carbs, fat]
+
+Accuracy rules:
+- The final JSON food totals MUST equal exactly: {kcal} kcal, {p}g protein, {c}g carbs, {f}g fat.
+- Use realistic portions: eggs in whole units, fruit in natural units, grams rounded when practical.
+- No totals, no date, no icons, no markdown, no extra text.`,
+
+  grams: `[{"meal":"breakfast","foods":[{"n":"food","a":100,"u":"g","kcal":300,"p":10,"c":40,"f":8}]}]
+
+Per-meal grams budget you MUST hit (food sums within ±3% on each gram macro):
+{budgets_grams}
+
+Compute each food's kcal as p*4 + c*4 + f*9 rounded.`,
+};
+
+// Default per-meal distribution percentages (sum to 100%)
+const DEFAULT_DIST = [0.20, 0.25, 0.13, 0.25, 0.17]; // breakfast/lunch/snack/dinner/supper
+
+let meals = [...DEFAULT_MEALS];
+
+function renderMeals() {
+  const c = document.getElementById('mealsList');
+  c.innerHTML = '';
+  meals.forEach((m, i) => {
+    c.innerHTML += `<input value="${m[0]}" data-i="${i}" data-k="id" placeholder="id">`;
+    c.innerHTML += `<input value="${m[1]}" data-i="${i}" data-k="name" placeholder="nome">`;
+  });
+  c.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = +e.target.dataset.i;
+      const k = e.target.dataset.k === 'id' ? 0 : 1;
+      meals[i][k] = e.target.value;
+      regenPrompt();
+    });
+  });
+}
+renderMeals();
+
+document.getElementById('addMeal').onclick = () => {
+  meals.push(['meal' + (meals.length + 1), 'Refeição ' + (meals.length + 1)]);
+  renderMeals();
+  regenPrompt();
+};
+
+function getBudgets() {
+  const kcal = +document.getElementById('tKcal').value;
+  const p = +document.getElementById('tP').value;
+  const c = +document.getElementById('tC').value;
+  const f = +document.getElementById('tF').value;
+  const n = meals.length;
+  // Use default dist if 5 meals, else equal split
+  const dist = (n === 5) ? DEFAULT_DIST : Array(n).fill(1/n);
+  return meals.map((m, i) => ({
+    id: m[0],
+    name: m[1],
+    kcal: Math.round(kcal * dist[i]),
+    p: Math.round(p * dist[i]),
+    c: Math.round(c * dist[i]),
+    f: Math.round(f * dist[i]),
+  }));
+}
+
+function formatBudgets(budgets) {
+  return budgets.map(b => `${b.id}: ${b.kcal} kcal, ${b.p}g protein, ${b.c}g carbs, ${b.f}g fat`).join('\n');
+}
+
+function formatBudgetsGrams(budgets) {
+  return budgets.map(b => `${b.id}: ${b.p}g protein, ${b.c}g carbs, ${b.f}g fat`).join('\n');
+}
+
+function regenPrompt() {
+  const tplKey = document.getElementById('template').value;
+  if (tplKey === 'custom') return;
+  const tpl = TEMPLATES[tplKey];
+  const kcal = +document.getElementById('tKcal').value;
+  const p = +document.getElementById('tP').value;
+  const c = +document.getElementById('tC').value;
+  const f = +document.getElementById('tF').value;
+  const budgets = getBudgets();
+  const meals_csv = meals.map(m => m[0]).join(', ');
+  const meals_count = meals.length;
+  const protein_per_meal = Math.round(p / meals.length);
+  const out = tpl
+    .replace(/\{kcal\}/g, kcal)
+    .replace(/\{p\}/g, p)
+    .replace(/\{c\}/g, c)
+    .replace(/\{f\}/g, f)
+    .replace(/\{meals_count\}/g, meals_count)
+    .replace(/\{meals_csv\}/g, meals_csv)
+    .replace(/\{budgets\}/g, formatBudgets(budgets))
+    .replace(/\{budgets_grams\}/g, formatBudgetsGrams(budgets))
+    .replace(/\{protein_per_meal\}/g, protein_per_meal);
+  document.getElementById('prompt').value = out;
+}
+
+['tKcal','tP','tC','tF','template'].forEach(id => {
+  document.getElementById(id).addEventListener('input', regenPrompt);
+  document.getElementById(id).addEventListener('change', regenPrompt);
+});
+regenPrompt();
+
+function parseDietJson(text) {
+  // Strip markdown fences
+  let t = text.replace(/```(?:json)?\s*/g, '').replace(/```\s*$/g, '').trim();
+
+  // Try labeled object format first: [{"meal":...,"foods":[...]}]
+  try {
+    const arr = JSON.parse(t);
+    if (Array.isArray(arr) && arr[0]?.meal) return { format: 'labeled', meals: arr };
+  } catch {}
+
+  // Find the first [ ... ] block
+  const arrMatch = t.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+  if (arrMatch) {
+    try {
+      const arr = JSON.parse(arrMatch[0]);
+      if (Array.isArray(arr) && arr[0]?.meal) return { format: 'labeled', meals: arr };
+    } catch {}
+  }
+
+  // Try compact format: {"m":[["id","time",[["name",amount,"unit",kcal,p,c,f]]]]}
+  try {
+    const obj = JSON.parse(t);
+    if (obj.m && Array.isArray(obj.m)) {
+      const conv = obj.m.map(row => ({
+        meal: row[0],
+        time: row[1],
+        foods: row[2].map(food => ({
+          n: food[0], a: food[1], u: food[2],
+          kcal: food[3], p: food[4], c: food[5], f: food[6],
+        })),
+      }));
+      return { format: 'compact', meals: conv };
+    }
+  } catch {}
+
+  const objMatch = t.match(/\{\s*"m"\s*:\s*\[[\s\S]*?\]\s*\}/);
+  if (objMatch) {
+    try {
+      const obj = JSON.parse(objMatch[0]);
+      if (obj.m && Array.isArray(obj.m)) {
+        const conv = obj.m.map(row => ({
+          meal: row[0],
+          foods: row[2].map(food => ({
+            n: food[0], a: food[1], u: food[2],
+            kcal: food[3], p: food[4], c: food[5], f: food[6],
+          })),
+        }));
+        return { format: 'compact', meals: conv };
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function sumMeals(parsed) {
+  let kcal = 0, p = 0, c = 0, f = 0;
+  for (const meal of parsed.meals) {
+    for (const food of (meal.foods || [])) {
+      kcal += +food.kcal || 0;
+      p += +food.p || 0;
+      c += +food.c || 0;
+      f += +food.f || 0;
+    }
+  }
+  return { kcal: +kcal.toFixed(1), p: +p.toFixed(1), c: +c.toFixed(1), f: +f.toFixed(1) };
+}
+
+function sumMeal(meal) {
+  let kcal = 0, p = 0, c = 0, f = 0;
+  for (const food of (meal.foods || [])) {
+    kcal += +food.kcal || 0;
+    p += +food.p || 0;
+    c += +food.c || 0;
+    f += +food.f || 0;
+  }
+  return { kcal: +kcal.toFixed(1), p: +p.toFixed(1), c: +c.toFixed(1), f: +f.toFixed(1) };
+}
+
+function devBadge(dev) {
+  const abs = Math.abs(dev);
+  if (abs <= 3) return `<span class="badge-good">±${abs.toFixed(1)}%</span>`;
+  if (abs <= 7) return `<span class="badge-warn">${dev > 0 ? '+' : ''}${dev.toFixed(1)}%</span>`;
+  return `<span class="badge-bad">${dev > 0 ? '+' : ''}${dev.toFixed(1)}%</span>`;
+}
+
+function devClass(dev) {
+  const abs = Math.abs(dev);
+  if (abs <= 3) return 'good';
+  if (abs <= 7) return 'warn';
+  return 'bad';
+}
+
+async function runOne(idx, body, results) {
+  const t0 = performance.now();
+  let result = { idx, latency: 0 };
+  try {
+    const resp = await fetch(document.getElementById('api').value, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    result.latency = ((performance.now() - t0) / 1000).toFixed(1);
+    if (!resp.ok) {
+      result.error = `HTTP ${resp.status}`;
+      result.text = await resp.text();
+      return result;
+    }
+    const data = await resp.json();
+    result.raw = data;
+    const text = data?.data?.text || '';
+    result.text = text;
+    const parsed = parseDietJson(text);
+    if (!parsed) {
+      result.error = 'JSON não pôde ser parseado';
+      return result;
+    }
+    result.parsed = parsed;
+    result.totals = sumMeals(parsed);
+  } catch (e) {
+    result.error = e.message;
+  }
+  return result;
+}
+
+function computeScore(totals, targets) {
+  return (Math.abs(totals.kcal - targets.kcal) / targets.kcal)
+       + (Math.abs(totals.p - targets.p) / targets.p)
+       + (Math.abs(totals.c - targets.c) / targets.c)
+       + (Math.abs(totals.f - targets.f) / targets.f);
+}
+
+function computeDevs(totals, targets) {
+  return {
+    kcal: (totals.kcal - targets.kcal) / targets.kcal * 100,
+    p: (totals.p - targets.p) / targets.p * 100,
+    c: (totals.c - targets.c) / targets.c * 100,
+    f: (totals.f - targets.f) / targets.f * 100,
+  };
+}
+
+function renderResult(r, targets, budgets) {
+  if (r.error) {
+    return `<div class="run-card"><strong>Run ${r.idx + 1}</strong> · ${r.latency}s
+      <div class="err">Erro: ${r.error}</div>
+      <details><summary>raw</summary><pre>${escapeHtml(r.text || '')}</pre></details>
+    </div>`;
+  }
+  const t = r.totals;
+  const d = computeDevs(t, targets);
+  const score = computeScore(t, targets);
+  let html = `<div class="run-card">
+    <div class="stat-row">
+      <strong>Run ${r.idx + 1}</strong>
+      <span class="stat">latência: ${r.latency}s</span>
+      <span class="stat">formato: ${r.parsed.format}</span>
+      <span class="stat">score: <b>${score.toFixed(4)}</b></span>
+    </div>
+    <table>
+      <tr><th></th><th class="num">kcal</th><th class="num">p</th><th class="num">c</th><th class="num">f</th></tr>
+      <tr><td>obtido</td><td class="num">${t.kcal}</td><td class="num">${t.p}</td><td class="num">${t.c}</td><td class="num">${t.f}</td></tr>
+      <tr><td>alvo</td><td class="num">${targets.kcal}</td><td class="num">${targets.p}</td><td class="num">${targets.c}</td><td class="num">${targets.f}</td></tr>
+      <tr><td>desvio</td>
+        <td class="num">${devBadge(d.kcal)}</td>
+        <td class="num">${devBadge(d.p)}</td>
+        <td class="num">${devBadge(d.c)}</td>
+        <td class="num">${devBadge(d.f)}</td>
+      </tr>
+    </table>`;
+
+  // Per-meal breakdown
+  html += `<details><summary>Refeições</summary>`;
+  for (const meal of r.parsed.meals) {
+    const mt = sumMeal(meal);
+    const budget = budgets.find(b => b.id === meal.meal);
+    html += `<div class="meal-block"><div class="meal-head"><strong>${meal.meal}</strong>${budget ? ` · alvo ${budget.kcal}/${budget.p}/${budget.c}/${budget.f}` : ''} · obtido ${mt.kcal}/${mt.p}/${mt.c}/${mt.f}</div>`;
+    html += `<table><tr><th>alimento</th><th class="num">qtd</th><th class="num">kcal</th><th class="num">p</th><th class="num">c</th><th class="num">f</th></tr>`;
+    for (const food of meal.foods) {
+      html += `<tr><td>${escapeHtml(food.n)}</td><td class="num">${food.a}${food.u || 'g'}</td><td class="num">${food.kcal}</td><td class="num">${food.p}</td><td class="num">${food.c}</td><td class="num">${food.f}</td></tr>`;
+    }
+    html += `</table></div>`;
+  }
+  html += `</details>`;
+
+  html += `<details><summary>Raw response</summary><pre>${escapeHtml(r.text)}</pre></details>`;
+  html += `</div>`;
+  return html;
+}
+
+function renderSummary(results, targets) {
+  const valid = results.filter(r => !r.error && r.totals);
+  if (valid.length < 2) return '';
+  const scores = valid.map(r => computeScore(r.totals, targets));
+  const mean = scores.reduce((s, v) => s + v, 0) / scores.length;
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const variance = scores.reduce((s, v) => s + (v - mean) ** 2, 0) / scores.length;
+  const std = Math.sqrt(variance);
+  const meanLat = valid.reduce((s, r) => s + +r.latency, 0) / valid.length;
+  return `<div class="summary-stats">
+    <strong>${valid.length} runs válidas</strong>
+    <div class="stat-row" style="margin-top:6px;">
+      <span class="stat">mean score: <b>${mean.toFixed(4)}</b></span>
+      <span class="stat">std dev: <b>${std.toFixed(4)}</b></span>
+      <span class="stat">min: ${min.toFixed(4)}</span>
+      <span class="stat">max: ${max.toFixed(4)}</span>
+      <span class="stat">lat média: ${meanLat.toFixed(1)}s</span>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+document.getElementById('run').onclick = async () => {
+  const btn = document.getElementById('run');
+  btn.disabled = true;
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('summary').innerHTML = '';
+
+  const N = +document.getElementById('runs').value;
+  const targets = {
+    kcal: +document.getElementById('tKcal').value,
+    p: +document.getElementById('tP').value,
+    c: +document.getElementById('tC').value,
+    f: +document.getElementById('tF').value,
+  };
+  const budgets = getBudgets();
+  const body = {
+    model: document.getElementById('model').value,
+    agentType: document.getElementById('agentType').value,
+    temperature: +document.getElementById('temp').value,
+    streaming: false,
+    language: 'pt-BR',
+    mealTypes: meals.map(m => ({ id: m[0], name: m[1] })),
+    prompt: document.getElementById('prompt').value,
+  };
+
+  document.getElementById('status').textContent = `Disparando ${N} chamadas em paralelo...`;
+
+  const promises = Array.from({ length: N }, (_, i) => runOne(i, body, null));
+
+  // Render as they complete
+  const results = new Array(N);
+  let completed = 0;
+  promises.forEach(p => p.then(r => {
+    results[r.idx] = r;
+    completed++;
+    document.getElementById('status').textContent = `${completed}/${N} retornaram...`;
+    // Re-render
+    let html = '';
+    for (let i = 0; i < N; i++) {
+      if (results[i]) html += renderResult(results[i], targets, budgets);
+    }
+    document.getElementById('results').innerHTML = html;
+    document.getElementById('summary').innerHTML = renderSummary(results.filter(Boolean), targets);
+  }));
+
+  await Promise.all(promises);
+  document.getElementById('status').textContent = `Pronto. ${N} chamadas completas.`;
+  btn.disabled = false;
+};
+</script>
+</body>
+</html>

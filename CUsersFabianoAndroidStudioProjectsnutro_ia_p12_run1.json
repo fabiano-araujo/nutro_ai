@@ -1,0 +1,2 @@
+curl: option --data-binary: error encountered when reading a file
+curl: try 'curl --help' or 'curl --manual' for more information

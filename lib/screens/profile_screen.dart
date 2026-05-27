@@ -21,6 +21,7 @@ import 'settings_screen.dart';
 import 'statistics_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'nutrition_goals_screen.dart';
+import 'activity_tracking_apps_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/header_streak_badge.dart';
 
@@ -343,8 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(20),
             onTap: () => Navigator.of(context).pushNamed('/subscription'),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
                 borderRadius: BorderRadius.circular(20),
@@ -375,8 +375,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBmiChip(
-      double bmi, String bmiCategory, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildBmiChip(double bmi, String bmiCategory, ThemeData theme,
+      ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
@@ -671,8 +671,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 14),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: colorScheme.primary,
                     borderRadius: BorderRadius.circular(12),
@@ -730,6 +730,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => const NutritionGoalsScreen(),
+                ),
+              );
+            },
+          ),
+          _buildDivider(colorScheme),
+          _buildSettingsItem(
+            icon: Icons.sync_rounded,
+            title: context.tr.translate('automatic_tracking_apps_title'),
+            theme: theme,
+            colorScheme: colorScheme,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ActivityTrackingAppsScreen(),
                 ),
               );
             },
@@ -794,8 +808,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Color? iconColor,
   }) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final adaptiveColor =
-        isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+    final adaptiveColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     final effectiveIconColor = iconColor ?? adaptiveColor;
     return Material(
       color: Colors.transparent,

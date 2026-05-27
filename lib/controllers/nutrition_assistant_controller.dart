@@ -112,12 +112,10 @@ class NutritionAssistantController with ChangeNotifier {
 
     return '''
 Conversation mode: nutrition goal and macro target review.
-Scope: goals/calories/macros/weight targets only; no diet-preference or meal-plan flow unless explicitly asked.
-Use APP_CURRENT_STATE. Broad goals need one target/deficit confirmation before saving.
-Save only explicit calories/macros/g/kg or clear approval. Explicit macro numbers are consent.
-"O app conduz", "resto carbo", or "resto o app calcula" means keep calories and fill missing macros.
-Partial grams/g/kg may omit fields; the app fills missing macros. If a phrase establishes g/kg, apply it to later bare macro numbers.
-Remaining-today or short macro follow-ups use get_daily_nutrition_status. After app results, answer briefly with only saved/remaining values.
+Use fixed app actions when the request needs app data or mutation.
+If saving a broad goal needs confirmation, answer naturally and append APP_PENDING_ACTION for the intended app_command.
+If APP_PENDING_ACTION is present and the user semantically approves or continues it, return that app_command only.
+Do not enter diet-preference or meal-plan flow unless the latest user request explicitly asks for a diet plan.
 ''';
   }
 
@@ -630,6 +628,7 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
 
       // Preparar o contexto da conversa
       String contextPrompt = '';
+      AppAgentPendingAction? pendingAction;
 
       // Usar uma cópia da lista para evitar modificação concorrente durante a compilação do prompt
       final currentMessagesForPrompt =
@@ -639,6 +638,20 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         // que está sendo gerada (as duas últimas mensagens)
         final messageHistory = currentMessagesForPrompt.sublist(
             0, currentMessagesForPrompt.length - 2);
+        pendingAction = AppAgentPendingAction.findLatestInTrailingAssistantTurn(
+          messageHistory,
+        );
+        if (pendingAction != null &&
+            AppAgentPendingAction.isLikelyApproval(message)) {
+          final handled = await _executePendingActionApproval(
+            pendingAction: pendingAction,
+            originalUserMessage: message,
+            context: context,
+          );
+          if (handled) {
+            return;
+          }
+        }
         final shouldIncludeContext =
             _shouldIncludeConversationContextForPrompt(message, messageHistory);
         final tokenLimit = toolType == 'free_chat' ? 8000 : 6000;
@@ -655,6 +668,13 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
             maxBlocks: blockLimit,
             maxChars: charLimit,
           );
+        }
+        if (pendingAction != null) {
+          contextPrompt = [
+            'Current pending app action awaiting user confirmation:',
+            pendingAction.toPromptBlock(),
+            if (contextPrompt.isNotEmpty) contextPrompt,
+          ].join('\n');
         }
       }
 
@@ -849,6 +869,58 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
     }
   }
 
+  Future<bool> _executePendingActionApproval({
+    required AppAgentPendingAction pendingAction,
+    required String originalUserMessage,
+    required BuildContext context,
+  }) async {
+    final notifier = _messageNotifier;
+    if (notifier == null) {
+      return false;
+    }
+
+    final command =
+        pendingAction.toExecutionCommand(rawJson: pendingAction.rawBlock);
+    AppAgentService.logAgentDebug('pending_action_approval_local_execution', {
+      'userMessage': originalUserMessage,
+      'commandName': command.name,
+      'arguments': command.arguments,
+    });
+    notifier.updateMessage(
+      pendingAction.rawBlock,
+      displayContent: AppAgentService.buildLoadingMessage(
+        context,
+        command.name,
+      ),
+    );
+    notifyListeners();
+
+    final executionResult = await AppAgentService.executeCommand(
+      command,
+      context,
+    );
+    final executionResults = [executionResult];
+    final directMessage = AppAgentService.buildCommandResultFallbackMessage(
+          context: context,
+          executionResults: executionResults,
+          originalUserMessage: originalUserMessage,
+        ) ??
+        AppAgentService.buildMacroGoalsCommandResultMessage(
+          context: context,
+          executionResults: executionResults,
+        ) ??
+        AppAgentService.buildDietGeneratedCommandResultMessage(
+          context: context,
+          executionResults: executionResults,
+        ) ??
+        AppLocalizations.of(context)
+            .translate('agent_command_invalid_response');
+
+    _finalizeInterceptedMessage(notifier, directMessage);
+    _saveMessagesForCurrentDate();
+    return true;
+  }
+
   bool _shouldIncludeConversationContextForPrompt(
     String userMessage,
     List<Map<String, dynamic>> messageHistory,
@@ -950,6 +1022,33 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
       'userMessage': originalUserMessage,
     });
     if (commandBatch == null || commandBatch.commands.isEmpty) {
+      final pendingAction = AppAgentPendingAction.tryParse(responseContent);
+      if (pendingAction != null &&
+          pendingAction.shouldExecuteImmediately(
+            userMessage: originalUserMessage,
+            visibleAssistantText: initialVisibleContent,
+          )) {
+        AppAgentService.logAgentDebug(
+          'pending_action_immediate_execution',
+          {
+            'userMessage': originalUserMessage,
+            'visiblePreview': AppAgentService.debugPreview(
+              initialVisibleContent,
+            ),
+            'commandName': pendingAction.command.name,
+            'arguments': pendingAction.command.arguments,
+          },
+        );
+        final handled = await _executePendingActionApproval(
+          pendingAction: pendingAction,
+          originalUserMessage: originalUserMessage,
+          context: context,
+        );
+        if (handled) {
+          return true;
+        }
+      }
+
       final fallbackMacroTargetsCommand =
           AppAgentService.buildMacroTargetsCommandFromUserMessage(
         originalUserMessage,
@@ -1132,6 +1231,7 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
 
     _agenticCommandExecutions++;
 
+    final pendingAction = AppAgentPendingAction.tryParse(conversationContext);
     final shouldUseMacroRecalculationFromContext =
         AppAgentService.shouldTreatAsMacroRecalculationApproval(
       originalUserMessage,
@@ -1180,6 +1280,12 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
                 inferredPreferencesCommand != null;
         if (inferredPreferencesFromMessage) {
           command = inferredPreferencesCommand;
+        }
+
+        final isApprovedPendingAction =
+            pendingAction?.matchesCommand(command) == true;
+        if (isApprovedPendingAction) {
+          command = pendingAction!.toExecutionCommand(rawJson: command.rawJson);
         }
 
         if (shouldUseMacroRecalculationFromContext &&
@@ -1238,6 +1344,7 @@ Remaining-today or short macro follow-ups use get_daily_nutrition_status. After 
         if (AppAgentService.shouldBlockAmbiguousGoalMutation(
           command,
           originalUserMessage,
+          approvedPendingAction: isApprovedPendingAction ? pendingAction : null,
         )) {
           executionResults.add(
             AppAgentService.buildBlockedGoalMutationResult(command),

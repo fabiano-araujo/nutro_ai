@@ -73,4 +73,29 @@ void main() {
     expect(meal.foods.single.name, 'Macarrão');
     expect(meal.mealTotals.calories, 300);
   });
+
+  test('resolveFoodEmoji covers more common foods with specific icons', () {
+    const examples = {
+      'Peito de frango desfiado': '🍗',
+      'Pasta de amendoim': '🥜',
+      'Brócolis cozido': '🥦',
+      'Batata doce assada': '🍠',
+      'Iogurte grego': '🥣',
+      'Camarão grelhado': '🍤',
+      'Quinoa cozida': '🌾',
+      'Tofu grelhado': '🫘',
+      'Azeite de oliva': '🫒',
+      'Bolacha integral': '🍪',
+    };
+
+    for (final entry in examples.entries) {
+      expect(resolveFoodEmoji(entry.key), entry.value, reason: entry.key);
+    }
+  });
+
+  test('resolveFoodEmoji ignores generic preferred icon but keeps explicit one',
+      () {
+    expect(resolveFoodEmoji('Brócolis', preferred: '🍽️'), '🥦');
+    expect(resolveFoodEmoji('Brócolis', preferred: '⭐'), '⭐');
+  });
 }

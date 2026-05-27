@@ -179,6 +179,7 @@ final Map<String, String> enUSTranslations = {
   'search': 'Search',
   'back': 'Back',
   'next': 'Next',
+  'skip_setup': 'Skip',
   'done': 'Done',
 
   // Messages
@@ -233,10 +234,13 @@ final Map<String, String> enUSTranslations = {
   'diet_generation_preferences_title': 'Before generating your diet',
   'diet_generation_preferences_description':
       'Tell me the details that should influence your food choices. If a field does not apply, leave it blank and it will be treated as none.',
+  'diet_generation_preferences_diet_style_label': 'Preferred diet type',
   'diet_generation_preferences_restrictions_label':
       'Food restrictions or allergies',
   'diet_generation_preferences_restrictions_hint':
       'Example: lactose, gluten, vegetarian',
+  'diet_generation_preferences_restrictions_quick_label':
+      'Restriction shortcuts',
   'diet_generation_preferences_favorite_foods_label':
       'Foods you like to include',
   'diet_generation_preferences_favorite_foods_hint':
@@ -245,11 +249,23 @@ final Map<String, String> enUSTranslations = {
       'Foods you prefer to avoid',
   'diet_generation_preferences_avoided_foods_hint':
       'Example: fish, broccoli, coffee',
+  'diet_generation_preferences_avoided_quick_label': 'Avoided food shortcuts',
   'diet_generation_preferences_hungriest_label':
       'Which meal is usually your hungriest one?',
+  'diet_generation_preferences_health_quick_label': 'Health conditions',
   'diet_generation_preferences_routine_label': 'Appetite and routine notes',
   'diet_generation_preferences_routine_hint':
       'Example: sleepy in the morning, low morning appetite, very hungry at night, difficulty eating enough, difficulty gaining weight',
+  'diet_option_none': 'None',
+  'diet_option_vegetarian': 'Vegetarian',
+  'diet_option_vegan': 'Vegan',
+  'diet_option_gluten_free': 'Gluten free',
+  'diet_option_lactose_free': 'Lactose free',
+  'diet_option_no_red_meat': 'Does not like red meat',
+  'diet_option_high_blood_pressure': 'High blood pressure',
+  'diet_option_diabetes': 'Diabetes',
+  'diet_option_high_cholesterol': 'High cholesterol',
+  'diet_option_other': 'Other',
   'error_occurred': 'An error occurred',
   'try_again': 'Try again',
   'no_results': 'No results found',
@@ -615,6 +631,14 @@ final Map<String, String> enUSTranslations = {
   'ai_macros_hint': 'Food must be well lit and within the frame',
   'barcode': 'Barcode',
   'barcode_hint': 'Scan the product barcode',
+  'barcode_search_hint': 'Enter the product barcode',
+  'invalid_barcode_message': 'Enter a valid barcode with 8, 12, or 13 digits',
+  'barcode_scanner_title': 'Scan barcode',
+  'barcode_scanner_hint': 'Align the barcode inside the marked area',
+  'barcode_scanner_camera_error':
+      'Could not open the camera to scan the barcode.',
+  'scanner_flash': 'Flashlight',
+  'scanner_switch_camera': 'Switch camera',
 
   // Welcome message in card
   'welcome_message_card': 'Hi! I\'m Nutro AI, your nutrition assistant',
@@ -723,6 +747,32 @@ final Map<String, String> enUSTranslations = {
   'favorites': 'Favorites',
   'searching': 'Searching...',
   'no_results_found': 'No results found',
+  'barcode_captcha_title': 'Verification needed',
+  'barcode_captcha_message':
+      'Check "I\'m not a robot" above. Once it clears, we will rerun the search automatically.',
+  'barcode_temporary_error_title': 'Search temporarily unavailable',
+  'barcode_temporary_error_message':
+      'The barcode service rejected the search twice in a row. Try again in 1 or 2 minutes.',
+  'barcode_temporary_error_message_minutes':
+      'The barcode service rejected the search twice in a row. Try again in {minutes} minutes.',
+  'food_claims_title': 'Nutrition claims',
+  'food_claims_free_from': 'Free from',
+  'food_claims_contains': 'Contains',
+  'food_claims_may_contain': 'May contain',
+  'food_claims_suitable_for': 'Suitable for',
+  'food_claims_not_suitable_for': 'Not suitable for',
+  'food_claims_may_not_suitable_for': 'May not be suitable for',
+  'allergen_all': 'All',
+  'allergen_egg': 'Egg',
+  'allergen_fish': 'Fish',
+  'allergen_gluten': 'Gluten',
+  'allergen_lactose': 'Lactose',
+  'allergen_milk': 'Milk',
+  'allergen_nuts': 'Nuts',
+  'allergen_peanuts': 'Peanuts',
+  'allergen_sesame': 'Sesame',
+  'allergen_shellfish': 'Shellfish',
+  'allergen_soy': 'Soy',
   'no_recent_searches': 'No recent searches',
   'no_favorite_foods': 'No favorite foods',
   'quick_add_food': 'Quick add',
@@ -851,8 +901,39 @@ final Map<String, String> enUSTranslations = {
 
   // Settings Screen - Other Sections
   'preferences': 'Preferences',
+  'notification_settings_title': 'Manage my notifications',
   'meal_reminders': 'Meal Reminders',
   'meal_reminders_description': 'Get notified for your meals.',
+  'meal_time': 'Meal time',
+  'meal_reminder_times': 'Meal times',
+  'meal_reminder_times_hint': 'Reminders use the time saved for each meal.',
+  'add_meal_short': 'Add',
+  'weight_reminders': 'Weight reminders',
+  'weight_reminder_config_title': 'Set weight reminder',
+  'weight_reminder_time': 'Weight reminder time',
+  'weight_reminder_frequency': 'Times per week',
+  'weight_reminder_days': 'Days of the week',
+  'personalized_tips': 'Personalized tips',
+  'personalized_tip_time': 'Personalized tips time',
+  'notifications_all_disabled': 'Off',
+  'notifications_enabled_count': '{count} on',
+  'notification_meal_schedule': 'At the times saved for your meals',
+  'notification_weight_schedule': '{count}x/week on {days} at {time}',
+  'notification_tip_schedule': 'Every day at {time}',
+  'notification_permission_denied':
+      'Allow notifications to enable this reminder.',
+  'notification_update_error': 'Could not update your notifications right now.',
+  'notification_meal_title': 'Time to log your meal',
+  'notification_meal_body': 'Open Nutro AI and track today\'s macros.',
+  'notification_meal_title_named': 'Time for {meal}',
+  'notification_meal_body_named':
+      'Log {meal} in Nutro AI to track your macros.',
+  'notification_weight_title': 'Time to update your weight',
+  'notification_weight_body':
+      'Log your weekly weight to keep progress accurate.',
+  'notification_tip_title': 'Quick nutrition tip',
+  'notification_tip_body':
+      'See a personalized suggestion to keep your routine on track.',
 
   // Activity Levels
   'activity_sedentary': 'Sedentary',
@@ -879,17 +960,28 @@ final Map<String, String> enUSTranslations = {
   'formula_katch': 'Katch-McArdle',
 
   // Diet Types
+  'diet_ai_recommended': 'Artificial Intelligence',
   'diet_standard': 'Standard',
   'diet_balanced': 'Balanced',
   'diet_ketogenic': 'Ketogenic',
   'diet_low_carb': 'Low Carb',
   'diet_high_protein': 'High Protein',
+  'diet_mediterranean': 'Mediterranean',
+  'diet_paleo': 'Paleo',
+  'diet_low_fat': 'Low Fat',
+  'diet_dash': 'DASH',
   'diet_custom': 'Custom',
+  'diet_ai_recommended_desc':
+      'AI chooses the best food pattern for your targets',
   'diet_standard_desc': '40% Carbs, 30% Protein, 30% Fat',
   'diet_balanced_desc': '50% Carbs, 20% Protein, 30% Fat',
   'diet_ketogenic_desc': '5% Carbs, 25% Protein, 70% Fat',
   'diet_low_carb_desc': '20% Carbs, 40% Protein, 40% Fat',
   'diet_high_protein_desc': '30% Carbs, 40% Protein, 30% Fat',
+  'diet_mediterranean_desc': '45% Carbs, 20% Protein, 35% Fat',
+  'diet_paleo_desc': '25% Carbs, 30% Protein, 45% Fat',
+  'diet_low_fat_desc': '60% Carbs, 20% Protein, 20% Fat',
+  'diet_dash_desc': '55% Carbs, 20% Protein, 25% Fat',
   'diet_custom_desc': '{carbs}% Carbs, {protein}% Protein, {fat}% Fat',
 
   // AI Tutor Welcome Screen
@@ -1060,6 +1152,15 @@ final Map<String, String> enUSTranslations = {
   'goals_not_synced': 'Goals are not synced with your account yet.',
   'personal_info_title': 'Personal Information',
   'personal_info_subtitle': 'We need to know a little about you',
+  'goal_setup_profile_badge': 'Goal & profile',
+  'goal_setup_sex_title': 'How do you identify?',
+  'goal_setup_sex_subtitle': 'This helps calculate your goals more accurately.',
+  'goal_setup_age_title': 'How old are you?',
+  'goal_setup_age_subtitle': 'Drag, tap, or type to adjust.',
+  'goal_setup_height_title': 'What is your height?',
+  'goal_setup_height_subtitle': 'Use whichever unit you prefer.',
+  'goal_setup_weight_title': 'What is your current weight?',
+  'goal_setup_weight_subtitle': 'You can change this later whenever needed.',
   'sex': 'Sex',
   'activity_level_subtitle': 'How do you stay active in your daily life?',
   'your_goal': 'Your Goal',
@@ -1187,6 +1288,59 @@ final Map<String, String> enUSTranslations = {
       'Replaces the diet already saved for this day',
   'repeat_diet_apply': 'Repeat diet',
   'repeat_diet_success': 'Diet repeated on {count} day(s)',
+
+  // Activity tracking
+  'automatic_tracking_apps_title': 'Automatic tracking apps',
+  'tracking_activities_title': 'Activities',
+  'tracking_activity_kcal_spent': '0 kcal  Spent',
+  'tracking_kcal_spent_suffix': 'kcal  Spent',
+  'tracking_activity_card_message':
+      'Sync with Health Connect to track calories burned, steps, and workouts in your day.',
+  'tracking_action_connect': 'Connect',
+  'tracking_refresh': 'Refresh',
+  'tracking_syncing': 'Syncing...',
+  'tracking_add_activity': 'Tracking apps',
+  'tracking_health_connect_name': 'Health Connect',
+  'tracking_health_connect_heading': 'Sync your apps with Health Connect',
+  'tracking_health_connect_body':
+      'Manage your health and fitness app connections in one place. Grant Nutro AI access and sync the app or device you already use.',
+  'configure_health_connect': 'Configure Health Connect',
+  'tracking_syncing_health_connect': 'Syncing Health Connect data...',
+  'tracking_health_update_required':
+      'Install or update Health Connect to sync your data.',
+  'tracking_permission_granted': 'Health Connect permissions enabled.',
+  'tracking_permission_partial':
+      'Partial permissions enabled. Some data may not appear.',
+  'tracking_permission_denied':
+      'Permission not granted. Enable access in Health Connect.',
+  'tracking_permission_needed':
+      'Allow Health Connect access to read steps, exercises, and calories burned.',
+  'tracking_no_activity_data': 'No activity found for this day yet.',
+  'tracking_activity_synced_message':
+      '{steps} steps and {minutes} exercise minutes synced today.',
+  'tracking_synced_today': 'Synced today',
+  'tracking_metric_calories': 'kcal',
+  'tracking_metric_steps': 'steps',
+  'tracking_metric_minutes': 'min',
+  'tracking_steps_short': 'steps',
+  'tracking_minutes_short': 'min',
+  'tracking_permission_active_calories': 'Active calories',
+  'tracking_permission_steps': 'Steps',
+  'tracking_permission_exercises': 'Exercises',
+  'tracking_permission_body_measures': 'Body measures',
+  'popular_tracking_apps': 'Most used apps',
+  'tracking_desc_all_day': 'Steps, workouts, and daily calories',
+  'tracking_desc_wearables': 'Wearables, workouts, and body metrics',
+  'tracking_desc_running': 'Runs, rides, and exercises',
+  'tracking_desc_body': 'Weight, body composition, and health',
+  'tracking_action_open': 'Open',
+  'tracking_action_install': 'Install',
+  'tracking_installed': 'Installed',
+  'tracking_store': 'Play Store',
+  'tracking_app_opened': 'Opening {app}.',
+  'tracking_app_store_opened': 'Opening Play Store to install {app}.',
+  'tracking_app_open_error': 'Could not open {app}.',
+  'tracking_not_available': 'This feature is available on Android.',
 
   // Statistics Screen
   'stats_7_days': '7 days',

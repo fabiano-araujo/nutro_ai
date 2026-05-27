@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'nutrition_assistant_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
+import 'nutrition_goals_wizard_screen.dart';
 import 'personalized_diet_screen.dart';
 import 'diet_benchmark_screen.dart';
 import 'food_search_screen.dart';
@@ -103,6 +104,7 @@ class _MainNavigationState extends State<MainNavigation> {
   // Controle para evitar chamadas duplicadas de auth
   bool _authInitialized = false;
   String? _configuredAuthKey;
+  String? _initialGoalsPromptAuthKey;
   final UserAppStateService _appStateService = UserAppStateService();
 
   @override
@@ -231,6 +233,7 @@ class _MainNavigationState extends State<MainNavigation> {
       }
     } else {
       _configuredAuthKey = null;
+      _initialGoalsPromptAuthKey = null;
       print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
       print('[🔄 AUTH_DATA] Limpando auth de todos os providers...');
 
@@ -342,6 +345,48 @@ class _MainNavigationState extends State<MainNavigation> {
       await mealTypesProvider.setAuth(token, userId);
       await foodHistoryProvider.setAuth(token, userId);
     }
+
+    await _maybeOpenInitialGoalsWizard(
+      token: token,
+      userId: userId,
+      nutritionGoalsProvider: nutritionGoalsProvider,
+    );
+  }
+
+  Future<void> _maybeOpenInitialGoalsWizard({
+    required String token,
+    required int userId,
+    required NutritionGoalsProvider nutritionGoalsProvider,
+  }) async {
+    if (!mounted) return;
+
+    final authService = context.read<AuthService>();
+    if (!authService.isAuthenticated ||
+        authService.currentUser?.id != userId ||
+        authService.token != token) {
+      return;
+    }
+
+    final authKey = '$userId:$token';
+    if (_initialGoalsPromptAuthKey == authKey) {
+      return;
+    }
+
+    await nutritionGoalsProvider.ensureLoaded();
+    if (!mounted || nutritionGoalsProvider.hasConfiguredGoals) {
+      return;
+    }
+
+    _initialGoalsPromptAuthKey = authKey;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => const NutritionGoalsWizardScreen(),
+        ),
+      );
+    });
   }
 
   void _onItemTapped(int index) {

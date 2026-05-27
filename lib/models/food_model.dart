@@ -4,16 +4,24 @@ import 'FoodAllergen.dart';
 
 /// Origem dos macros exibidos no card.
 /// - [favorite]: alimento favorito do usuario (prioridade maxima).
+/// - [manual]: macros personalizados pelo usuario neste alimento.
 /// - [recent]: alimento ja usado antes pelo usuario.
+/// - [catalog]: alimento encontrado no banco/catalogo nutricional.
 /// - [ai]: estimativa gerada pela IA (fallback).
-enum FoodSource { favorite, recent, ai }
+enum FoodSource { favorite, manual, recent, catalog, ai }
 
 FoodSource foodSourceFromString(String? value) {
   switch (value) {
     case 'favorite':
       return FoodSource.favorite;
+    case 'manual':
+    case 'custom':
+    case 'personalized':
+      return FoodSource.manual;
     case 'recent':
       return FoodSource.recent;
+    case 'catalog':
+      return FoodSource.catalog;
     default:
       return FoodSource.ai;
   }
@@ -23,8 +31,12 @@ String foodSourceToString(FoodSource source) {
   switch (source) {
     case FoodSource.favorite:
       return 'favorite';
+    case FoodSource.manual:
+      return 'manual';
     case FoodSource.recent:
       return 'recent';
+    case FoodSource.catalog:
+      return 'catalog';
     case FoodSource.ai:
       return 'ai';
   }
@@ -44,7 +56,7 @@ class Food {
   final String? amount;
   final String emoji;
 
-  // Origem dos macros (favorito > recente > IA)
+  // Origem dos macros (favorito > manual > recente > catalogo > IA)
   final FoodSource source;
   final int? sourceId;
 
@@ -76,32 +88,26 @@ class Food {
   });
 
   // Computed properties for backward compatibility
+  Nutrient? get primaryNutrient {
+    final values = nutrients;
+    if (values == null || values.isEmpty) return null;
+    return values.first;
+  }
+
   int get calories {
-    if (nutrients != null && nutrients!.isNotEmpty) {
-      return nutrients!.first.calories?.toInt() ?? 0;
-    }
-    return 0;
+    return primaryNutrient?.calories?.toInt() ?? 0;
   }
 
   double get protein {
-    if (nutrients != null && nutrients!.isNotEmpty) {
-      return nutrients!.first.protein ?? 0.0;
-    }
-    return 0.0;
+    return primaryNutrient?.protein ?? 0.0;
   }
 
   double get carbs {
-    if (nutrients != null && nutrients!.isNotEmpty) {
-      return nutrients!.first.carbohydrate ?? 0.0;
-    }
-    return 0.0;
+    return primaryNutrient?.carbohydrate ?? 0.0;
   }
 
   double get fat {
-    if (nutrients != null && nutrients!.isNotEmpty) {
-      return nutrients!.first.fat ?? 0.0;
-    }
-    return 0.0;
+    return primaryNutrient?.fat ?? 0.0;
   }
 
   String? get imageUrl => photo;
@@ -172,6 +178,8 @@ class Food {
     String? emoji,
     FoodSource? source,
     int? sourceId,
+    bool clearSourceId = false,
+    bool clearAiNutrients = false,
     List<Nutrient>? aiNutrients,
     List<Nutrient>? nutrients,
     List<FoodRegion>? foodRegions,
@@ -188,8 +196,8 @@ class Food {
       amount: amount ?? this.amount,
       emoji: emoji ?? this.emoji,
       source: source ?? this.source,
-      sourceId: sourceId ?? this.sourceId,
-      aiNutrients: aiNutrients ?? this.aiNutrients,
+      sourceId: clearSourceId ? null : sourceId ?? this.sourceId,
+      aiNutrients: clearAiNutrients ? null : aiNutrients ?? this.aiNutrients,
       nutrients: nutrients ?? this.nutrients,
       foodRegions: foodRegions ?? this.foodRegions,
       foodAllergens: foodAllergens ?? this.foodAllergens,

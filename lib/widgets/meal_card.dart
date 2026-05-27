@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../models/food_model.dart';
@@ -12,7 +13,11 @@ import '../providers/meal_types_provider.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
+import '../util/app_constants.dart';
 import '../i18n/language_controller.dart';
+import '../utils/food_json_parser.dart';
+import '../widgets/food_icon.dart';
+import '../utils/food_emoji_resolver.dart';
 
 class MealCard extends StatefulWidget {
   final Meal meal;
@@ -243,86 +248,21 @@ class _MealCardState extends State<MealCard> {
     });
 
     try {
-      final aiService = AIService();
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final languageController =
-          Provider.of<LanguageController>(context, listen: false);
+      final updatedFood = await _generateFoodNutritionFromAI(
+        _currentMeal.foods[index],
+        foodDescription,
+      );
 
-      final userId = authService.currentUser?.id.toString() ?? '';
-      final languageCode =
-          languageController.localeToString(languageController.currentLocale);
+      if (updatedFood != null) {
+        setState(() {
+          final List<Food> updatedFoods = List.from(_currentMeal.foods);
+          updatedFoods[index] = updatedFood;
+          _currentMeal = _currentMeal.copyWith(foods: updatedFoods);
+          _loadingFoods[index] = false;
+        });
 
-      // Prompt simples - o servidor injeta instruções de idioma automaticamente
-      final prompt = '$foodDescription';
-
-      String fullResponse = '';
-
-      await for (final chunk in aiService.getAnswerStream(
-        prompt,
-        languageCode: languageCode,
-        quality: 'bom',
-        userId: userId,
-        agentType: 'nutrition',
-      )) {
-        fullResponse += chunk;
-      }
-
-      // Tentar parsear o JSON da resposta
-      final jsonMatch =
-          RegExp(r'\{[\s\S]*"foods"[\s\S]*\}').firstMatch(fullResponse);
-      if (jsonMatch != null) {
-        final jsonStr = jsonMatch.group(0)!;
-        final decoded = jsonDecode(jsonStr);
-
-        if (decoded is Map && decoded.containsKey('foods')) {
-          final foodsList = decoded['foods'] as List;
-          if (foodsList.isNotEmpty) {
-            final foodData = foodsList.first as Map<String, dynamic>;
-            final macros = foodData['macros'] as Map<String, dynamic>?;
-            final detectedName = foodData['name'] as String? ?? foodDescription;
-            final detectedPortion = foodData['portion'] as String? ?? '';
-
-            if (macros != null) {
-              final newNutrient = Nutrient(
-                idFood: 0,
-                servingSize: _parseDouble(macros['serving_size']) ??
-                    100, // Default fallback
-                servingUnit: macros['serving_unit'] as String? ?? 'g',
-                calories: _parseDouble(macros['calories']),
-                protein: _parseDouble(macros['protein']),
-                carbohydrate:
-                    _parseDouble(macros['carbohydrate'] ?? macros['carbs']),
-                fat: _parseDouble(macros['fat']),
-                saturatedFat: _parseDouble(macros['saturated_fat']),
-                transFat: _parseDouble(macros['trans_fat']),
-                dietaryFiber: _parseDouble(macros['dietary_fiber']),
-                sugars: _parseDouble(macros['sugars']),
-                cholesterol: _parseDouble(macros['cholesterol']),
-                sodium: _parseDouble(macros['sodium']),
-                potassium: _parseDouble(macros['potassium']),
-                calcium: _parseDouble(macros['calcium']),
-                iron: _parseDouble(macros['iron']),
-              );
-
-              final updatedFood = _currentMeal.foods[index].copyWith(
-                name: detectedName,
-                amount: detectedPortion,
-                emoji: _getFoodEmoji(detectedName),
-                nutrients: [newNutrient],
-              );
-
-              setState(() {
-                final List<Food> updatedFoods = List.from(_currentMeal.foods);
-                updatedFoods[index] = updatedFood;
-                _currentMeal = _currentMeal.copyWith(foods: updatedFoods);
-                _loadingFoods[index] = false;
-              });
-
-              _notifyMealUpdated();
-              return;
-            }
-          }
-        }
+        _notifyMealUpdated();
+        return;
       }
 
       // Se falhar, reverte para o texto original sem macros
@@ -341,6 +281,83 @@ class _MealCardState extends State<MealCard> {
           _loadingFoods[index] = false;
         });
       }
+    }
+  }
+
+  Future<Food?> _generateFoodNutritionFromAI(
+    Food originalFood,
+    String foodDescription,
+  ) async {
+    try {
+      final aiService = AIService();
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final languageController =
+          Provider.of<LanguageController>(context, listen: false);
+
+      final userId = authService.currentUser?.id.toString() ?? '';
+      final languageCode =
+          languageController.localeToString(languageController.currentLocale);
+
+      String fullResponse = '';
+
+      await for (final chunk in aiService.getAnswerStream(
+        foodDescription,
+        languageCode: languageCode,
+        quality: 'bom',
+        userId: userId,
+        agentType: 'nutrition',
+      )) {
+        fullResponse += chunk;
+      }
+
+      final jsonMatch =
+          RegExp(r'\{[\s\S]*"foods"[\s\S]*\}').firstMatch(fullResponse);
+      if (jsonMatch == null) return null;
+
+      final decoded = jsonDecode(jsonMatch.group(0)!);
+      if (decoded is! Map || !decoded.containsKey('foods')) return null;
+
+      final foodsList = decoded['foods'] as List;
+      if (foodsList.isEmpty || foodsList.first is! Map) return null;
+
+      final foodData = Map<String, dynamic>.from(foodsList.first as Map);
+      final macros = foodData['macros'] as Map<String, dynamic>?;
+      if (macros == null) return null;
+
+      final detectedName =
+          foodData['name'] as String? ?? originalFood.name;
+      final detectedPortion = foodData['portion'] as String? ?? '';
+      final newNutrient = Nutrient(
+        idFood: 0,
+        servingSize: _parseDouble(macros['serving_size']) ?? 100,
+        servingUnit: macros['serving_unit'] as String? ?? 'g',
+        calories: _parseDouble(macros['calories']),
+        protein: _parseDouble(macros['protein']),
+        carbohydrate: _parseDouble(macros['carbohydrate'] ?? macros['carbs']),
+        fat: _parseDouble(macros['fat']),
+        saturatedFat: _parseDouble(macros['saturated_fat']),
+        transFat: _parseDouble(macros['trans_fat']),
+        dietaryFiber: _parseDouble(macros['dietary_fiber']),
+        sugars: _parseDouble(macros['sugars']),
+        cholesterol: _parseDouble(macros['cholesterol']),
+        sodium: _parseDouble(macros['sodium']),
+        potassium: _parseDouble(macros['potassium']),
+        calcium: _parseDouble(macros['calcium']),
+        iron: _parseDouble(macros['iron']),
+      );
+
+      return originalFood.copyWith(
+        name: detectedName,
+        amount: detectedPortion.isEmpty ? originalFood.amount : detectedPortion,
+        emoji: _getFoodEmoji(detectedName),
+        nutrients: [newNutrient],
+        source: FoodSource.ai,
+        clearSourceId: true,
+        clearAiNutrients: true,
+      );
+    } catch (e) {
+      print('Erro ao gerar nutrição da IA: $e');
+      return null;
     }
   }
 
@@ -375,18 +392,7 @@ class _MealCardState extends State<MealCard> {
   }
 
   String _getFoodEmoji(String foodName) {
-    final name = foodName.toLowerCase();
-    if (name.contains('chicken') || name.contains('frango')) return '🍗';
-    if (name.contains('beef') || name.contains('carne')) return '🥩';
-    if (name.contains('fish') || name.contains('peixe')) return '🐟';
-    if (name.contains('rice') || name.contains('arroz')) return '🍚';
-    if (name.contains('bread') || name.contains('pão')) return '🍞';
-    if (name.contains('salad') || name.contains('salada')) return '🥗';
-    if (name.contains('egg') || name.contains('ovo')) return '🥚';
-    if (name.contains('milk') || name.contains('leite')) return '🥛';
-    if (name.contains('banana')) return '🍌';
-    if (name.contains('apple') || name.contains('maçã')) return '🍎';
-    return '🍽️';
+    return resolveFoodEmoji(foodName);
   }
 
   /// Abre diretamente a edição de todos os alimentos
@@ -588,8 +594,7 @@ class _MealCardState extends State<MealCard> {
   /// caindo em 🍽️ se não houver match.
   String _getMealEmoji() {
     try {
-      final provider =
-          Provider.of<MealTypesProvider>(context, listen: false);
+      final provider = Provider.of<MealTypesProvider>(context, listen: false);
       for (final config in provider.mealTypes) {
         if (_getMealTypeFromId(config.id) == _currentMeal.type) {
           return config.emoji;
@@ -663,8 +668,7 @@ class _MealCardState extends State<MealCard> {
     // elevation 2 + sombra preta 10%, radius 16 e borda fina interna.
     final borderColor =
         isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
-    final cardColor =
-        isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
     final card = Container(
       margin: const EdgeInsets.only(top: 0, bottom: 12),
       child: Material(
@@ -681,313 +685,318 @@ class _MealCardState extends State<MealCard> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor),
           ),
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOut,
-        alignment: Alignment.topCenter,
-        child: AnimatedCrossFade(
-          duration: const Duration(milliseconds: 200),
-          firstCurve: Curves.easeOut,
-          secondCurve: Curves.easeOut,
-          sizeCurve: Curves.easeInOut,
-          crossFadeState: _simpleView
-              ? CrossFadeState.showFirst
-              : CrossFadeState.showSecond,
-          // ── RECOLHIDO: linha única estilo balão (como era antes) ──
-          firstChild: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() => _simpleView = false),
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                    16, topPadding == 0 ? 14 : topPadding, 8, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: AnimatedCrossFade(
+              duration: const Duration(milliseconds: 200),
+              firstCurve: Curves.easeOut,
+              secondCurve: Curves.easeOut,
+              sizeCurve: Curves.easeInOut,
+              crossFadeState: _simpleView
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
+              // ── RECOLHIDO: linha única estilo balão (como era antes) ──
+              firstChild: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => setState(() => _simpleView = false),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        16, topPadding == 0 ? 14 : topPadding, 8, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                _currentMeal.totalCalories.toStringAsFixed(0),
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87,
-                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    _currentMeal.totalCalories
+                                        .toStringAsFixed(0),
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'kcal',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDarkMode
+                                          ? Colors.white54
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(height: 2),
                               Text(
-                                'kcal',
+                                _currentMeal.foods.isEmpty
+                                    ? getMealTypeName(_currentMeal.type)
+                                    : '${_currentMeal.foods.map((f) => f.name).join(' · ')} · ${getMealTypeName(_currentMeal.type)}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   color: isDarkMode
-                                      ? Colors.white54
+                                      ? Colors.white60
                                       : Colors.black54,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _currentMeal.foods.isEmpty
-                                ? getMealTypeName(_currentMeal.type)
-                                : '${_currentMeal.foods.map((f) => f.name).join(' · ')} · ${getMealTypeName(_currentMeal.type)}',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            'Ver detalhes',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDarkMode
-                                  ? Colors.white60
-                                  : Colors.black54,
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        'Ver detalhes',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ),
+              // ── EXPANDIDO: calorias + macros em cima, spinner embaixo, lista ──
+              // Tap em qualquer área "vazia" colapsa o card de volta.
+              secondChild: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => setState(() => _simpleView = true),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Linha 1: Calorias grandes + Spinner da refeição (à direita)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            16, topPadding == 0 ? 12 : topPadding, 16, 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Calorias grandes (mesma tipografia do colapsado)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  _currentMeal.totalCalories.toStringAsFixed(0),
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    height: 1,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'kcal',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDarkMode
+                                        ? Colors.white54
+                                        : Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 16),
+                            // Spinner real do tipo de refeição (ocupa o resto)
+                            Expanded(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _showMealTypeBottomSheet,
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(12, 8, 6, 8),
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode
+                                          ? Colors.white.withValues(alpha: 0.04)
+                                          : Colors.black
+                                              .withValues(alpha: 0.025),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: borderColor),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          _getMealEmoji(),
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            getMealTypeName(_currentMeal.type),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDarkMode
+                                                  ? AppTheme.darkTextColor
+                                                  : AppTheme.textPrimaryColor,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Icon(
+                                          Icons.arrow_drop_down_rounded,
+                                          size: 22,
+                                          color: secondaryTextColor.withValues(
+                                              alpha: 0.7),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      // Linha 2: Macros + ícones de editar/menu ao lado
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 4, 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  _buildCompactMacro(
+                                    icon: MacroTheme.proteinIcon,
+                                    value: _currentMeal.totalProtein
+                                        .toStringAsFixed(1),
+                                    unit: 'g prot',
+                                    color: MacroTheme.proteinColor,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                  _buildCompactMacro(
+                                    icon: MacroTheme.carbsIcon,
+                                    value: _currentMeal.totalCarbs
+                                        .toStringAsFixed(1),
+                                    unit: 'g carb',
+                                    color: MacroTheme.carbsColor,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                  _buildCompactMacro(
+                                    icon: MacroTheme.fatIcon,
+                                    value: _currentMeal.totalFat
+                                        .toStringAsFixed(1),
+                                    unit: 'g gord',
+                                    color: MacroTheme.fatColor,
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            // Ícone de editar
+                            Tooltip(
+                              message: context.tr.translate('edit_foods'),
+                              child: IconButton(
+                                onPressed: _showEditOptionsMenu,
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(),
+                                icon: Icon(
+                                  Icons.edit_outlined,
+                                  size: 18,
+                                  color:
+                                      secondaryTextColor.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            // Menu de ações
+                            IconButton(
+                              onPressed: _showMoreOptionsMenu,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                              icon: Icon(
+                                Icons.more_horiz_rounded,
+                                size: 18,
+                                color:
+                                    secondaryTextColor.withValues(alpha: 0.7),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                        ),
+                      ),
+                      if (_currentMeal.foods.isNotEmpty) ...[
+                        // Divisor com gradiente
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                (isDarkMode ? Colors.white : Colors.black)
+                                    .withValues(alpha: 0.08),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Lista de alimentos
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ..._currentMeal.foods
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                final index = entry.key;
+                                final food = entry.value;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: _FoodItem(
+                                    food: food,
+                                    isDarkMode: isDarkMode,
+                                    onRegenerateWithAI:
+                                        _generateFoodNutritionFromAI,
+                                    onSwap: (newFood) =>
+                                        _replaceFood(index, newFood),
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          // ── EXPANDIDO: calorias + macros em cima, spinner embaixo, lista ──
-          // Tap em qualquer área "vazia" colapsa o card de volta.
-          secondChild: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() => _simpleView = true),
-              borderRadius: BorderRadius.circular(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Linha 1: Calorias grandes + Spinner da refeição (à direita)
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                        16, topPadding == 0 ? 12 : topPadding, 16, 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Calorias grandes (mesma tipografia do colapsado)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              _currentMeal.totalCalories.toStringAsFixed(0),
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: isDarkMode
-                                    ? Colors.white
-                                    : Colors.black87,
-                                height: 1,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'kcal',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDarkMode
-                                    ? Colors.white54
-                                    : Colors.black54,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        // Spinner real do tipo de refeição (ocupa o resto)
-                        Expanded(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: _showMealTypeBottomSheet,
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.fromLTRB(12, 8, 6, 8),
-                                decoration: BoxDecoration(
-                                  color: isDarkMode
-                                      ? Colors.white.withValues(alpha: 0.04)
-                                      : Colors.black.withValues(alpha: 0.025),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: borderColor),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      _getMealEmoji(),
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        getMealTypeName(_currentMeal.type),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDarkMode
-                                              ? AppTheme.darkTextColor
-                                              : AppTheme.textPrimaryColor,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Icon(
-                                      Icons.arrow_drop_down_rounded,
-                                      size: 22,
-                                      color: secondaryTextColor.withValues(
-                                          alpha: 0.7),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Linha 2: Macros + ícones de editar/menu ao lado
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 4, 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildCompactMacro(
-                                icon: MacroTheme.proteinIcon,
-                                value: _currentMeal.totalProtein
-                                    .toStringAsFixed(1),
-                                unit: 'g prot',
-                                color: MacroTheme.proteinColor,
-                                isDarkMode: isDarkMode,
-                              ),
-                              _buildCompactMacro(
-                                icon: MacroTheme.carbsIcon,
-                                value: _currentMeal.totalCarbs
-                                    .toStringAsFixed(1),
-                                unit: 'g carb',
-                                color: MacroTheme.carbsColor,
-                                isDarkMode: isDarkMode,
-                              ),
-                              _buildCompactMacro(
-                                icon: MacroTheme.fatIcon,
-                                value: _currentMeal.totalFat
-                                    .toStringAsFixed(1),
-                                unit: 'g gord',
-                                color: MacroTheme.fatColor,
-                                isDarkMode: isDarkMode,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        // Ícone de editar
-                        Tooltip(
-                          message: context.tr.translate('edit_foods'),
-                          child: IconButton(
-                            onPressed: _showEditOptionsMenu,
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.all(4),
-                            constraints: const BoxConstraints(),
-                            icon: Icon(
-                              Icons.edit_outlined,
-                              size: 18,
-                              color: secondaryTextColor.withValues(
-                                  alpha: 0.7),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        // Menu de ações
-                        IconButton(
-                          onPressed: _showMoreOptionsMenu,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.all(4),
-                          constraints: const BoxConstraints(),
-                          icon: Icon(
-                            Icons.more_horiz_rounded,
-                            size: 18,
-                            color:
-                                secondaryTextColor.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                    ),
-                  ),
-                  if (_currentMeal.foods.isNotEmpty) ...[
-                    // Divisor com gradiente
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            (isDarkMode ? Colors.white : Colors.black)
-                                .withValues(alpha: 0.08),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Lista de alimentos
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ..._currentMeal.foods
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                            final index = entry.key;
-                            final food = entry.value;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: _FoodItem(
-                                food: food,
-                                isDarkMode: isDarkMode,
-                                onSwap: (newFood) =>
-                                    _replaceFood(index, newFood),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
         ), // fim do Container interno (com borda)
       ), // fim do Material (elevation)
     );
@@ -1262,9 +1271,10 @@ class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
                                 prefixIcon: Padding(
                                   padding:
                                       const EdgeInsets.only(left: 12, right: 8),
-                                  child: Text(
-                                    food.emoji,
-                                    style: const TextStyle(fontSize: 22),
+                                  child: FoodIcon(
+                                    name: food.name,
+                                    emoji: food.emoji,
+                                    size: 24,
                                   ),
                                 ),
                                 prefixIconConstraints:
@@ -1425,22 +1435,281 @@ class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
 }
 
 enum _FoodSourceAction {
+  editDetails,
   favorite,
   recent,
+  catalog,
   ai,
   manual,
+}
+
+class _FoodSourcePickerResult {
+  final _FoodSourceAction action;
+  final Map<String, dynamic>? data;
+
+  const _FoodSourcePickerResult(this.action, [this.data]);
+}
+
+class _FoodDetailsEditResult {
+  final String name;
+  final String amount;
+
+  const _FoodDetailsEditResult({
+    required this.name,
+    required this.amount,
+  });
+}
+
+class _FoodDetailsEditSheet extends StatefulWidget {
+  final Food food;
+  final bool isDarkMode;
+
+  const _FoodDetailsEditSheet({
+    Key? key,
+    required this.food,
+    required this.isDarkMode,
+  }) : super(key: key);
+
+  @override
+  State<_FoodDetailsEditSheet> createState() => _FoodDetailsEditSheetState();
+}
+
+class _FoodDetailsEditSheetState extends State<_FoodDetailsEditSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _amountController;
+  bool _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.food.name);
+    _amountController = TextEditingController(text: widget.food.amount ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  void _close([_FoodDetailsEditResult? result]) {
+    if (_closing) return;
+    _closing = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pop(result);
+    });
+  }
+
+  void _save() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    _close(
+      _FoodDetailsEditResult(
+        name: name,
+        amount: _amountController.text.trim(),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required BuildContext context,
+    required String label,
+    required String helper,
+    required IconData icon,
+  }) {
+    final isDark = widget.isDarkMode;
+    final colorScheme = Theme.of(context).colorScheme;
+    final borderColor = isDark ? AppTheme.darkBorderColor : AppTheme.dividerColor;
+
+    return InputDecoration(
+      labelText: label,
+      helperText: helper,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: isDark ? AppTheme.darkComponentColor : const Color(0xFFF5F7FA),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.8),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDarkMode;
+    final colorScheme = Theme.of(context).colorScheme;
+    final bg = isDark ? AppTheme.darkCardColor : Colors.white;
+    final textColor = isDark ? Colors.white : AppTheme.textPrimaryColor;
+    final secondary =
+        isDark ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _close();
+      },
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: secondary.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    FoodIcon(
+                      name: widget.food.name,
+                      emoji: widget.food.emoji,
+                      size: 26,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        context.tr.translate('edit_food'),
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.sentences,
+                  textInputAction: TextInputAction.next,
+                  style: TextStyle(color: textColor),
+                  decoration: _inputDecoration(
+                    context: context,
+                    label: context.tr.translate('food_name'),
+                    helper: context.tr.translate('edit_food_info'),
+                    icon: Icons.restaurant_menu_rounded,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _amountController,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _save(),
+                  style: TextStyle(color: textColor),
+                  decoration: _inputDecoration(
+                    context: context,
+                    label: context.tr.translate('serving'),
+                    helper: context.tr.translate('edit_amount_helper'),
+                    icon: Icons.scale_rounded,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: _close,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          foregroundColor: secondary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: secondary.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          context.tr.translate('cancel'),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _save,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          context.tr.translate('save'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _FoodItem extends StatefulWidget {
   final Food food;
   final bool isDarkMode;
   final ValueChanged<Food>? onSwap;
+  final Future<Food?> Function(Food food, String description)?
+      onRegenerateWithAI;
 
   const _FoodItem({
     Key? key,
     required this.food,
     required this.isDarkMode,
     this.onSwap,
+    this.onRegenerateWithAI,
   }) : super(key: key);
 
   @override
@@ -1460,11 +1729,23 @@ class _FoodItemState extends State<_FoodItem> {
           color: const Color(0xFFFFB300),
           label: 'Favorito',
         );
+      case FoodSource.manual:
+        return (
+          icon: Icons.tune_rounded,
+          color: primary,
+          label: 'Personalizado',
+        );
       case FoodSource.recent:
         return (
           icon: Icons.history_rounded,
           color: primary,
           label: 'Recente',
+        );
+      case FoodSource.catalog:
+        return (
+          icon: Icons.storage_rounded,
+          color: const Color(0xFF2563EB),
+          label: 'Fonte',
         );
       case FoodSource.ai:
         return (
@@ -1475,17 +1756,25 @@ class _FoodItemState extends State<_FoodItem> {
     }
   }
 
-  Food _applyAlternativeMacros(Map<String, dynamic> alt, FoodSource source) {
-    final original = widget.food;
+  Food _applyAlternativeMacros(
+    Map<String, dynamic> alt,
+    FoodSource source, {
+    Food? food,
+  }) {
+    final original = food ?? widget.food;
     final originalNutrient = original.nutrients?.isNotEmpty == true
         ? original.nutrients!.first
         : null;
 
-    final baseAmount = (alt['baseAmount'] is num)
-        ? (alt['baseAmount'] as num).toDouble()
-        : double.tryParse('${alt['baseAmount']}') ?? 100.0;
-    final foodAmount = originalNutrient?.servingSize ?? 100.0;
-    final ratio = baseAmount > 0 ? foodAmount / baseAmount : 1.0;
+    final parsedBaseAmount = _parseNumeric(alt['baseAmount']);
+    final baseAmount = parsedBaseAmount > 0 ? parsedBaseAmount : 100.0;
+    final baseUnit = _normalizeUnit(_readText(alt['baseUnit']) ?? 'g');
+    final targetServing = _targetServingForAlternative(
+      original,
+      originalNutrient,
+      baseUnit,
+    );
+    final ratio = baseAmount > 0 ? targetServing.amount / baseAmount : 1.0;
 
     double parse(dynamic v) {
       if (v is num) return v.toDouble();
@@ -1501,8 +1790,8 @@ class _FoodItemState extends State<_FoodItem> {
 
     final updatedNutrient = Nutrient(
       idFood: originalNutrient?.idFood ?? 0,
-      servingSize: originalNutrient?.servingSize ?? 100.0,
-      servingUnit: originalNutrient?.servingUnit ?? 'g',
+      servingSize: targetServing.amount,
+      servingUnit: targetServing.unit,
       calories: calories,
       protein: protein,
       carbohydrate: carbs,
@@ -1522,32 +1811,347 @@ class _FoodItemState extends State<_FoodItem> {
     );
   }
 
+  ({double amount, String unit}) _targetServingForAlternative(
+    Food food,
+    Nutrient? originalNutrient,
+    String baseUnit,
+  ) {
+    final amountFromLabel = _extractAmountFromText(food.amount);
+    if (amountFromLabel != null &&
+        _areComparableUnits(amountFromLabel.unit, baseUnit)) {
+      return _convertServingToUnit(amountFromLabel, baseUnit);
+    }
+
+    final originalUnit = _normalizeUnit(originalNutrient?.servingUnit ?? '');
+    if (originalNutrient != null &&
+        originalNutrient.servingSize > 0 &&
+        _areComparableUnits(originalUnit, baseUnit)) {
+      return _convertServingToUnit(
+        (amount: originalNutrient.servingSize, unit: originalUnit),
+        baseUnit,
+      );
+    }
+
+    return (amount: 100.0, unit: baseUnit.isEmpty ? 'g' : baseUnit);
+  }
+
+  ({double amount, String unit}) _convertServingToUnit(
+    ({double amount, String unit}) serving,
+    String targetUnit,
+  ) {
+    final sourceUnit = _normalizeUnit(serving.unit);
+    final normalizedTarget = _normalizeUnit(targetUnit);
+    if (sourceUnit == normalizedTarget || normalizedTarget.isEmpty) {
+      return serving;
+    }
+
+    if (sourceUnit == 'oz' && normalizedTarget == 'g') {
+      return (amount: serving.amount * 28.3495, unit: normalizedTarget);
+    }
+    if (sourceUnit == 'g' && normalizedTarget == 'oz') {
+      return (amount: serving.amount / 28.3495, unit: normalizedTarget);
+    }
+    if (sourceUnit == 'fl oz' && normalizedTarget == 'ml') {
+      return (amount: serving.amount * 29.5735, unit: normalizedTarget);
+    }
+    if (sourceUnit == 'ml' && normalizedTarget == 'fl oz') {
+      return (amount: serving.amount / 29.5735, unit: normalizedTarget);
+    }
+
+    return serving;
+  }
+
+  ({double amount, String unit})? _extractAmountFromText(String? text) {
+    if (text == null || text.trim().isEmpty) return null;
+    final normalized = text.toLowerCase().replaceAll(',', '.');
+    final matches = RegExp(r'(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)\b')
+        .allMatches(normalized)
+        .toList();
+    if (matches.isEmpty) return null;
+
+    final match = matches.last;
+    final amount = double.tryParse(match.group(1) ?? '');
+    final unit = _normalizeUnit(match.group(2));
+    if (amount == null || amount <= 0 || unit.isEmpty) return null;
+
+    return (amount: amount, unit: unit);
+  }
+
   /// Reconstrói o food com os macros originais da IA preservados em
   /// [Food.aiNutrients]. Retorna null se não houver snapshot.
-  Food? _restoreAiMacros() {
-    final original = widget.food;
+  Food? _restoreAiMacros({Food? food}) {
+    final original = food ?? widget.food;
     final snapshot = original.aiNutrients;
     if (snapshot == null || snapshot.isEmpty) return null;
     return original.copyWith(
       nutrients: snapshot,
       source: FoodSource.ai,
       sourceId: null,
+      clearSourceId: true,
     );
   }
 
-  Future<void> _openSourcePicker() async {
+  Future<List<Map<String, dynamic>>> _fetchCatalogSuggestions({
+    Food? food,
+  }) async {
+    final sourceFood = food ?? widget.food;
+    final query = sourceFood.name.trim();
+    if (query.isEmpty) return const [];
+
+    final locale = Localizations.localeOf(context);
+    final languageCode = locale.languageCode;
+    final regionCode = locale.countryCode ?? languageCode.toUpperCase();
+    final uri = Uri.parse('${AppConstants.DIET_API_BASE_URL}/food/search')
+        .replace(queryParameters: {
+      'q': query,
+      'region': regionCode,
+      'language': '',
+      'limit': '8',
+      'index': '0',
+    });
+
+    final response = await http.get(uri);
+    if (response.statusCode != 200) {
+      debugPrint(
+        '[_FoodItem] busca de fontes do banco falhou: ${response.statusCode}',
+      );
+      return const [];
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) return const [];
+
+    final suggestions = <Map<String, dynamic>>[];
+    final seen = <String>{};
+
+    for (final item in decoded) {
+      if (item is! Map) continue;
+      final suggestion = _catalogSuggestionFromApi(
+        Map<String, dynamic>.from(item),
+        sourceFood,
+      );
+      if (suggestion == null) continue;
+
+      final dedupeKey = [
+        suggestion['name'],
+        suggestion['brand'],
+        suggestion['sourceLabel'],
+        suggestion['calories'],
+        suggestion['protein'],
+        suggestion['carbs'],
+        suggestion['fat'],
+      ].join('|').toLowerCase();
+      if (!seen.add(dedupeKey)) continue;
+
+      suggestions.add(suggestion);
+      if (suggestions.length >= 8) break;
+    }
+
+    return suggestions;
+  }
+
+  Map<String, dynamic>? _catalogSuggestionFromApi(
+    Map<String, dynamic> data,
+    Food food,
+  ) {
+    final foodData = data['food'] is Map
+        ? Map<String, dynamic>.from(data['food'] as Map)
+        : const <String, dynamic>{};
+    final nutrientList =
+        foodData['nutrient'] is List ? foodData['nutrient'] as List : const [];
+    if (nutrientList.isEmpty || nutrientList.first is! Map) return null;
+
+    final nutrient = Map<String, dynamic>.from(nutrientList.first as Map);
+    final calories = _parseNumeric(nutrient['calories']);
+    final protein = _parseNumeric(nutrient['protein']);
+    final carbs = _parseNumeric(nutrient['carbohydrate']);
+    final fat = _parseNumeric(nutrient['fat']);
+
+    if (calories <= 0 && protein <= 0 && carbs <= 0 && fat <= 0) {
+      return null;
+    }
+
+    final baseAmount = _parseNumeric(nutrient['serving_size']);
+    final baseUnit = _normalizeUnit(_readText(nutrient['serving_unit']) ?? 'g');
+    final normalizedBaseAmount = baseAmount > 0 ? baseAmount : 100.0;
+    final name = _readText(data['translation']) ??
+        _readText(foodData['name']) ??
+        food.name;
+    final portion = _preferredCatalogPortion(data['portion']);
+    final servingProportion = portion == null
+        ? 1.0
+        : (_parseNumeric(portion['proportion']) > 0
+            ? _parseNumeric(portion['proportion'])
+            : 1.0);
+    final servingDescription = _readText(portion?['description']);
+
+    return {
+      'id': _parseInt(data['id']) ?? _parseInt(foodData['id']),
+      'foodId': _parseInt(foodData['id']),
+      'name': name,
+      if (_readText(foodData['brand']) != null) 'brand': foodData['brand'],
+      'sourceLabel': _catalogSourceLabel(data['catalog_source']),
+      'catalogSource': data['catalog_source'],
+      'baseAmount': normalizedBaseAmount,
+      'baseUnit': baseUnit.isEmpty ? 'g' : baseUnit,
+      'servingDescription': servingDescription,
+      'servingProportion': servingProportion,
+      'servingAmount': normalizedBaseAmount * servingProportion,
+      'servingUnit': baseUnit.isEmpty ? 'g' : baseUnit,
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'fiber': _parseNumeric(nutrient['dietary_fiber']),
+    };
+  }
+
+  Map<String, dynamic>? _preferredCatalogPortion(dynamic rawPortions) {
+    if (rawPortions is! List || rawPortions.isEmpty) return null;
+
+    final portions = rawPortions
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .where((item) => _parseNumeric(item['proportion']) > 0)
+        .toList();
+    if (portions.isEmpty) return null;
+
+    for (final portion in portions) {
+      final proportion = _parseNumeric(portion['proportion']);
+      final description = _readText(portion['description'])?.toLowerCase();
+      final isBasePortion = proportion == 1.0 &&
+          (description == null ||
+              RegExp(r'^100\s*(g|ml)$').hasMatch(description));
+      if (!isBasePortion) return portion;
+    }
+
+    return portions.first;
+  }
+
+  double _parseNumeric(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String)
+      return double.tryParse(value.replaceAll(',', '.')) ?? 0;
+    return 0;
+  }
+
+  String _normalizeUnit(dynamic value) {
+    final unit =
+        value?.toString().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    final trimmed = unit?.trim() ?? '';
+    if (trimmed == 'floz') return 'fl oz';
+    return trimmed;
+  }
+
+  bool _areComparableUnits(String left, String right) {
+    final normalizedLeft = _normalizeUnit(left);
+    final normalizedRight = _normalizeUnit(right);
+    if (normalizedLeft == normalizedRight) return true;
+    return _unitFamily(normalizedLeft) == _unitFamily(normalizedRight);
+  }
+
+  String _unitFamily(String unit) {
+    switch (_normalizeUnit(unit)) {
+      case 'g':
+      case 'oz':
+        return 'weight';
+      case 'ml':
+      case 'fl oz':
+        return 'volume';
+      default:
+        return unit;
+    }
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String? _readText(dynamic value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
+  String _catalogSourceLabel(dynamic value) {
+    switch (value?.toString()) {
+      case 'fatsecret':
+        return 'FatSecret';
+      case 'open_food_facts':
+        return 'Open Food Facts';
+      case 'user':
+        return 'Usuários';
+      default:
+        return 'Banco Nutro';
+    }
+  }
+
+  String _catalogOptionTitle(
+    Map<String, dynamic> suggestion, {
+    Food? food,
+  }) {
+    final name = _readText(suggestion['name']) ?? (food ?? widget.food).name;
+    final brand = _readText(suggestion['brand']);
+    return brand == null ? name : '$name · $brand';
+  }
+
+  String _catalogOptionSubtitle(Map<String, dynamic> suggestion) {
+    final source = _readText(suggestion['sourceLabel']) ?? 'Banco Nutro';
+    final servingProportion = _parseNumeric(suggestion['servingProportion']);
+    final ratio = servingProportion > 0 ? servingProportion : 1.0;
+    final servingDescription = _readText(suggestion['servingDescription']) ??
+        _formatServingAmount(
+          _parseNumeric(suggestion['servingAmount']),
+          _readText(suggestion['servingUnit']) ?? 'g',
+        );
+    final baseServing = _formatServingAmount(
+      _parseNumeric(suggestion['baseAmount']),
+      _readText(suggestion['baseUnit']) ?? 'g',
+    );
+
+    final servingSummary = _formatMacroSummary(
+      calories: _parseNumeric(suggestion['calories']) * ratio,
+      protein: _parseNumeric(suggestion['protein']) * ratio,
+      carbs: _parseNumeric(suggestion['carbs']) * ratio,
+      fat: _parseNumeric(suggestion['fat']) * ratio,
+    );
+
+    if (ratio == 1.0) {
+      return '$source · $servingSummary (por $baseServing)';
+    }
+
+    return '$source · $servingSummary (por $servingDescription)\n'
+        'Base: ${_macrosSummary(suggestion)}';
+  }
+
+  String _currentFoodMacrosSummary({Food? food}) {
+    final sourceFood = food ?? widget.food;
+    return _formatMacroSummary(
+      calories: sourceFood.calories.toDouble(),
+      protein: sourceFood.protein,
+      carbs: sourceFood.carbs,
+      fat: sourceFood.fat,
+    );
+  }
+
+  Future<void> _openSourcePicker({Food? foodOverride}) async {
     if (_loadingAlternatives) return;
 
+    final sourceFood = foodOverride ?? widget.food;
     setState(() => _loadingAlternatives = true);
 
     Map<String, dynamic>? alternatives;
+    List<Map<String, dynamic>> catalogSuggestions = const [];
     try {
       final auth = Provider.of<AuthService>(context, listen: false);
       final token = auth.token;
       if (token != null && token.isNotEmpty) {
         final service = FavoriteFoodService(token: token);
-        alternatives = await service.getAlternatives(widget.food.name);
+        alternatives = await service.getAlternatives(sourceFood.name);
       }
+      catalogSuggestions = await _fetchCatalogSuggestions(food: sourceFood);
     } catch (e) {
       debugPrint('[_FoodItem] erro ao buscar alternativas: $e');
     }
@@ -1557,9 +2161,10 @@ class _FoodItemState extends State<_FoodItem> {
 
     final favorite = alternatives?['favorite'] as Map<String, dynamic>?;
     final recent = alternatives?['recent'] as Map<String, dynamic>?;
-    final currentSource = widget.food.source;
+    final currentSource = sourceFood.source;
+    var showAllCatalogSuggestions = false;
 
-    final action = await showModalBottomSheet<_FoodSourceAction>(
+    final action = await showModalBottomSheet<_FoodSourcePickerResult>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -1571,136 +2176,272 @@ class _FoodItemState extends State<_FoodItem> {
             isDark ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
         final primary = Theme.of(ctx).colorScheme.primary;
 
-        return Container(
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: secondary.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+        final maxSheetHeight = MediaQuery.sizeOf(ctx).height * 0.82;
+
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final visibleCatalogSuggestions = showAllCatalogSuggestions
+                ? catalogSuggestions
+                : catalogSuggestions.take(3).toList();
+            final hiddenCatalogCount =
+                catalogSuggestions.length - visibleCatalogSuggestions.length;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              Row(
-                children: [
-                  Text(widget.food.emoji, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.food.name,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: textColor,
-                      ),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              child: SafeArea(
+                top: false,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxSheetHeight),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: secondary.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            FoodIcon(
+                              name: sourceFood.name,
+                              emoji: sourceFood.emoji,
+                              size: 26,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                sourceFood.name,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: textColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Escolha a fonte dos macros',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: secondary.withValues(alpha: 0.85)),
+                        ),
+                        const SizedBox(height: 16),
+
+                        _SourceOption(
+                          icon: Icons.edit_note_rounded,
+                          iconColor: primary,
+                          title: 'Editar nome e porção',
+                          subtitle: (sourceFood.amount ?? '').trim().isEmpty
+                              ? context.tr.translate('serving')
+                              : sourceFood.amount!,
+                          selected: false,
+                          isDarkMode: isDark,
+                          onTap: () => Navigator.pop(
+                            ctx,
+                            const _FoodSourcePickerResult(
+                              _FoodSourceAction.editDetails,
+                            ),
+                          ),
+                        ),
+
+                        // Favorito
+                        if (favorite != null)
+                          _SourceOption(
+                            icon: Icons.star_rounded,
+                            iconColor: const Color(0xFFFFB300),
+                            title: 'Seu favorito',
+                            subtitle: _macrosSummary(favorite),
+                            selected: currentSource == FoodSource.favorite,
+                            isDarkMode: isDark,
+                            onTap: () => Navigator.pop(
+                              ctx,
+                              const _FoodSourcePickerResult(
+                                _FoodSourceAction.favorite,
+                              ),
+                            ),
+                          ),
+
+                        if (currentSource == FoodSource.manual)
+                          _SourceOption(
+                            icon: Icons.tune_rounded,
+                            iconColor: primary,
+                            title: 'Personalizado',
+                            subtitle:
+                                '${_currentFoodMacrosSummary(food: sourceFood)} · editado manualmente',
+                            selected: true,
+                            isDarkMode: isDark,
+                            onTap: () => Navigator.pop(
+                              ctx,
+                              const _FoodSourcePickerResult(
+                                _FoodSourceAction.manual,
+                              ),
+                            ),
+                          ),
+
+                        // Recente
+                        if (recent != null)
+                          _SourceOption(
+                            icon: Icons.history_rounded,
+                            iconColor: primary,
+                            title: 'Recente',
+                            subtitle: _macrosSummary(recent),
+                            selected: currentSource == FoodSource.recent,
+                            isDarkMode: isDark,
+                            onTap: () => Navigator.pop(
+                              ctx,
+                              const _FoodSourcePickerResult(
+                                _FoodSourceAction.recent,
+                              ),
+                            ),
+                          ),
+
+                        // IA atual (sempre presente como referencia). Quando ja se
+                        // trocou para outra fonte, usa o snapshot original em
+                        // aiNutrients para mostrar e restaurar os valores da IA.
+                        Builder(builder: (_) {
+                          final aiNut =
+                              sourceFood.aiNutrients?.isNotEmpty == true
+                                  ? sourceFood.aiNutrients!.first
+                                  : null;
+                          final aiCalories = currentSource == FoodSource.ai
+                              ? sourceFood.calories
+                              : (aiNut?.calories?.toInt() ??
+                                  sourceFood.calories);
+                          final aiProtein = currentSource == FoodSource.ai
+                              ? sourceFood.protein
+                              : (aiNut?.protein ?? sourceFood.protein);
+                          final aiCarbs = currentSource == FoodSource.ai
+                              ? sourceFood.carbs
+                              : (aiNut?.carbohydrate ?? sourceFood.carbs);
+                          final aiFat = currentSource == FoodSource.ai
+                              ? sourceFood.fat
+                              : (aiNut?.fat ?? sourceFood.fat);
+                          return _SourceOption(
+                            icon: Icons.auto_awesome_rounded,
+                            iconColor: const Color(0xFF14B8A6),
+                            title: 'Estimativa da IA',
+                            subtitle:
+                                '$aiCalories kcal · ${aiProtein.toStringAsFixed(1)}p · ${aiCarbs.toStringAsFixed(1)}c · ${aiFat.toStringAsFixed(1)}g',
+                            selected: currentSource == FoodSource.ai,
+                            isDarkMode: isDark,
+                            onTap: () => Navigator.pop(
+                              ctx,
+                              currentSource == FoodSource.ai
+                                  ? null
+                                  : const _FoodSourcePickerResult(
+                                      _FoodSourceAction.ai,
+                                    ),
+                            ),
+                          );
+                        }),
+
+                        if (catalogSuggestions.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Outras sugestões',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: secondary.withValues(alpha: 0.9),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...visibleCatalogSuggestions.map((suggestion) {
+                            final suggestionId = _parseInt(suggestion['id']);
+                            return _SourceOption(
+                              icon: Icons.storage_rounded,
+                              iconColor: const Color(0xFF2563EB),
+                              title: _catalogOptionTitle(
+                                suggestion,
+                                food: sourceFood,
+                              ),
+                              subtitle: _catalogOptionSubtitle(suggestion),
+                              selected: currentSource == FoodSource.catalog &&
+                                  sourceFood.sourceId == suggestionId,
+                              isDarkMode: isDark,
+                              onTap: () => Navigator.pop(
+                                ctx,
+                                _FoodSourcePickerResult(
+                                  _FoodSourceAction.catalog,
+                                  suggestion,
+                                ),
+                              ),
+                            );
+                          }),
+                          if (catalogSuggestions.length > 3)
+                            _SourceMoreButton(
+                              isDarkMode: isDark,
+                              label: showAllCatalogSuggestions
+                                  ? 'Ver menos'
+                                  : 'Ver mais ($hiddenCatalogCount)',
+                              icon: showAllCatalogSuggestions
+                                  ? Icons.expand_less_rounded
+                                  : Icons.expand_more_rounded,
+                              onTap: () {
+                                setSheetState(() {
+                                  showAllCatalogSuggestions =
+                                      !showAllCatalogSuggestions;
+                                });
+                              },
+                            ),
+                        ],
+
+                        const SizedBox(height: 12),
+
+                        // Caso nao tenha nenhuma fonte salva, oferece cadastrar.
+                        if (favorite == null &&
+                            currentSource != FoodSource.manual &&
+                            recent == null &&
+                            catalogSuggestions.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Voce ainda nao tem versoes salvas ou outras sugestoes para ${sourceFood.name}. Edite o alimento para salvar como favorito.',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: secondary.withValues(alpha: 0.8)),
+                            ),
+                          ),
+
+                        if (currentSource != FoodSource.manual) ...[
+                          const SizedBox(height: 8),
+                          _SourceOption(
+                            icon: Icons.tune_rounded,
+                            iconColor: primary,
+                            title: 'Editar manualmente',
+                            subtitle: 'Digite os macros manualmente',
+                            selected: false,
+                            isDarkMode: isDark,
+                            onTap: () => Navigator.pop(
+                              ctx,
+                              const _FoodSourcePickerResult(
+                                _FoodSourceAction.manual,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Escolha a fonte dos macros',
-                style: TextStyle(
-                    fontSize: 12, color: secondary.withValues(alpha: 0.85)),
-              ),
-              const SizedBox(height: 16),
-
-              // Favorito
-              if (favorite != null)
-                _SourceOption(
-                  icon: Icons.star_rounded,
-                  iconColor: const Color(0xFFFFB300),
-                  title: 'Seu favorito',
-                  subtitle: _macrosSummary(favorite),
-                  selected: currentSource == FoodSource.favorite,
-                  isDarkMode: isDark,
-                  onTap: () => Navigator.pop(ctx, _FoodSourceAction.favorite),
                 ),
-
-              // Recente
-              if (recent != null)
-                _SourceOption(
-                  icon: Icons.history_rounded,
-                  iconColor: primary,
-                  title: 'Recente',
-                  subtitle: _macrosSummary(recent),
-                  selected: currentSource == FoodSource.recent,
-                  isDarkMode: isDark,
-                  onTap: () => Navigator.pop(ctx, _FoodSourceAction.recent),
-                ),
-
-              // IA atual (sempre presente como referencia). Quando ja se
-              // trocou para outra fonte, usa o snapshot original em
-              // aiNutrients para mostrar e restaurar os valores da IA.
-              Builder(builder: (_) {
-                final aiNut = widget.food.aiNutrients?.isNotEmpty == true
-                    ? widget.food.aiNutrients!.first
-                    : null;
-                final aiCalories = currentSource == FoodSource.ai
-                    ? widget.food.calories
-                    : (aiNut?.calories?.toInt() ?? widget.food.calories);
-                final aiProtein = currentSource == FoodSource.ai
-                    ? widget.food.protein
-                    : (aiNut?.protein ?? widget.food.protein);
-                final aiCarbs = currentSource == FoodSource.ai
-                    ? widget.food.carbs
-                    : (aiNut?.carbohydrate ?? widget.food.carbs);
-                final aiFat = currentSource == FoodSource.ai
-                    ? widget.food.fat
-                    : (aiNut?.fat ?? widget.food.fat);
-                return _SourceOption(
-                  icon: Icons.auto_awesome_rounded,
-                  iconColor: const Color(0xFF14B8A6),
-                  title: 'Estimativa da IA',
-                  subtitle:
-                      '$aiCalories kcal · ${aiProtein.toStringAsFixed(1)}p · ${aiCarbs.toStringAsFixed(1)}c · ${aiFat.toStringAsFixed(1)}g',
-                  selected: currentSource == FoodSource.ai,
-                  isDarkMode: isDark,
-                  onTap: () => Navigator.pop(
-                    ctx,
-                    currentSource == FoodSource.ai
-                        ? null
-                        : _FoodSourceAction.ai,
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 12),
-
-              // Caso nao tenha favorito/recente, oferece cadastrar
-              if (favorite == null && recent == null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Voce ainda nao tem versoes salvas para ${widget.food.name}. Edite o alimento para salvar como favorito.',
-                    style: TextStyle(
-                        fontSize: 12, color: secondary.withValues(alpha: 0.8)),
-                  ),
-                ),
-
-              const SizedBox(height: 8),
-              _SourceOption(
-                icon: Icons.tune_rounded,
-                iconColor: primary,
-                title: 'Editar manualmente',
-                subtitle: 'Digite os macros manualmente',
-                selected: false,
-                isDarkMode: isDark,
-                onTap: () => Navigator.pop(ctx, _FoodSourceAction.manual),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -1711,23 +2452,46 @@ class _FoodItemState extends State<_FoodItem> {
     // segundo modal eh fechado.
     if (!mounted || action == null) return;
 
-    switch (action) {
+    switch (action.action) {
+      case _FoodSourceAction.editDetails:
+        await _openFoodDetailsEditor(food: sourceFood);
+        break;
       case _FoodSourceAction.favorite:
         if (favorite != null) {
           widget.onSwap?.call(
-            _applyAlternativeMacros(favorite, FoodSource.favorite),
+            _applyAlternativeMacros(
+              favorite,
+              FoodSource.favorite,
+              food: sourceFood,
+            ),
           );
         }
         break;
       case _FoodSourceAction.recent:
         if (recent != null) {
           widget.onSwap?.call(
-            _applyAlternativeMacros(recent, FoodSource.recent),
+            _applyAlternativeMacros(
+              recent,
+              FoodSource.recent,
+              food: sourceFood,
+            ),
+          );
+        }
+        break;
+      case _FoodSourceAction.catalog:
+        final suggestion = action.data;
+        if (suggestion != null) {
+          widget.onSwap?.call(
+            _applyAlternativeMacros(
+              suggestion,
+              FoodSource.catalog,
+              food: sourceFood,
+            ),
           );
         }
         break;
       case _FoodSourceAction.ai:
-        final restored = _restoreAiMacros();
+        final restored = _restoreAiMacros(food: sourceFood);
         if (restored != null) {
           widget.onSwap?.call(restored);
         }
@@ -1768,19 +2532,39 @@ class _FoodItemState extends State<_FoodItem> {
   }
 
   String _macrosSummary(Map<String, dynamic> data) {
-    final cal = data['calories'] ?? 0;
-    double parse(dynamic v) {
-      if (v is num) return v.toDouble();
-      if (v is String) return double.tryParse(v) ?? 0.0;
-      return 0.0;
-    }
+    final summary = _formatMacroSummary(
+      calories: _parseNumeric(data['calories']),
+      protein: _parseNumeric(data['protein']),
+      carbs: _parseNumeric(data['carbs']),
+      fat: _parseNumeric(data['fat']),
+    );
+    final base = _parseNumeric(data['baseAmount']);
+    final unit = _readText(data['baseUnit']) ?? 'g';
+    return '$summary  (por ${_formatServingAmount(base, unit)})';
+  }
 
-    final p = parse(data['protein']);
-    final c = parse(data['carbs']);
-    final f = parse(data['fat']);
-    final base = data['baseAmount'] ?? 100;
-    final unit = data['baseUnit'] ?? 'g';
-    return '$cal kcal · ${p.toStringAsFixed(1)}p · ${c.toStringAsFixed(1)}c · ${f.toStringAsFixed(1)}g  (por $base$unit)';
+  String _formatMacroSummary({
+    required double calories,
+    required double protein,
+    required double carbs,
+    required double fat,
+  }) {
+    return '${_formatNumber(calories, decimals: 0)} kcal · '
+        '${protein.toStringAsFixed(1)}p · '
+        '${carbs.toStringAsFixed(1)}c · '
+        '${fat.toStringAsFixed(1)}g';
+  }
+
+  String _formatServingAmount(double amount, String unit) {
+    final normalizedAmount = amount > 0 ? amount : 100.0;
+    final normalizedUnit =
+        _normalizeUnit(unit).isEmpty ? 'g' : _normalizeUnit(unit);
+    return '${_formatNumber(normalizedAmount)}$normalizedUnit';
+  }
+
+  String _formatNumber(double value, {int decimals = 1}) {
+    if (value.roundToDouble() == value) return value.toInt().toString();
+    return value.toStringAsFixed(decimals);
   }
 
   @override
@@ -1822,9 +2606,10 @@ class _FoodItemState extends State<_FoodItem> {
                         color: iconBg,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        food.emoji,
-                        style: const TextStyle(fontSize: 23),
+                      child: FoodIcon(
+                        name: food.name,
+                        emoji: food.emoji,
+                        size: 27,
                       ),
                     ),
                   ),
@@ -2099,6 +2884,63 @@ class _SourceOption extends StatelessWidget {
   }
 }
 
+class _SourceMoreButton extends StatelessWidget {
+  final bool isDarkMode;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _SourceMoreButton({
+    Key? key,
+    required this.isDarkMode,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final bg = isDarkMode
+        ? Colors.white.withValues(alpha: 0.05)
+        : primary.withValues(alpha: 0.06);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: primary),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ManualMacroEditorSheet extends StatefulWidget {
   final Food food;
   final bool isDarkMode;
@@ -2180,8 +3022,17 @@ class _ManualMacroEditorSheetState extends State<_ManualMacroEditorSheet> {
       fat: _parse(_fatCtrl.text),
       dietaryFiber: _parse(_fiberCtrl.text),
     );
+    final aiSnapshot = widget.food.aiNutrients ??
+        (widget.food.source == FoodSource.ai ? widget.food.nutrients : null);
 
-    _close(widget.food.copyWith(nutrients: [updatedNutrient]));
+    _close(
+      widget.food.copyWith(
+        nutrients: [updatedNutrient],
+        source: FoodSource.manual,
+        clearSourceId: true,
+        aiNutrients: aiSnapshot,
+      ),
+    );
   }
 
   @override
@@ -2229,7 +3080,7 @@ class _ManualMacroEditorSheetState extends State<_ManualMacroEditorSheet> {
               ),
               Row(
                 children: [
-                  Text(food.emoji, style: const TextStyle(fontSize: 22)),
+                  FoodIcon(name: food.name, emoji: food.emoji, size: 26),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -2398,13 +3249,15 @@ class _MacroField extends StatelessWidget {
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final bg =
         isDarkMode ? AppTheme.darkComponentColor : const Color(0xFFF5F7FA);
+    final borderColor =
+        isDarkMode ? AppTheme.darkBorderColor : const Color(0xFFE0E4EC);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2444,7 +3297,12 @@ class _MacroField extends StatelessWidget {
                   ),
                   decoration: const InputDecoration(
                     isDense: true,
+                    filled: false,
+                    fillColor: Colors.transparent,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),

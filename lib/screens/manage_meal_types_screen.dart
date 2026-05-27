@@ -15,12 +15,10 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode
-        ? AppTheme.darkBackgroundColor
-        : AppTheme.backgroundColor;
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
+    final backgroundColor =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -152,6 +150,10 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
   void _showAddDialog() {
     final nameController = TextEditingController();
     String selectedEmoji = '🍽️';
+    String selectedTime = MealTypeConfig.defaultReminderTime(
+      'custom',
+      Provider.of<MealTypesProvider>(context, listen: false).mealTypes.length,
+    );
 
     showDialog(
       context: context,
@@ -169,6 +171,16 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                     border: OutlineInputBorder(),
                   ),
                   autofocus: true,
+                ),
+                SizedBox(height: 16),
+                _buildTimePickerRow(
+                  context: context,
+                  time: selectedTime,
+                  onChanged: (time) {
+                    setState(() {
+                      selectedTime = time;
+                    });
+                  },
                 ),
                 SizedBox(height: 16),
                 Row(
@@ -208,7 +220,11 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                 onPressed: () {
                   if (nameController.text.isNotEmpty) {
                     Provider.of<MealTypesProvider>(context, listen: false)
-                        .addMealType(nameController.text, selectedEmoji);
+                        .addMealType(
+                      nameController.text,
+                      selectedEmoji,
+                      reminderTime: selectedTime,
+                    );
                     Navigator.pop(context);
                   }
                 },
@@ -224,6 +240,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
   void _showEditDialog(MealTypeConfig mealType) {
     final nameController = TextEditingController(text: mealType.name);
     String selectedEmoji = mealType.emoji;
+    String selectedTime = mealType.reminderTime;
 
     showDialog(
       context: context,
@@ -241,6 +258,16 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                     border: OutlineInputBorder(),
                   ),
                   autofocus: true,
+                ),
+                SizedBox(height: 16),
+                _buildTimePickerRow(
+                  context: context,
+                  time: selectedTime,
+                  onChanged: (time) {
+                    setState(() {
+                      selectedTime = time;
+                    });
+                  },
                 ),
                 SizedBox(height: 16),
                 Row(
@@ -284,6 +311,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                       mealType.id,
                       name: nameController.text,
                       emoji: selectedEmoji,
+                      reminderTime: selectedTime,
                     );
                     Navigator.pop(context);
                   }
@@ -297,13 +325,60 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
     );
   }
 
+  Widget _buildTimePickerRow({
+    required BuildContext context,
+    required String time,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            context.tr.translate('meal_time'),
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final selectedTime = await showTimePicker(
+              context: context,
+              initialTime: _timeOfDayFromString(time),
+            );
+
+            if (selectedTime != null) {
+              onChanged(_formatTimeOfDay(selectedTime));
+            }
+          },
+          icon: Icon(Icons.schedule_rounded, size: 18),
+          label: Text(time),
+        ),
+      ],
+    );
+  }
+
+  TimeOfDay _timeOfDayFromString(String value) {
+    final parts = value.split(':');
+    final hour = int.tryParse(parts.first) ?? 12;
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+    return TimeOfDay(
+      hour: hour.clamp(0, 23).toInt(),
+      minute: minute.clamp(0, 59).toInt(),
+    );
+  }
+
+  String _formatTimeOfDay(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
   void _showDeleteDialog(MealTypeConfig mealType) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr.translate('delete_meal')),
         content: Text(
-          context.tr.translate('delete_meal_confirmation').replaceAll('{mealName}', mealType.name),
+          context.tr
+              .translate('delete_meal_confirmation')
+              .replaceAll('{mealName}', mealType.name),
         ),
         actions: [
           TextButton(
@@ -375,18 +450,79 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
     );
   }
 
-  void _showEmojiPicker(BuildContext context, Function(String) onEmojiSelected) {
+  void _showEmojiPicker(
+      BuildContext context, Function(String) onEmojiSelected) {
     final emojis = [
-      '🍳', '🥐', '🥞', '🧇', '🥓', '🥖', '🥨',
-      '🍞', '🥯', '🧀', '🥗', '🥙', '🌮', '🌯',
-      '🥪', '🍕', '🍔', '🍟', '🌭', '🍿', '🥘',
-      '🍝', '🍜', '🍲', '🍱', '🍛', '🍙', '🍚',
-      '🍘', '🥟', '🍢', '🍣', '🍤', '🥠', '🍡',
-      '🥧', '🍰', '🎂', '🍮', '🍭', '🍬', '🍫',
-      '🍿', '🍩', '🍪', '🌰', '🥜', '🍯', '🥛',
-      '🍼', '☕', '🍵', '🧃', '🥤', '🍶', '🍺',
-      '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', '🍾',
-      '🧊', '🥄', '🍴', '🥢', '🍽️', '🥗', '🥙',
+      '🍳',
+      '🥐',
+      '🥞',
+      '🧇',
+      '🥓',
+      '🥖',
+      '🥨',
+      '🍞',
+      '🥯',
+      '🧀',
+      '🥗',
+      '🥙',
+      '🌮',
+      '🌯',
+      '🥪',
+      '🍕',
+      '🍔',
+      '🍟',
+      '🌭',
+      '🍿',
+      '🥘',
+      '🍝',
+      '🍜',
+      '🍲',
+      '🍱',
+      '🍛',
+      '🍙',
+      '🍚',
+      '🍘',
+      '🥟',
+      '🍢',
+      '🍣',
+      '🍤',
+      '🥠',
+      '🍡',
+      '🥧',
+      '🍰',
+      '🎂',
+      '🍮',
+      '🍭',
+      '🍬',
+      '🍫',
+      '🍿',
+      '🍩',
+      '🍪',
+      '🌰',
+      '🥜',
+      '🍯',
+      '🥛',
+      '🍼',
+      '☕',
+      '🍵',
+      '🧃',
+      '🥤',
+      '🍶',
+      '🍺',
+      '🍻',
+      '🥂',
+      '🍷',
+      '🥃',
+      '🍸',
+      '🍹',
+      '🍾',
+      '🧊',
+      '🥄',
+      '🍴',
+      '🥢',
+      '🍽️',
+      '🥗',
+      '🥙',
     ];
 
     showDialog(
@@ -411,7 +547,8 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
@@ -455,9 +592,8 @@ class _MealTypeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
-    final textColor = isDarkMode
-        ? AppTheme.darkTextColor
-        : AppTheme.textPrimaryColor;
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
     return Card(
       margin: EdgeInsets.only(bottom: 12),
@@ -485,9 +621,7 @@ class _MealTypeCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isDarkMode
-                    ? Color(0xFF2E2E2E)
-                    : Color(0xFFF3F4F6),
+                color: isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -499,15 +633,41 @@ class _MealTypeCard extends StatelessWidget {
             ),
             SizedBox(width: 12),
 
-            // Name
+            // Name and reminder time
             Expanded(
-              child: Text(
-                mealType.name,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    mealType.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 14,
+                        color: textColor.withValues(alpha: 0.55),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        mealType.reminderTime,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: textColor.withValues(alpha: 0.62),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
 

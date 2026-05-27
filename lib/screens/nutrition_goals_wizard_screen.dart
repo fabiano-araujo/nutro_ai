@@ -22,14 +22,22 @@ class NutritionGoalsWizardScreen extends StatefulWidget {
 
 class _NutritionGoalsWizardScreenState
     extends State<NutritionGoalsWizardScreen> {
+  static const int _profileStep = 0;
+  static const int _activityStep = 1;
+  static const int _goalStep = 2;
+  static const int _stepCount = 3;
+
   late int _currentStep;
   late PageController _pageController;
 
-  // Step 0: Personal Info
-  String _selectedSex = 'male';
+  // Personal info state
+  String _selectedSex = '';
   int _age = 30;
   double _weight = 70.0; // Always stored in kg internally
   double _height = 170.0; // Always stored in cm internally
+  bool _hasFilledAge = false;
+  bool _hasFilledHeight = false;
+  bool _hasFilledWeight = false;
 
   // Text controllers for inputs
   final TextEditingController _heightController = TextEditingController();
@@ -37,8 +45,13 @@ class _NutritionGoalsWizardScreenState
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _weightPoundsController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+  final FocusNode _ageFocusNode = FocusNode();
+  final FocusNode _heightFocusNode = FocusNode();
+  final FocusNode _heightInchesFocusNode = FocusNode();
+  final FocusNode _weightFocusNode = FocusNode();
+  final FocusNode _weightPoundsFocusNode = FocusNode();
 
-  // Step 1: Activity & Goal
+  // Activity and goal state
   ActivityLevel _selectedActivityLevel = ActivityLevel.moderatelyActive;
   FitnessGoal _selectedFitnessGoal = FitnessGoal.maintainWeight;
 
@@ -54,27 +67,122 @@ class _NutritionGoalsWizardScreenState
   @override
   void initState() {
     super.initState();
-    _currentStep = widget.startStep;
-    _pageController = PageController(initialPage: widget.startStep);
+    for (final node in [
+      _ageFocusNode,
+      _heightFocusNode,
+      _heightInchesFocusNode,
+      _weightFocusNode,
+      _weightPoundsFocusNode,
+    ]) {
+      node.addListener(_handleProfileInputFocusChanged);
+    }
+
+    final initialStep = _resolveInitialStep(widget.startStep);
+    _currentStep = initialStep;
+    _pageController = PageController(initialPage: initialStep);
 
     // Load current values from provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider =
           Provider.of<NutritionGoalsProvider>(context, listen: false);
       setState(() {
-        _selectedSex = provider.sex;
+        _selectedSex = provider.hasExplicitSex ? provider.sex : '';
         _age = provider.age;
         _weight = provider.weight;
         _height = provider.height;
         _selectedActivityLevel = provider.activityLevel;
         _selectedFitnessGoal = provider.fitnessGoal;
+        _hasFilledAge = provider.hasExplicitAge;
+        _hasFilledHeight = provider.hasExplicitHeight;
+        _hasFilledWeight = provider.hasExplicitWeight;
 
         // Initialize text controllers based on current units
-        _ageController.text = _age.toString();
-        _updateHeightController(provider);
-        _updateWeightController(provider);
+        _ageController.text = provider.hasExplicitAge ? _age.toString() : '';
+        if (provider.hasExplicitHeight) {
+          _updateHeightController(provider);
+        } else {
+          _heightController.clear();
+          _heightInchesController.clear();
+        }
+        if (provider.hasExplicitWeight) {
+          _updateWeightController(provider);
+        } else {
+          _weightController.clear();
+          _weightPoundsController.clear();
+        }
       });
     });
+  }
+
+  int _resolveInitialStep(int startStep) {
+    switch (startStep) {
+      case 1:
+        return _activityStep;
+      case 2:
+        return _goalStep;
+      case 0:
+      default:
+        return _profileStep;
+    }
+  }
+
+  bool get _isLastStep => _currentStep == _goalStep;
+  bool get _isProfilePersonalInfoFlow =>
+      widget.fromProfile && widget.startStep == 0;
+  bool get _isSingleEditMode =>
+      widget.fromProfile && !_isProfilePersonalInfoFlow;
+  bool get _hasSelectedSex =>
+      _selectedSex == 'male' || _selectedSex == 'female';
+  bool get _isProfileStepComplete =>
+      _hasSelectedSex && _hasFilledAge && _hasFilledHeight && _hasFilledWeight;
+  bool get _canContinueCurrentStep =>
+      _currentStep != _profileStep || _isProfileStepComplete;
+  bool get _isAgeInputActive => _ageFocusNode.hasFocus;
+  bool get _isHeightInputActive =>
+      _heightFocusNode.hasFocus || _heightInchesFocusNode.hasFocus;
+  bool get _isWeightInputActive =>
+      _weightFocusNode.hasFocus || _weightPoundsFocusNode.hasFocus;
+
+  void _handleProfileInputFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  String _translateOrFallback(String key, String fallback) {
+    final translated = context.tr.translate(key);
+    return translated == key ? fallback : translated;
+  }
+
+  Color _profileInputColor({
+    required ThemeData theme,
+    required bool isDarkMode,
+    required bool isActive,
+    required bool hasValue,
+  }) {
+    if (isActive || hasValue) {
+      return _accentColor(theme).withValues(alpha: isDarkMode ? 0.22 : 0.11);
+    }
+
+    return isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFF5F7FA);
+  }
+
+  bool get _shouldFinishAfterCurrentStep {
+    if (_isSingleEditMode) return true;
+    if (_isProfilePersonalInfoFlow) return _currentStep == _profileStep;
+    return _isLastStep;
+  }
+
+  bool get _canGoBack {
+    if (_isSingleEditMode) return false;
+    if (_isProfilePersonalInfoFlow) return false;
+    return _currentStep > _profileStep;
+  }
+
+  double get _progressValue {
+    if (_isSingleEditMode) return 1.0;
+    if (_isProfilePersonalInfoFlow) return 1.0;
+    return ((_currentStep + 1) / _stepCount).clamp(0.0, 1.0).toDouble();
   }
 
   void _updateHeightController(NutritionGoalsProvider provider) {
@@ -82,9 +190,9 @@ class _NutritionGoalsWizardScreenState
       _heightController.text = _height.toStringAsFixed(0);
       _heightInchesController.clear();
     } else {
-      final heightData = provider.heightInFeet();
-      _heightController.text = heightData['feet'].toString();
-      _heightInchesController.text = heightData['inches'].toString();
+      final totalInches = (_height / 2.54).round();
+      _heightController.text = (totalInches ~/ 12).toString();
+      _heightInchesController.text = (totalInches % 12).toString();
     }
   }
 
@@ -95,13 +203,13 @@ class _NutritionGoalsWizardScreenState
         _weightPoundsController.clear();
         break;
       case WeightUnit.lbs:
-        _weightController.text = provider.weightInLbs().toStringAsFixed(1);
+        _weightController.text = (_weight * 2.20462).toStringAsFixed(1);
         _weightPoundsController.clear();
         break;
       case WeightUnit.stLbs:
-        final weightData = provider.weightInStLbs();
-        _weightController.text = weightData['stone'].toString();
-        _weightPoundsController.text = weightData['pounds'].toString();
+        final totalLbs = (_weight * 2.20462).round();
+        _weightController.text = (totalLbs ~/ 14).toString();
+        _weightPoundsController.text = (totalLbs % 14).toString();
         break;
     }
   }
@@ -114,6 +222,11 @@ class _NutritionGoalsWizardScreenState
     _weightController.dispose();
     _weightPoundsController.dispose();
     _ageController.dispose();
+    _ageFocusNode.dispose();
+    _heightFocusNode.dispose();
+    _heightInchesFocusNode.dispose();
+    _weightFocusNode.dispose();
+    _weightPoundsFocusNode.dispose();
     super.dispose();
   }
 
@@ -121,22 +234,17 @@ class _NutritionGoalsWizardScreenState
     // Save current step data before moving forward
     _saveCurrentStep();
 
-    // Se foi aberto do profile, salvar e voltar
-    if (widget.fromProfile) {
+    if (_shouldFinishAfterCurrentStep) {
       _saveAndFinish();
       return;
     }
 
-    if (_currentStep < 2) {
-      setState(() => _currentStep++);
-      _pageController.animateToPage(
-        _currentStep,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    } else {
-      _saveAndFinish();
-    }
+    setState(() => _currentStep++);
+    _pageController.animateToPage(
+      _currentStep,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   void _saveCurrentStep() {
@@ -144,27 +252,24 @@ class _NutritionGoalsWizardScreenState
         Provider.of<NutritionGoalsProvider>(context, listen: false);
 
     switch (_currentStep) {
-      case 0:
-        // Save personal info
+      case _profileStep:
         provider.updatePersonalInfo(
           sex: _selectedSex,
           age: _age,
-          weight: _weight,
           height: _height,
+          weight: _weight,
         );
         break;
-      case 1:
-        // Save activity level
+      case _activityStep:
         provider.updateActivityAndGoals(
           activityLevel: _selectedActivityLevel,
         );
         break;
-      case 2:
-        // Save fitness goal e define diet type padrão (balanced)
+      case _goalStep:
         provider.updateActivityAndGoals(
           fitnessGoal: _selectedFitnessGoal,
         );
-        provider.updateDietType(DietType.balanced);
+        provider.updateDietType(DietType.aiRecommended);
         break;
     }
   }
@@ -178,6 +283,10 @@ class _NutritionGoalsWizardScreenState
         curve: Curves.easeInOut,
       );
     }
+  }
+
+  void _skipSetup() {
+    Navigator.pop(context);
   }
 
   void _saveAndFinish() {
@@ -220,7 +329,7 @@ class _NutritionGoalsWizardScreenState
                   setState(() => _currentStep = index);
                 },
                 children: [
-                  _buildPersonalInfoStep(theme, isDarkMode, textColor),
+                  _buildPersonalProfileStep(theme, isDarkMode, textColor),
                   _buildActivityLevelStep(theme, isDarkMode, textColor),
                   _buildFitnessGoalStep(theme, isDarkMode, textColor),
                 ],
@@ -235,53 +344,67 @@ class _NutritionGoalsWizardScreenState
 
   Widget _buildMinimalHeader(
       ThemeData theme, bool isDarkMode, Color textColor) {
+    final progressBackground =
+        isDarkMode ? Colors.white.withValues(alpha: 0.12) : Colors.black12;
+
+    final showProfileBadge = _currentStep == _profileStep;
+
     return SizedBox(
-      height: 52,
+      height: showProfileBadge ? 86 : 58,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+        child: Column(
           children: [
-            IconButton(
-              icon: Icon(
-                Icons.close,
-                color: textColor,
+            if (showProfileBadge)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 0, 2),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildProfileBadgeHeader(theme: theme),
+                ),
               ),
-              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-              onPressed: () => Navigator.pop(context),
-            ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  context.tr.translate('configure_goals'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.arrow_back_rounded,
+                    color: _accentColor(theme),
+                    size: 30,
+                  ),
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: () => Navigator.pop(context),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: _progressValue,
+                      minHeight: 8,
+                      backgroundColor: progressBackground,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _accentColor(theme),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _surfaceColor(isDarkMode),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: _subtleBorderColor(isDarkMode)),
-                ),
-                child: Text(
-                  '${_currentStep + 1}/3',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textColor.withValues(alpha: 0.72),
+                const SizedBox(width: 10),
+                TextButton(
+                  onPressed: _skipSetup,
+                  style: TextButton.styleFrom(
+                    foregroundColor: _accentColor(theme),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    minimumSize: const Size(0, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    context.tr.translate('skip_setup'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -291,61 +414,25 @@ class _NutritionGoalsWizardScreenState
 
   Widget _buildProgressIndicator(
       ThemeData theme, bool isDarkMode, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Row(
-        children: List.generate(3, (index) {
-          final isCompleted = index < _currentStep;
-          final isCurrent = index == _currentStep;
-
-          return Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: isCompleted || isCurrent
-                          ? _accentColor(theme)
-                          : textColor.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                if (index < 2) const SizedBox(width: 4),
-              ],
-            ),
-          );
-        }),
-      ),
-    );
+    return const SizedBox(height: 8);
   }
 
-  Widget _buildPersonalInfoStep(
+  Widget _buildPersonalProfileStep(
       ThemeData theme, bool isDarkMode, Color textColor) {
     return _buildStepBody(
-      header: _buildStepHeader(
-        icon: Icons.person_outline,
-        title: context.tr.translate('personal_info_title'),
-        subtitle: context.tr.translate('personal_info_subtitle'),
-        theme: theme,
-        isDarkMode: isDarkMode,
-        textColor: textColor,
-      ),
+      header: null,
       children: [
-        Text(
-          context.tr.translate('sex'),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: textColor,
-            fontWeight: FontWeight.w600,
-          ),
+        _buildProfileQuestion(
+          context.tr.translate('goal_setup_sex_title'),
+          theme: theme,
+          textColor: textColor,
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildSelectableCard(
-                icon: Icons.male,
+        const SizedBox(height: 14),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildProfileChoicePill(
                 label: context.tr.translate('male'),
                 isSelected: _selectedSex == 'male',
                 onTap: () => setState(() => _selectedSex = 'male'),
@@ -353,11 +440,8 @@ class _NutritionGoalsWizardScreenState
                 isDarkMode: isDarkMode,
                 textColor: textColor,
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildSelectableCard(
-                icon: Icons.female,
+              const SizedBox(width: 12),
+              _buildProfileChoicePill(
                 label: context.tr.translate('female'),
                 isSelected: _selectedSex == 'female',
                 onTap: () => setState(() => _selectedSex = 'female'),
@@ -365,22 +449,87 @@ class _NutritionGoalsWizardScreenState
                 isDarkMode: isDarkMode,
                 textColor: textColor,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        _buildAgeInput(theme, textColor, isDarkMode),
-        const SizedBox(height: 12),
-        Consumer<NutritionGoalsProvider>(
-          builder: (context, provider, child) {
-            return _buildHeightInput(theme, textColor, isDarkMode, provider);
-          },
+        _buildProgressiveSection(
+          visible: _hasSelectedSex,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 34),
+              _buildProfileQuestion(
+                context.tr.translate('goal_setup_age_title'),
+                theme: theme,
+                textColor: textColor,
+              ),
+              const SizedBox(height: 14),
+              _buildAgeInput(
+                theme,
+                textColor,
+                isDarkMode,
+                showLabel: false,
+                showSlider: false,
+                profileStyle: true,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-        Consumer<NutritionGoalsProvider>(
-          builder: (context, provider, child) {
-            return _buildWeightInput(theme, textColor, isDarkMode, provider);
-          },
+        _buildProgressiveSection(
+          visible: _hasSelectedSex && _hasFilledAge,
+          child: Consumer<NutritionGoalsProvider>(
+            builder: (context, provider, child) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 34),
+                  _buildProfileQuestion(
+                    context.tr.translate('goal_setup_height_title'),
+                    theme: theme,
+                    textColor: textColor,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildHeightInput(
+                    theme,
+                    textColor,
+                    isDarkMode,
+                    provider,
+                    showLabel: false,
+                    showSlider: false,
+                    profileStyle: true,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        _buildProgressiveSection(
+          visible: _hasSelectedSex && _hasFilledAge && _hasFilledHeight,
+          child: Consumer<NutritionGoalsProvider>(
+            builder: (context, provider, child) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 34),
+                  _buildProfileQuestion(
+                    context.tr.translate('goal_setup_weight_title'),
+                    theme: theme,
+                    textColor: textColor,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildWeightInput(
+                    theme,
+                    textColor,
+                    isDarkMode,
+                    provider,
+                    showLabel: false,
+                    showSlider: false,
+                    profileStyle: true,
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ],
     );
@@ -449,24 +598,27 @@ class _NutritionGoalsWizardScreenState
   }
 
   Widget _buildStepBody({
-    required Widget header,
+    required Widget? header,
     required List<Widget> children,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(
+            child: Align(
+              alignment: Alignment.topCenter,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    header,
-                    const SizedBox(height: 24),
+                    if (header != null) ...[
+                      header,
+                      const SizedBox(height: 24),
+                    ],
                     ...children,
                   ],
                 ),
@@ -490,46 +642,86 @@ class _NutritionGoalsWizardScreenState
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 44,
-          height: 44,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: _surfaceColor(isDarkMode),
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: _subtleBorderColor(isDarkMode)),
+            color: _accentColor(theme).withValues(alpha: 0.11),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: _accentColor(theme).withValues(alpha: 0.18),
+            ),
           ),
           child: Icon(
             icon,
-            color: textColor,
-            size: 22,
+            color: _accentColor(theme),
+            size: 34,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 22),
         Text(
           title,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
             color: textColor,
-            height: 1.3,
+            height: 1.12,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 10),
         Text(
           subtitle,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 15,
             color: textColor.withValues(alpha: 0.62),
-            height: 1.35,
+            height: 1.32,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSelectableCard({
-    required IconData icon,
+  Widget _buildProfileBadgeHeader({
+    required ThemeData theme,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: _accentColor(theme),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        _translateOrFallback(
+          'goal_setup_profile_badge',
+          'Objetivo & perfil',
+        ),
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: _onAccentColor(theme),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          height: 1.1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileQuestion(
+    String title, {
+    required ThemeData theme,
+    required Color textColor,
+  }) {
+    return Text(
+      title,
+      style: theme.textTheme.headlineSmall?.copyWith(
+        color: textColor.withValues(alpha: 0.82),
+        fontWeight: FontWeight.w700,
+        height: 1.16,
+      ),
+    );
+  }
+
+  Widget _buildProfileChoicePill({
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
@@ -537,47 +729,57 @@ class _NutritionGoalsWizardScreenState
     required bool isDarkMode,
     required Color textColor,
   }) {
-    final accentColor = _accentColor(theme);
-    final selectedForeground = _onAccentColor(theme);
-    final foregroundColor = isSelected ? selectedForeground : textColor;
+    final foregroundColor = isSelected ? _onAccentColor(theme) : textColor;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 52),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      borderRadius: BorderRadius.circular(22),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        constraints: const BoxConstraints(minWidth: 156, minHeight: 68),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor : _surfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(100),
+          color: isSelected
+              ? _accentColor(theme)
+              : (isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFF5F7FA)),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: isSelected ? accentColor : _subtleBorderColor(isDarkMode),
-            width: 1,
+            color: isSelected
+                ? _accentColor(theme)
+                : _subtleBorderColor(isDarkMode),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
               color: foregroundColor,
-              size: 20,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: foregroundColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProgressiveSection({
+    required bool visible,
+    required Widget child,
+  }) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: visible ? child : const SizedBox.shrink(key: ValueKey('hidden')),
       ),
     );
   }
@@ -586,7 +788,25 @@ class _NutritionGoalsWizardScreenState
     required ThemeData theme,
     required bool isDarkMode,
     String? suffixText,
+    bool profileStyle = false,
   }) {
+    if (profileStyle) {
+      return InputDecoration(
+        filled: false,
+        fillColor: Colors.transparent,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        suffixText: suffixText,
+        suffixStyle: theme.textTheme.titleLarge?.copyWith(
+          color: (isDarkMode ? Colors.white : AppTheme.textPrimaryColor)
+              .withValues(alpha: 0.58),
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
       borderSide: BorderSide(color: _subtleBorderColor(isDarkMode)),
@@ -618,132 +838,257 @@ class _NutritionGoalsWizardScreenState
     required VoidCallback onTap,
     required ThemeData theme,
     required bool isDarkMode,
+    bool profileStyle = false,
+    bool isActive = false,
   }) {
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final foregroundColor =
+        profileStyle && isActive ? _onAccentColor(theme) : _accentColor(theme);
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(100),
       child: Container(
-        constraints: const BoxConstraints(minWidth: 58, minHeight: 46),
+        constraints: BoxConstraints(
+          minWidth: profileStyle ? 92 : 58,
+          minHeight: profileStyle ? 44 : 46,
+        ),
         alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: profileStyle ? 20 : 12,
+          vertical: 10,
+        ),
         decoration: BoxDecoration(
-          color: _surfaceColor(isDarkMode),
+          color: profileStyle && isActive
+              ? _accentColor(theme)
+              : (profileStyle ? Colors.transparent : _surfaceColor(isDarkMode)),
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: _subtleBorderColor(isDarkMode)),
+          border: Border.all(
+            color: profileStyle
+                ? _accentColor(theme).withValues(alpha: 0.58)
+                : _subtleBorderColor(isDarkMode),
+          ),
         ),
         child: Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: textColor,
-            fontWeight: FontWeight.w600,
+            color: profileStyle ? foregroundColor : textColor,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAgeInput(ThemeData theme, Color textColor, bool isDarkMode) {
+  String _formatHeightForUnit(HeightUnit unit, double heightCm) {
+    if (unit == HeightUnit.cm) {
+      return '${heightCm.round()} cm';
+    }
+
+    final totalInches = (heightCm / 2.54).round();
+    return '${totalInches ~/ 12}\' ${totalInches % 12}"';
+  }
+
+  String _formatWeightForUnit(WeightUnit unit, double weightKg) {
+    switch (unit) {
+      case WeightUnit.kg:
+        return '${weightKg.toStringAsFixed(1)} kg';
+      case WeightUnit.lbs:
+        return '${(weightKg * 2.20462).toStringAsFixed(1)} lbs';
+      case WeightUnit.stLbs:
+        final totalLbs = (weightKg * 2.20462).round();
+        return '${totalLbs ~/ 14} st ${totalLbs % 14} lbs';
+    }
+  }
+
+  Widget _buildAgeInput(
+    ThemeData theme,
+    Color textColor,
+    bool isDarkMode, {
+    bool showLabel = true,
+    bool showSlider = true,
+    bool profileStyle = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: profileStyle
+          ? const EdgeInsets.symmetric(horizontal: 24, vertical: 8)
+          : const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _surfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        color: profileStyle
+            ? _profileInputColor(
+                theme: theme,
+                isDarkMode: isDarkMode,
+                isActive: _isAgeInputActive,
+                hasValue: _hasFilledAge,
+              )
+            : _surfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(profileStyle ? 24 : 18),
+        border: Border.all(
+          color: profileStyle
+              ? _accentColor(theme)
+                  .withValues(alpha: _isAgeInputActive ? 0.32 : 0.12)
+              : _subtleBorderColor(isDarkMode),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr.translate('age'),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
+          if (showLabel) ...[
+            Text(
+              context.tr.translate('age'),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
+          ],
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _ageController,
+                  focusNode: _ageFocusNode,
                   keyboardType: TextInputType.number,
-                  style: theme.textTheme.headlineSmall?.copyWith(
+                  style: (profileStyle
+                          ? theme.textTheme.displaySmall
+                          : theme.textTheme.headlineSmall)
+                      ?.copyWith(
                     color: textColor,
                     fontWeight: FontWeight.w700,
                   ),
-                  textAlign: TextAlign.center,
+                  textAlign: profileStyle ? TextAlign.start : TextAlign.center,
                   decoration: _numberInputDecoration(
                     theme: theme,
                     isDarkMode: isDarkMode,
+                    profileStyle: profileStyle,
                   ),
                   onChanged: (value) {
                     final age = int.tryParse(value);
                     if (age != null && age >= 10 && age <= 100) {
-                      setState(() => _age = age);
+                      setState(() {
+                        _age = age;
+                        _hasFilledAge = true;
+                      });
+                    } else {
+                      setState(() => _hasFilledAge = false);
                     }
                   },
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                context.tr.translate('years'),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: textColor.withValues(alpha: 0.6),
-                  fontWeight: FontWeight.w500,
+              if (!profileStyle) ...[
+                const SizedBox(width: 12),
+                Text(
+                  context.tr.translate('years'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: textColor.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
+          if (showSlider) ...[
+            const SizedBox(height: 14),
+            Slider(
+              value: _age.toDouble().clamp(10.0, 100.0).toDouble(),
+              min: 10,
+              max: 100,
+              divisions: 90,
+              label: '$_age',
+              activeColor: _accentColor(theme),
+              inactiveColor: _inputFillColor(isDarkMode),
+              onChanged: (value) {
+                setState(() {
+                  _age = value.round();
+                  _hasFilledAge = true;
+                  _ageController.text = _age.toString();
+                });
+              },
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildHeightInput(ThemeData theme, Color textColor, bool isDarkMode,
-      NutritionGoalsProvider provider) {
+  Widget _buildHeightInput(
+    ThemeData theme,
+    Color textColor,
+    bool isDarkMode,
+    NutritionGoalsProvider provider, {
+    bool showLabel = true,
+    bool showSlider = true,
+    bool profileStyle = false,
+  }) {
     final isCm = provider.heightUnit == HeightUnit.cm;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: profileStyle
+          ? const EdgeInsets.symmetric(horizontal: 24, vertical: 8)
+          : const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _surfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        color: profileStyle
+            ? _profileInputColor(
+                theme: theme,
+                isDarkMode: isDarkMode,
+                isActive: _isHeightInputActive,
+                hasValue: _hasFilledHeight,
+              )
+            : _surfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(profileStyle ? 24 : 18),
+        border: Border.all(
+          color: profileStyle
+              ? _accentColor(theme)
+                  .withValues(alpha: _isHeightInputActive ? 0.32 : 0.12)
+              : _subtleBorderColor(isDarkMode),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr.translate('height'),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
+          if (showLabel) ...[
+            Text(
+              context.tr.translate('height'),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
+          ],
           Row(
             children: [
               if (isCm) ...[
                 Expanded(
                   child: TextField(
                     controller: _heightController,
+                    focusNode: _heightFocusNode,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: (profileStyle
+                            ? theme.textTheme.displaySmall
+                            : theme.textTheme.headlineSmall)
+                        ?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w700,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        profileStyle ? TextAlign.start : TextAlign.center,
                     decoration: _numberInputDecoration(
                       theme: theme,
                       isDarkMode: isDarkMode,
+                      profileStyle: profileStyle,
                     ),
                     onChanged: (value) {
                       final height = double.tryParse(value);
                       if (height != null && height >= 100 && height <= 250) {
-                        setState(() => _height = height);
+                        setState(() {
+                          _height = height;
+                          _hasFilledHeight = true;
+                        });
+                      } else {
+                        setState(() => _hasFilledHeight = false);
                       }
                     },
                   ),
@@ -753,16 +1098,22 @@ class _NutritionGoalsWizardScreenState
                   flex: 2,
                   child: TextField(
                     controller: _heightController,
+                    focusNode: _heightFocusNode,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: (profileStyle
+                            ? theme.textTheme.displaySmall
+                            : theme.textTheme.headlineSmall)
+                        ?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w700,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        profileStyle ? TextAlign.start : TextAlign.center,
                     decoration: _numberInputDecoration(
                       theme: theme,
                       isDarkMode: isDarkMode,
                       suffixText: "'",
+                      profileStyle: profileStyle,
                     ),
                     onChanged: (value) {
                       final feet = int.tryParse(value) ?? 0;
@@ -771,7 +1122,12 @@ class _NutritionGoalsWizardScreenState
                       final heightCm =
                           NutritionGoalsProvider.heightToCm(feet, inches);
                       if (heightCm >= 100 && heightCm <= 250) {
-                        setState(() => _height = heightCm);
+                        setState(() {
+                          _height = heightCm;
+                          _hasFilledHeight = true;
+                        });
+                      } else {
+                        setState(() => _hasFilledHeight = false);
                       }
                     },
                   ),
@@ -781,16 +1137,22 @@ class _NutritionGoalsWizardScreenState
                   flex: 2,
                   child: TextField(
                     controller: _heightInchesController,
+                    focusNode: _heightInchesFocusNode,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: (profileStyle
+                            ? theme.textTheme.displaySmall
+                            : theme.textTheme.headlineSmall)
+                        ?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w700,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        profileStyle ? TextAlign.start : TextAlign.center,
                     decoration: _numberInputDecoration(
                       theme: theme,
                       isDarkMode: isDarkMode,
                       suffixText: '"',
+                      profileStyle: profileStyle,
                     ),
                     onChanged: (value) {
                       final feet = int.tryParse(_heightController.text) ?? 0;
@@ -798,31 +1160,73 @@ class _NutritionGoalsWizardScreenState
                       final heightCm =
                           NutritionGoalsProvider.heightToCm(feet, inches);
                       if (heightCm >= 100 && heightCm <= 250) {
-                        setState(() => _height = heightCm);
+                        setState(() {
+                          _height = heightCm;
+                          _hasFilledHeight = true;
+                        });
+                      } else {
+                        setState(() => _hasFilledHeight = false);
                       }
                     },
                   ),
                 ),
               ],
-              const SizedBox(width: 12),
-              _buildUnitToggle(
-                label: isCm ? 'cm' : 'ft',
-                onTap: () {
-                  provider.toggleHeightUnit();
-                  _updateHeightController(provider);
-                },
-                theme: theme,
-                isDarkMode: isDarkMode,
-              ),
+              if (!profileStyle ||
+                  _hasFilledHeight ||
+                  _isHeightInputActive) ...[
+                const SizedBox(width: 12),
+                _buildUnitToggle(
+                  label: isCm ? 'cm' : 'ft',
+                  onTap: () {
+                    provider.toggleHeightUnit();
+                    if (_hasFilledHeight) {
+                      _updateHeightController(provider);
+                    } else {
+                      _heightController.clear();
+                      _heightInchesController.clear();
+                    }
+                  },
+                  theme: theme,
+                  isDarkMode: isDarkMode,
+                  profileStyle: profileStyle,
+                  isActive: _isHeightInputActive,
+                ),
+              ],
             ],
           ),
+          if (showSlider) ...[
+            const SizedBox(height: 14),
+            Slider(
+              value: _height.clamp(100.0, 250.0).toDouble(),
+              min: 100,
+              max: 250,
+              divisions: 150,
+              label: _formatHeightForUnit(provider.heightUnit, _height),
+              activeColor: _accentColor(theme),
+              inactiveColor: _inputFillColor(isDarkMode),
+              onChanged: (value) {
+                setState(() {
+                  _height = value.roundToDouble();
+                  _hasFilledHeight = true;
+                  _updateHeightController(provider);
+                });
+              },
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildWeightInput(ThemeData theme, Color textColor, bool isDarkMode,
-      NutritionGoalsProvider provider) {
+  Widget _buildWeightInput(
+    ThemeData theme,
+    Color textColor,
+    bool isDarkMode,
+    NutritionGoalsProvider provider, {
+    bool showLabel = true,
+    bool showSlider = true,
+    bool profileStyle = false,
+  }) {
     final String unitLabel;
     final bool showSecondField = provider.weightUnit == WeightUnit.stLbs;
 
@@ -839,54 +1243,88 @@ class _NutritionGoalsWizardScreenState
     }
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: profileStyle
+          ? const EdgeInsets.symmetric(horizontal: 24, vertical: 8)
+          : const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _surfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        color: profileStyle
+            ? _profileInputColor(
+                theme: theme,
+                isDarkMode: isDarkMode,
+                isActive: _isWeightInputActive,
+                hasValue: _hasFilledWeight,
+              )
+            : _surfaceColor(isDarkMode),
+        borderRadius: BorderRadius.circular(profileStyle ? 24 : 18),
+        border: Border.all(
+          color: profileStyle
+              ? _accentColor(theme)
+                  .withValues(alpha: _isWeightInputActive ? 0.32 : 0.12)
+              : _subtleBorderColor(isDarkMode),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr.translate('weight'),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
+          if (showLabel) ...[
+            Text(
+              context.tr.translate('weight'),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
+          ],
           Row(
             children: [
               if (!showSecondField) ...[
                 Expanded(
                   child: TextField(
                     controller: _weightController,
+                    focusNode: _weightFocusNode,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: (profileStyle
+                            ? theme.textTheme.displaySmall
+                            : theme.textTheme.headlineSmall)
+                        ?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w700,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        profileStyle ? TextAlign.start : TextAlign.center,
                     decoration: _numberInputDecoration(
                       theme: theme,
                       isDarkMode: isDarkMode,
+                      profileStyle: profileStyle,
                     ),
                     onChanged: (value) {
                       final weight = double.tryParse(value);
                       if (weight != null) {
                         if (provider.weightUnit == WeightUnit.kg) {
                           if (weight >= 30 && weight <= 200) {
-                            setState(() => _weight = weight);
+                            setState(() {
+                              _weight = weight;
+                              _hasFilledWeight = true;
+                            });
+                          } else {
+                            setState(() => _hasFilledWeight = false);
                           }
                         } else if (provider.weightUnit == WeightUnit.lbs) {
                           final weightKg =
                               NutritionGoalsProvider.weightToKg(weight);
                           if (weightKg >= 30 && weightKg <= 200) {
-                            setState(() => _weight = weightKg);
+                            setState(() {
+                              _weight = weightKg;
+                              _hasFilledWeight = true;
+                            });
+                          } else {
+                            setState(() => _hasFilledWeight = false);
                           }
                         }
+                      } else {
+                        setState(() => _hasFilledWeight = false);
                       }
                     },
                   ),
@@ -896,16 +1334,22 @@ class _NutritionGoalsWizardScreenState
                   flex: 2,
                   child: TextField(
                     controller: _weightController,
+                    focusNode: _weightFocusNode,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: (profileStyle
+                            ? theme.textTheme.displaySmall
+                            : theme.textTheme.headlineSmall)
+                        ?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w700,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        profileStyle ? TextAlign.start : TextAlign.center,
                     decoration: _numberInputDecoration(
                       theme: theme,
                       isDarkMode: isDarkMode,
                       suffixText: 'st',
+                      profileStyle: profileStyle,
                     ),
                     onChanged: (value) {
                       final stone = int.tryParse(value) ?? 0;
@@ -914,7 +1358,12 @@ class _NutritionGoalsWizardScreenState
                       final weightKg =
                           NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
                       if (weightKg >= 30 && weightKg <= 200) {
-                        setState(() => _weight = weightKg);
+                        setState(() {
+                          _weight = weightKg;
+                          _hasFilledWeight = true;
+                        });
+                      } else {
+                        setState(() => _hasFilledWeight = false);
                       }
                     },
                   ),
@@ -924,16 +1373,22 @@ class _NutritionGoalsWizardScreenState
                   flex: 2,
                   child: TextField(
                     controller: _weightPoundsController,
+                    focusNode: _weightPoundsFocusNode,
                     keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: (profileStyle
+                            ? theme.textTheme.displaySmall
+                            : theme.textTheme.headlineSmall)
+                        ?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w700,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        profileStyle ? TextAlign.start : TextAlign.center,
                     decoration: _numberInputDecoration(
                       theme: theme,
                       isDarkMode: isDarkMode,
                       suffixText: 'lbs',
+                      profileStyle: profileStyle,
                     ),
                     onChanged: (value) {
                       final stone = int.tryParse(_weightController.text) ?? 0;
@@ -941,24 +1396,59 @@ class _NutritionGoalsWizardScreenState
                       final weightKg =
                           NutritionGoalsProvider.weightStLbsToKg(stone, pounds);
                       if (weightKg >= 30 && weightKg <= 200) {
-                        setState(() => _weight = weightKg);
+                        setState(() {
+                          _weight = weightKg;
+                          _hasFilledWeight = true;
+                        });
+                      } else {
+                        setState(() => _hasFilledWeight = false);
                       }
                     },
                   ),
                 ),
               ],
-              const SizedBox(width: 12),
-              _buildUnitToggle(
-                label: unitLabel,
-                onTap: () {
-                  provider.toggleWeightUnit();
-                  _updateWeightController(provider);
-                },
-                theme: theme,
-                isDarkMode: isDarkMode,
-              ),
+              if (!profileStyle ||
+                  _hasFilledWeight ||
+                  _isWeightInputActive) ...[
+                const SizedBox(width: 12),
+                _buildUnitToggle(
+                  label: unitLabel,
+                  onTap: () {
+                    provider.toggleWeightUnit();
+                    if (_hasFilledWeight) {
+                      _updateWeightController(provider);
+                    } else {
+                      _weightController.clear();
+                      _weightPoundsController.clear();
+                    }
+                  },
+                  theme: theme,
+                  isDarkMode: isDarkMode,
+                  profileStyle: profileStyle,
+                  isActive: _isWeightInputActive,
+                ),
+              ],
             ],
           ),
+          if (showSlider) ...[
+            const SizedBox(height: 14),
+            Slider(
+              value: _weight.clamp(30.0, 200.0).toDouble(),
+              min: 30,
+              max: 200,
+              divisions: 340,
+              label: _formatWeightForUnit(provider.weightUnit, _weight),
+              activeColor: _accentColor(theme),
+              inactiveColor: _inputFillColor(isDarkMode),
+              onChanged: (value) {
+                setState(() {
+                  _weight = double.parse(value.toStringAsFixed(1));
+                  _hasFilledWeight = true;
+                  _updateWeightController(provider);
+                });
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -980,43 +1470,45 @@ class _NutritionGoalsWizardScreenState
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        constraints: const BoxConstraints(minHeight: 96),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
         decoration: BoxDecoration(
           color: isSelected ? accentColor : _surfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? accentColor : _subtleBorderColor(isDarkMode),
-            width: 1,
+            width: isSelected ? 0 : 1,
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? selectedForeground.withValues(alpha: 0.12)
+                    ? selectedForeground.withValues(alpha: 0.16)
                     : _inputFillColor(isDarkMode),
                 borderRadius: BorderRadius.circular(100),
                 border: Border.all(
                   color: isSelected
-                      ? selectedForeground.withValues(alpha: 0.18)
+                      ? selectedForeground.withValues(alpha: 0.2)
                       : _subtleBorderColor(isDarkMode),
                 ),
               ),
               child: Icon(
                 icon,
-                size: 18,
+                size: 21,
                 color: foregroundColor,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     title,
@@ -1053,8 +1545,10 @@ class _NutritionGoalsWizardScreenState
 
   Widget _buildNavigationButtons(
       ThemeData theme, bool isDarkMode, Color textColor) {
+    final isFinishStep = _shouldFinishAfterCurrentStep;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
       decoration: BoxDecoration(
         color: isDarkMode
             ? AppTheme.darkBackgroundColor
@@ -1062,13 +1556,13 @@ class _NutritionGoalsWizardScreenState
       ),
       child: Row(
         children: [
-          if (_currentStep > 0 && !widget.fromProfile)
+          if (_canGoBack)
             Expanded(
               child: OutlinedButton(
                 onPressed: _previousStep,
                 style: OutlinedButton.styleFrom(
                   backgroundColor: _surfaceColor(isDarkMode),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   side: BorderSide(color: _subtleBorderColor(isDarkMode)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
@@ -1094,16 +1588,20 @@ class _NutritionGoalsWizardScreenState
                 ),
               ),
             ),
-          if (_currentStep > 0 && !widget.fromProfile)
-            const SizedBox(width: 12),
+          if (_canGoBack) const SizedBox(width: 12),
           Expanded(
-            flex: (_currentStep == 0 || widget.fromProfile) ? 1 : 2,
+            flex: _canGoBack ? 2 : 1,
             child: ElevatedButton(
-              onPressed: _nextStep,
+              onPressed: _canContinueCurrentStep ? _nextStep : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentColor(theme),
                 foregroundColor: _onAccentColor(theme),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                disabledBackgroundColor:
+                    _surfaceColor(isDarkMode).withValues(alpha: 0.72),
+                disabledForegroundColor: textColor.withValues(alpha: 0.42),
+                minimumSize: const Size.fromHeight(62),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(100),
                 ),
@@ -1113,22 +1611,25 @@ class _NutritionGoalsWizardScreenState
                 children: [
                   Flexible(
                     child: Text(
-                      widget.fromProfile
-                          ? context.tr.translate('save')
-                          : (_currentStep == 2
-                              ? context.tr.translate('finish')
-                              : context.tr.translate('next')),
+                      isFinishStep
+                          ? (widget.fromProfile
+                              ? context.tr.translate('save')
+                              : context.tr.translate('finish'))
+                          : context.tr.translate('continue'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Icon(
-                    widget.fromProfile || _currentStep == 2
-                        ? Icons.check
-                        : Icons.arrow_forward,
-                    size: 18,
+                    isFinishStep
+                        ? Icons.check_rounded
+                        : Icons.arrow_forward_rounded,
+                    size: 26,
                   ),
                 ],
               ),

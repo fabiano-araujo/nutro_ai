@@ -53,6 +53,240 @@ Para configurar seus objetivos, preciso validar os dados.
     expect(batch.commands[1].arguments, isEmpty);
   });
 
+  test('parses pending app action hidden block', () {
+    const response = '''
+Posso recalcular suas metas para cutting com base no seu perfil.
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"loseWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+
+    final pendingAction = AppAgentPendingAction.tryParse(response);
+
+    expect(pendingAction, isNotNull);
+    expect(
+      pendingAction!.command.name,
+      AppAgentService.recalculateNutritionGoals,
+    );
+    expect(pendingAction.command.arguments['fitnessGoal'], 'loseWeight');
+    expect(
+      AppAgentPendingAction.removeBlock(response),
+      'Posso recalcular suas metas para cutting com base no seu perfil.',
+    );
+    expect(AppAgentCommand.containsCommandCandidate(response), isFalse);
+    expect(AppAgentCommand.tryParseBatch(response), isNull);
+  });
+
+  test('keeps only trailing assistant pending action active', () {
+    const assistantWithPending = '''
+Quer que eu recalcule automaticamente?
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"gainWeightSlowly"}}}
+[APP_PENDING_ACTION_END]
+''';
+
+    final active = AppAgentPendingAction.findLatestInTrailingAssistantTurn([
+      {
+        'isUser': true,
+        'message': 'quero ganhar massa',
+      },
+      {
+        'isUser': false,
+        'message': assistantWithPending,
+      },
+    ]);
+    expect(active, isNotNull);
+    expect(active!.command.arguments['fitnessGoal'], 'gainWeightSlowly');
+
+    final stale = AppAgentPendingAction.findLatestInTrailingAssistantTurn([
+      {
+        'isUser': false,
+        'message': assistantWithPending,
+      },
+      {
+        'isUser': true,
+        'message': 'outra coisa',
+      },
+    ]);
+    expect(stale, isNull);
+  });
+
+  test('infers pending macro recalculation from trailing assistant question',
+      () {
+    final pendingAction =
+        AppAgentPendingAction.findLatestInTrailingAssistantTurn([
+      {
+        'isUser': true,
+        'message': 'quero fazer um cutting',
+      },
+      {
+        'isUser': false,
+        'message':
+            'Você quer fazer um cutting, certo? Seu objetivo atual no app é "ganhar peso lentamente". Para mudar para cutting, posso recalcular suas metas de nutrição. Posso seguir com isso?',
+      },
+    ]);
+
+    expect(pendingAction, isNotNull);
+    expect(
+        pendingAction!.command.name, AppAgentService.recalculateNutritionGoals);
+    expect(pendingAction.command.arguments['fitnessGoal'], 'loseWeight');
+    expect(AppAgentPendingAction.isLikelyApproval('faça isso'), isTrue);
+    expect(AppAgentPendingAction.isLikelyApproval('pão'), isFalse);
+  });
+
+  test('infers pending macro target update from conversation context', () {
+    final pendingAction =
+        AppAgentPendingAction.findLatestInTrailingAssistantTurn([
+      {
+        'isUser': true,
+        'message': 'ajuste minha dieta para 2000 calorias',
+      },
+      {
+        'isUser': false,
+        'message':
+            'Posso atualizar suas metas para 2000 kcal e recalcular os macros. Quer que eu faça isso?',
+      },
+    ]);
+
+    expect(pendingAction, isNotNull);
+    expect(
+        pendingAction!.command.name, AppAgentService.updateMacroTargetsGrams);
+    expect(pendingAction.command.arguments['caloriesGoal'], 2000);
+  });
+
+  test('infers pending diet generation from conversation context', () {
+    final pendingAction =
+        AppAgentPendingAction.findLatestInTrailingAssistantTurn([
+      {
+        'isUser': true,
+        'message': 'gere uma dieta com 4 refeições',
+      },
+      {
+        'isUser': false,
+        'message':
+            'Posso gerar uma dieta personalizada com 4 refeições usando suas metas atuais. Posso seguir?',
+      },
+    ]);
+
+    expect(pendingAction, isNotNull);
+    expect(pendingAction!.command.name, AppAgentService.generateNewDietPlan);
+    expect(pendingAction.command.arguments['mealsPerDay'], 4);
+  });
+
+  test('executes pending action when assistant says it is acting now', () {
+    const response = '''
+Você tem razão! Seu perfil está configurado para ganho de peso lento, não para manutenção. Para ajustar as metas para manutenção de peso, preciso recalcular com o objetivo correto. Vou fazer isso agora.
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"maintainWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+
+    final pendingAction = AppAgentPendingAction.tryParse(response);
+    expect(pendingAction, isNotNull);
+    expect(
+      pendingAction!.command.name,
+      AppAgentService.recalculateNutritionGoals,
+    );
+    expect(pendingAction.command.arguments['fitnessGoal'], 'maintainWeight');
+    expect(
+      pendingAction.shouldExecuteImmediately(
+        userMessage: 'Quero manter peso vc colocou ganhar lentamente',
+        visibleAssistantText: AppAgentPendingAction.removeBlock(response),
+      ),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldBlockAmbiguousGoalMutation(
+        pendingAction.toExecutionCommand(rawJson: '{}'),
+        'Quero manter peso vc colocou ganhar lentamente',
+      ),
+      isFalse,
+    );
+  });
+
+  test('does not treat a goal question as explicit mutation consent', () {
+    const pendingResponse = '''
+Posso recalcular suas metas para manutenção?
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"maintainWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+    final pendingAction = AppAgentPendingAction.tryParse(pendingResponse);
+    expect(pendingAction, isNotNull);
+
+    expect(
+      pendingAction!.shouldExecuteImmediately(
+        userMessage: 'Isso é a quantidade para eu manter peso?',
+        visibleAssistantText: AppAgentPendingAction.removeBlock(
+          pendingResponse,
+        ),
+      ),
+      isFalse,
+    );
+
+    expect(
+      AppAgentService.shouldBlockAmbiguousGoalMutation(
+        pendingAction.toExecutionCommand(rawJson: '{}'),
+        'Isso é a quantidade para eu manter peso?',
+      ),
+      isTrue,
+    );
+  });
+
+  test('does not execute conditional future wording without consent', () {
+    const pendingResponse = '''
+Se você quiser, vou recalcular suas metas para manutenção depois da sua confirmação.
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"maintainWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+    final pendingAction = AppAgentPendingAction.tryParse(pendingResponse);
+    expect(pendingAction, isNotNull);
+
+    expect(
+      pendingAction!.shouldExecuteImmediately(
+        userMessage: 'isso é muito?',
+        visibleAssistantText: AppAgentPendingAction.removeBlock(
+          pendingResponse,
+        ),
+      ),
+      isFalse,
+    );
+  });
+
+  test('pending action approval bypasses ambiguous mutation block', () {
+    const pendingResponse = '''
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"cutting"}}}
+[APP_PENDING_ACTION_END]
+''';
+    final pendingAction = AppAgentPendingAction.tryParse(pendingResponse);
+    expect(pendingAction, isNotNull);
+
+    const modelCommand = AppAgentCommand(
+      name: AppAgentService.recalculateNutritionGoals,
+      arguments: <String, dynamic>{},
+      rawJson: '{}',
+    );
+
+    expect(pendingAction!.matchesCommand(modelCommand), isTrue);
+    expect(
+      AppAgentService.shouldBlockAmbiguousGoalMutation(
+        pendingAction.toExecutionCommand(rawJson: modelCommand.rawJson),
+        'Calcule',
+      ),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldBlockAmbiguousGoalMutation(
+        pendingAction.toExecutionCommand(rawJson: modelCommand.rawJson),
+        'Calcule',
+        approvedPendingAction: pendingAction,
+      ),
+      isFalse,
+    );
+  });
+
   test('only keeps prior conversation for contextual short replies', () {
     expect(
       AppAgentService.shouldIncludeConversationContext('Pode seguir'),

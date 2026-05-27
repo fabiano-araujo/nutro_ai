@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../providers/activity_tracking_provider.dart';
 import '../models/meal_model.dart';
 import '../models/food_model.dart';
 import '../theme/app_theme.dart';
@@ -10,9 +11,11 @@ import '../theme/macro_theme.dart';
 import '../widgets/nutrition_card.dart';
 import '../widgets/month_calendar_sheet.dart';
 import '../widgets/water_tracker.dart';
+import '../widgets/food_icon.dart';
 import 'meal_page.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
+import 'activity_tracking_apps_screen.dart';
 import 'food_search_screen.dart';
 import '../i18n/app_localizations.dart';
 
@@ -30,6 +33,7 @@ class DailyMealsScreen extends StatefulWidget {
 
 class _DailyMealsScreenState extends State<DailyMealsScreen> {
   final Map<MealType, bool> _expandedMeals = {};
+  String? _lastActivityTrackingDateKey;
 
   void _showDatePickerSheet(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -55,6 +59,64 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
         );
       },
     );
+  }
+
+  void _openActivityTrackingApps() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ActivityTrackingAppsScreen(),
+      ),
+    );
+  }
+
+  void _scheduleActivityTrackingLoad(
+    DateTime date,
+    ActivityTrackingProvider provider,
+  ) {
+    final key = _formatDateKey(date);
+    if (_lastActivityTrackingDateKey == key) return;
+    _lastActivityTrackingDateKey = key;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      provider.loadForDate(date);
+    });
+  }
+
+  Future<void> _connectActivityTracking(
+    DateTime date,
+    ActivityTrackingProvider provider,
+  ) async {
+    final status = await provider.requestPermissionsAndLoad(date);
+    if (!mounted) return;
+
+    String message;
+    if (status.hasAllPermissions) {
+      message =
+          AppLocalizations.of(context).translate('tracking_permission_granted');
+    } else if (status.hasAnyPermission) {
+      message =
+          AppLocalizations.of(context).translate('tracking_permission_partial');
+    } else if (status.needsProviderUpdate || !status.isAvailable) {
+      message = AppLocalizations.of(context)
+          .translate('tracking_health_update_required');
+      await provider.openHealthConnect();
+    } else {
+      message =
+          AppLocalizations.of(context).translate('tracking_permission_denied');
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  String _formatDateKey(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -122,8 +184,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                   onTap: () => _showDatePickerSheet(context),
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -150,8 +212,15 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
           },
         ),
       ),
-      body: Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
-        builder: (context, mealsProvider, goalsProvider, child) {
+      body: Consumer3<DailyMealsProvider, NutritionGoalsProvider,
+          ActivityTrackingProvider>(
+        builder:
+            (context, mealsProvider, goalsProvider, trackingProvider, child) {
+          _scheduleActivityTrackingLoad(
+            mealsProvider.selectedDate,
+            trackingProvider,
+          );
+
           return SingleChildScrollView(
             child: Column(
               children: [
@@ -231,6 +300,15 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
                 SizedBox(height: 16),
 
+                _buildActivityTrackingCard(
+                  isDarkMode,
+                  textColor,
+                  trackingProvider,
+                  mealsProvider.selectedDate,
+                ),
+
+                SizedBox(height: 16),
+
                 // Meals section header with edit button
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
@@ -285,6 +363,255 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     );
   }
 
+  Widget _buildActivityTrackingCard(
+    bool isDarkMode,
+    Color textColor,
+    ActivityTrackingProvider trackingProvider,
+    DateTime selectedDate,
+  ) {
+    final theme = Theme.of(context);
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final mutedTextColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final primaryColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+    final l10n = AppLocalizations.of(context);
+    final caloriesText =
+        '${trackingProvider.activeCalories} ${l10n.translate('tracking_kcal_spent_suffix')}';
+    final statusMessage = _activityTrackingStatusMessage(
+      trackingProvider,
+      l10n,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDarkMode
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD84D)
+                        .withValues(alpha: isDarkMode ? 0.18 : 0.22),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events_rounded,
+                    color: Color(0xFFEAB308),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.translate('tracking_activities_title'),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: textColor.withValues(alpha: 0.86),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Text(
+                  caloriesText,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: mutedTextColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              statusMessage,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: textColor.withValues(alpha: 0.72),
+                height: 1.32,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (trackingProvider.hasActivityData) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _buildActivityMetricChip(
+                    icon: Icons.directions_walk_rounded,
+                    label:
+                        '${trackingProvider.steps} ${l10n.translate('tracking_steps_short')}',
+                    color: const Color(0xFF2F80ED),
+                    isDarkMode: isDarkMode,
+                  ),
+                  _buildActivityMetricChip(
+                    icon: Icons.timer_rounded,
+                    label:
+                        '${trackingProvider.exerciseMinutes} ${l10n.translate('tracking_minutes_short')}',
+                    color: const Color(0xFF8B5CF6),
+                    isDarkMode: isDarkMode,
+                  ),
+                  if (trackingProvider.weightKg != null)
+                    _buildActivityMetricChip(
+                      icon: Icons.monitor_weight_rounded,
+                      label:
+                          '${trackingProvider.weightKg!.toStringAsFixed(1)} kg',
+                      color: const Color(0xFF059669),
+                      isDarkMode: isDarkMode,
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            Center(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: trackingProvider.isRequestingPermissions
+                      ? null
+                      : () => _connectActivityTracking(
+                            selectedDate,
+                            trackingProvider,
+                          ),
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDarkMode
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        if (!isDarkMode)
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 14,
+                            offset: const Offset(0, 7),
+                          ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          trackingProvider.isRequestingPermissions
+                              ? l10n.translate('tracking_syncing')
+                              : trackingProvider.hasAnyPermission
+                                  ? l10n.translate('tracking_refresh')
+                                  : l10n.translate('tracking_action_connect'),
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: primaryColor,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 9),
+                        const Icon(
+                          Icons.link_rounded,
+                          color: Color(0xFF4C6FFF),
+                          size: 23,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _openActivityTrackingApps,
+                style: FilledButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: isDarkMode ? Colors.black : Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: Text(
+                  l10n.translate('tracking_add_activity'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _activityTrackingStatusMessage(
+    ActivityTrackingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    if (provider.isLoading) {
+      return l10n.translate('tracking_syncing_health_connect');
+    }
+    if (!provider.isHealthConnectAvailable || provider.needsProviderUpdate) {
+      return l10n.translate('tracking_health_update_required');
+    }
+    if (!provider.hasAnyPermission) {
+      return l10n.translate('tracking_activity_card_message');
+    }
+    if (!provider.hasActivityData) {
+      return l10n.translate('tracking_no_activity_data');
+    }
+
+    return l10n
+        .translate('tracking_activity_synced_message')
+        .replaceAll('{steps}', provider.steps.toString())
+        .replaceAll('{minutes}', provider.exerciseMinutes.toString());
+  }
+
+  Widget _buildActivityMetricChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDarkMode ? 0.2 : 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMealsList(
     DailyMealsProvider provider,
     bool isDarkMode,
@@ -305,19 +632,15 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                     decoration: BoxDecoration(
                       color: isDarkMode
                           ? Colors.white.withAlpha(20)
-                          : Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withAlpha(20),
+                          : Theme.of(context).colorScheme.primary.withAlpha(20),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.restaurant_menu,
                       size: 48,
-                      color:
-                          isDarkMode
-                              ? Colors.white70
-                              : Theme.of(context).colorScheme.primary,
+                      color: isDarkMode
+                          ? Colors.white70
+                          : Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   SizedBox(height: 24),
@@ -478,7 +801,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     double totalVitaminB12 = 0;
 
     for (var food in allFoods) {
-      final nutrient = food.nutrients?.first;
+      final nutrient = food.primaryNutrient;
       if (nutrient != null) {
         totalFiber += nutrient.dietaryFiber ?? 0;
         totalSugars += nutrient.sugars ?? 0;
@@ -929,15 +1252,15 @@ class _MealCard extends StatelessWidget {
             color: color,
           ),
         ),
-          Text(
-            unit,
-            style: TextStyle(
-              fontSize: 8,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            ),
+        Text(
+          unit,
+          style: TextStyle(
+            fontSize: 8,
+            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 
   Widget _buildFoodItem(
@@ -954,10 +1277,7 @@ class _MealCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 alignment: Alignment.center,
-                child: Text(
-                  food.emoji,
-                  style: const TextStyle(fontSize: 24),
-                ),
+                child: FoodIcon(name: food.name, emoji: food.emoji, size: 27),
               ),
               const SizedBox(width: 12),
               Expanded(

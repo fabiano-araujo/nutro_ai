@@ -1,3 +1,5 @@
+import '../utils/food_emoji_resolver.dart' as food_emoji;
+
 /// Modo de dieta: diária (cada dia diferente) ou semanal única (mesma dieta todos os dias)
 enum DietMode {
   daily, // Cada dia tem refeições diferentes
@@ -14,101 +16,8 @@ String? _readString(Map<String, dynamic> json, List<String> keys) {
   return null;
 }
 
-String _normalizeFoodName(String value) {
-  const replacements = {
-    'á': 'a',
-    'à': 'a',
-    'ã': 'a',
-    'â': 'a',
-    'ä': 'a',
-    'é': 'e',
-    'è': 'e',
-    'ê': 'e',
-    'ë': 'e',
-    'í': 'i',
-    'ì': 'i',
-    'î': 'i',
-    'ï': 'i',
-    'ó': 'o',
-    'ò': 'o',
-    'õ': 'o',
-    'ô': 'o',
-    'ö': 'o',
-    'ú': 'u',
-    'ù': 'u',
-    'û': 'u',
-    'ü': 'u',
-    'ç': 'c',
-  };
-
-  var normalized = value.toLowerCase();
-  replacements.forEach((from, to) {
-    normalized = normalized.replaceAll(from, to);
-  });
-  return normalized;
-}
-
 String resolveFoodEmoji(String name, {String? preferred}) {
-  if (preferred != null &&
-      preferred.trim().isNotEmpty &&
-      preferred.trim() != '🍽️') {
-    return preferred.trim();
-  }
-
-  final normalized = _normalizeFoodName(name);
-  const emojiMatchers = <MapEntry<List<String>, String>>[
-    MapEntry(['ovo', 'omelete'], '🍳'),
-    MapEntry(['frango', 'sobrecoxa', 'peito de frango'], '🍗'),
-    MapEntry(['carne', 'bife', 'alcatra', 'patinho', 'picanha'], '🥩'),
-    MapEntry(['hamburguer', 'burger'], '🍔'),
-    MapEntry(
-        ['peixe', 'salmao', 'atum', 'tilapia', 'sardinha', 'bacalhau'], '🐟'),
-    MapEntry(['camarao', 'lula', 'polvo', 'marisco'], '🍤'),
-    MapEntry(['porco', 'bacon', 'presunto', 'linguica', 'salsicha'], '🥓'),
-    MapEntry(['arroz', 'risoto'], '🍚'),
-    MapEntry(['feijao', 'lentilha', 'grao-de-bico', 'grao de bico'], '🫘'),
-    MapEntry(['macarrao', 'massa', 'espaguete', 'lasanha', 'nhoque', 'ravioli'],
-        '🍝'),
-    MapEntry(['pizza'], '🍕'),
-    MapEntry(
-        ['pao', 'torrada', 'croissant', 'bagel', 'sanduiche', 'toast'], '🥖'),
-    MapEntry(['queijo', 'mussarela', 'muçarela', 'parmesao', 'ricota'], '🧀'),
-    MapEntry(['leite', 'iogurte', 'coalhada'], '🥛'),
-    MapEntry(['cafe', 'capuccino', 'espresso'], '☕'),
-    MapEntry(['cha', 'tea'], '🫖'),
-    MapEntry(['suco', 'juice', 'vitamina'], '🧃'),
-    MapEntry(['agua', 'water'], '💧'),
-    MapEntry(['banana'], '🍌'),
-    MapEntry(['maca', 'maçã'], '🍎'),
-    MapEntry(['laranja', 'tangerina', 'mexerica'], '🍊'),
-    MapEntry(['uva'], '🍇'),
-    MapEntry(['morango'], '🍓'),
-    MapEntry(['abacaxi'], '🍍'),
-    MapEntry(['mamao', 'mamão'], '🥭'),
-    MapEntry(['manga'], '🥭'),
-    MapEntry(['abacate'], '🥑'),
-    MapEntry(['tomate'], '🍅'),
-    MapEntry(['alface', 'salada', 'couve', 'espinafre', 'brocolis', 'brócolis'],
-        '🥗'),
-    MapEntry(['batata', 'mandioca', 'inhame'], '🥔'),
-    MapEntry(['batata doce'], '🍠'),
-    MapEntry(['cenoura'], '🥕'),
-    MapEntry(['milho', 'cuscuz'], '🌽'),
-    MapEntry(['sopa', 'caldo'], '🍲'),
-    MapEntry(['bolo', 'torta', 'cupcake'], '🍰'),
-    MapEntry(['biscoito', 'bolacha', 'cookie'], '🍪'),
-    MapEntry(['chocolate', 'cacau', 'brigadeiro'], '🍫'),
-    MapEntry(['castanha', 'amendoim', 'noz', 'nuts'], '🥜'),
-    MapEntry(['sushi'], '🍣'),
-  ];
-
-  for (final entry in emojiMatchers) {
-    if (entry.key.any(normalized.contains)) {
-      return entry.value;
-    }
-  }
-
-  return '🍽️';
+  return food_emoji.resolveFoodEmoji(name, preferred: preferred);
 }
 
 double _readDouble(Map<String, dynamic> json, List<String> keys,
@@ -614,8 +523,8 @@ class DietPreferences {
         (e) => e.name == json['dietMode'],
         orElse: () => DietMode.weekly,
       ),
-      dietGenerationModel: json['dietGenerationModel']?.toString() ??
-          defaultDietGenerationModel,
+      dietGenerationModel:
+          json['dietGenerationModel']?.toString() ?? defaultDietGenerationModel,
     );
   }
 

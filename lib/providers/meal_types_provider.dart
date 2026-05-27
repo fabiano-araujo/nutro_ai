@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 
+import '../services/notification_service.dart';
 import '../services/user_app_state_service.dart';
 
 class MealTypeConfig {
@@ -10,13 +11,16 @@ class MealTypeConfig {
   final String name;
   final String emoji;
   final int order;
+  final String reminderTime;
 
   MealTypeConfig({
     required this.id,
     required this.name,
     required this.emoji,
     required this.order,
-  });
+    String? reminderTime,
+  }) : reminderTime = normalizeReminderTime(reminderTime) ??
+            defaultReminderTime(id, order);
 
   Map<String, dynamic> toJson() {
     return {
@@ -24,15 +28,19 @@ class MealTypeConfig {
       'name': name,
       'emoji': emoji,
       'order': order,
+      'reminderTime': reminderTime,
     };
   }
 
   factory MealTypeConfig.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] ?? '';
+    final order = json['order'] ?? 0;
     return MealTypeConfig(
-      id: json['id'] ?? '',
+      id: id,
       name: json['name'] ?? '',
       emoji: json['emoji'] ?? '🍽️',
-      order: json['order'] ?? 0,
+      order: order,
+      reminderTime: json['reminderTime'] ?? json['time'],
     );
   }
 
@@ -41,13 +49,72 @@ class MealTypeConfig {
     String? name,
     String? emoji,
     int? order,
+    String? reminderTime,
   }) {
+    final nextId = id ?? this.id;
+    final nextOrder = order ?? this.order;
     return MealTypeConfig(
-      id: id ?? this.id,
+      id: nextId,
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
-      order: order ?? this.order,
+      order: nextOrder,
+      reminderTime: reminderTime ?? this.reminderTime,
     );
+  }
+
+  static String defaultReminderTime(String id, int order) {
+    switch (id) {
+      case 'breakfast':
+        return '07:00';
+      case 'morning_snack':
+        return '10:00';
+      case 'lunch':
+        return '12:00';
+      case 'afternoon_snack':
+        return '15:00';
+      case 'dinner':
+        return '19:00';
+      case 'supper':
+        return '21:00';
+    }
+
+    const fallbackTimes = [
+      '07:00',
+      '10:00',
+      '12:00',
+      '15:00',
+      '19:00',
+      '21:00',
+      '22:00',
+      '23:00',
+    ];
+
+    if (order >= 0 && order < fallbackTimes.length) {
+      return fallbackTimes[order];
+    }
+
+    return '12:00';
+  }
+
+  static String? normalizeReminderTime(Object? value) {
+    final raw = value?.toString().trim();
+    if (raw == null || raw.isEmpty) return null;
+
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(raw);
+    if (match == null) return null;
+
+    final hour = int.tryParse(match.group(1)!);
+    final minute = int.tryParse(match.group(2)!);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -168,13 +235,18 @@ class MealTypesProvider extends ChangeNotifier {
         _hasPendingServerSync = true;
         await _savePendingSyncFlag();
       }
+      await NotificationService().syncScheduledNotifications();
     } catch (e) {
       print('Error saving meal types: $e');
     }
   }
 
   // Add a new meal type
-  Future<void> addMealType(String name, String emoji) async {
+  Future<void> addMealType(
+    String name,
+    String emoji, {
+    String? reminderTime,
+  }) async {
     final newOrder = _mealTypes.isEmpty
         ? 0
         : _mealTypes.map((m) => m.order).reduce((a, b) => a > b ? a : b) + 1;
@@ -184,6 +256,7 @@ class MealTypesProvider extends ChangeNotifier {
       name: name,
       emoji: emoji,
       order: newOrder,
+      reminderTime: reminderTime,
     );
 
     _mealTypes.add(newMealType);
@@ -196,12 +269,18 @@ class MealTypesProvider extends ChangeNotifier {
   }
 
   // Update a meal type
-  Future<void> updateMealType(String id, {String? name, String? emoji}) async {
+  Future<void> updateMealType(
+    String id, {
+    String? name,
+    String? emoji,
+    String? reminderTime,
+  }) async {
     final index = _mealTypes.indexWhere((m) => m.id == id);
     if (index != -1) {
       _mealTypes[index] = _mealTypes[index].copyWith(
         name: name,
         emoji: emoji,
+        reminderTime: reminderTime,
       );
       _stateRevision++;
       await _saveMealTypes();

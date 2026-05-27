@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
 import '../models/Nutrient.dart';
+import 'food_emoji_resolver.dart';
 
 class FoodJsonParser {
   /// Detecta se há um JSON de alimentos na mensagem
@@ -267,8 +268,12 @@ class FoodJsonParser {
         final fat = _parseDouble(macros['fat']) ?? 0.0;
 
         // Extrair porção e unidade
-        final servingSize = _parseDouble(macros['serving_size']) ?? 100.0;
-        final servingUnit = macros['serving_unit'] as String? ?? 'g';
+        final parsedServing = parseServingFromPortion(portion);
+        final servingSize = _parseDouble(macros['serving_size']) ??
+            parsedServing?.amount ??
+            100.0;
+        final servingUnit =
+            macros['serving_unit'] as String? ?? parsedServing?.unit ?? 'g';
 
         // Criar objeto Nutrient com os valores
         final nutrient = Nutrient(
@@ -301,7 +306,7 @@ class FoodJsonParser {
         // Criar objeto Food
         final food = Food(
           name: name,
-          emoji: _getFoodEmoji(name),
+          emoji: resolveFoodEmoji(name),
           amount: portion ?? '${servingSize.toStringAsFixed(0)}$servingUnit',
           nutrients: [nutrient],
         );
@@ -317,6 +322,117 @@ class FoodJsonParser {
 
   static String _foodIdentity(String name) {
     return name.trim().toLowerCase();
+  }
+
+  static ({double amount, String unit})? parseServingFromPortion(
+    String? portion,
+  ) {
+    if (portion == null || portion.trim().isEmpty) return null;
+
+    final normalized = _normalizePortionText(portion);
+    final numberPattern = r'(\d+(?:[.,]\d+)?(?:\s*/\s*\d+(?:[.,]\d+)?)?)';
+    final unitPattern =
+        r'(fl\s*oz|gramas?|g|mililitros?|ml|quilos?|kg|litros?|l|copos?|xicaras?|fatias?|unidades?|colheres?|scoops?|cups?|tbsp|tsp)';
+    final match = RegExp(
+      '$numberPattern\\s*$unitPattern\\b',
+      caseSensitive: false,
+    ).firstMatch(normalized);
+
+    if (match == null) return null;
+
+    final amount = _parseQuantity(match.group(1));
+    if (amount == null || amount <= 0) return null;
+
+    final unit = _normalizeServingUnit(match.group(2) ?? '');
+    if (unit == null) return null;
+
+    return (amount: amount * unit.multiplier, unit: unit.name);
+  }
+
+  static String _normalizePortionText(String value) {
+    var normalized = value.toLowerCase().replaceAll(',', '.');
+    final replacements = <String, String>{
+      'meio': '0.5',
+      'meia': '0.5',
+      'um': '1',
+      'uma': '1',
+      'dois': '2',
+      'duas': '2',
+      'tres': '3',
+      'quatro': '4',
+      'cinco': '5',
+    };
+
+    normalized = _stripDiacritics(normalized);
+    replacements.forEach((word, number) {
+      normalized = normalized.replaceAll(RegExp('\\b$word\\b'), number);
+    });
+
+    return normalized;
+  }
+
+  static String _stripDiacritics(String value) {
+    const from = 'áàâãäéèêëíìîïóòôõöúùûüçñ';
+    const to = 'aaaaaeeeeiiiiooooouuuucn';
+    var result = value;
+    for (var i = 0; i < from.length; i++) {
+      result = result.replaceAll(from[i], to[i]);
+    }
+    return result;
+  }
+
+  static double? _parseQuantity(String? raw) {
+    if (raw == null) return null;
+    final normalized = raw.replaceAll(' ', '').replaceAll(',', '.');
+    if (normalized.contains('/')) {
+      final parts = normalized.split('/');
+      if (parts.length != 2) return null;
+      final numerator = double.tryParse(parts[0]);
+      final denominator = double.tryParse(parts[1]);
+      if (numerator == null || denominator == null || denominator == 0) {
+        return null;
+      }
+      return numerator / denominator;
+    }
+
+    return double.tryParse(normalized);
+  }
+
+  static ({String name, double multiplier})? _normalizeServingUnit(
+    String rawUnit,
+  ) {
+    final unit = _stripDiacritics(rawUnit.toLowerCase())
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (unit == 'g' || unit.startsWith('grama')) {
+      return (name: 'g', multiplier: 1.0);
+    }
+    if (unit == 'kg' || unit.startsWith('quilo')) {
+      return (name: 'g', multiplier: 1000.0);
+    }
+    if (unit == 'ml' || unit.startsWith('mililitro')) {
+      return (name: 'ml', multiplier: 1.0);
+    }
+    if (unit == 'l' || unit.startsWith('litro')) {
+      return (name: 'ml', multiplier: 1000.0);
+    }
+    if (unit == 'oz') return (name: 'oz', multiplier: 1.0);
+    if (unit == 'fl oz' || unit == 'floz') {
+      return (name: 'fl oz', multiplier: 1.0);
+    }
+    if (unit.startsWith('copo')) return (name: 'copo', multiplier: 1.0);
+    if (unit.startsWith('xicara') || unit == 'cup' || unit == 'cups') {
+      return (name: 'xicara', multiplier: 1.0);
+    }
+    if (unit.startsWith('fatia')) return (name: 'fatia', multiplier: 1.0);
+    if (unit.startsWith('unidade')) return (name: 'unidade', multiplier: 1.0);
+    if (unit.startsWith('colher') || unit == 'tbsp' || unit == 'tsp') {
+      return (name: 'colher', multiplier: 1.0);
+    }
+    if (unit.startsWith('scoop')) return (name: 'scoop', multiplier: 1.0);
+
+    return null;
   }
 
   static String _normalizeJsonLikeText(String message) {
@@ -386,57 +502,6 @@ class FoodJsonParser {
     if (value is int) return value.toDouble();
     if (value is String) return double.tryParse(value);
     return null;
-  }
-
-  /// Retorna um emoji apropriado baseado no nome do alimento
-  static String _getFoodEmoji(String foodName) {
-    final name = foodName.toLowerCase();
-
-    // Carnes
-    if (name.contains('chicken') || name.contains('frango')) return '🍗';
-    if (name.contains('beef') || name.contains('carne')) return '🥩';
-    if (name.contains('fish') || name.contains('peixe')) return '🐟';
-    if (name.contains('pork') || name.contains('porco')) return '🥓';
-
-    // Grãos e cereais
-    if (name.contains('rice') || name.contains('arroz')) return '🍚';
-    if (name.contains('bread') || name.contains('pão')) return '🍞';
-    if (name.contains('pasta') || name.contains('macarrão')) return '🍝';
-    if (name.contains('oats') || name.contains('aveia')) return '🥣';
-
-    // Vegetais
-    if (name.contains('salad') || name.contains('salada')) return '🥗';
-    if (name.contains('broccoli') || name.contains('brócolis')) return '🥦';
-    if (name.contains('carrot') || name.contains('cenoura')) return '🥕';
-    if (name.contains('tomato') || name.contains('tomate')) return '🍅';
-
-    // Frutas
-    if (name.contains('apple') || name.contains('maçã')) return '🍎';
-    if (name.contains('banana')) return '🍌';
-    if (name.contains('orange') || name.contains('laranja')) return '🍊';
-    if (name.contains('strawberry') || name.contains('morango')) return '🍓';
-
-    // Laticínios
-    if (name.contains('milk') || name.contains('leite')) return '🥛';
-    if (name.contains('cheese') || name.contains('queijo')) return '🧀';
-    if (name.contains('yogurt') || name.contains('iogurte')) return '🥛';
-
-    // Ovos
-    if (name.contains('egg') || name.contains('ovo')) return '🥚';
-
-    // Bebidas
-    if (name.contains('water') || name.contains('água')) return '💧';
-    if (name.contains('juice') || name.contains('suco')) return '🧃';
-    if (name.contains('coffee') || name.contains('café')) return '☕';
-
-    // Snacks
-    if (name.contains('nuts') ||
-        name.contains('castanha') ||
-        name.contains('amendoim')) return '🥜';
-    if (name.contains('chocolate')) return '🍫';
-
-    // Default
-    return '🍽️';
   }
 
   /// Cria uma Meal a partir de uma lista de Foods

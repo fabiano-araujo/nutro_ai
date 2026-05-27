@@ -20,6 +20,7 @@ import '../screens/login_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../i18n/app_localizations.dart';
 import '../widgets/diet_style_message_state.dart';
+import '../widgets/food_icon.dart';
 import '../widgets/native_ad_widget.dart';
 import '../widgets/header_streak_badge.dart';
 import '../services/ad_manager.dart';
@@ -259,6 +260,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   ) async {
     final l10n = AppLocalizations.of(context);
     final preferences = dietProvider.preferences;
+    final nutritionGoals =
+        Provider.of<NutritionGoalsProvider>(context, listen: false);
     final restrictionsController = TextEditingController(
       text: preferences.foodRestrictions.join(', '),
     );
@@ -271,7 +274,26 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final routineController = TextEditingController(
       text: preferences.routineConsiderations.join(', '),
     );
+    final routineFocusNode = FocusNode();
     var selectedHungriestMeal = preferences.hungriestMealTime;
+    var selectedDietType = nutritionGoals.dietType;
+
+    final quickDietTypes = const [
+      DietType.aiRecommended,
+      DietType.balanced,
+      DietType.highProtein,
+      DietType.lowCarb,
+      DietType.ketogenic,
+      DietType.mediterranean,
+      DietType.paleo,
+      DietType.lowFat,
+      DietType.dash,
+    ];
+    final healthTokens = const [
+      'hipertensao',
+      'diabetes',
+      'colesterol alto',
+    ];
 
     final confirmed = await showDialog<bool>(
           context: context,
@@ -293,6 +315,30 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
+                        _buildPreferenceOptionSection(
+                          title: l10n.translate(
+                            'diet_generation_preferences_diet_style_label',
+                          ),
+                          children: quickDietTypes
+                              .map(
+                                (dietType) => ChoiceChip(
+                                  label: Text(
+                                    nutritionGoals.getDietTypeName(
+                                      dietType,
+                                      context,
+                                    ),
+                                  ),
+                                  selected: selectedDietType == dietType,
+                                  onSelected: (_) {
+                                    setDialogState(() {
+                                      selectedDietType = dietType;
+                                    });
+                                  },
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        const SizedBox(height: 16),
                         TextField(
                           controller: restrictionsController,
                           decoration: InputDecoration(
@@ -304,6 +350,47 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                             ),
                           ),
                           textInputAction: TextInputAction.next,
+                          onChanged: (_) => setDialogState(() {}),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildPreferenceOptionSection(
+                          title: l10n.translate(
+                            'diet_generation_preferences_restrictions_quick_label',
+                          ),
+                          children: [
+                            ChoiceChip(
+                              label: Text(l10n.translate('diet_option_none')),
+                              selected:
+                                  restrictionsController.text.trim().isEmpty,
+                              onSelected: (_) {
+                                setDialogState(() {
+                                  restrictionsController.clear();
+                                });
+                              },
+                            ),
+                            for (final option in const [
+                              ('vegetariano', 'diet_option_vegetarian'),
+                              ('vegano', 'diet_option_vegan'),
+                              ('sem gluten', 'diet_option_gluten_free'),
+                              ('sem lactose', 'diet_option_lactose_free'),
+                            ])
+                              ChoiceChip(
+                                label: Text(l10n.translate(option.$2)),
+                                selected: _preferenceContains(
+                                  restrictionsController.text,
+                                  option.$1,
+                                ),
+                                onSelected: (selected) {
+                                  setDialogState(() {
+                                    _setPreferenceToken(
+                                      restrictionsController,
+                                      option.$1,
+                                      selected,
+                                    );
+                                  });
+                                },
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         TextField(
@@ -330,6 +417,43 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                             ),
                           ),
                           textInputAction: TextInputAction.next,
+                          onChanged: (_) => setDialogState(() {}),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildPreferenceOptionSection(
+                          title: l10n.translate(
+                            'diet_generation_preferences_avoided_quick_label',
+                          ),
+                          children: [
+                            ChoiceChip(
+                              label: Text(l10n.translate('diet_option_none')),
+                              selected:
+                                  avoidedFoodsController.text.trim().isEmpty,
+                              onSelected: (_) {
+                                setDialogState(() {
+                                  avoidedFoodsController.clear();
+                                });
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(
+                                l10n.translate('diet_option_no_red_meat'),
+                              ),
+                              selected: _preferenceContains(
+                                avoidedFoodsController.text,
+                                'carne vermelha',
+                              ),
+                              onSelected: (selected) {
+                                setDialogState(() {
+                                  _setPreferenceToken(
+                                    avoidedFoodsController,
+                                    'carne vermelha',
+                                    selected,
+                                  );
+                                });
+                              },
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
@@ -367,8 +491,66 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                           },
                         ),
                         const SizedBox(height: 12),
+                        _buildPreferenceOptionSection(
+                          title: l10n.translate(
+                            'diet_generation_preferences_health_quick_label',
+                          ),
+                          children: [
+                            ChoiceChip(
+                              label: Text(l10n.translate('diet_option_none')),
+                              selected: !_preferenceContainsAny(
+                                routineController.text,
+                                healthTokens,
+                              ),
+                              onSelected: (_) {
+                                setDialogState(() {
+                                  _removePreferenceTokens(
+                                    routineController,
+                                    healthTokens,
+                                  );
+                                });
+                              },
+                            ),
+                            for (final option in const [
+                              (
+                                'hipertensao',
+                                'diet_option_high_blood_pressure'
+                              ),
+                              ('diabetes', 'diet_option_diabetes'),
+                              (
+                                'colesterol alto',
+                                'diet_option_high_cholesterol'
+                              ),
+                            ])
+                              ChoiceChip(
+                                label: Text(l10n.translate(option.$2)),
+                                selected: _preferenceContains(
+                                  routineController.text,
+                                  option.$1,
+                                ),
+                                onSelected: (selected) {
+                                  setDialogState(() {
+                                    _setPreferenceToken(
+                                      routineController,
+                                      option.$1,
+                                      selected,
+                                    );
+                                  });
+                                },
+                              ),
+                            ActionChip(
+                              label: Text(l10n.translate('diet_option_other')),
+                              onPressed: () {
+                                setDialogState(() {});
+                                routineFocusNode.requestFocus();
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         TextField(
                           controller: routineController,
+                          focusNode: routineFocusNode,
                           decoration: InputDecoration(
                             labelText: l10n.translate(
                               'diet_generation_preferences_routine_label',
@@ -378,6 +560,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                             ),
                           ),
                           maxLines: 3,
+                          onChanged: (_) => setDialogState(() {}),
                         ),
                       ],
                     ),
@@ -389,6 +572,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                     ),
                     ElevatedButton(
                       onPressed: () {
+                        nutritionGoals.updateDietType(selectedDietType);
                         dietProvider.updateDietGenerationPreferences(
                           foodRestrictions: _splitPreferenceList(
                             restrictionsController.text,
@@ -426,8 +610,33 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     favoriteFoodsController.dispose();
     avoidedFoodsController.dispose();
     routineController.dispose();
+    routineFocusNode.dispose();
 
     return confirmed;
+  }
+
+  Widget _buildPreferenceOptionSection({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: children,
+        ),
+      ],
+    );
   }
 
   List<String> _splitPreferenceList(String rawValue) {
@@ -436,6 +645,51 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
+  }
+
+  bool _preferenceContains(String rawValue, String token) {
+    final normalizedToken = token.trim().toLowerCase();
+    return _splitPreferenceList(rawValue).any(
+      (item) => item.trim().toLowerCase() == normalizedToken,
+    );
+  }
+
+  bool _preferenceContainsAny(String rawValue, Iterable<String> tokens) {
+    return tokens.any((token) => _preferenceContains(rawValue, token));
+  }
+
+  void _setPreferenceToken(
+    TextEditingController controller,
+    String token,
+    bool selected,
+  ) {
+    final normalizedToken = token.trim().toLowerCase();
+    final values = _splitPreferenceList(controller.text)
+        .where((item) => item.trim().toLowerCase() != normalizedToken)
+        .toList();
+    if (selected) {
+      values.add(token);
+    }
+    controller.text = values.join(', ');
+    controller.selection = TextSelection.collapsed(
+      offset: controller.text.length,
+    );
+  }
+
+  void _removePreferenceTokens(
+    TextEditingController controller,
+    Iterable<String> tokens,
+  ) {
+    final normalizedTokens = tokens.map((token) => token.toLowerCase()).toSet();
+    final values = _splitPreferenceList(controller.text)
+        .where(
+          (item) => !normalizedTokens.contains(item.trim().toLowerCase()),
+        )
+        .toList();
+    controller.text = values.join(', ');
+    controller.selection = TextSelection.collapsed(
+      offset: controller.text.length,
+    );
   }
 
   // Show premium required dialog for daily diet
@@ -1742,10 +1996,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                 width: 36,
                 height: 36,
                 alignment: Alignment.center,
-                child: Text(
-                  food.emoji,
-                  style: const TextStyle(fontSize: 24),
-                ),
+                child: FoodIcon(name: food.name, emoji: food.emoji, size: 27),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1962,10 +2213,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                 width: 36,
                 height: 36,
                 alignment: Alignment.center,
-                child: Text(
-                  food.emoji,
-                  style: const TextStyle(fontSize: 28),
-                ),
+                child: FoodIcon(name: food.name, emoji: food.emoji, size: 28),
               ),
               const SizedBox(width: 10),
               Expanded(

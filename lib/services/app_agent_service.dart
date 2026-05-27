@@ -9,6 +9,7 @@ import '../providers/diet_plan_provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../widgets/message_notifier.dart';
 import 'auth_service.dart';
 import 'app_debug_log_service.dart';
 import 'server_chat_state_service.dart';
@@ -23,6 +24,11 @@ class AppAgentCommand {
   final String name;
   final Map<String, dynamic> arguments;
   final String rawJson;
+
+  static final RegExp _pendingActionBlockPattern = RegExp(
+    r'\[APP_PENDING_ACTION_BEGIN\][\s\S]*?\[APP_PENDING_ACTION_END\]',
+    caseSensitive: false,
+  );
 
   static AppAgentCommand? tryParse(String responseContent) {
     final batch = tryParseBatch(responseContent);
@@ -126,7 +132,8 @@ class AppAgentCommand {
   }
 
   static bool containsCommandCandidate(String responseContent) {
-    final normalized = responseContent.toLowerCase();
+    final normalized =
+        _removePendingActionBlocks(responseContent).toLowerCase();
     final hasExplicitCommandMarker = normalized.contains('"app_command"') ||
         normalized.contains('"appcommand"') ||
         normalized.contains('"app_commands"') ||
@@ -150,24 +157,25 @@ class AppAgentCommand {
   }
 
   static String removeCommandJson(String responseContent) {
-    final jsonString = _extractCommandJson(responseContent);
+    final sanitizedResponse = _removePendingActionBlocks(responseContent);
+    final jsonString = _extractCommandJson(sanitizedResponse);
     if (jsonString == null) {
-      final candidateStart = _findCommandCandidateStart(responseContent);
+      final candidateStart = _findCommandCandidateStart(sanitizedResponse);
       if (candidateStart == null) {
         return responseContent;
       }
-      return responseContent.substring(0, candidateStart).trimRight();
+      return sanitizedResponse.substring(0, candidateStart).trimRight();
     }
 
-    if (responseContent.contains(jsonString)) {
-      return responseContent.replaceAll(jsonString, '').trim();
+    if (sanitizedResponse.contains(jsonString)) {
+      return sanitizedResponse.replaceAll(jsonString, '').trim();
     }
 
-    final candidateStart = _findCommandCandidateStart(responseContent);
+    final candidateStart = _findCommandCandidateStart(sanitizedResponse);
     if (candidateStart == null) {
       return responseContent;
     }
-    return responseContent.substring(0, candidateStart).trimRight();
+    return sanitizedResponse.substring(0, candidateStart).trimRight();
   }
 
   static int? _findCommandCandidateStart(String responseContent) {
@@ -226,8 +234,10 @@ class AppAgentCommand {
   }
 
   static String? _extractCommandJson(String responseContent) {
-    final sanitized =
-        responseContent.replaceAll('```json', '').replaceAll('```', '').trim();
+    final sanitized = _removePendingActionBlocks(responseContent)
+        .replaceAll('```json', '')
+        .replaceAll('```', '')
+        .trim();
     final firstNonWhitespace = sanitized.indexOf(RegExp(r'\S'));
     final trimmedStart =
         firstNonWhitespace == -1 ? '' : sanitized.substring(firstNonWhitespace);
@@ -312,6 +322,10 @@ class AppAgentCommand {
     }
 
     return _extractBalancedJsonBlock(sanitized, startIndex);
+  }
+
+  static String _removePendingActionBlocks(String responseContent) {
+    return responseContent.replaceAll(_pendingActionBlockPattern, '');
   }
 
   static String? _extractBalancedJsonBlock(String content, int startIndex) {
@@ -623,6 +637,894 @@ class AppAgentCommandBatch {
 
   final List<AppAgentCommand> commands;
   final String rawJson;
+}
+
+class AppAgentPendingAction {
+  const AppAgentPendingAction({
+    required this.command,
+    required this.rawBlock,
+  });
+
+  static final RegExp _blockPattern = RegExp(
+    r'\[APP_PENDING_ACTION_BEGIN\]([\s\S]*?)\[APP_PENDING_ACTION_END\]',
+    caseSensitive: false,
+  );
+
+  final AppAgentCommand command;
+  final String rawBlock;
+
+  String toPromptBlock() {
+    final payload = jsonEncode({
+      'app_command': {
+        'name': command.name,
+        'arguments': command.arguments,
+      },
+    });
+    return '[APP_PENDING_ACTION_BEGIN]\n'
+        '$payload\n'
+        '[APP_PENDING_ACTION_END]';
+  }
+
+  AppAgentCommand toExecutionCommand({required String rawJson}) {
+    return AppAgentCommand(
+      name: command.name,
+      arguments: command.arguments,
+      rawJson: rawJson,
+    );
+  }
+
+  bool matchesCommand(AppAgentCommand candidate) {
+    if (candidate.name != command.name) {
+      return false;
+    }
+
+    if (candidate.arguments.isEmpty || command.arguments.isEmpty) {
+      return true;
+    }
+
+    for (final entry in candidate.arguments.entries) {
+      if (!command.arguments.containsKey(entry.key)) {
+        continue;
+      }
+
+      final pendingValue = command.arguments[entry.key];
+      if (entry.key == 'fitnessGoal') {
+        final pendingGoal = AppAgentService._parseFitnessGoal(pendingValue);
+        final candidateGoal = AppAgentService._parseFitnessGoal(entry.value);
+        if (pendingGoal != null && candidateGoal != null) {
+          if (pendingGoal != candidateGoal) {
+            return false;
+          }
+          continue;
+        }
+      }
+
+      if (pendingValue?.toString() != entry.value?.toString()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  static AppAgentPendingAction? tryParse(String responseContent) {
+    final matches = _blockPattern.allMatches(responseContent).toList();
+    if (matches.isEmpty) {
+      return null;
+    }
+
+    for (final match in matches.reversed) {
+      final rawBlock = match.group(0);
+      final body = match.group(1);
+      if (rawBlock == null || body == null) {
+        continue;
+      }
+
+      final jsonStart = body.indexOf('{');
+      final jsonEnd = body.lastIndexOf('}');
+      if (jsonStart == -1 || jsonEnd == -1 || jsonEnd < jsonStart) {
+        continue;
+      }
+
+      try {
+        final decoded = jsonDecode(body.substring(jsonStart, jsonEnd + 1));
+        if (decoded is! Map) {
+          continue;
+        }
+
+        final root = Map<String, dynamic>.from(decoded);
+        final commandNode =
+            root['app_command'] ?? root['appCommand'] ?? root['appcommand'];
+        final commandMap =
+            commandNode is Map ? Map<String, dynamic>.from(commandNode) : root;
+        final command = AppAgentCommand._buildCommandFromMap(
+          commandMap,
+          rawBlock,
+        );
+        if (command == null) {
+          continue;
+        }
+
+        return AppAgentPendingAction(
+          command: command,
+          rawBlock: rawBlock,
+        );
+      } catch (_) {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  static AppAgentPendingAction? findLatestInTrailingAssistantTurn(
+    List<Map<String, dynamic>> messages,
+  ) {
+    for (var index = messages.length - 1; index >= 0; index--) {
+      final message = messages[index];
+      if (message['isUser'] == true) {
+        return null;
+      }
+
+      final text = _messageText(message);
+      if (text.trim().isEmpty) {
+        continue;
+      }
+
+      return tryParse(text) ??
+          _inferFromTrailingAssistantTurn(
+            messages: messages,
+            assistantIndex: index,
+            assistantText: text,
+          );
+    }
+
+    return null;
+  }
+
+  static bool isLikelyApproval(String userMessage) {
+    final normalized = AppAgentService._normalizeLooseText(userMessage);
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    const directRejections = {
+      'nao',
+      'nao quero',
+      'negativo',
+      'cancela',
+      'cancelar',
+      'para',
+      'pare',
+      'stop',
+      'cancel',
+    };
+    if (directRejections.contains(normalized) ||
+        AppAgentService._containsAnyTerm(normalized, const [
+          'nao quero',
+          'negativo',
+          'cancela',
+          'cancelar',
+          'pare',
+          'stop',
+          'cancel',
+        ])) {
+      return false;
+    }
+
+    const directApprovals = {
+      'sim',
+      's',
+      'ok',
+      'okay',
+      'pode',
+      'pode sim',
+      'quero',
+      'quero sim',
+      'isso',
+      'isso mesmo',
+      'confirmo',
+      'confirmar',
+      'calcule',
+      'calcular',
+      'recalcule',
+      'recalcula',
+      'faca isso',
+      'faz isso',
+      'aplica',
+      'aplique',
+      'aplicar',
+      'salva',
+      'salve',
+      'salvar',
+      'segue',
+      'seguir',
+      'continua',
+      'continue',
+      'manda',
+      'mande',
+      'vai',
+      'yes',
+      'do it',
+      'apply',
+      'save',
+      'go ahead',
+    };
+    if (directApprovals.contains(normalized)) {
+      return true;
+    }
+
+    return AppAgentService._containsAnyTerm(normalized, const [
+      'pode fazer',
+      'pode seguir',
+      'pode continuar',
+      'pode calcular',
+      'pode recalcular',
+      'pode ajustar',
+      'pode aplicar',
+      'faz essa mudanca',
+      'faca essa mudanca',
+      'aplica isso',
+      'aplique isso',
+      'segue com isso',
+      'continua com isso',
+      'pode seguir com isso',
+      'pode continuar com isso',
+      'yes do it',
+      'apply it',
+      'save it',
+      'go ahead with it',
+    ]);
+  }
+
+  bool shouldExecuteImmediately({
+    required String userMessage,
+    required String visibleAssistantText,
+  }) {
+    final normalizedVisible =
+        AppAgentService._normalizeLooseText(visibleAssistantText);
+    if (_looksLikeImmediateExecution(normalizedVisible)) {
+      return true;
+    }
+
+    return _userExplicitlyRequestedCommand(command, userMessage);
+  }
+
+  static String removeBlock(String responseContent) {
+    return responseContent.replaceAll(_blockPattern, '').trim();
+  }
+
+  static bool _looksLikeImmediateExecution(String normalizedAssistant) {
+    return AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'vou fazer isso agora',
+        'vou fazer agora',
+        'vou seguir agora',
+        'vou aplicar agora',
+        'vou recalcular agora',
+        'vou calcular agora',
+        'vou ajustar agora',
+        'vou atualizar agora',
+        'vou alterar agora',
+        'vou gerar agora',
+        'vou montar agora',
+        'farei agora',
+        'farei isso agora',
+        'aplicarei agora',
+        'recalcularei agora',
+        'calcularei agora',
+        'ajustarei agora',
+        'atualizarei agora',
+        'i will do it now',
+        'i will apply it now',
+        'i will recalculate now',
+        'i will update now',
+      ],
+    );
+  }
+
+  static bool _userExplicitlyRequestedCommand(
+    AppAgentCommand command,
+    String userMessage,
+  ) {
+    final normalized = AppAgentService._normalizeLooseText(userMessage);
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    switch (command.name) {
+      case AppAgentService.recalculateNutritionGoals:
+        return _looksLikeExplicitGoalChange(userMessage);
+      case AppAgentService.updateMacroTargetsPercentage:
+      case AppAgentService.updateMacroTargetsGrams:
+      case AppAgentService.updateMacroTargetsGramsPerKg:
+        return AppAgentService.buildMacroTargetsCommandFromUserMessage(
+              userMessage,
+              rawJson: '',
+            ) !=
+            null;
+      case AppAgentService.generateNewDietPlan:
+        return AppAgentService.isDietGenerationRequest(userMessage);
+      case AppAgentService.getDailyNutritionStatus:
+      case AppAgentService.getWeeklyNutritionSummary:
+      case AppAgentService.getWeightStatus:
+      case AppAgentService.getMacroTargetsStatus:
+      case AppAgentService.getDietGenerationPreferencesStatus:
+      case AppAgentService.getGoalSetupStatus:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static bool _looksLikeExplicitGoalChange(String userMessage) {
+    final raw = userMessage.trim();
+    final normalizedUserMessage =
+        AppAgentService._normalizeLooseText(userMessage);
+    if (AppAgentService._parseFitnessGoal(normalizedUserMessage) == null) {
+      return false;
+    }
+
+    const shortGoalAnswers = {
+      'manter peso',
+      'manutencao',
+      'cutting',
+      'bulking',
+      'bulk',
+      'emagrecer',
+      'perder peso',
+      'perder gordura',
+      'ganhar peso',
+      'ganhar massa',
+      'hipertrofia',
+    };
+    if (shortGoalAnswers.contains(normalizedUserMessage)) {
+      return true;
+    }
+
+    final hasExplicitCue = AppAgentService._containsAnyTerm(
+      normalizedUserMessage,
+      const [
+        'quero',
+        'preciso',
+        'coloca',
+        'coloque',
+        'bota',
+        'bote',
+        'muda',
+        'mude',
+        'mudar',
+        'troca',
+        'troque',
+        'trocar',
+        'ajusta',
+        'ajuste',
+        'ajustar',
+        'altera',
+        'altere',
+        'alterar',
+        'define',
+        'defina',
+        'definir',
+        'fazer cutting',
+        'fazer um cutting',
+        'fazer bulking',
+        'fazer um bulking',
+      ],
+    );
+    if (!hasExplicitCue) {
+      return false;
+    }
+
+    if (raw.contains('?') &&
+        !AppAgentService._containsAnyTerm(
+          normalizedUserMessage,
+          const [
+            'quero',
+            'preciso',
+            'coloca',
+            'coloque',
+            'bota',
+            'bote',
+            'muda',
+            'mude',
+            'mudar',
+            'troca',
+            'troque',
+            'trocar',
+            'ajusta',
+            'ajuste',
+            'ajustar',
+            'altera',
+            'altere',
+            'alterar',
+            'define',
+            'defina',
+            'definir',
+          ],
+        )) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static AppAgentPendingAction? _inferFromTrailingAssistantTurn({
+    required List<Map<String, dynamic>> messages,
+    required int assistantIndex,
+    required String assistantText,
+  }) {
+    final normalizedAssistant =
+        AppAgentService._normalizeLooseText(assistantText);
+    if (!_looksLikeActionConfirmation(normalizedAssistant)) {
+      return null;
+    }
+
+    final recentUserText = _recentUserText(
+      messages: messages,
+      assistantIndex: assistantIndex,
+    );
+    final command = _inferCommandFromPendingQuestion(
+      assistantText: assistantText,
+      recentUserText: recentUserText,
+    );
+    if (command == null) {
+      return null;
+    }
+
+    return _fromCommand(command);
+  }
+
+  static AppAgentPendingAction _fromCommand(AppAgentCommand command) {
+    final payload = jsonEncode({
+      'app_command': {
+        'name': command.name,
+        'arguments': command.arguments,
+      },
+    });
+    return AppAgentPendingAction(
+      command: command,
+      rawBlock: '[APP_PENDING_ACTION_BEGIN]\n'
+          '$payload\n'
+          '[APP_PENDING_ACTION_END]',
+    );
+  }
+
+  static AppAgentCommand? _inferCommandFromPendingQuestion({
+    required String assistantText,
+    required String recentUserText,
+  }) {
+    final normalizedAssistant =
+        AppAgentService._normalizeLooseText(assistantText);
+    final recentContext = [recentUserText, assistantText]
+        .where((text) => text.trim().isNotEmpty)
+        .join('\n');
+
+    if (_looksLikePendingMacroTargetUpdate(normalizedAssistant)) {
+      final command = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+        recentUserText,
+        rawJson: '',
+      );
+      if (command != null) {
+        return command;
+      }
+    }
+
+    if (_looksLikePendingGoalRecalculation(normalizedAssistant)) {
+      final fitnessGoal = _inferFitnessGoalFromRecentContext(
+        recentUserText: recentUserText,
+        assistantText: assistantText,
+      );
+      return AppAgentCommand(
+        name: AppAgentService.recalculateNutritionGoals,
+        arguments: <String, dynamic>{
+          if (fitnessGoal != null) 'fitnessGoal': fitnessGoal.name,
+        },
+        rawJson: '',
+      );
+    }
+
+    if (_looksLikePendingDietGeneration(normalizedAssistant, recentContext)) {
+      final preferencesCommand =
+          AppAgentService.buildDietPreferenceUpdateFromUserMessage(
+        recentContext,
+        rawJson: '',
+      );
+      final requestedMealsPerDay = AppAgentService._readRequestedMealsPerDay(
+        preferencesCommand?.arguments ?? const <String, dynamic>{},
+      );
+      return AppAgentCommand(
+        name: AppAgentService.generateNewDietPlan,
+        arguments: <String, dynamic>{
+          if (requestedMealsPerDay != null) 'mealsPerDay': requestedMealsPerDay,
+        },
+        rawJson: '',
+      );
+    }
+
+    if (_looksLikePendingDailyStatus(normalizedAssistant, recentContext)) {
+      return const AppAgentCommand(
+        name: AppAgentService.getDailyNutritionStatus,
+        arguments: <String, dynamic>{},
+        rawJson: '',
+      );
+    }
+
+    if (_looksLikePendingWeeklySummary(normalizedAssistant, recentContext)) {
+      return const AppAgentCommand(
+        name: AppAgentService.getWeeklyNutritionSummary,
+        arguments: <String, dynamic>{},
+        rawJson: '',
+      );
+    }
+
+    if (_looksLikePendingWeightStatus(normalizedAssistant, recentContext)) {
+      return const AppAgentCommand(
+        name: AppAgentService.getWeightStatus,
+        arguments: <String, dynamic>{},
+        rawJson: '',
+      );
+    }
+
+    if (_looksLikePendingMacroStatus(normalizedAssistant, recentContext)) {
+      return const AppAgentCommand(
+        name: AppAgentService.getMacroTargetsStatus,
+        arguments: <String, dynamic>{},
+        rawJson: '',
+      );
+    }
+
+    return null;
+  }
+
+  static bool _looksLikeActionConfirmation(String normalizedAssistant) {
+    return AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'posso seguir',
+        'posso fazer',
+        'posso recalcular',
+        'posso calcular',
+        'posso ajustar',
+        'posso atualizar',
+        'quer que eu',
+        'voce quer que eu',
+        'gostaria que eu',
+        'devo seguir',
+        'devo fazer',
+        'confirmar',
+      ],
+    );
+  }
+
+  static bool _looksLikePendingGoalRecalculation(String normalizedAssistant) {
+    final hasGoalTopic = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'meta',
+        'metas',
+        'macro',
+        'macros',
+        'caloria',
+        'calorias',
+        'nutricao',
+        'objetivo',
+        'dieta',
+      ],
+    );
+    final hasMutationIntent = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'recalcular',
+        'calcular',
+        'ajustar',
+        'mudar',
+        'alterar',
+        'atualizar',
+        'aplicar',
+      ],
+    );
+    return hasGoalTopic && hasMutationIntent;
+  }
+
+  static bool _looksLikePendingMacroTargetUpdate(String normalizedAssistant) {
+    final hasExplicitCalories = AppAgentService._extractExplicitCaloriesTarget(
+          normalizedAssistant,
+        ) !=
+        null;
+    final hasMacroTopic = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'meta',
+        'metas',
+        'macro',
+        'macros',
+        'caloria',
+        'calorias',
+        'kcal',
+        'proteina',
+        'carboidrato',
+        'gordura',
+      ],
+    );
+    final hasMutationIntent = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'atualizar',
+        'ajustar',
+        'mudar',
+        'alterar',
+        'definir',
+        'colocar',
+        'aplicar',
+        'salvar',
+      ],
+    );
+    return hasExplicitCalories && hasMacroTopic && hasMutationIntent;
+  }
+
+  static bool _looksLikePendingDietGeneration(
+    String normalizedAssistant,
+    String recentContext,
+  ) {
+    final normalizedContext =
+        AppAgentService._normalizeLooseText(recentContext);
+    final hasDietTopic = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'dieta',
+        'cardapio',
+        'plano alimentar',
+        'meal plan',
+      ],
+    );
+    final hasGenerationIntent = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'gerar',
+        'gera',
+        'montar',
+        'monta',
+        'criar',
+        'cria',
+        'fazer',
+        'faco',
+        'preparar',
+      ],
+    );
+    return hasDietTopic &&
+        hasGenerationIntent &&
+        AppAgentService.isDietGenerationRequest(normalizedContext);
+  }
+
+  static bool _looksLikePendingDailyStatus(
+    String normalizedAssistant,
+    String recentContext,
+  ) {
+    final normalizedContext =
+        AppAgentService._normalizeLooseText(recentContext);
+    final hasDailyTopic = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'hoje',
+        'ainda pode',
+        'restante',
+        'sobrou',
+        'faltam',
+        'consumiu hoje',
+        'consumo de hoje',
+      ],
+    );
+    final hasNutritionTopic = AppAgentService._containsAnyTerm(
+      normalizedContext,
+      const [
+        'caloria',
+        'calorias',
+        'kcal',
+        'macro',
+        'macros',
+        'proteina',
+        'carboidrato',
+        'gordura',
+        'comer',
+        'consumir',
+      ],
+    );
+    return hasDailyTopic && hasNutritionTopic;
+  }
+
+  static bool _looksLikePendingWeeklySummary(
+    String normalizedAssistant,
+    String recentContext,
+  ) {
+    final normalizedContext =
+        AppAgentService._normalizeLooseText(recentContext);
+    final hasWeeklyTopic = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'semana',
+        'semanal',
+        'ultimos dias',
+        'resumo semanal',
+      ],
+    );
+    final hasNutritionTopic = AppAgentService._containsAnyTerm(
+      normalizedContext,
+      const [
+        'nutricao',
+        'caloria',
+        'calorias',
+        'macro',
+        'macros',
+        'dieta',
+        'semana',
+      ],
+    );
+    return hasWeeklyTopic && hasNutritionTopic;
+  }
+
+  static bool _looksLikePendingWeightStatus(
+    String normalizedAssistant,
+    String recentContext,
+  ) {
+    final normalizedContext =
+        AppAgentService._normalizeLooseText(recentContext);
+    final hasWeightTopic = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'peso',
+        'progresso',
+        'evolucao',
+        'balanca',
+      ],
+    );
+    final hasStatusIntent = AppAgentService._containsAnyTerm(
+      normalizedContext,
+      const [
+        'peso',
+        'progresso',
+        'evolucao',
+        'ganhei',
+        'perdi',
+        'balanca',
+      ],
+    );
+    return hasWeightTopic && hasStatusIntent;
+  }
+
+  static bool _looksLikePendingMacroStatus(
+    String normalizedAssistant,
+    String recentContext,
+  ) {
+    final normalizedContext =
+        AppAgentService._normalizeLooseText(recentContext);
+    final hasMacroTopic = AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'metas atuais',
+        'macros atuais',
+        'alvos atuais',
+        'suas metas',
+        'seus macros',
+      ],
+    );
+    final hasStatusIntent = AppAgentService._containsAnyTerm(
+      normalizedContext,
+      const [
+        'meta',
+        'metas',
+        'macro',
+        'macros',
+        'caloria',
+        'calorias',
+      ],
+    );
+    return hasMacroTopic && hasStatusIntent;
+  }
+
+  static FitnessGoal? _inferFitnessGoalFromRecentContext({
+    required String recentUserText,
+    required String assistantText,
+  }) {
+    final userGoal = AppAgentService._parseFitnessGoal(recentUserText);
+    if (userGoal != null) {
+      return userGoal;
+    }
+
+    final normalizedAssistant =
+        AppAgentService._normalizeLooseText(assistantText);
+    final targetGoal = _parseGoalAfterTargetMarker(normalizedAssistant);
+    if (targetGoal != null) {
+      return targetGoal;
+    }
+    if (AppAgentService._containsAnyTerm(normalizedAssistant, const [
+      'cut',
+      'cutting',
+      'emagrecer',
+      'perder peso',
+      'perder gordura',
+      'secar',
+    ])) {
+      return FitnessGoal.loseWeight;
+    }
+    if (AppAgentService._containsAnyTerm(normalizedAssistant, const [
+      'bulk',
+      'bulking',
+      'ganhar massa',
+      'hipertrofia',
+      'aumentar massa',
+    ])) {
+      return FitnessGoal.gainWeightSlowly;
+    }
+    return null;
+  }
+
+  static String _recentUserText({
+    required List<Map<String, dynamic>> messages,
+    required int assistantIndex,
+  }) {
+    final parts = <String>[];
+    var userTurns = 0;
+    for (var index = assistantIndex - 1; index >= 0; index--) {
+      final message = messages[index];
+      if (message['isUser'] != true) {
+        continue;
+      }
+      final text = _messageText(message).trim();
+      if (text.isNotEmpty) {
+        parts.insert(0, text);
+        userTurns++;
+      }
+      if (userTurns >= 3 || assistantIndex - index > 8) {
+        break;
+      }
+    }
+    return parts.join('\n');
+  }
+
+  static FitnessGoal? _parseGoalAfterTargetMarker(String normalizedText) {
+    const markers = [
+      'mudar para',
+      'alterar para',
+      'trocar para',
+      'ajustar para',
+      'atualizar para',
+      'definir para',
+      'metas para',
+      'objetivo para',
+    ];
+    for (final marker in markers) {
+      final normalizedMarker = AppAgentService._normalizeLooseText(marker);
+      final markerIndex = normalizedText.indexOf(normalizedMarker);
+      if (markerIndex == -1) {
+        continue;
+      }
+      final endIndex = markerIndex + 96 > normalizedText.length
+          ? normalizedText.length
+          : markerIndex + 96;
+      final segment = normalizedText.substring(markerIndex, endIndex);
+      final goal = AppAgentService._parseFitnessGoal(segment);
+      if (goal != null) {
+        return goal;
+      }
+    }
+    return null;
+  }
+
+  static String _messageText(Map<String, dynamic> message) {
+    final rawMessage = message['message'];
+    if (rawMessage != null) {
+      return rawMessage.toString();
+    }
+
+    final notifier = message['notifier'];
+    if (notifier is MessageNotifier) {
+      return notifier.message;
+    }
+
+    return '';
+  }
 }
 
 class AppAgentUiHint {
@@ -1733,6 +2635,12 @@ class AppAgentService {
       'massa',
       'pasta',
     ]);
+    addAvoidedIfMentioned('carne vermelha', const [
+      'carne vermelha',
+      'carne bovina',
+      'bife',
+      'boi',
+    ]);
 
     if (restrictions.contains('sem lactose')) {
       avoidedFoods.addAll(const [
@@ -1781,6 +2689,13 @@ class AppAgentService {
       'high blood pressure',
     ])) {
       routineConsiderations.add('hipertensao informada pelo usuario');
+    }
+    if (_containsAnyTerm(normalized, const [
+      'colesterol alto',
+      'hipercolesterolemia',
+      'high cholesterol',
+    ])) {
+      routineConsiderations.add('colesterol alto informado pelo usuario');
     }
     if (_containsAnyTerm(normalized, const [
       'gravida',
@@ -2272,7 +3187,9 @@ class AppAgentService {
   }
 
   static String _removeAgentArtifacts(String rawContent) {
-    var sanitized = AppAgentUiHint.removeHintBlock(rawContent);
+    var sanitized = AppAgentPendingAction.removeBlock(
+      AppAgentUiHint.removeHintBlock(rawContent),
+    );
 
     sanitized = sanitized.replaceAll(
       RegExp(
@@ -3606,9 +4523,14 @@ $basePrompt
 
   static bool shouldBlockAmbiguousGoalMutation(
     AppAgentCommand command,
-    String originalUserMessage,
-  ) {
+    String originalUserMessage, {
+    AppAgentPendingAction? approvedPendingAction,
+  }) {
     if (!_isGoalMutationCommand(command.name)) {
+      return false;
+    }
+
+    if (approvedPendingAction?.matchesCommand(command) == true) {
       return false;
     }
 
@@ -3648,6 +4570,10 @@ $basePrompt
     final normalized = userMessage.trim().toLowerCase();
     if (normalized.isEmpty) {
       return false;
+    }
+
+    if (AppAgentPendingAction._looksLikeExplicitGoalChange(userMessage)) {
+      return true;
     }
 
     if (RegExp(r'\d').hasMatch(normalized)) {

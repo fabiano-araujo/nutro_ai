@@ -32,7 +32,26 @@ enum DietType {
   lowCarb, // Low Carb (20% carbs, 40% protein, 40% fat)
   highProtein, // High Protein (30% carbs, 40% protein, 30% fat)
   custom, // Personalizada
+  aiRecommended, // IA escolhe a melhor composição para o objetivo
+  mediterranean, // Mediterrânea (45% carbs, 20% protein, 35% fat)
+  paleo, // Paleo (25% carbs, 30% protein, 45% fat)
+  lowFat, // Baixa gordura (60% carbs, 20% protein, 20% fat)
+  dash, // DASH (55% carbs, 20% protein, 25% fat)
 }
+
+const List<DietType> selectableDietTypes = [
+  DietType.aiRecommended,
+  DietType.balanced,
+  DietType.highProtein,
+  DietType.lowCarb,
+  DietType.ketogenic,
+  DietType.mediterranean,
+  DietType.paleo,
+  DietType.lowFat,
+  DietType.dash,
+  DietType.standard,
+  DietType.custom,
+];
 
 enum HeightUnit {
   cm, // Centimeters
@@ -63,7 +82,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
   CalculationFormula _formula = CalculationFormula.mifflinStJeor;
 
   // Diet type and macros
-  DietType _dietType = DietType.balanced;
+  DietType _dietType = DietType.aiRecommended;
   int _carbsPercentage = 50;
   int _proteinPercentage = 20;
   int _fatPercentage = 30;
@@ -397,8 +416,11 @@ class NutritionGoalsProvider extends ChangeNotifier {
       final formulaIndex = prefs.getInt('nutrition_formula') ?? 0;
       _formula = CalculationFormula.values[formulaIndex];
 
-      final dietIndex = prefs.getInt('nutrition_dietType') ?? 1;
-      _dietType = DietType.values[dietIndex];
+      final dietIndex =
+          prefs.getInt('nutrition_dietType') ?? DietType.aiRecommended.index;
+      _dietType = dietIndex >= 0 && dietIndex < DietType.values.length
+          ? DietType.values[dietIndex]
+          : DietType.aiRecommended;
 
       _carbsPercentage = prefs.getInt('nutrition_carbsPercentage') ?? 50;
       _proteinPercentage = prefs.getInt('nutrition_proteinPercentage') ?? 20;
@@ -568,6 +590,11 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
     // Set default macro percentages for each diet type
     switch (dietType) {
+      case DietType.aiRecommended:
+        _carbsPercentage = 50;
+        _proteinPercentage = 20;
+        _fatPercentage = 30;
+        break;
       case DietType.standard:
         _carbsPercentage = 40;
         _proteinPercentage = 30;
@@ -592,6 +619,26 @@ class NutritionGoalsProvider extends ChangeNotifier {
         _carbsPercentage = 30;
         _proteinPercentage = 40;
         _fatPercentage = 30;
+        break;
+      case DietType.mediterranean:
+        _carbsPercentage = 45;
+        _proteinPercentage = 20;
+        _fatPercentage = 35;
+        break;
+      case DietType.paleo:
+        _carbsPercentage = 25;
+        _proteinPercentage = 30;
+        _fatPercentage = 45;
+        break;
+      case DietType.lowFat:
+        _carbsPercentage = 60;
+        _proteinPercentage = 20;
+        _fatPercentage = 20;
+        break;
+      case DietType.dash:
+        _carbsPercentage = 55;
+        _proteinPercentage = 20;
+        _fatPercentage = 25;
         break;
       case DietType.custom:
         // Keep current percentages
@@ -1185,6 +1232,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   String getDietTypeName(DietType type, BuildContext context) {
     switch (type) {
+      case DietType.aiRecommended:
+        return context.tr.translate('diet_ai_recommended');
       case DietType.standard:
         return context.tr.translate('diet_standard');
       case DietType.balanced:
@@ -1195,6 +1244,14 @@ class NutritionGoalsProvider extends ChangeNotifier {
         return context.tr.translate('diet_low_carb');
       case DietType.highProtein:
         return context.tr.translate('diet_high_protein');
+      case DietType.mediterranean:
+        return context.tr.translate('diet_mediterranean');
+      case DietType.paleo:
+        return context.tr.translate('diet_paleo');
+      case DietType.lowFat:
+        return context.tr.translate('diet_low_fat');
+      case DietType.dash:
+        return context.tr.translate('diet_dash');
       case DietType.custom:
         return context.tr.translate('diet_custom');
     }
@@ -1202,6 +1259,8 @@ class NutritionGoalsProvider extends ChangeNotifier {
 
   String getDietTypeDescription(DietType type, BuildContext context) {
     switch (type) {
+      case DietType.aiRecommended:
+        return context.tr.translate('diet_ai_recommended_desc');
       case DietType.standard:
         return context.tr.translate('diet_standard_desc');
       case DietType.balanced:
@@ -1212,6 +1271,14 @@ class NutritionGoalsProvider extends ChangeNotifier {
         return context.tr.translate('diet_low_carb_desc');
       case DietType.highProtein:
         return context.tr.translate('diet_high_protein_desc');
+      case DietType.mediterranean:
+        return context.tr.translate('diet_mediterranean_desc');
+      case DietType.paleo:
+        return context.tr.translate('diet_paleo_desc');
+      case DietType.lowFat:
+        return context.tr.translate('diet_low_fat_desc');
+      case DietType.dash:
+        return context.tr.translate('diet_dash_desc');
       case DietType.custom:
         return context.tr
             .translate('diet_custom_desc')
@@ -1238,7 +1305,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _activityLevel = ActivityLevel.moderatelyActive;
     _fitnessGoal = FitnessGoal.maintainWeight;
     _formula = CalculationFormula.mifflinStJeor;
-    _dietType = DietType.balanced;
+    _dietType = DietType.aiRecommended;
     _carbsPercentage = 50;
     _proteinPercentage = 20;
     _fatPercentage = 30;

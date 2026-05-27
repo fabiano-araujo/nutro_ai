@@ -14,6 +14,7 @@ import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
+import '../widgets/food_icon.dart';
 import 'food_page.dart';
 
 class MealPage extends StatefulWidget {
@@ -615,10 +616,7 @@ Regras:
                 width: 36,
                 height: 36,
                 alignment: Alignment.center,
-                child: Text(
-                  food.emoji,
-                  style: const TextStyle(fontSize: 24),
-                ),
+                child: FoodIcon(name: food.name, emoji: food.emoji, size: 27),
               ),
               const SizedBox(width: 12),
               Expanded(

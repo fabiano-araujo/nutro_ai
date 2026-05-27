@@ -33,6 +33,7 @@ import 'providers/streak_provider.dart';
 import 'providers/friends_provider.dart';
 import 'providers/challenges_provider.dart';
 import 'providers/feed_provider.dart';
+import 'providers/activity_tracking_provider.dart';
 
 // Chave global para acessar o navigator de qualquer lugar do app
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -247,6 +248,9 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider(
           create: (_) => DailyMealsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ActivityTrackingProvider(),
         ),
         ChangeNotifierProvider(
           create: (_) => MealTypesProvider(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -7,13 +8,16 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
+import '../models/FoodAllergen.dart';
 import '../models/Nutrient.dart';
 import '../models/FoodRegion.dart';
 import '../models/Portion.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/food_history_provider.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
+import '../services/food_catalog_service.dart';
 import '../services/ad_manager.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
@@ -21,18 +25,25 @@ import '../helpers/webview_helper.dart';
 import '../widgets/macro_nutrient_row.dart';
 import '../widgets/sub_nutrient_row.dart';
 import '../widgets/micro_nutrient_row.dart';
+import '../widgets/food_icon.dart';
 import '../utils/ui_utils.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
   final String? foodUrl; // URL do FatSecret para carregar dados completos
   final MealType? selectedMealType;
+  final String? barcode;
+  final String? barcodeMarket;
+  final String? catalogSource;
 
   const FoodPage({
     Key? key,
     required this.food,
     this.foodUrl,
     this.selectedMealType,
+    this.barcode,
+    this.barcodeMarket,
+    this.catalogSource,
   }) : super(key: key);
 
   @override
@@ -59,7 +70,10 @@ class _FoodPageState extends State<FoodPage> {
     // Initialize selected meal type
     _selectedMealType = widget.selectedMealType ?? MealType.breakfast;
 
-    final baseServingSize = widget.food.nutrients?.first.servingSize ?? 100.0;
+    final firstNutrient = widget.food.nutrients?.isNotEmpty == true
+        ? widget.food.nutrients!.first
+        : null;
+    final baseServingSize = firstNutrient?.servingSize ?? 100.0;
 
     // Set default portion and calculate initial values
     final portions = widget.food.foodRegions?.first.portions;
@@ -111,6 +125,8 @@ class _FoodPageState extends State<FoodPage> {
 
       print('Will load food data from: $_foodUrlToLoad');
       _isLoading = true; // Start loading
+    } else if (_hasBarcodeContext) {
+      _saveFoodForCurrentSource(widget.food);
     }
   }
 
@@ -329,6 +345,7 @@ class _FoodPageState extends State<FoodPage> {
         });
 
         print('Food data loaded successfully: ${fullFood.name}');
+        _saveFoodForCurrentSource(fullFood);
       } catch (e) {
         print('Error parsing food data: $e');
         setState(() {
@@ -354,10 +371,60 @@ class _FoodPageState extends State<FoodPage> {
     }
   }
 
+  bool get _hasBarcodeContext =>
+      widget.barcode != null &&
+      widget.barcode!.trim().isNotEmpty &&
+      widget.barcodeMarket != null &&
+      widget.barcodeMarket!.trim().isNotEmpty;
+
+  void _saveFoodForCurrentSource(Food food) {
+    final region = food.foodRegions?.isNotEmpty == true
+        ? food.foodRegions!.first.regionCode
+        : (Localizations.localeOf(context).countryCode ??
+            Localizations.localeOf(context).languageCode.toUpperCase());
+    final source = widget.catalogSource ??
+        (widget.foodUrl != null && widget.foodUrl!.trim().isNotEmpty
+            ? 'fatsecret'
+            : 'mobile');
+    debugPrint(
+      '[BarcodeFoodFlow] FoodPage: persist food name="${food.name}" '
+      'source=$source hasBarcode=$_hasBarcodeContext '
+      'barcode=${widget.barcode ?? '-'}',
+    );
+
+    if (_hasBarcodeContext) {
+      unawaited(
+        FoodCatalogService.saveBarcodeFood(
+          barcode: widget.barcode!,
+          marketLocale: widget.barcodeMarket!,
+          food: food,
+          language: '',
+          source: source,
+        ),
+      );
+    } else {
+      unawaited(
+        FoodCatalogService.saveFood(
+          food: food,
+          region: region,
+          language: '',
+          source: source,
+        ),
+      );
+    }
+  }
+
   Food _convertToFullFood(Map<String, dynamic> data) {
     final foodData = data['food'] as Map<String, dynamic>?;
     final nutrientList = data['nutrient'] as List<dynamic>?;
     final portionList = data['portion'] as List<dynamic>?;
+    final allergenList = foodData?['food_allergen'] is List
+        ? (foodData!['food_allergen'] as List<dynamic>)
+            .whereType<Map>()
+            .map((item) =>
+                FoodAllergen.fromJson(Map<String, dynamic>.from(item)))
+            .toList()
+        : widget.food.foodAllergens;
 
     print('===== CONVERTENDO FOOD DATA =====');
     print('Food: ${foodData?['name']}');
@@ -466,8 +533,12 @@ class _FoodPageState extends State<FoodPage> {
       emoji: widget.food.emoji,
       photo: foodData?['photo'] as String?,
       idFatsecret: foodData?['id_fatsecret'] as int?,
+      isVegetarian:
+          foodData?['is_vegetarian'] as String? ?? widget.food.isVegetarian,
+      isVegan: foodData?['is_vegan'] as String? ?? widget.food.isVegan,
       nutrients: nutrients ?? widget.food.nutrients,
       foodRegions: [foodRegion],
+      foodAllergens: allergenList,
     );
   }
 
@@ -515,6 +586,273 @@ class _FoodPageState extends State<FoodPage> {
           ),
         ),
       ],
+    );
+  }
+
+  bool _hasNutritionClaims(Food food) {
+    return (food.foodAllergens?.isNotEmpty ?? false) ||
+        _dietStatus(food.isVegetarian) != null ||
+        _dietStatus(food.isVegan) != null;
+  }
+
+  String? _dietStatus(String? value) {
+    final normalized = value?.trim().toLowerCase();
+    switch (normalized) {
+      case 'true':
+      case 'yes':
+        return 'yes';
+      case 'false':
+      case 'no':
+        return 'no';
+      case 'maybe':
+      case 'may_not':
+      case 'may not':
+        return 'maybe';
+      default:
+        return null;
+    }
+  }
+
+  List<FoodAllergen> _allergensByStatus(
+    Food food,
+    AllergenStatus status,
+  ) {
+    final allergens = food.foodAllergens ?? const <FoodAllergen>[];
+    return allergens.where((allergen) => allergen.status == status).toList();
+  }
+
+  String _allergenLabel(AllergenType allergen) {
+    final key = switch (allergen) {
+      AllergenType.all => 'allergen_all',
+      AllergenType.egg => 'allergen_egg',
+      AllergenType.fish => 'allergen_fish',
+      AllergenType.gluten => 'allergen_gluten',
+      AllergenType.lactose => 'allergen_lactose',
+      AllergenType.milk => 'allergen_milk',
+      AllergenType.nuts => 'allergen_nuts',
+      AllergenType.peanuts => 'allergen_peanuts',
+      AllergenType.sesame => 'allergen_sesame',
+      AllergenType.shellfish => 'allergen_shellfish',
+      AllergenType.soy => 'allergen_soy',
+    };
+    return context.tr.translate(key);
+  }
+
+  Widget _buildNutritionClaimsCard({
+    required Food food,
+    required bool isDarkMode,
+    required Color textColor,
+    required Color secondaryTextColor,
+    required Color subtleBorder,
+  }) {
+    if (!_hasNutritionClaims(food)) {
+      return const SizedBox.shrink();
+    }
+
+    final freeFrom = _allergensByStatus(food, AllergenStatus.free);
+    final contains = _allergensByStatus(food, AllergenStatus.contains);
+    final mayContain = _allergensByStatus(food, AllergenStatus.mayContain);
+    final suitableDiets = <String>[];
+    final notSuitableDiets = <String>[];
+    final mayNotBeSuitableDiets = <String>[];
+
+    void addDiet(String? status, String label) {
+      switch (status) {
+        case 'yes':
+          suitableDiets.add(label);
+          break;
+        case 'no':
+          notSuitableDiets.add(label);
+          break;
+        case 'maybe':
+          mayNotBeSuitableDiets.add(label);
+          break;
+      }
+    }
+
+    addDiet(
+      _dietStatus(food.isVegetarian),
+      context.tr.translate('diet_option_vegetarian'),
+    );
+    addDiet(
+      _dietStatus(food.isVegan),
+      context.tr.translate('diet_option_vegan'),
+    );
+
+    final hasVisibleClaims = freeFrom.isNotEmpty ||
+        contains.isNotEmpty ||
+        mayContain.isNotEmpty ||
+        suitableDiets.isNotEmpty ||
+        notSuitableDiets.isNotEmpty ||
+        mayNotBeSuitableDiets.isNotEmpty;
+    if (!hasVisibleClaims) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: subtleBorder, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr.translate('food_claims_title'),
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+              Divider(
+                color: subtleBorder,
+                height: 22,
+                thickness: 1,
+              ),
+              if (freeFrom.isNotEmpty)
+                _buildClaimGroup(
+                  title: context.tr.translate('food_claims_free_from'),
+                  values: freeFrom
+                      .map((allergen) => _allergenLabel(allergen.allergen))
+                      .toList(),
+                  icon: Icons.check_box_rounded,
+                  color: const Color(0xFF4CAF50),
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
+                ),
+              if (contains.isNotEmpty)
+                _buildClaimGroup(
+                  title: context.tr.translate('food_claims_contains'),
+                  values: contains
+                      .map((allergen) => _allergenLabel(allergen.allergen))
+                      .toList(),
+                  icon: Icons.warning_amber_rounded,
+                  color: const Color(0xFFE53935),
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
+                ),
+              if (mayContain.isNotEmpty)
+                _buildClaimGroup(
+                  title: context.tr.translate('food_claims_may_contain'),
+                  values: mayContain
+                      .map((allergen) => _allergenLabel(allergen.allergen))
+                      .toList(),
+                  icon: Icons.help_outline_rounded,
+                  color: const Color(0xFFF9A825),
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
+                ),
+              if (suitableDiets.isNotEmpty)
+                _buildClaimGroup(
+                  title: context.tr.translate('food_claims_suitable_for'),
+                  values: suitableDiets,
+                  icon: Icons.check_box_rounded,
+                  color: const Color(0xFF4CAF50),
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
+                ),
+              if (notSuitableDiets.isNotEmpty)
+                _buildClaimGroup(
+                  title: context.tr.translate('food_claims_not_suitable_for'),
+                  values: notSuitableDiets,
+                  icon: Icons.block_rounded,
+                  color: const Color(0xFFE53935),
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
+                ),
+              if (mayNotBeSuitableDiets.isNotEmpty)
+                _buildClaimGroup(
+                  title:
+                      context.tr.translate('food_claims_may_not_suitable_for'),
+                  values: mayNotBeSuitableDiets,
+                  icon: Icons.help_outline_rounded,
+                  color: const Color(0xFFF9A825),
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClaimGroup({
+    required String title,
+    required List<String> values,
+    required IconData icon,
+    required Color color,
+    required Color textColor,
+    required Color secondaryTextColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: secondaryTextColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: values
+                .map(
+                  (value) => _buildClaimChip(
+                    value: value,
+                    icon: icon,
+                    color: color,
+                    textColor: textColor,
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClaimChip({
+    required String value,
+    required IconData icon,
+    required Color color,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -614,8 +952,7 @@ class _FoodPageState extends State<FoodPage> {
           ),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -726,123 +1063,123 @@ class _FoodPageState extends State<FoodPage> {
           ),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SingleChildScrollView(
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Select Portion',
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: textColor),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Portions list
-              ...portions.map((portion) {
-                final isSelected =
-                    _selectedPortionDescription == portion.description;
-
-                // Parse the portion description
-                final parsed = _parsePortionDescription(portion.description);
-                final displayText = parsed['displayText'] as String;
-
-                return InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () {
-                    setState(() {
-                      // Parse the description to get display values
-                      final parsedSize = parsed['size'] as double;
-                      final parsedUnit = parsed['unit'] as String;
-
-                      // Calculate the size for 1 unit of this portion
-                      final singleUnitSize = parsedSize > 0
-                          ? (baseServingSize * portion.proportion) / parsedSize
-                          : baseServingSize * portion.proportion;
-
-                      print('===== PORTION SELECTED =====');
-                      print('Description: ${portion.description}');
-                      print('Parsed size (display): $parsedSize');
-                      print('Parsed unit (display): $parsedUnit');
-                      print('Proportion: ${portion.proportion}');
-                      print('Base serving: $baseServingSize');
-                      print('Single unit size: $singleUnitSize');
-                      print(
-                          'Actual serving size (for macros): ${singleUnitSize * parsedSize}');
-                      print('============================');
-
-                      _singlePortionSize = singleUnitSize;
-                      _currentServingSize = singleUnitSize * parsedSize;
-                      _currentServingUnit = parsedUnit;
-                      _selectedPortionDescription = portion.description;
-                      _servingSizeController.text =
-                          parsedSize.toStringAsFixed(0);
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 14, horizontal: 12),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? primaryColor.withValues(alpha: 0.08)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isSelected ? primaryColor : subtleBorder,
-                        width: 1,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Select Portion',
+                      style: GoogleFonts.poppins(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            displayText,
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: textColor,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isSelected)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8),
-                            child: Icon(
-                              Icons.check_circle,
-                              color: primaryColor,
-                              size: 20,
-                            ),
-                          ),
-                      ],
+                    IconButton(
+                      icon: Icon(Icons.close, color: textColor),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                  ),
-                );
-              }).toList(),
-              const SizedBox(height: 8),
-            ],
-          ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Portions list
+                ...portions.map((portion) {
+                  final isSelected =
+                      _selectedPortionDescription == portion.description;
+
+                  // Parse the portion description
+                  final parsed = _parsePortionDescription(portion.description);
+                  final displayText = parsed['displayText'] as String;
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () {
+                      setState(() {
+                        // Parse the description to get display values
+                        final parsedSize = parsed['size'] as double;
+                        final parsedUnit = parsed['unit'] as String;
+
+                        // Calculate the size for 1 unit of this portion
+                        final singleUnitSize = parsedSize > 0
+                            ? (baseServingSize * portion.proportion) /
+                                parsedSize
+                            : baseServingSize * portion.proportion;
+
+                        print('===== PORTION SELECTED =====');
+                        print('Description: ${portion.description}');
+                        print('Parsed size (display): $parsedSize');
+                        print('Parsed unit (display): $parsedUnit');
+                        print('Proportion: ${portion.proportion}');
+                        print('Base serving: $baseServingSize');
+                        print('Single unit size: $singleUnitSize');
+                        print(
+                            'Actual serving size (for macros): ${singleUnitSize * parsedSize}');
+                        print('============================');
+
+                        _singlePortionSize = singleUnitSize;
+                        _currentServingSize = singleUnitSize * parsedSize;
+                        _currentServingUnit = parsedUnit;
+                        _selectedPortionDescription = portion.description;
+                        _servingSizeController.text =
+                            parsedSize.toStringAsFixed(0);
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 12),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? primaryColor.withValues(alpha: 0.08)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? primaryColor : subtleBorder,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              displayText,
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: textColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isSelected)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Icon(
+                                Icons.check_circle,
+                                color: primaryColor,
+                                size: 20,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         );
       },
@@ -1109,26 +1446,26 @@ class _FoodPageState extends State<FoodPage> {
                                             fit: BoxFit.cover,
                                             placeholder: (context, url) =>
                                                 Center(
-                                              child: Text(
-                                                currentFood.emoji,
-                                                style: const TextStyle(
-                                                    fontSize: 34),
+                                              child: FoodIcon(
+                                                name: currentFood.name,
+                                                emoji: currentFood.emoji,
+                                                size: 42,
                                               ),
                                             ),
                                             errorWidget:
                                                 (context, url, error) => Center(
-                                              child: Text(
-                                                currentFood.emoji,
-                                                style: const TextStyle(
-                                                    fontSize: 34),
+                                              child: FoodIcon(
+                                                name: currentFood.name,
+                                                emoji: currentFood.emoji,
+                                                size: 42,
                                               ),
                                             ),
                                           )
                                         : Center(
-                                            child: Text(
-                                              currentFood.emoji,
-                                              style: const TextStyle(
-                                                  fontSize: 34),
+                                            child: FoodIcon(
+                                              name: currentFood.name,
+                                              emoji: currentFood.emoji,
+                                              size: 42,
                                             ),
                                           ),
                                   ),
@@ -1270,8 +1607,7 @@ class _FoodPageState extends State<FoodPage> {
                                                   'Porções alternativas não disponíveis para este alimento',
                                                 );
                                               },
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 14,
@@ -1389,8 +1725,7 @@ class _FoodPageState extends State<FoodPage> {
                                       Expanded(
                                         child: _buildMacroCardCompact(
                                           icon: MacroTheme.carbsIcon,
-                                          value:
-                                              '${carbs.toStringAsFixed(1)}g',
+                                          value: '${carbs.toStringAsFixed(1)}g',
                                           unit: 'Carboidrato',
                                           color: MacroTheme.carbsColor,
                                           isDarkMode: isDarkMode,
@@ -1418,6 +1753,17 @@ class _FoodPageState extends State<FoodPage> {
                               ),
                             ),
                           ),
+
+                          if (_hasNutritionClaims(currentFood)) ...[
+                            SizedBox(height: 24),
+                            _buildNutritionClaimsCard(
+                              food: currentFood,
+                              isDarkMode: isDarkMode,
+                              textColor: textColor,
+                              secondaryTextColor: secondaryTextColor,
+                              subtleBorder: subtleBorder,
+                            ),
+                          ],
 
                           SizedBox(height: 24),
 

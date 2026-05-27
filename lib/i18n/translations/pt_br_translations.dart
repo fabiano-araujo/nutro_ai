@@ -183,6 +183,7 @@ final Map<String, String> ptBRTranslations = {
   'search': 'Pesquisar',
   'back': 'Voltar',
   'next': 'Próximo',
+  'skip_setup': 'Pular',
   'done': 'Concluído',
 
   // Mensagens
@@ -241,10 +242,13 @@ final Map<String, String> ptBRTranslations = {
   'diet_generation_preferences_title': 'Antes de montar sua dieta',
   'diet_generation_preferences_description':
       'Me conte as particularidades que devo considerar para escolher melhor os alimentos. Se algum campo nao se aplicar, deixe em branco e eu vou entender como nenhum.',
+  'diet_generation_preferences_diet_style_label': 'Tipo de dieta preferido',
   'diet_generation_preferences_restrictions_label':
       'Restricoes ou alergias alimentares',
   'diet_generation_preferences_restrictions_hint':
       'Ex.: lactose, gluten, vegetariano',
+  'diet_generation_preferences_restrictions_quick_label':
+      'Atalhos de restricoes',
   'diet_generation_preferences_favorite_foods_label':
       'Alimentos que voce gosta de incluir',
   'diet_generation_preferences_favorite_foods_hint':
@@ -253,12 +257,25 @@ final Map<String, String> ptBRTranslations = {
       'Alimentos que prefere evitar',
   'diet_generation_preferences_avoided_foods_hint':
       'Ex.: peixe, brocolis, cafe',
+  'diet_generation_preferences_avoided_quick_label':
+      'Atalhos de alimentos evitados',
   'diet_generation_preferences_hungriest_label':
       'Em qual refeicao voce costuma ter mais fome?',
+  'diet_generation_preferences_health_quick_label': 'Condicoes de saude',
   'diet_generation_preferences_routine_label':
       'Particularidades de apetite e rotina',
   'diet_generation_preferences_routine_hint':
       'Ex.: muito sono de manha, pouca fome cedo, muita fome a noite, dificuldade em comer ou ganhar peso',
+  'diet_option_none': 'Nenhum',
+  'diet_option_vegetarian': 'Vegetariano',
+  'diet_option_vegan': 'Vegano',
+  'diet_option_gluten_free': 'Sem gluten',
+  'diet_option_lactose_free': 'Sem lactose',
+  'diet_option_no_red_meat': 'Nao gosta de carne vermelha',
+  'diet_option_high_blood_pressure': 'Pressao alta',
+  'diet_option_diabetes': 'Diabetes',
+  'diet_option_high_cholesterol': 'Colesterol alto',
+  'diet_option_other': 'Outro',
   'error_occurred': 'Ocorreu um erro',
   'try_again': 'Tentar novamente',
   'no_results': 'Nenhum resultado encontrado',
@@ -788,6 +805,15 @@ final Map<String, String> ptBRTranslations = {
       'Os alimentos devem estar bem iluminados e dentro do enquadramento',
   'barcode': 'Código de Barras',
   'barcode_hint': 'Escaneie o código de barras do produto',
+  'barcode_search_hint': 'Digite o código de barras do produto',
+  'invalid_barcode_message':
+      'Digite um código de barras válido com 8, 12 ou 13 dígitos',
+  'barcode_scanner_title': 'Ler código de barras',
+  'barcode_scanner_hint': 'Alinhe o código de barras dentro da área marcada',
+  'barcode_scanner_camera_error':
+      'Não foi possível abrir a câmera para ler o código.',
+  'scanner_flash': 'Lanterna',
+  'scanner_switch_camera': 'Trocar câmera',
 
   // Mensagem de boas-vindas no card
   'welcome_message_card': 'Olá! Sou Nutro AI, seu assistente de nutrição',
@@ -914,6 +940,32 @@ final Map<String, String> ptBRTranslations = {
   'favorites': 'Favoritos',
   'searching': 'Pesquisando...',
   'no_results_found': 'Nenhum resultado encontrado',
+  'barcode_captcha_title': 'Verificação necessária',
+  'barcode_captcha_message':
+      'Marque "Não sou um robô" acima. Quando liberar, vamos reenviar a busca automaticamente.',
+  'barcode_temporary_error_title': 'Busca temporariamente indisponível',
+  'barcode_temporary_error_message':
+      'O serviço recusou a busca duas vezes seguidas. Tente novamente daqui a 1 ou 2 minutos.',
+  'barcode_temporary_error_message_minutes':
+      'O serviço recusou a busca duas vezes seguidas. Tente novamente daqui a {minutes} minutos.',
+  'food_claims_title': 'Claims nutricionais',
+  'food_claims_free_from': 'Livre de',
+  'food_claims_contains': 'Contém',
+  'food_claims_may_contain': 'Pode conter',
+  'food_claims_suitable_for': 'Adequado para',
+  'food_claims_not_suitable_for': 'Não adequado para',
+  'food_claims_may_not_suitable_for': 'Pode não ser adequado para',
+  'allergen_all': 'Todos',
+  'allergen_egg': 'Ovo',
+  'allergen_fish': 'Peixe',
+  'allergen_gluten': 'Glúten',
+  'allergen_lactose': 'Lactose',
+  'allergen_milk': 'Leite',
+  'allergen_nuts': 'Nozes',
+  'allergen_peanuts': 'Amendoim',
+  'allergen_sesame': 'Gergelim',
+  'allergen_shellfish': 'Frutos do mar',
+  'allergen_soy': 'Soja',
   'no_recent_searches': 'Nenhuma pesquisa recente',
   'no_favorite_foods': 'Nenhum alimento favorito',
   'quick_add_food': 'Adicionar rápido',
@@ -1043,8 +1095,41 @@ final Map<String, String> ptBRTranslations = {
 
   // Settings Screen - Other Sections
   'preferences': 'Preferências',
+  'notification_settings_title': 'Gerenciar minhas notificações',
   'meal_reminders': 'Lembretes de Refeição',
   'meal_reminders_description': 'Receba notificações para suas refeições.',
+  'meal_time': 'Horário da refeição',
+  'meal_reminder_times': 'Horários das refeições',
+  'meal_reminder_times_hint':
+      'Os lembretes usam o horário cadastrado em cada refeição.',
+  'add_meal_short': 'Adicionar',
+  'weight_reminders': 'Lembretes de peso',
+  'weight_reminder_config_title': 'Configurar lembrete de peso',
+  'weight_reminder_time': 'Horário do lembrete de peso',
+  'weight_reminder_frequency': 'Vezes por semana',
+  'weight_reminder_days': 'Dias da semana',
+  'personalized_tips': 'Dicas personalizadas',
+  'personalized_tip_time': 'Horário das dicas personalizadas',
+  'notifications_all_disabled': 'Desativadas',
+  'notifications_enabled_count': '{count} ativas',
+  'notification_meal_schedule': 'Nos horários cadastrados em suas refeições',
+  'notification_weight_schedule': '{count}x por semana em {days} às {time}',
+  'notification_tip_schedule': 'Todos os dias às {time}',
+  'notification_permission_denied':
+      'Permita notificações para ativar este lembrete.',
+  'notification_update_error':
+      'Não foi possível atualizar suas notificações agora.',
+  'notification_meal_title': 'Hora de registrar sua refeição',
+  'notification_meal_body': 'Abra o Nutro AI e acompanhe seus macros de hoje.',
+  'notification_meal_title_named': 'Hora de {meal}',
+  'notification_meal_body_named':
+      'Registre {meal} no Nutro AI para acompanhar seus macros.',
+  'notification_weight_title': 'Hora de atualizar seu peso',
+  'notification_weight_body':
+      'Registre seu peso semanal para manter o progresso preciso.',
+  'notification_tip_title': 'Dica rápida de nutrição',
+  'notification_tip_body':
+      'Veja uma sugestão personalizada para manter sua rotina no caminho.',
 
   // Activity Levels
   'activity_sedentary': 'Sedentário',
@@ -1071,17 +1156,28 @@ final Map<String, String> ptBRTranslations = {
   'formula_katch': 'Katch-McArdle',
 
   // Diet Types
+  'diet_ai_recommended': 'Inteligência Artificial',
   'diet_standard': 'Padrão',
   'diet_balanced': 'Equilibrada',
   'diet_ketogenic': 'Cetogênica',
   'diet_low_carb': 'Low Carb',
   'diet_high_protein': 'High Protein',
+  'diet_mediterranean': 'Mediterrânea',
+  'diet_paleo': 'Paleo',
+  'diet_low_fat': 'Baixa gordura',
+  'diet_dash': 'DASH',
   'diet_custom': 'Personalizada',
+  'diet_ai_recommended_desc':
+      'IA escolhe o melhor padrão alimentar para suas metas',
   'diet_standard_desc': '40% Carbs, 30% Proteína, 30% Gordura',
   'diet_balanced_desc': '50% Carbs, 20% Proteína, 30% Gordura',
   'diet_ketogenic_desc': '5% Carbs, 25% Proteína, 70% Gordura',
   'diet_low_carb_desc': '20% Carbs, 40% Proteína, 40% Gordura',
   'diet_high_protein_desc': '30% Carbs, 40% Proteína, 30% Gordura',
+  'diet_mediterranean_desc': '45% Carbs, 20% Proteína, 35% Gordura',
+  'diet_paleo_desc': '25% Carbs, 30% Proteína, 45% Gordura',
+  'diet_low_fat_desc': '60% Carbs, 20% Proteína, 20% Gordura',
+  'diet_dash_desc': '55% Carbs, 20% Proteína, 25% Gordura',
   'diet_custom_desc': '{carbs}% Carbs, {protein}% Proteína, {fat}% Gordura',
 
   // AI Tutor Welcome Screen
@@ -1254,6 +1350,16 @@ final Map<String, String> ptBRTranslations = {
   'goals_not_synced': 'Metas ainda não sincronizadas com sua conta.',
   'personal_info_title': 'Informações Pessoais',
   'personal_info_subtitle': 'Precisamos conhecer um pouco sobre você',
+  'goal_setup_profile_badge': 'Objetivo & perfil',
+  'goal_setup_sex_title': 'Qual é o seu gênero?',
+  'goal_setup_sex_subtitle':
+      'Isso ajuda a calcular suas metas com mais precisão.',
+  'goal_setup_age_title': 'Qual é a sua idade?',
+  'goal_setup_age_subtitle': 'Arraste, toque ou digite para ajustar.',
+  'goal_setup_height_title': 'Qual é a sua altura?',
+  'goal_setup_height_subtitle': 'Use a unidade que preferir.',
+  'goal_setup_weight_title': 'Qual é o seu peso atual?',
+  'goal_setup_weight_subtitle': 'Pode mudar depois sempre que precisar.',
   'sex': 'Sexo',
   'activity_level_subtitle': 'Como você se mantém ativo no dia a dia?',
   'your_goal': 'Seu Objetivo',
@@ -1392,6 +1498,60 @@ final Map<String, String> ptBRTranslations = {
   'repeat_diet_replace_existing': 'Substitui a dieta já salva nesse dia',
   'repeat_diet_apply': 'Repetir dieta',
   'repeat_diet_success': 'Dieta repetida em {count} dia(s)',
+
+  // Rastreamento de atividades
+  'automatic_tracking_apps_title': 'Apps de rastreamento automático',
+  'tracking_activities_title': 'Atividades',
+  'tracking_activity_kcal_spent': '0 kcal  Gastos',
+  'tracking_kcal_spent_suffix': 'kcal  Gastos',
+  'tracking_activity_card_message':
+      'Sincronize com o Health Connect para acompanhar calorias gastas, passos e exercícios no seu dia.',
+  'tracking_action_connect': 'Conectar',
+  'tracking_refresh': 'Atualizar',
+  'tracking_syncing': 'Sincronizando...',
+  'tracking_add_activity': 'Apps de rastreamento',
+  'tracking_health_connect_name': 'Health Connect',
+  'tracking_health_connect_heading': 'Sincronize seus apps com Health Connect',
+  'tracking_health_connect_body':
+      'Gerencie as conexões dos seus aplicativos de saúde e fitness em um só lugar. Conceda acesso ao Nutro AI e sincronize o app ou dispositivo que você já usa.',
+  'configure_health_connect': 'Configurar Health Connect',
+  'tracking_syncing_health_connect': 'Sincronizando dados do Health Connect...',
+  'tracking_health_update_required':
+      'Instale ou atualize o Health Connect para sincronizar seus dados.',
+  'tracking_permission_granted': 'Permissões do Health Connect ativadas.',
+  'tracking_permission_partial':
+      'Permissões parciais ativadas. Alguns dados podem não aparecer.',
+  'tracking_permission_denied':
+      'Permissão não concedida. Ative o acesso no Health Connect.',
+  'tracking_permission_needed':
+      'Permita o acesso ao Health Connect para ler passos, exercícios e calorias gastas.',
+  'tracking_no_activity_data':
+      'Nenhuma atividade encontrada para este dia ainda.',
+  'tracking_activity_synced_message':
+      '{steps} passos e {minutes} min de exercícios sincronizados hoje.',
+  'tracking_synced_today': 'Sincronizado hoje',
+  'tracking_metric_calories': 'kcal',
+  'tracking_metric_steps': 'passos',
+  'tracking_metric_minutes': 'min',
+  'tracking_steps_short': 'passos',
+  'tracking_minutes_short': 'min',
+  'tracking_permission_active_calories': 'Calorias ativas',
+  'tracking_permission_steps': 'Passos',
+  'tracking_permission_exercises': 'Exercícios',
+  'tracking_permission_body_measures': 'Medidas corporais',
+  'popular_tracking_apps': 'Apps mais usados',
+  'tracking_desc_all_day': 'Passos, treinos e calorias do dia',
+  'tracking_desc_wearables': 'Relógios, treinos e métricas corporais',
+  'tracking_desc_running': 'Corridas, pedais e exercícios',
+  'tracking_desc_body': 'Peso, composição corporal e saúde',
+  'tracking_action_open': 'Abrir',
+  'tracking_action_install': 'Instalar',
+  'tracking_installed': 'Instalado',
+  'tracking_store': 'Play Store',
+  'tracking_app_opened': 'Abrindo {app}.',
+  'tracking_app_store_opened': 'Abrindo Play Store para instalar {app}.',
+  'tracking_app_open_error': 'Não foi possível abrir {app}.',
+  'tracking_not_available': 'Esse recurso está disponível no Android.',
 
   // Statistics Screen
   'stats_7_days': '7 dias',

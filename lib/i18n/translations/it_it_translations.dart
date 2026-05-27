@@ -325,6 +325,15 @@ final Map<String, String> itITTranslations = {
       'Il cibo deve essere ben illuminato e all\'interno dell\'inquadratura',
   'barcode': 'Codice a Barre',
   'barcode_hint': 'Scansiona il codice a barre del prodotto',
+  'barcode_search_hint': 'Inserisci il codice a barre del prodotto',
+  'invalid_barcode_message':
+      'Inserisci un codice a barre valido di 8, 12 o 13 cifre',
+  'barcode_scanner_title': 'Leggi codice a barre',
+  'barcode_scanner_hint': 'Allinea il codice a barre dentro l’area evidenziata',
+  'barcode_scanner_camera_error':
+      'Impossibile aprire la fotocamera per leggere il codice.',
+  'scanner_flash': 'Torcia',
+  'scanner_switch_camera': 'Cambia fotocamera',
 
   // Messaggio di benvenuto nella scheda
   'welcome_message_card':
@@ -493,6 +502,34 @@ final Map<String, String> itITTranslations = {
   'free_meal': 'Pasto Libero',
   'meal': 'Pasto',
   'select_meal_type': 'Seleziona tipo di pasto',
+  'diet_option_vegetarian': 'Vegetariano',
+  'diet_option_vegan': 'Vegano',
+  'barcode_captcha_title': 'Verifica necessaria',
+  'barcode_captcha_message':
+      'Seleziona "Non sono un robot" sopra. Quando viene sbloccato, rilanceremo automaticamente la ricerca.',
+  'barcode_temporary_error_title': 'Ricerca temporaneamente non disponibile',
+  'barcode_temporary_error_message':
+      'Il servizio barcode ha rifiutato la ricerca due volte di seguito. Riprova tra 1 o 2 minuti.',
+  'barcode_temporary_error_message_minutes':
+      'Il servizio barcode ha rifiutato la ricerca due volte di seguito. Riprova tra {minutes} minuti.',
+  'food_claims_title': 'Claim nutrizionali',
+  'food_claims_free_from': 'Senza',
+  'food_claims_contains': 'Contiene',
+  'food_claims_may_contain': 'Può contenere',
+  'food_claims_suitable_for': 'Adatto a',
+  'food_claims_not_suitable_for': 'Non adatto a',
+  'food_claims_may_not_suitable_for': 'Potrebbe non essere adatto a',
+  'allergen_all': 'Tutti',
+  'allergen_egg': 'Uovo',
+  'allergen_fish': 'Pesce',
+  'allergen_gluten': 'Glutine',
+  'allergen_lactose': 'Lattosio',
+  'allergen_milk': 'Latte',
+  'allergen_nuts': 'Frutta a guscio',
+  'allergen_peanuts': 'Arachidi',
+  'allergen_sesame': 'Sesamo',
+  'allergen_shellfish': 'Crostacei',
+  'allergen_soy': 'Soia',
   'add': 'Aggiungi',
   'meals': 'Pasti',
   'protein_full': 'Proteina',
@@ -589,6 +626,61 @@ final Map<String, String> itITTranslations = {
   'diet_outdated_generated_targets': 'Obiettivo usato per questa dieta',
   'diet_outdated_current_targets': 'Obiettivo attuale',
   'diet_outdated_generate_new': 'Genera nuova dieta',
+
+  // Tracciamento attività
+  'automatic_tracking_apps_title': 'App di tracciamento automatico',
+  'tracking_activities_title': 'Attività',
+  'tracking_activity_kcal_spent': '0 kcal  Spese',
+  'tracking_kcal_spent_suffix': 'kcal  Spese',
+  'tracking_activity_card_message':
+      'Sincronizza con Health Connect per seguire calorie bruciate, passi e allenamenti della giornata.',
+  'tracking_action_connect': 'Connetti',
+  'tracking_refresh': 'Aggiorna',
+  'tracking_syncing': 'Sincronizzazione...',
+  'tracking_add_activity': 'App di tracciamento',
+  'tracking_health_connect_name': 'Health Connect',
+  'tracking_health_connect_heading':
+      'Sincronizza le tue app con Health Connect',
+  'tracking_health_connect_body':
+      'Gestisci le connessioni delle app salute e fitness in un unico posto. Concedi accesso a Nutro AI e sincronizza l\'app o il dispositivo che usi già.',
+  'configure_health_connect': 'Configura Health Connect',
+  'tracking_syncing_health_connect':
+      'Sincronizzazione dei dati di Health Connect...',
+  'tracking_health_update_required':
+      'Installa o aggiorna Health Connect per sincronizzare i tuoi dati.',
+  'tracking_permission_granted': 'Permessi Health Connect attivati.',
+  'tracking_permission_partial':
+      'Permessi parziali attivati. Alcuni dati potrebbero non apparire.',
+  'tracking_permission_denied':
+      'Permesso non concesso. Attiva l\'accesso in Health Connect.',
+  'tracking_permission_needed':
+      'Consenti l\'accesso a Health Connect per leggere passi, esercizi e calorie bruciate.',
+  'tracking_no_activity_data': 'Nessuna attività trovata per questo giorno.',
+  'tracking_activity_synced_message':
+      '{steps} passi e {minutes} min di esercizi sincronizzati oggi.',
+  'tracking_synced_today': 'Sincronizzato oggi',
+  'tracking_metric_calories': 'kcal',
+  'tracking_metric_steps': 'passi',
+  'tracking_metric_minutes': 'min',
+  'tracking_steps_short': 'passi',
+  'tracking_minutes_short': 'min',
+  'tracking_permission_active_calories': 'Calorie attive',
+  'tracking_permission_steps': 'Passi',
+  'tracking_permission_exercises': 'Esercizi',
+  'tracking_permission_body_measures': 'Misure corporee',
+  'popular_tracking_apps': 'App più usate',
+  'tracking_desc_all_day': 'Passi, allenamenti e calorie giornaliere',
+  'tracking_desc_wearables': 'Wearable, allenamenti e metriche corporee',
+  'tracking_desc_running': 'Corse, pedalate ed esercizi',
+  'tracking_desc_body': 'Peso, composizione corporea e salute',
+  'tracking_action_open': 'Apri',
+  'tracking_action_install': 'Installa',
+  'tracking_installed': 'Installata',
+  'tracking_store': 'Play Store',
+  'tracking_app_opened': 'Apertura di {app}.',
+  'tracking_app_store_opened': 'Apertura del Play Store per installare {app}.',
+  'tracking_app_open_error': 'Impossibile aprire {app}.',
+  'tracking_not_available': 'Questa funzione è disponibile su Android.',
 
   // Streaks
   'streak_hero_title': 'La tua serie',
@@ -717,6 +809,16 @@ final Map<String, String> itITTranslations = {
   'challenge_progress_done_today': 'Progresso già aggiornato oggi',
   'challenge_progress_pending_today': 'Registra qualcosa oggi per aggiornare',
   'configure_goals': 'Configura obiettivi',
+  'goal_setup_profile_badge': 'Obiettivo e profilo',
+  'goal_setup_sex_title': 'Come ti identifichi?',
+  'goal_setup_sex_subtitle':
+      'Questo aiuta a calcolare i tuoi obiettivi con più precisione.',
+  'goal_setup_age_title': 'Quanti anni hai?',
+  'goal_setup_age_subtitle': 'Trascina, tocca o digita per regolare.',
+  'goal_setup_height_title': 'Qual è la tua altezza?',
+  'goal_setup_height_subtitle': 'Usa l\'unità che preferisci.',
+  'goal_setup_weight_title': 'Qual è il tuo peso attuale?',
+  'goal_setup_weight_subtitle': 'Puoi cambiarlo più tardi quando vuoi.',
   'profile_complete_goals_title': 'Completa i tuoi obiettivi',
   'profile_complete_goals_description':
       'Configura i tuoi dati per vedere le calorie e i macronutrienti giornalieri.',
@@ -779,4 +881,44 @@ final Map<String, String> itITTranslations = {
   'benchmark_cached_result': 'Risultato caricato dalla cache.',
   'benchmark_usage_unavailable':
       'Token e costo non sono stati restituiti per questa generazione.',
+  'notification_settings_title': 'Gestisci le mie notifiche',
+  'meal_reminders': 'Promemoria pasti',
+  'meal_time': 'Orario del pasto',
+  'meal_reminder_times': 'Orari dei pasti',
+  'meal_reminder_times_hint':
+      'I promemoria usano l’orario salvato per ogni pasto.',
+  'add_meal_short': 'Aggiungi',
+  'weight_reminders': 'Promemoria peso',
+  'weight_reminder_config_title': 'Configura promemoria peso',
+  'weight_reminder_time': 'Orario del promemoria peso',
+  'weight_reminder_frequency': 'Volte a settimana',
+  'weight_reminder_days': 'Giorni della settimana',
+  'weekday_mon': 'Lun',
+  'weekday_tue': 'Mar',
+  'weekday_wed': 'Mer',
+  'weekday_thu': 'Gio',
+  'weekday_fri': 'Ven',
+  'weekday_sat': 'Sab',
+  'weekday_sun': 'Dom',
+  'personalized_tips': 'Consigli personalizzati',
+  'personalized_tip_time': 'Orario dei consigli personalizzati',
+  'notifications_all_disabled': 'Disattivate',
+  'notifications_enabled_count': '{count} attive',
+  'notification_meal_schedule': 'Agli orari salvati per i tuoi pasti',
+  'notification_weight_schedule': '{count}x a settimana il {days} alle {time}',
+  'notification_tip_schedule': 'Ogni giorno alle {time}',
+  'notification_permission_denied':
+      'Consenti le notifiche per attivare questo promemoria.',
+  'notification_update_error': 'Impossibile aggiornare le notifiche adesso.',
+  'notification_meal_title': 'È ora di registrare il pasto',
+  'notification_meal_body': 'Apri Nutro AI e monitora i macro di oggi.',
+  'notification_meal_title_named': 'È ora di {meal}',
+  'notification_meal_body_named':
+      'Registra {meal} in Nutro AI per monitorare i tuoi macro.',
+  'notification_weight_title': 'È ora di aggiornare il peso',
+  'notification_weight_body':
+      'Registra il peso settimanale per mantenere preciso il progresso.',
+  'notification_tip_title': 'Consiglio rapido di nutrizione',
+  'notification_tip_body':
+      'Vedi un suggerimento personalizzato per restare in carreggiata.',
 };

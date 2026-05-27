@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../models/diet_plan_model.dart';
-import '../providers/nutrition_goals_provider.dart' show NutritionGoalsProvider;
+import '../providers/nutrition_goals_provider.dart'
+    show DietType, NutritionGoalsProvider;
 import '../providers/meal_types_provider.dart' show MealTypeConfig;
 import '../services/app_integrity_service.dart';
 import '../services/user_app_state_service.dart';
@@ -77,6 +78,15 @@ class DietBenchmarkPlanResult {
   });
 }
 
+class _DietGenerationStreamException implements Exception {
+  const _DietGenerationStreamException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 int _readUsageInt(dynamic value) {
   if (value is int) return value;
   if (value is num) return value.round();
@@ -137,6 +147,7 @@ class DietPlanProvider extends ChangeNotifier {
   static final RegExp _openRouterModelIdPattern = RegExp(
     r'^[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._:+-]*(/[A-Za-z0-9][A-Za-z0-9._:+-]*)*$',
   );
+  static const Duration _dietGenerationRequestTimeout = Duration(minutes: 5);
 
   // Autenticação
   String? _authToken;
@@ -809,7 +820,7 @@ class DietPlanProvider extends ChangeNotifier {
 
     final requestBody = {
       'prompt': prompt,
-      'temperature': 0.2,
+      'temperature': 0.5,
       'model': selectedModel,
       'streaming': true,
       'userId': userId,
@@ -822,109 +833,126 @@ class DietPlanProvider extends ChangeNotifier {
     request.bodyBytes = utf8.encode(jsonEncode(requestBody));
 
     print('📤 Enviando requisição NDJSON para: $endpoint');
-    final httpResponse = await http.Client().send(request);
+    final client = http.Client();
 
-    if (httpResponse.statusCode != 200) {
-      throw Exception('Erro na API: ${httpResponse.statusCode}');
-    }
+    try {
+      final httpResponse =
+          await client.send(request).timeout(_dietGenerationRequestTimeout);
 
-    print('✅ Conexão NDJSON estabelecida');
+      if (httpResponse.statusCode != 200) {
+        throw Exception('Erro na API: ${httpResponse.statusCode}');
+      }
 
-    final responseBuffer = StringBuffer();
-    var chunkCount = 0;
-    String? connectionId;
-    var lineBuffer = '';
+      print('✅ Conexão NDJSON estabelecida');
 
-    await for (final chunk in httpResponse.stream.transform(utf8.decoder)) {
-      lineBuffer += chunk;
+      final responseBuffer = StringBuffer();
+      var chunkCount = 0;
+      String? connectionId;
+      var lineBuffer = '';
 
-      while (lineBuffer.contains('\n')) {
-        final newlineIndex = lineBuffer.indexOf('\n');
-        final line = lineBuffer.substring(0, newlineIndex).trim();
-        lineBuffer = lineBuffer.substring(newlineIndex + 1);
+      await for (final chunk in httpResponse.stream
+          .transform(utf8.decoder)
+          .timeout(_dietGenerationRequestTimeout)) {
+        lineBuffer += chunk;
 
-        if (line.isEmpty) {
-          continue;
-        }
+        while (lineBuffer.contains('\n')) {
+          final newlineIndex = lineBuffer.indexOf('\n');
+          final line = lineBuffer.substring(0, newlineIndex).trim();
+          lineBuffer = lineBuffer.substring(newlineIndex + 1);
 
-        try {
-          var jsonLine = line;
-          if (line.startsWith('data: ')) {
-            jsonLine = line.substring(6);
+          if (line.isEmpty) {
+            continue;
           }
 
-          final jsonData = jsonDecode(jsonLine);
-          chunkCount++;
-          print('📦 Diet NDJSON - Linha #$chunkCount: $jsonData');
-
-          if (jsonData is Map &&
-              jsonData.containsKey('usage') &&
-              jsonData['usage'] is Map) {
-            final usage = DietGenerationUsage.fromJson(
-              Map<String, dynamic>.from(jsonData['usage'] as Map),
-            );
-            onUsage?.call(usage);
-            print(
-              '📊 Diet - Usage: ${usage.promptTokens} input, '
-              '${usage.completionTokens} output, ${usage.totalTokens} total',
-            );
-          }
-
-          if (jsonData is Map &&
-              jsonData.containsKey('status') &&
-              jsonData.containsKey('connectionId')) {
-            connectionId = jsonData['connectionId']?.toString();
-            print('🔑 Diet - Connection ID: $connectionId');
-          } else if (jsonData is Map &&
-              jsonData.containsKey('text') &&
-              jsonData['text'] != null) {
-            final text = jsonData['text'].toString();
-            responseBuffer.write(text);
-            print('📝 Diet - Adicionado texto: ${text.length} chars');
-            if (trackPartialMeals) {
-              _tryParseIncrementalMeals(responseBuffer.toString());
+          try {
+            var jsonLine = line;
+            if (line.startsWith('data: ')) {
+              jsonLine = line.substring(6);
             }
-          } else if (jsonData is Map && jsonData['done'] == true) {
-            print('✅ Diet - Stream concluído');
-          } else if (jsonData is Map && jsonData.containsKey('error')) {
-            throw Exception(jsonData['error']);
+
+            final jsonData = jsonDecode(jsonLine);
+            chunkCount++;
+            print('📦 Diet NDJSON - Linha #$chunkCount: $jsonData');
+
+            if (jsonData is Map &&
+                jsonData.containsKey('usage') &&
+                jsonData['usage'] is Map) {
+              final usage = DietGenerationUsage.fromJson(
+                Map<String, dynamic>.from(jsonData['usage'] as Map),
+              );
+              onUsage?.call(usage);
+              print(
+                '📊 Diet - Usage: ${usage.promptTokens} input, '
+                '${usage.completionTokens} output, ${usage.totalTokens} total',
+              );
+            }
+
+            if (jsonData is Map &&
+                jsonData.containsKey('status') &&
+                jsonData.containsKey('connectionId')) {
+              connectionId = jsonData['connectionId']?.toString();
+              print('🔑 Diet - Connection ID: $connectionId');
+            } else if (jsonData is Map &&
+                jsonData.containsKey('text') &&
+                jsonData['text'] != null) {
+              final text = jsonData['text'].toString();
+              responseBuffer.write(text);
+              print('📝 Diet - Adicionado texto: ${text.length} chars');
+              if (trackPartialMeals) {
+                _tryParseIncrementalMeals(responseBuffer.toString());
+              }
+            } else if (jsonData is Map && jsonData['done'] == true) {
+              print('✅ Diet - Stream concluído');
+            } else if (jsonData is Map && jsonData.containsKey('error')) {
+              throw _DietGenerationStreamException(
+                jsonData['error']?.toString() ?? 'Erro no stream da IA',
+              );
+            }
+          } on _DietGenerationStreamException {
+            rethrow;
+          } catch (e) {
+            print('❌ Diet - Erro ao processar linha NDJSON: $e');
+            print('   Linha: $line');
           }
-        } catch (e) {
-          print('❌ Diet - Erro ao processar linha NDJSON: $e');
-          print('   Linha: $line');
         }
       }
+
+      print(
+        '✓ Diet - Stream NDJSON finalizado! '
+        'Chunks: $chunkCount, ConnectionId: $connectionId',
+      );
+      final response = responseBuffer.toString();
+
+      print('📥 Resposta completa da IA (${response.length} chars):');
+      print('═' * 80);
+      print(response);
+      print('═' * 80);
+
+      final jsonString = _extractJsonPayload(response);
+      if (jsonString == null) {
+        throw Exception('Não foi possível extrair JSON da resposta da IA');
+      }
+
+      final jsonData = _normalizeAiJson(_decodeAiJson(jsonString));
+      final parsedDietPlan = DietPlan.fromAiJson(
+        jsonData,
+        date: _formatDate(date),
+        mealNames: _buildMealNameMap(resolvedMealTypes),
+        generatedForNutrition: targetNutrition,
+      );
+      final dietPlan = _normalizeDietPlanToTargets(
+        parsedDietPlan,
+        targetNutrition,
+      );
+      print(
+        '✓ DietPlan criado: '
+        '${dietPlan.meals.length} refeições, '
+        '${dietPlan.totalNutrition.calories} kcal',
+      );
+      return dietPlan;
+    } finally {
+      client.close();
     }
-
-    print(
-      '✓ Diet - Stream NDJSON finalizado! '
-      'Chunks: $chunkCount, ConnectionId: $connectionId',
-    );
-    final response = responseBuffer.toString();
-
-    print('📥 Resposta completa da IA (${response.length} chars):');
-    print('═' * 80);
-    print(response);
-    print('═' * 80);
-
-    final jsonString = _extractJsonPayload(response);
-    if (jsonString == null) {
-      throw Exception('Não foi possível extrair JSON da resposta da IA');
-    }
-
-    final jsonData = _normalizeAiJson(_decodeAiJson(jsonString));
-    final parsedDietPlan = DietPlan.fromAiJson(
-      jsonData,
-      date: _formatDate(date),
-      mealNames: _buildMealNameMap(resolvedMealTypes),
-      generatedForNutrition: targetNutrition,
-    );
-    print(
-      '✓ DietPlan criado com resposta direta da IA: '
-      '${parsedDietPlan.meals.length} refeições, '
-      '${parsedDietPlan.totalNutrition.calories} kcal',
-    );
-    return parsedDietPlan;
   }
 
   void _tryParseIncrementalMeals(String partialJson) {
@@ -1212,35 +1240,56 @@ class DietPlanProvider extends ChangeNotifier {
     final mealsCount = resolvedMealTypes.length;
     final mealIds = resolvedMealTypes.map((m) => m.id).join(', ');
     final preferenceLines = _buildDietPreferenceLines();
-    final proteinPerMeal =
-        mealsCount > 0 ? (protein / mealsCount).round() : protein;
+    final dietStyleLine = _buildDietStyleLine(nutritionGoals.dietType);
 
     return '''
-Create one daily diet with common, cheap $country supermarket foods.
+Create a professional personalized daily diet using $country foods.
 
-Exact full-day target: $calories kcal, ${protein}g protein, ${carbs}g carbs, ${fat}g fat.
-Meals: exactly $mealsCount, using only these meal ids: [$mealIds].
-Protein distribution: target about ${proteinPerMeal}g per meal. Keep all meals reasonably close; snacks/near-bed meals may be lighter but must not have near-zero protein, and lunch/dinner must not concentrate most protein.
+Target near: $calories kcal, ${protein}p, ${carbs}c, ${fat}f. Calculate totals silently before answering. Final kcal must be within 5% and macros should be as close as realistic.
+Meals: exactly $mealsCount using these t values only: [$mealIds].
+$dietStyleLine
 $preferenceLines
 
 Return ONLY compact JSON:
 {"m":[["breakfast","08:00",[["Food",100,"g",300,10,40,8]]]]}
 
-Format:
-- meal = [meal_id, time, foods]
+Rules:
+- meal = [type, time, foods]
 - food = [name, amount, unit, kcal, protein, carbs, fat]
-
-Accuracy rules:
-- First choose foods, then silently sum every food in the JSON.
-- The final JSON food totals MUST equal exactly: $calories kcal, ${protein}g protein, ${carbs}g carbs, ${fat}g fat.
-- Do not derive calories from macros; match the four numeric totals exactly as given.
-- If the totals do not match, adjust portions or food macro numbers and recalculate before answering.
-- Use realistic portions: eggs in whole units, fruit in natural units, grams rounded when practical.
-- Prefer very normal foods: rice, beans, eggs, chicken, ground beef, bread, oats, milk, yogurt, potato, pasta, banana, apple, lettuce, tomato.
-- Avoid exotic, expensive, imported, rare, or specialty foods such as tilapia, salmon, quinoa, imported nuts, or specialty products unless requested.
-- Adapt foods and meal timing to the personalization notes above.
-- No totals, no date, no icons, no markdown, no extra text.
+- Use realistic portions
+- Adjust portions until the whole day is close to the target; do not overshoot calories by more than 5%
+- Adapt food choices, portion density, and meal timing to the personalization notes above
+- If breakfast appetite is low or there is morning sleepiness, keep breakfast simpler and easier to consume
+- If hunger is high, prefer higher-satiety foods; if eating is difficult or weight gain is hard, prefer more practical and energy-dense foods
+- No totals, no date, no icons, no markdown, no extra text
 ''';
+  }
+
+  String _buildDietStyleLine(DietType dietType) {
+    switch (dietType) {
+      case DietType.aiRecommended:
+        return 'Diet style: AI recommended. Choose the most appropriate balanced food pattern for the target macros and personalization notes.';
+      case DietType.standard:
+        return 'Diet style: standard flexible diet.';
+      case DietType.balanced:
+        return 'Diet style: balanced diet.';
+      case DietType.ketogenic:
+        return 'Diet style: ketogenic diet.';
+      case DietType.lowCarb:
+        return 'Diet style: low-carbohydrate diet.';
+      case DietType.highProtein:
+        return 'Diet style: high-protein diet.';
+      case DietType.mediterranean:
+        return 'Diet style: Mediterranean diet.';
+      case DietType.paleo:
+        return 'Diet style: Paleo diet.';
+      case DietType.lowFat:
+        return 'Diet style: low-fat diet.';
+      case DietType.dash:
+        return 'Diet style: DASH diet focused on heart-friendly, lower-sodium food choices.';
+      case DietType.custom:
+        return 'Diet style: custom macro split selected by the user.';
+    }
   }
 
   // Replace a single meal with AI
@@ -1299,7 +1348,7 @@ Accuracy rules:
 
       final requestBody = {
         'prompt': prompt,
-        'temperature': 0.2,
+        'temperature': 0.5,
         'model': _selectedDietGenerationModel,
         'streaming': true,
         'userId': userId,
@@ -1555,6 +1604,108 @@ Rules:
       carbs: totalCarbs,
       fat: totalFat,
     );
+  }
+
+  DietPlan _normalizeDietPlanToTargets(
+    DietPlan plan,
+    DailyNutrition targetNutrition,
+  ) {
+    if (targetNutrition.calories <= 0 || plan.meals.isEmpty) {
+      return plan.copyWith(generatedForNutrition: targetNutrition);
+    }
+
+    final actualNutrition = plan.totalNutrition.calories > 0
+        ? plan.totalNutrition
+        : _calculateTotalNutrition(plan.meals);
+    if (actualNutrition.calories <= 0) {
+      return plan.copyWith(
+        totalNutrition: actualNutrition,
+        generatedForNutrition: targetNutrition,
+      );
+    }
+
+    final calorieDelta =
+        (actualNutrition.calories - targetNutrition.calories).abs() /
+            targetNutrition.calories;
+    if (calorieDelta <= 0.05) {
+      return plan.copyWith(
+        totalNutrition: actualNutrition,
+        generatedForNutrition: targetNutrition,
+      );
+    }
+
+    final scale = (targetNutrition.calories / actualNutrition.calories)
+        .clamp(0.65, 1.35)
+        .toDouble();
+    final scaledMeals = plan.meals.map((meal) {
+      final scaledFoods = meal.foods
+          .map((food) => PlannedFood(
+                name: food.name,
+                emoji: food.emoji,
+                amount: _scaleFoodAmount(food.amount, scale),
+                unit: food.unit,
+                calories: _scaleCalories(food.calories, scale),
+                protein: _scaleMacro(food.protein, scale),
+                carbs: _scaleMacro(food.carbs, scale),
+                fat: _scaleMacro(food.fat, scale),
+              ))
+          .toList();
+
+      return meal.copyWith(
+        foods: scaledFoods,
+        mealTotals: _calculateFoodTotals(scaledFoods),
+      );
+    }).toList();
+    final scaledNutrition = _calculateTotalNutrition(scaledMeals);
+
+    print(
+      '⚖️ Dieta ajustada para meta: '
+      '${actualNutrition.calories} -> ${scaledNutrition.calories} kcal',
+    );
+
+    return plan.copyWith(
+      totalNutrition: scaledNutrition,
+      generatedForNutrition: targetNutrition,
+      meals: scaledMeals,
+    );
+  }
+
+  DailyNutrition _calculateFoodTotals(List<PlannedFood> foods) {
+    var calories = 0;
+    var protein = 0.0;
+    var carbs = 0.0;
+    var fat = 0.0;
+
+    for (final food in foods) {
+      calories += food.calories;
+      protein += food.protein;
+      carbs += food.carbs;
+      fat += food.fat;
+    }
+
+    return DailyNutrition(
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+    );
+  }
+
+  int _scaleCalories(int value, double scale) {
+    if (value <= 0) return 0;
+    return (value * scale).round().clamp(1, 10000);
+  }
+
+  double _scaleMacro(double value, double scale) {
+    if (value <= 0) return 0;
+    return double.parse((value * scale).toStringAsFixed(1));
+  }
+
+  double _scaleFoodAmount(double value, double scale) {
+    if (value <= 0) return 0;
+    final scaled = value * scale;
+    final decimals = value < 10 ? 1 : 0;
+    return double.parse(scaled.toStringAsFixed(decimals));
   }
 
   // Delete diet plan for a date (or weekly plan if in weekly mode)

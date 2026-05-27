@@ -215,6 +215,14 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
   }
 
   void _addModelList() {
+    if (_bulkModelsController.text.trim().isEmpty) {
+      final singleModelId = _modelController.text.trim();
+      if (singleModelId.isNotEmpty) {
+        _addModel(singleModelId);
+        return;
+      }
+    }
+
     final candidates = _bulkModelsController.text
         .split(RegExp(r'[,;\n\r]+'))
         .map((modelId) => modelId.trim())
@@ -247,8 +255,9 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
       if (addedModels.isNotEmpty) {
         _bulkModelsController.clear();
       }
-      _modelError =
-          addedModels.isEmpty ? context.tr.translate('benchmark_invalid_model') : null;
+      _modelError = addedModels.isEmpty
+          ? context.tr.translate('benchmark_invalid_model')
+          : null;
       _modelImportMessage =
           '${context.tr.translate('benchmark_bulk_added')}: ${addedModels.length}. '
           '${context.tr.translate('benchmark_bulk_ignored')}: $ignoredCount.';
@@ -514,7 +523,8 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
   }
 
   Future<void> _removeCachedEntry(String signature, String modelId) async {
-    final removed = _cachedResults.remove(_cacheKey(signature, modelId)) != null;
+    final removed =
+        _cachedResults.remove(_cacheKey(signature, modelId)) != null;
     if (removed) {
       await _saveCachedResults();
     }
@@ -1147,7 +1157,8 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
               child: OutlinedButton.icon(
                 onPressed: () => _showGeneratedDiet(entry),
                 icon: const Icon(Icons.restaurant_menu_outlined, size: 18),
-                label: Text(context.tr.translate('benchmark_view_generated_diet')),
+                label:
+                    Text(context.tr.translate('benchmark_view_generated_diet')),
               ),
             ),
           ],
@@ -1170,8 +1181,7 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
         final theme = Theme.of(sheetContext);
         final isDarkMode = theme.brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black87;
-        final secondaryTextColor =
-            isDarkMode ? Colors.white60 : Colors.black54;
+        final secondaryTextColor = isDarkMode ? Colors.white60 : Colors.black54;
         final cardColor =
             isDarkMode ? const Color(0xFF242424) : const Color(0xFFF7F7F7);
 
@@ -1190,7 +1200,8 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          context.tr.translate('benchmark_generated_diet_title'),
+                          context.tr
+                              .translate('benchmark_generated_diet_title'),
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,

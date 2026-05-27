@@ -12,8 +12,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/diet_plan_provider.dart';
+import '../models/notification_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final int? initialTab;
@@ -28,7 +31,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final StorageService _storageService = StorageService();
   String _selectedLanguage = 'en';
   ThemeMode _themeMode = ThemeMode.light;
-  bool _mealReminders = true;
+  NotificationPreferences _notificationPreferences =
+      NotificationPreferences.defaults;
   String _appVersion = '--';
 
   Color _surfaceColor(bool isDarkMode) =>
@@ -55,6 +59,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final languageController =
           Provider.of<LanguageController>(context, listen: false);
       final packageInfo = await PackageInfo.fromPlatform();
+      final notificationPreferences =
+          await NotificationService().getPreferences();
       String currentLanguage =
           languageController.localeToString(languageController.currentLocale);
 
@@ -66,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _appVersion = packageInfo.buildNumber.isNotEmpty
             ? '${packageInfo.version} (${packageInfo.buildNumber})'
             : packageInfo.version;
+        _notificationPreferences = notificationPreferences;
       });
     } catch (e) {
       print('Erro ao carregar configurações: $e');
@@ -524,7 +531,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showEditDietTypeDialog(
       ThemeData theme, NutritionGoalsProvider provider) {
-    final dietTypes = DietType.values;
+    final dietTypes = selectableDietTypes;
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -972,137 +979,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
       dietProvider.getDietGenerationModelName(),
       Icons.psychology_alt_outlined,
       theme,
-      onTap: () => _showDietAiModelDialog(theme, dietProvider),
+      onTap: () => _showDietAiModelDialog(dietProvider),
     );
   }
 
-  void _showDietAiModelDialog(
-    ThemeData theme,
+  Future<void> _showDietAiModelDialog(
     DietPlanProvider dietProvider,
-  ) {
+  ) async {
     final currentModel = dietProvider.dietGenerationModel;
-    final customModelController = TextEditingController(
-      text: dietProvider.isPredefinedDietGenerationModel(currentModel)
-          ? ''
-          : currentModel,
-    );
-    String? customModelError;
 
-    showDialog(
+    final selectedModel = await showDialog<String>(
       context: context,
-      builder: (dialogContext) {
-        Future<void> saveCustomModel(
-          void Function(void Function()) setDialogState,
-        ) async {
-          final modelId = customModelController.text.trim();
-          if (!DietPlanProvider.isValidOpenRouterModelId(modelId)) {
-            setDialogState(() {
-              customModelError =
-                  dialogContext.tr.translate('invalid_openrouter_model_id');
-            });
-            return;
-          }
+      builder: (dialogContext) => _DietAiModelDialog(
+        currentModel: currentModel,
+        dietProvider: dietProvider,
+      ),
+    );
 
-          await dietProvider.updateDietGenerationModel(modelId);
-          if (dialogContext.mounted) {
-            Navigator.pop(dialogContext);
-          }
-        }
+    if (!mounted || selectedModel == null) {
+      return;
+    }
 
-        return StatefulBuilder(
-          builder: (statefulContext, setDialogState) {
-            return AlertDialog(
-              title: Text(dialogContext.tr.translate('diet_ai_model')),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ...DietPlanProvider.dietGenerationModelOptions
-                        .map((option) {
-                      final modelId = option['id']!;
-                      final isSelected =
-                          modelId == dietProvider.dietGenerationModel;
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.auto_awesome,
-                          color: isSelected ? theme.colorScheme.primary : null,
-                        ),
-                        title: Text(option['name']!),
-                        subtitle: Text(
-                          dietProvider
-                              .getDietGenerationModelDescription(modelId),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        trailing: isSelected
-                            ? Icon(Icons.check, color: theme.colorScheme.primary)
-                            : null,
-                        onTap: () async {
-                          await dietProvider.updateDietGenerationModel(modelId);
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                          }
-                        },
-                      );
-                    }),
-                    const Divider(height: 24),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        dialogContext.tr.translate('custom_openrouter_model'),
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        dialogContext.tr
-                            .translate('openrouter_model_id_helper'),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: customModelController,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      textInputAction: TextInputAction.done,
-                      decoration: InputDecoration(
-                        labelText: dialogContext.tr
-                            .translate('custom_openrouter_model'),
-                        hintText: dialogContext.tr
-                            .translate('openrouter_model_id_hint'),
-                        errorText: customModelError,
-                        border: const OutlineInputBorder(),
-                      ),
-                      onChanged: (_) {
-                        if (customModelError != null) {
-                          setDialogState(() => customModelError = null);
-                        }
-                      },
-                      onSubmitted: (_) => saveCustomModel(setDialogState),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(dialogContext.tr.translate('cancel')),
-                ),
-                FilledButton(
-                  onPressed: () => saveCustomModel(setDialogState),
-                  child: Text(dialogContext.tr.translate('save')),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) => customModelController.dispose());
+    await dietProvider.updateDietGenerationModel(selectedModel);
   }
 
   void _showFormulaDialog(ThemeData theme, NutritionGoalsProvider provider) {
@@ -1218,53 +1116,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildNotificationRow(ThemeData theme, ColorScheme colorScheme) {
-    final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+  Widget _buildNotificationRow(ThemeData theme, ColorScheme _) {
+    return _buildAccountRow(
+      context.tr.translate('notifications'),
+      _notificationSummary(),
+      Icons.notifications_outlined,
+      theme,
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const NotificationSettingsScreen(),
+          ),
+        );
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          setState(() => _mealReminders = !_mealReminders);
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-          decoration: BoxDecoration(
-            color: _inputFillColor(isDarkMode),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _subtleBorderColor(isDarkMode)),
-          ),
-          child: Row(
-            children: [
-              _buildLeadingIcon(Icons.notifications_outlined, theme),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.tr.translate('meal_reminders'),
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-              ),
-              Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: _mealReminders,
-                  onChanged: (value) {
-                    setState(() => _mealReminders = value);
-                  },
-                  activeThumbColor: colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+        if (!mounted) return;
+        final preferences = await NotificationService().getPreferences();
+        if (mounted) {
+          setState(() => _notificationPreferences = preferences);
+        }
+      },
     );
+  }
+
+  String _notificationSummary() {
+    final enabledCount = _notificationPreferences.enabledCount;
+    if (enabledCount == 0) {
+      return context.tr.translate('notifications_all_disabled');
+    }
+
+    return context.tr
+        .translate('notifications_enabled_count')
+        .replaceAll('{count}', enabledCount.toString());
   }
 
   void _showLanguageDialog(
@@ -1381,6 +1263,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DietAiModelDialog extends StatefulWidget {
+  const _DietAiModelDialog({
+    required this.currentModel,
+    required this.dietProvider,
+  });
+
+  final String currentModel;
+  final DietPlanProvider dietProvider;
+
+  @override
+  State<_DietAiModelDialog> createState() => _DietAiModelDialogState();
+}
+
+class _DietAiModelDialogState extends State<_DietAiModelDialog> {
+  late final TextEditingController _customModelController;
+  String? _customModelError;
+
+  @override
+  void initState() {
+    super.initState();
+    _customModelController = TextEditingController(
+      text: widget.dietProvider.isPredefinedDietGenerationModel(
+        widget.currentModel,
+      )
+          ? ''
+          : widget.currentModel,
+    );
+  }
+
+  @override
+  void dispose() {
+    _customModelController.dispose();
+    super.dispose();
+  }
+
+  void _selectModel(String modelId) {
+    FocusScope.of(context).unfocus();
+    Navigator.pop(context, modelId);
+  }
+
+  void _saveCustomModel(AppLocalizations l10n) {
+    final modelId = _customModelController.text.trim();
+    if (!DietPlanProvider.isValidOpenRouterModelId(modelId)) {
+      setState(() {
+        _customModelError = l10n.translate('invalid_openrouter_model_id');
+      });
+      return;
+    }
+
+    _selectModel(modelId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.tr;
+
+    return AlertDialog(
+      title: Text(l10n.translate('diet_ai_model')),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...DietPlanProvider.dietGenerationModelOptions.map((option) {
+              final modelId = option['id']!;
+              final isSelected = modelId == widget.currentModel;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.auto_awesome,
+                  color: isSelected ? theme.colorScheme.primary : null,
+                ),
+                title: Text(option['name']!),
+                subtitle: Text(
+                  widget.dietProvider.getDietGenerationModelDescription(
+                    modelId,
+                  ),
+                  style: theme.textTheme.bodySmall,
+                ),
+                trailing: isSelected
+                    ? Icon(Icons.check, color: theme.colorScheme.primary)
+                    : null,
+                onTap: () => _selectModel(modelId),
+              );
+            }),
+            const Divider(height: 24),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                l10n.translate('custom_openrouter_model'),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                l10n.translate('openrouter_model_id_helper'),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _customModelController,
+              autocorrect: false,
+              enableSuggestions: false,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: l10n.translate('custom_openrouter_model'),
+                hintText: l10n.translate('openrouter_model_id_hint'),
+                errorText: _customModelError,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (_) {
+                if (_customModelError != null) {
+                  setState(() => _customModelError = null);
+                }
+              },
+              onSubmitted: (_) => _saveCustomModel(l10n),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.translate('cancel')),
+        ),
+        FilledButton(
+          onPressed: () => _saveCustomModel(l10n),
+          child: Text(l10n.translate('save')),
+        ),
+      ],
     );
   }
 }
