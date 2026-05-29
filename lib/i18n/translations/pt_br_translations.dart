@@ -177,6 +177,7 @@ final Map<String, String> ptBRTranslations = {
   // Ações comuns
   'save': 'Salvar',
   'cancel': 'Cancelar',
+  'close': 'Fechar',
   'delete': 'Excluir',
   'edit': 'Editar',
   'share': 'Compartilhar',
@@ -185,6 +186,17 @@ final Map<String, String> ptBRTranslations = {
   'next': 'Próximo',
   'skip_setup': 'Pular',
   'done': 'Concluído',
+  'voice_settings_no_voices': 'Não há vozes disponíveis no momento.',
+  'voice_settings_title': 'Configurações de voz',
+  'tts_engine_label': 'Mecanismo de voz:',
+  'tts_engine_system_description': 'Mecanismo padrão do sistema',
+  'tts_piper_unavailable_description':
+      'Instale um mecanismo Piper/Sherpa TTS no Android para usar esta opção.',
+  'speech_rate_label': 'Velocidade da fala:',
+  'voice_pitch_label': 'Tom de voz:',
+  'voice_select_label': 'Selecione uma voz:',
+  'voice_unknown_language': 'Idioma desconhecido',
+  'voice_demo_text': 'Esta é uma demonstração da voz.',
 
   // Mensagens
   'loading': 'Carregando...',
@@ -1475,6 +1487,8 @@ final Map<String, String> ptBRTranslations = {
   'no_daily_diet_description':
       'Nossa nutricionista virtual vai criar um cardápio diário completo, balanceado e personalizado para seus objetivos',
   'generating_diet_plan': 'Sua nutricionista está preparando seu cardápio...',
+  'diet_generation_background_hint':
+      'Você pode sair do app; a geração continuará no servidor.',
   'generating_meals': 'Preparando refeições...',
   'create_weekly_diet': 'Criar Dieta Semanal',
   'generate_diet_ai': 'Criar meu Cardápio',
@@ -1554,9 +1568,19 @@ final Map<String, String> ptBRTranslations = {
   'tracking_not_available': 'Esse recurso está disponível no Android.',
 
   // Statistics Screen
+  'stats_loading': 'Carregando estatísticas...',
+  'stats_syncing': 'Atualizando dados mais recentes...',
   'stats_7_days': '7 dias',
   'stats_14_days': '14 dias',
   'stats_30_days': '30 dias',
+  'stats_period_insights': 'Insights do período',
+  'stats_avg_calories': 'Média calórica',
+  'stats_avg_deviation': 'Desvio da meta',
+  'stats_avg_protein': 'Proteína média',
+  'stats_missing_days': 'Dias sem registro',
+  'stats_avg_water': 'Água média',
+  'stats_avg_fiber': 'Fibra média',
+  'stats_glasses_per_day': 'copos',
   'stats_streak': 'Sequência',
   'stats_days_logged': 'Dias registrados',
   'stats_on_target': 'Na meta',
@@ -1572,6 +1596,7 @@ final Map<String, String> ptBRTranslations = {
       'Suas calorias consumidas comparadas à meta diária',
   'stats_consumed': 'Consumido',
   'stats_goal': 'Meta',
+  'stats_not_logged': 'Sem registro',
   'stats_weekly_consistency': 'Consistência Semanal',
   'stats_weekly_consistency_desc':
       'Em quais dias você registra suas refeições com mais frequência',
@@ -1579,6 +1604,7 @@ final Map<String, String> ptBRTranslations = {
   'stats_macros_average_desc':
       'Sua média de macronutrientes no período selecionado',
   'stats_no_data': 'Registre suas refeições para ver os dados',
+  'stats_open_diary': 'Registrar refeição',
   'day_sun_short': 'Dom',
   'day_mon_short': 'Seg',
   'day_tue_short': 'Ter',
@@ -1622,17 +1648,17 @@ final Map<String, String> ptBRTranslations = {
   'streak_keep_today': 'Atualizar hoje',
   'streak_freeze_none_title': 'Você está sem proteções de sequência',
   'streak_freeze_none_message':
-      'As proteções salvam sua sequência quando você não consegue registrar refeições.',
+      'Mantenha sua sequência para ganhar proteções. Elas salvam sua sequência automaticamente quando você falta um dia.',
   'streak_freeze_available_title': 'Você tem {count} proteção(ões)',
   'streak_freeze_available_message':
-      'Use uma proteção para congelar sua sequência por 24 horas.',
+      'Se você faltar um dia, uma proteção é usada automaticamente para salvar sua sequência.',
   'streak_freeze_active_message':
       'Sua sequência está protegida temporariamente.',
   'streak_freeze_activated': 'Proteção ativada com sucesso.',
-  'streak_get_more_freezes': 'Obter mais',
+  'streak_get_more_freezes': 'Como ganhar proteções',
   'streak_freeze_info_title': 'Proteções de sequência',
   'streak_freeze_info_message':
-      'Proteções extras ficam disponíveis conforme você mantém consistência e participa das ações sociais do app.',
+      'Você ganha 1 proteção a cada 7 dias de sequência, guardando até 2. Se faltar um dia, uma proteção é usada automaticamente para você não perder sua sequência.',
   'streak_calendar_title': 'Calendário da sequência',
   'streak_calendar_logged_day': 'Refeição registrada',
   'streak_today': 'Hoje',
@@ -1714,6 +1740,14 @@ final Map<String, String> ptBRTranslations = {
       'Digite um ID no formato provedor/modelo, sem espaços.',
   'benchmark_model_already_added': 'Esse modelo já foi adicionado.',
   'benchmark_no_models': 'Adicione pelo menos um modelo para começar.',
+  'benchmark_reasoning_title': 'Nível de raciocínio da IA',
+  'benchmark_reasoning_helper':
+      'Envia reasoning.effort para modelos compatíveis no OpenRouter. Modelos sem suporte podem ignorar ou falhar.',
+  'benchmark_reasoning_none': 'Padrão do modelo',
+  'benchmark_reasoning_low': 'Baixo',
+  'benchmark_reasoning_medium': 'Médio',
+  'benchmark_reasoning_high': 'Alto',
+  'benchmark_reasoning_xhigh': 'Máximo',
   'benchmark_run_all': 'Rodar benchmark',
   'benchmark_running': 'Rodando benchmark...',
   'benchmark_running_short': 'Rodando',

@@ -124,6 +124,7 @@ class StreakService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode(<String, dynamic>{}),
       );
 
       if (response.statusCode == 200) {
@@ -151,6 +152,7 @@ class StreakService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode(<String, dynamic>{}),
       );
 
       print(

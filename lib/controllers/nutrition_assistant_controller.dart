@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
+import '../services/daily_chat_sync_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/message_notifier.dart';
 import '../utils/ai_interaction_helper.dart';
@@ -75,6 +76,9 @@ class NutritionAssistantController with ChangeNotifier {
   // Flag para saber se o usuário enviou mensagem nesta sessão
   bool _userSentMessage = false;
 
+  // Flag para evitar notifyListeners após o controller ser descartado
+  bool _disposed = false;
+
   // Tipo de ferramenta que está usando o controlador
   final String toolType;
   final String storageScope;
@@ -106,6 +110,14 @@ class NutritionAssistantController with ChangeNotifier {
       toolType != 'free_chat' && toolType != macroGoalsToolType;
 
   String _buildToolScopedInstructions() {
+    if (toolType == 'free_chat') {
+      return '''
+Conversation mode: free nutrition chat.
+Do not log, save, register, or add foods, meals, or food macros to the diary.
+Do not return meal food JSON. If the user mentions a food without a clear question, answer with general nutrition context or ask what they want to know.
+''';
+    }
+
     if (toolType != macroGoalsToolType) {
       return '';
     }
@@ -277,6 +289,32 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     notifyListeners();
   }
 
+  /// Remove do chat o aviso de "sem créditos" (e o botão de assistir anúncio
+  /// que aparece junto dele). Chamado após o usuário ganhar a recompensa do
+  /// anúncio premiado, já que o aviso deixa de ser relevante.
+  void removeCreditExhaustedMessages() {
+    if (_disposed) return;
+
+    String extractText(Map<String, dynamic> msg) {
+      final notifier = msg['notifier'];
+      if (notifier is MessageNotifier) {
+        return notifier.message;
+      }
+      final value = msg['message'];
+      return value is String ? value : '';
+    }
+
+    final initialCount = _messages.length;
+    _messages.removeWhere((msg) =>
+        msg['isUser'] == false &&
+        AppAgentService.isCreditExhaustedResponse(extractText(msg)));
+
+    if (_messages.length == initialCount) return;
+
+    notifyListeners();
+    _saveMessagesForCurrentDate();
+  }
+
   /// Atualiza a mensagem de boas-vindas com o idioma correto
   void updateWelcomeMessage(BuildContext context) {
     if (_messages.isEmpty || _currentConversationId != null) return;
@@ -370,11 +408,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
   /// Envia uma mensagem para a IA
   Future<bool> sendMessage(String message, BuildContext context) async {
+    final trimmedMessage = message.trim();
     _lastContext = context;
     _userSentMessage =
         true; // Flag para marcação de sessão com mensagem enviada pelo usuário
 
-    if (message.trim().isEmpty && !_hasSelectedImage) {
+    if (trimmedMessage.isEmpty && !_hasSelectedImage) {
       // Não processar se a mensagem estiver vazia e não houver imagem
       return true; // Não consumiu créditos, mas não é um erro
     }
@@ -457,7 +496,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(_lastContext ?? context);
+                      RewardAdDialog.showRewardedAd(_lastContext ?? context,
+                          onRewardEarned: removeCreditExhaustedMessages);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
@@ -555,8 +595,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       // Mensagem com imagem
       _messages.add({
         'isUser': true,
-        'message': message
-            .trim(), // Removido texto padrão, agora envia string vazia quando não há mensagem
+        'message':
+            trimmedMessage, // Removido texto padrão, agora envia string vazia quando não há mensagem
         'hasImage': true,
         'imageBytes': imagemBytes,
         'timestamp': DateTime.now(),
@@ -571,7 +611,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       // Mensagem apenas com texto
       _messages.add({
         'isUser': true,
-        'message': message.trim(),
+        'message': trimmedMessage,
         'timestamp': DateTime.now(),
       });
     }
@@ -597,13 +637,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         _messages[aiMessageIndex - 1]['hasImage'] == true) {
       // Se a mensagem anterior contém uma imagem, processe a imagem
       final imageBytes = _messages[aiMessageIndex - 1]['imageBytes'];
-      final prompt = message.isEmpty
+      final prompt = trimmedMessage.isEmpty
           ? "Analyze this image and explain what you see." // Hidden AI prompt; not shown in the user bubble
-          : message;
+          : trimmedMessage;
       _processImageForAI(imageBytes, prompt, context);
     } else {
       // Processar mensagem de texto normal
-      _processMessageForAI(message, context);
+      _processMessageForAI(trimmedMessage, context);
     }
 
     // Salvar o último contexto usado em sendMessage
@@ -641,6 +681,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         pendingAction = AppAgentPendingAction.findLatestInTrailingAssistantTurn(
           messageHistory,
         );
+        if (pendingAction == null &&
+            AppAgentPendingAction.isLikelyApproval(message)) {
+          pendingAction =
+              AppAgentPendingAction.findLatestUnresolvedInConversation(
+            messageHistory,
+          );
+        }
         if (pendingAction != null &&
             AppAgentPendingAction.isLikelyApproval(message)) {
           final handled = await _executePendingActionApproval(
@@ -935,7 +982,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       return false;
     }
 
-    return true;
+    return AppAgentService.shouldIncludeConversationContext(userMessage);
   }
 
   String _buildTextDisplayContent(
@@ -951,6 +998,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       rawContent,
       autoRegisterFoods: autoRegisterFoods,
       fallbackSanitizer: (content) {
+        if (!autoRegisterFoods && FoodJsonParser.containsFoodJson(content)) {
+          return FoodJsonParser.toReadableMessage(content);
+        }
         if (!autoRegisterFoods && !FoodJsonParser.hasFoodJsonSignal(content)) {
           return content;
         }
@@ -1061,6 +1111,35 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         });
         final executionResult = await AppAgentService.executeCommand(
           fallbackMacroTargetsCommand,
+          context,
+        );
+        final directMessage =
+            AppAgentService.buildMacroGoalsCommandResultMessage(
+          context: context,
+          executionResults: [executionResult],
+        );
+        if (directMessage != null) {
+          _finalizeInterceptedMessage(notifier, directMessage);
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+      }
+
+      final contextualMacroTargetsCommand =
+          AppAgentService.buildMacroTargetsCommandFromContextualMessage(
+        originalUserMessage,
+        conversationContext,
+        rawJson: responseContent,
+      );
+      if (contextualMacroTargetsCommand != null) {
+        AppAgentService.logAgentDebug('fallback_macro_targets_from_context', {
+          'userMessage': originalUserMessage,
+          'arguments': contextualMacroTargetsCommand.arguments,
+          'conversationContext':
+              AppAgentService.debugPreview(conversationContext),
+        });
+        final executionResult = await AppAgentService.executeCommand(
+          contextualMacroTargetsCommand,
           context,
         );
         final directMessage =
@@ -1274,6 +1353,18 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           originalUserMessage,
           rawJson: command.rawJson,
         );
+        if (command.name == AppAgentService.updateDietGenerationPreferences &&
+            inferredPreferencesCommand != null &&
+            command.arguments.isNotEmpty) {
+          command = AppAgentCommand(
+            name: command.name,
+            arguments: <String, dynamic>{
+              ...inferredPreferencesCommand.arguments,
+              ...command.arguments,
+            },
+            rawJson: command.rawJson,
+          );
+        }
         final inferredPreferencesFromMessage =
             command.name == AppAgentService.updateDietGenerationPreferences &&
                 command.arguments.isEmpty &&
@@ -1363,7 +1454,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         final executionResult =
             await AppAgentService.executeCommand(command, context);
         executionResults.add(executionResult);
-        if (inferredPreferencesFromMessage && executionResult.success) {
+        if (command.name == AppAgentService.updateDietGenerationPreferences &&
+            executionResult.success) {
           appliedInferredDietPreferences = true;
         }
 
@@ -1784,6 +1876,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
   /// Limpa recursos ao destruir o controller
   @override
   void dispose() {
+    _disposed = true;
     // Salvar mensagens da data atual antes de destruir
     _saveMessagesForCurrentDate();
 
@@ -2032,7 +2125,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(_lastContext ?? context);
+                      RewardAdDialog.showRewardedAd(_lastContext ?? context,
+                          onRewardEarned: removeCreditExhaustedMessages);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
@@ -2369,7 +2463,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      RewardAdDialog.showRewardedAd(_lastContext ?? context);
+                      RewardAdDialog.showRewardedAd(_lastContext ?? context,
+                          onRewardEarned: removeCreditExhaustedMessages);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
@@ -2626,6 +2721,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       await _storageService.saveData(storageKey, {'messages': messagesData});
       print(
           '✅ NutritionAssistantController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
+      // Enviar para o servidor (debounced) para o chat sobreviver a
+      // limpeza de dados/reinstalação/troca de aparelho.
+      DailyChatSyncService.instance.scheduleSync();
     } catch (e) {
       print(
           '❌ NutritionAssistantController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
@@ -2638,9 +2736,23 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       final dateKey = _formatDateKey(date);
       final storageKey = _buildStorageKey(dateKey);
 
-      final data = await _storageService.getData(storageKey);
+      var data = await _storageService.getData(storageKey);
 
-      if (data == null || data.isEmpty) {
+      // Fallback de "scope": a conversa pode ter sido salva sob outro escopo
+      // de armazenamento (ex.: 'guest', gravado antes de o login terminar de
+      // restaurar a sessão, ou um id de usuário diferente). Sem isso, um dia
+      // com refeições registradas aparece com o chat vazio. Procuramos a mesma
+      // data em outros escopos e reaproveitamos a conversa existente.
+      if (!_hasMessages(data)) {
+        final fallback = await _findMessagesInOtherScopes(dateKey, storageKey);
+        if (fallback != null) {
+          data = fallback;
+          print(
+              '♻️ NutritionAssistantController - Conversa recuperada de outro escopo para data $dateKey');
+        }
+      }
+
+      if (!_hasMessages(data)) {
         print(
             '📭 NutritionAssistantController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
@@ -2648,7 +2760,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         return;
       }
 
-      final List<dynamic> messagesData = data['messages'] ?? [];
+      final List<dynamic> messagesData = data!['messages'] ?? [];
       _messages = messagesData.map((msgData) {
         final msg = <String, dynamic>{
           'isUser': msgData['isUser'] ?? false,
@@ -2676,6 +2788,63 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           '❌ NutritionAssistantController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
       _messages = [];
       notifyListeners();
+    }
+  }
+
+  /// Verdadeiro se [data] contém uma lista de mensagens não vazia.
+  bool _hasMessages(Map<String, dynamic>? data) {
+    if (data == null) return false;
+    final msgs = data['messages'];
+    return msgs is List && msgs.isNotEmpty;
+  }
+
+  /// Procura mensagens da MESMA data salvas sob outro "scope" de armazenamento.
+  ///
+  /// Cobre o caso em que a conversa foi gravada como 'guest' (antes de o login
+  /// restaurar a sessão) e agora é lida como 'user_<id>', ou vice-versa.
+  /// Prefere o escopo 'guest' (dados pré-login do próprio dispositivo). Para
+  /// não misturar dados entre contas distintas no mesmo aparelho, só recupera
+  /// de um escopo de usuário quando o escopo atual é 'guest' e existe
+  /// exatamente um candidato.
+  Future<Map<String, dynamic>?> _findMessagesInOtherScopes(
+      String dateKey, String currentKey) async {
+    try {
+      final allKeys = await _storageService.getAllKeys();
+      final suffix = '_$dateKey';
+      final siblings = allKeys
+          .where((k) =>
+              k != currentKey &&
+              k.startsWith('nutrition_chat_') &&
+              k.endsWith(suffix))
+          .toList();
+      if (siblings.isEmpty) return null;
+
+      // 1) Preferir 'guest' (dados pré-login do próprio usuário).
+      const guestPrefix = 'nutrition_chat_guest';
+      final guestKey = '${guestPrefix}_$dateKey';
+      if (siblings.contains(guestKey)) {
+        final data = await _storageService.getData(guestKey);
+        if (_hasMessages(data)) return data;
+      }
+
+      // 2) Se o escopo atual é 'guest', tentar recuperar de um escopo de
+      // usuário — mas apenas se houver exatamente um, para não escolher
+      // arbitrariamente entre contas diferentes.
+      if (currentKey == guestKey) {
+        final userSiblings = siblings
+            .where((k) => k.startsWith('nutrition_chat_user_'))
+            .toList();
+        if (userSiblings.length == 1) {
+          final data = await _storageService.getData(userSiblings.first);
+          if (_hasMessages(data)) return data;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print(
+          '⚠️ NutritionAssistantController - Erro ao procurar conversa em outros escopos: $e');
+      return null;
     }
   }
 }

@@ -14,6 +14,29 @@ import 'auth_service.dart';
 import 'app_debug_log_service.dart';
 import 'server_chat_state_service.dart';
 
+enum _PromptIntent {
+  simpleChat,
+  foodLogging,
+  dailyStatus,
+  macroGoals,
+  dietGeneration,
+  profileSetup,
+  pendingAction,
+  commandResults,
+  accountScoped,
+}
+
+enum _MacroTopic {
+  protein('proteinPerKg', 'proteinGrams'),
+  carbs('carbsPerKg', 'carbsGrams'),
+  fat('fatPerKg', 'fatGrams');
+
+  const _MacroTopic(this.perKgArgument, this.gramsArgument);
+
+  final String perKgArgument;
+  final String gramsArgument;
+}
+
 class AppAgentCommand {
   const AppAgentCommand({
     required this.name,
@@ -782,6 +805,67 @@ class AppAgentPendingAction {
     return null;
   }
 
+  static AppAgentPendingAction? findLatestUnresolvedInConversation(
+    List<Map<String, dynamic>> messages,
+  ) {
+    for (var index = messages.length - 1; index >= 0; index--) {
+      final message = messages[index];
+      final text = _messageText(message);
+      if (text.trim().isEmpty) {
+        continue;
+      }
+
+      if (message['isUser'] == true) {
+        final normalized = AppAgentService._normalizeLooseText(text);
+        if (AppAgentService._containsAnyTerm(normalized, const [
+          'nao',
+          'nao quero',
+          'cancela',
+          'cancelar',
+          'deixa',
+          'deixa pra la',
+          'esquece',
+          'stop',
+          'cancel',
+        ])) {
+          return null;
+        }
+        continue;
+      }
+
+      if (_looksLikeCompletedPendingActionBoundary(text)) {
+        return null;
+      }
+
+      final pendingAction = tryParse(text) ??
+          _inferFromTrailingAssistantTurn(
+            messages: messages,
+            assistantIndex: index,
+            assistantText: text,
+          );
+      if (pendingAction != null) {
+        return pendingAction;
+      }
+    }
+
+    return null;
+  }
+
+  static bool _looksLikeCompletedPendingActionBoundary(String assistantText) {
+    final normalized = AppAgentService._normalizeLooseText(assistantText);
+    return AppAgentService._containsAnyTerm(normalized, const [
+      'pronto recalculei',
+      'recalculei suas metas',
+      'pronto atualizei',
+      'atualizei suas metas',
+      'metas atualizadas',
+      'salvei suas metas',
+      'pronto salvei',
+      'gerei sua dieta',
+      'dieta gerada',
+    ]);
+  }
+
   static bool isLikelyApproval(String userMessage) {
     final normalized = AppAgentService._normalizeLooseText(userMessage);
     if (normalized.isEmpty) {
@@ -802,6 +886,9 @@ class AppAgentPendingAction {
     if (directRejections.contains(normalized) ||
         AppAgentService._containsAnyTerm(normalized, const [
           'nao quero',
+          'nao faca',
+          'nao faz',
+          'nao aplique',
           'negativo',
           'cancela',
           'cancelar',
@@ -862,6 +949,8 @@ class AppAgentPendingAction {
       'pode recalcular',
       'pode ajustar',
       'pode aplicar',
+      'faca isso',
+      'faz isso',
       'faz essa mudanca',
       'faca essa mudanca',
       'aplica isso',
@@ -887,11 +976,38 @@ class AppAgentPendingAction {
       return true;
     }
 
+    if (_asksForConfirmation(normalizedVisible)) {
+      return false;
+    }
+
     return _userExplicitlyRequestedCommand(command, userMessage);
   }
 
   static String removeBlock(String responseContent) {
     return responseContent.replaceAll(_blockPattern, '').trim();
+  }
+
+  static bool _asksForConfirmation(String normalizedAssistant) {
+    return AppAgentService._containsAnyTerm(
+      normalizedAssistant,
+      const [
+        'posso seguir',
+        'posso continuar',
+        'posso fazer',
+        'posso aplicar',
+        'posso recalcular',
+        'posso calcular',
+        'quer que eu',
+        'quer que faca',
+        'quer que faça',
+        'voce gostaria',
+        'você gostaria',
+        'confirma',
+        'confirmar',
+        'se quiser',
+        'deseja que eu',
+      ],
+    );
   }
 
   static bool _looksLikeImmediateExecution(String normalizedAssistant) {
@@ -1925,6 +2041,16 @@ class AppAgentService {
 
     switch (lastResult.commandName) {
       case getDailyNutritionStatus:
+        final selectedDate = _tryParseDate(payload['selectedDate']);
+        final dateLabel = _dailyStatusDateLabel(
+          selectedDate,
+          isPortuguese: isPortuguese,
+        );
+        final isToday = selectedDate == null ||
+            _isSameDay(
+              selectedDate,
+              DateTime.now(),
+            );
         final caloriesRemaining =
             _tryParseInt(payload['caloriesRemaining']) ?? 0;
         final proteinRemaining =
@@ -1932,12 +2058,14 @@ class AppAgentService {
         final carbsRemaining = _tryParseDouble(payload['carbsRemaining']) ?? 0;
         final fatRemaining = _tryParseDouble(payload['fatRemaining']) ?? 0;
         if (isPortuguese) {
-          return 'Hoje você ainda pode consumir $caloriesRemaining kcal, '
+          final verb = isToday ? 'pode' : 'podia';
+          return '$dateLabel você ainda $verb consumir $caloriesRemaining kcal, '
               '${_formatOneDecimal(proteinRemaining)}g de proteína, '
               '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
               '${_formatOneDecimal(fatRemaining)}g de gorduras.';
         }
-        return 'Today you still have $caloriesRemaining kcal, '
+        final verb = isToday ? 'still have' : 'had';
+        return '$dateLabel you $verb $caloriesRemaining kcal, '
             '${_formatOneDecimal(proteinRemaining)}g protein, '
             '${_formatOneDecimal(carbsRemaining)}g carbs, and '
             '${_formatOneDecimal(fatRemaining)}g fat remaining.';
@@ -2064,6 +2192,16 @@ class AppAgentService {
         (carbsGoal - carbsConsumed);
     final fatRemaining =
         _tryParseDouble(payload['fatRemaining']) ?? (fatGoal - fatConsumed);
+    final selectedDate = _tryParseDate(payload['selectedDate']);
+    final dateLabel = _dailyStatusDateLabel(
+      selectedDate,
+      isPortuguese: isPortuguese,
+    );
+    final isToday = selectedDate == null ||
+        _isSameDay(
+          selectedDate,
+          DateTime.now(),
+        );
 
     final asksConsumed = _containsAnyTerm(normalized, const [
       'consumo',
@@ -2097,52 +2235,190 @@ class AppAgentService {
       'fat',
       'fats',
     ]);
+    final asksSnackSuggestion = _looksLikeSnackSuggestionRequest(normalized);
 
     if (isPortuguese) {
+      if (asksSnackSuggestion) {
+        if (caloriesRemaining < 250) {
+          return 'Uma opção de lanche leve: iogurte natural ou uma fruta com '
+              'um pouco de whey, em torno de 150-220 kcal. Hoje você ainda '
+              'tem $caloriesRemaining kcal disponíveis.';
+        }
+        return 'Uma boa opção de lanche: sanduíche de frango com pão integral '
+            'e iogurte natural. Fica em torno de 500 kcal, com cerca de '
+            '35g de proteína, 55g de carboidratos e 12g de gorduras, dentro '
+            'das $caloriesRemaining kcal que você ainda tem hoje.';
+      }
       if (asksConsumed && asksProtein) {
-        return 'Hoje você consumiu ${_formatOneDecimal(proteinConsumed)}g de '
+        return '$dateLabel você consumiu ${_formatOneDecimal(proteinConsumed)}g de '
             'proteína de uma meta de ${_formatOneDecimal(proteinGoal)}g. '
             '${_formatRemainingPhrase(proteinRemaining, 'g', 'proteína', true)}';
       }
       if (asksConsumed && asksCarbs) {
-        return 'Hoje você consumiu ${_formatOneDecimal(carbsConsumed)}g de '
+        return '$dateLabel você consumiu ${_formatOneDecimal(carbsConsumed)}g de '
             'carboidratos de uma meta de ${_formatOneDecimal(carbsGoal)}g. '
             '${_formatRemainingPhrase(carbsRemaining, 'g', 'carboidratos', true)}';
       }
       if (asksConsumed && asksFat) {
-        return 'Hoje você consumiu ${_formatOneDecimal(fatConsumed)}g de '
+        return '$dateLabel você consumiu ${_formatOneDecimal(fatConsumed)}g de '
             'gorduras de uma meta de ${_formatOneDecimal(fatGoal)}g. '
             '${_formatRemainingPhrase(fatRemaining, 'g', 'gorduras', true)}';
       }
       if (asksConsumed) {
-        return 'Hoje você consumiu $caloriesConsumed kcal de $caloriesGoal kcal, '
+        return '$dateLabel você consumiu $caloriesConsumed kcal de $caloriesGoal kcal, '
             '${_formatOneDecimal(proteinConsumed)}g de proteína, '
             '${_formatOneDecimal(carbsConsumed)}g de carboidratos e '
             '${_formatOneDecimal(fatConsumed)}g de gorduras. '
             'Ainda restam $caloriesRemaining kcal.';
       }
-      return 'Hoje você ainda pode consumir $caloriesRemaining kcal, '
+      final verb = isToday ? 'pode' : 'podia';
+      return '$dateLabel você ainda $verb consumir $caloriesRemaining kcal, '
           '${_formatOneDecimal(proteinRemaining)}g de proteína, '
           '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
           '${_formatOneDecimal(fatRemaining)}g de gorduras.';
     }
 
+    if (asksSnackSuggestion) {
+      return 'A practical snack that fits your remaining budget: a chicken '
+          'sandwich with whole-grain bread plus plain yogurt, around 500 kcal, '
+          '35g protein, 55g carbs, and 12g fat. You still have '
+          '$caloriesRemaining kcal available today.';
+    }
     if (asksConsumed && asksProtein) {
-      return 'Today you have consumed ${_formatOneDecimal(proteinConsumed)}g '
+      return '$dateLabel you consumed ${_formatOneDecimal(proteinConsumed)}g '
           'of protein out of a ${_formatOneDecimal(proteinGoal)}g target. '
           '${_formatRemainingPhrase(proteinRemaining, 'g', 'protein', false)}';
     }
     if (asksConsumed) {
-      return 'Today you have consumed $caloriesConsumed kcal out of '
+      return '$dateLabel you consumed $caloriesConsumed kcal out of '
           '$caloriesGoal kcal, ${_formatOneDecimal(proteinConsumed)}g protein, '
           '${_formatOneDecimal(carbsConsumed)}g carbs, and '
           '${_formatOneDecimal(fatConsumed)}g fat. You still have '
           '$caloriesRemaining kcal remaining.';
     }
-    return 'Today you still have $caloriesRemaining kcal, '
+    final verb = isToday ? 'still have' : 'had';
+    return '$dateLabel you $verb $caloriesRemaining kcal, '
         '${_formatOneDecimal(proteinRemaining)}g protein, '
         '${_formatOneDecimal(carbsRemaining)}g carbs, and '
         '${_formatOneDecimal(fatRemaining)}g fat remaining.';
+  }
+
+  static bool _looksLikeSnackSuggestionRequest(String normalizedText) {
+    final hasSuggestion = _containsAnyTerm(normalizedText, const [
+      'sugestao',
+      'sugestoes',
+      'sugerir',
+      'sugere',
+      'sugira',
+      'recomenda',
+      'recomendar',
+      'indica',
+      'indicar',
+      'ideia',
+      'opcao',
+      'opcoes',
+      'suggest',
+      'recommend',
+      'idea',
+      'option',
+    ]);
+    final hasMeal = _containsAnyTerm(normalizedText, const [
+      'lanche',
+      'snack',
+      'refeicao',
+      'comida',
+      'alimento',
+      'comer',
+      'meal',
+      'food',
+    ]);
+    final hasRemainingBudget = _containsAnyTerm(normalizedText, const [
+          'posso comer',
+          'ainda posso',
+          'ja posso',
+          'que eu posso',
+          'que posso',
+          'resta',
+          'restam',
+          'sobrou',
+          'sobram',
+          'falta',
+          'faltam',
+          'remaining',
+          'left',
+          'available',
+        ]) ||
+        RegExp(
+          r'\b(com|dentro)\s+(as|das|minhas|os|dos|meus)?\s*(calorias|kcal|macros)\b',
+        ).hasMatch(normalizedText);
+    return hasSuggestion && hasMeal && hasRemainingBudget;
+  }
+
+  static DateTime? _tryParseDate(dynamic value) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(text);
+  }
+
+  static bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  static DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  static DateTime? _resolveDailyStatusDate(
+    Map<String, dynamic> arguments, {
+    DateTime? fallbackDate,
+  }) {
+    final offset = _tryParseInt(
+      _readFirstValue(arguments, const [
+        'dateOffsetDays',
+        'dayOffset',
+        'offsetDays',
+      ]),
+    );
+    if (offset != null) {
+      final now = DateTime.now();
+      return _dateOnly(now.add(Duration(days: offset)));
+    }
+
+    final explicitDate = _tryParseDate(
+      _readFirstValue(arguments, const [
+        'date',
+        'selectedDate',
+        'targetDate',
+      ]),
+    );
+    if (explicitDate != null) {
+      return _dateOnly(explicitDate);
+    }
+
+    if (fallbackDate != null) {
+      return _dateOnly(fallbackDate);
+    }
+    return null;
+  }
+
+  static String _dailyStatusDateLabel(
+    DateTime? selectedDate, {
+    required bool isPortuguese,
+  }) {
+    final date = _dateOnly(selectedDate ?? DateTime.now());
+    final today = _dateOnly(DateTime.now());
+    final yesterday = today.subtract(const Duration(days: 1));
+    if (_isSameDay(date, today)) {
+      return isPortuguese ? 'Hoje' : 'Today';
+    }
+    if (_isSameDay(date, yesterday)) {
+      return isPortuguese ? 'Ontem' : 'Yesterday';
+    }
+    final formatted =
+        '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+    return isPortuguese ? 'Em $formatted' : 'On $formatted';
   }
 
   static String _formatRemainingPhrase(
@@ -2992,6 +3268,70 @@ class AppAgentService {
     );
   }
 
+  static AppAgentCommand? buildMacroTargetsCommandFromContextualMessage(
+    String userMessage,
+    String conversationContext, {
+    required String rawJson,
+  }) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty ||
+        conversationContext.trim().isEmpty ||
+        isDietGenerationRequest(userMessage) ||
+        _isStandaloneFoodLoggingText(normalized)) {
+      return null;
+    }
+
+    final directCommand = buildMacroTargetsCommandFromUserMessage(
+      userMessage,
+      rawJson: rawJson,
+    );
+    if (directCommand != null) {
+      return directCommand;
+    }
+
+    final value = _extractShortContextualMacroValue(normalized);
+    if (value == null) {
+      return null;
+    }
+
+    final macro = _inferPendingMacroTopicFromContext(conversationContext);
+    if (macro == null) {
+      return null;
+    }
+
+    final hasDailyTotalCue = RegExp(
+      r'\b(total|totais|por dia|no dia|ao dia|diario|diaria|diarios|diarias|daily)\b',
+    ).hasMatch(normalized);
+    final hasPerKgCue = RegExp(
+      r'\b(g\s*/?\s*kg|por\s*(kg|quilo|kilo)|p\s*/?\s*(kg|quilo|kilo)|per\s*kg)\b',
+    ).hasMatch(normalized);
+    final perKgCeiling = switch (macro) {
+      _MacroTopic.protein => 30,
+      _MacroTopic.carbs => 80,
+      _MacroTopic.fat => 20,
+    };
+    final shouldUsePerKg =
+        hasPerKgCue || (!hasDailyTotalCue && value < perKgCeiling);
+
+    if (shouldUsePerKg) {
+      return AppAgentCommand(
+        name: updateMacroTargetsGramsPerKg,
+        arguments: <String, dynamic>{
+          macro.perKgArgument: value,
+        },
+        rawJson: rawJson,
+      );
+    }
+
+    return AppAgentCommand(
+      name: updateMacroTargetsGrams,
+      arguments: <String, dynamic>{
+        macro.gramsArgument: value,
+      },
+      rawJson: rawJson,
+    );
+  }
+
   static AppAgentCommand? buildMacroTargetsCommandFromUserMessage(
     String userMessage, {
     required String rawJson,
@@ -3002,10 +3342,6 @@ class AppAgentService {
     }
 
     final caloriesGoal = _extractExplicitCaloriesTarget(normalized);
-    if (caloriesGoal == null) {
-      return null;
-    }
-
     final hasMutationIntent = _containsAnyTerm(normalized, const [
       'ajuste',
       'ajustar',
@@ -3015,6 +3351,15 @@ class AppAgentService {
       'alterar',
       'atualize',
       'atualizar',
+      'aumente',
+      'aumentar',
+      'suba',
+      'sube',
+      'subir',
+      'reduza',
+      'reduzir',
+      'baixe',
+      'baixar',
       'defina',
       'definir',
       'coloque',
@@ -3025,6 +3370,14 @@ class AppAgentService {
       'metas',
       'alvo',
       'objetivo',
+      'proteina',
+      'protein',
+      'carbo',
+      'carboidrato',
+      'carbohidrato',
+      'gordura',
+      'grasa',
+      'fat',
       'quero comer',
       'quero consumir',
       'dieta para',
@@ -3056,6 +3409,34 @@ class AppAgentService {
       return null;
     }
 
+    final perKgTargets = _extractMacroPerKgTargets(normalized);
+    if (perKgTargets.isNotEmpty) {
+      return AppAgentCommand(
+        name: updateMacroTargetsGramsPerKg,
+        arguments: <String, dynamic>{
+          if (caloriesGoal != null) 'caloriesGoal': caloriesGoal,
+          ...perKgTargets,
+        },
+        rawJson: rawJson,
+      );
+    }
+
+    final gramTargets = _extractMacroGramTargets(normalized);
+    if (gramTargets.isNotEmpty) {
+      return AppAgentCommand(
+        name: updateMacroTargetsGrams,
+        arguments: <String, dynamic>{
+          if (caloriesGoal != null) 'caloriesGoal': caloriesGoal,
+          ...gramTargets,
+        },
+        rawJson: rawJson,
+      );
+    }
+
+    if (caloriesGoal == null) {
+      return null;
+    }
+
     return AppAgentCommand(
       name: updateMacroTargetsGrams,
       arguments: <String, dynamic>{
@@ -3063,6 +3444,86 @@ class AppAgentService {
       },
       rawJson: rawJson,
     );
+  }
+
+  static double? _extractShortContextualMacroValue(String normalizedMessage) {
+    final match = RegExp(
+      r'^\s*(\d+(?:[,.]\d+)?)\s*(?:g|gramas?|grams?|g\s*/?\s*kg|gramas?\s*(?:por|p)?\s*(?:kg|quilo|kilo)|por\s*(?:kg|quilo|kilo)|p\s*/?\s*(?:kg|quilo|kilo)|per\s*kg)?\s*(?:por dia|no dia|ao dia|diario|diaria|daily)?\s*$',
+    ).firstMatch(normalizedMessage);
+    if (match == null) {
+      return null;
+    }
+    return _tryParseDouble(match.group(1));
+  }
+
+  static _MacroTopic? _inferPendingMacroTopicFromContext(
+    String conversationContext,
+  ) {
+    final normalizedContext = _normalizeLooseText(conversationContext);
+    if (normalizedContext.isEmpty) {
+      return null;
+    }
+
+    final blocks = RegExp(
+      r'^(?:Humano|IA):\s[\s\S]*?(?=^(?:Humano|IA):\s|\z)',
+      multiLine: true,
+    ).allMatches(conversationContext).map((match) => match.group(0)!).toList();
+
+    final candidateBlocks = blocks.isEmpty
+        ? <String>[normalizedContext]
+        : blocks.reversed.take(6).map(_normalizeLooseText).toList();
+
+    for (final block in candidateBlocks) {
+      final asksForMacroValue = RegExp(
+        r'\b(qual|quanto|quantos|valor|gostaria|quer|prefere|specific|specifico|grams?|gramas?|g/kg)\b',
+      ).hasMatch(block);
+      if (!asksForMacroValue) {
+        continue;
+      }
+      final topic = _detectMacroTopic(block);
+      if (topic != null) {
+        return topic;
+      }
+    }
+
+    return _detectLastMacroTopic(normalizedContext);
+  }
+
+  static _MacroTopic? _detectMacroTopic(String normalizedText) {
+    if (RegExp(r'\b(proteina|protein)\b').hasMatch(normalizedText)) {
+      return _MacroTopic.protein;
+    }
+    if (RegExp(r'\b(carbo|carboidratos?|carbohidratos?|carbs?)\b')
+        .hasMatch(normalizedText)) {
+      return _MacroTopic.carbs;
+    }
+    if (RegExp(r'\b(gordura|gorduras|grasa|grasas|fat|fats)\b')
+        .hasMatch(normalizedText)) {
+      return _MacroTopic.fat;
+    }
+    return null;
+  }
+
+  static _MacroTopic? _detectLastMacroTopic(String normalizedText) {
+    final matches = <({int start, _MacroTopic topic})>[];
+    for (final match
+        in RegExp(r'\b(proteina|protein)\b').allMatches(normalizedText)) {
+      matches.add((start: match.start, topic: _MacroTopic.protein));
+    }
+    for (final match
+        in RegExp(r'\b(carbo|carboidratos?|carbohidratos?|carbs?)\b')
+            .allMatches(normalizedText)) {
+      matches.add((start: match.start, topic: _MacroTopic.carbs));
+    }
+    for (final match in RegExp(r'\b(gordura|gorduras|grasa|grasas|fat|fats)\b')
+        .allMatches(normalizedText)) {
+      matches.add((start: match.start, topic: _MacroTopic.fat));
+    }
+    if (matches.isEmpty) {
+      return null;
+    }
+    matches.sort((a, b) => b.start.compareTo(a.start));
+    return matches.first.topic;
   }
 
   static int? _extractExplicitCaloriesTarget(String normalizedMessage) {
@@ -3084,6 +3545,168 @@ class AppAgentService {
     }
 
     return null;
+  }
+
+  static Map<String, dynamic> _extractMacroPerKgTargets(
+    String normalizedMessage,
+  ) {
+    final hasDailyTotalCue = RegExp(
+      r'\b(total|totais|por dia|no dia|ao dia|diario|diaria|diarios|diarias|daily)\b',
+    ).hasMatch(normalizedMessage);
+    double? lowGramAsPerKg(double? value, double maxDailyTotal) {
+      if (value == null || value <= 0 || value >= maxDailyTotal) {
+        return null;
+      }
+      return hasDailyTotalCue ? null : value;
+    }
+
+    final proteinPerKg = _extractMacroNumber(
+          normalizedMessage,
+          RegExp(
+            r'(\d+(?:[,.]\d+)?)\s*(?:g\s*/?\s*kg|gramas?\s*(?:por|p)?\s*(?:kg|quilo|kilo))\s+(?:de|of)\s*(?:proteina|protein)\b',
+          ),
+        ) ??
+        _extractMacroNumberAfterTerm(
+          normalizedMessage,
+          RegExp(
+            r'\b(?:proteina|protein)\b\s*(?:para|em|a|to|at|en|=|:)?\s*(\d+(?:[,.]\d+)?)\s*(?:g\s*/?\s*kg|gramas?\s*(?:por|p)?\s*(?:kg|quilo|kilo))',
+          ),
+        ) ??
+        lowGramAsPerKg(
+          _extractMacroNumber(
+            normalizedMessage,
+            RegExp(
+              r'(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\s*(?:de\s*)?(?:proteina|protein)\b',
+            ),
+          ),
+          30,
+        ) ??
+        lowGramAsPerKg(
+          _extractMacroNumberAfterTerm(
+            normalizedMessage,
+            RegExp(
+              r'\b(?:proteina|protein)\b\s*(?:para|em|a|to|at|en|=|:)?\s*(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\b',
+            ),
+          ),
+          30,
+        );
+    final carbsPerKg = _extractMacroNumber(
+          normalizedMessage,
+          RegExp(
+            r'(\d+(?:[,.]\d+)?)\s*(?:g\s*/?\s*kg|gramas?\s*(?:por|p)?\s*(?:kg|quilo|kilo))\s+(?:de|of)\s*(?:carbo|carboidratos?|carbohidratos?|carbs?)\b',
+          ),
+        ) ??
+        _extractMacroNumberAfterTerm(
+          normalizedMessage,
+          RegExp(
+            r'\b(?:carbo|carboidratos?|carbohidratos?|carbs?)\b\s*(?:para|em|a|to|at|en|=|:)?\s*(\d+(?:[,.]\d+)?)\s*(?:g\s*/?\s*kg|gramas?\s*(?:por|p)?\s*(?:kg|quilo|kilo))',
+          ),
+        ) ??
+        lowGramAsPerKg(
+          _extractMacroNumber(
+            normalizedMessage,
+            RegExp(
+              r'(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\s*(?:de\s*)?(?:carbo|carboidratos?|carbohidratos?|carbs?)\b',
+            ),
+          ),
+          80,
+        ) ??
+        lowGramAsPerKg(
+          _extractMacroNumberAfterTerm(
+            normalizedMessage,
+            RegExp(
+              r'\b(?:carbo|carboidratos?|carbohidratos?|carbs?)\b\s*(?:para|em|a|to|at|en|=|:)?\s*(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\b',
+            ),
+          ),
+          80,
+        );
+    final fatPerKg = _extractMacroNumber(
+          normalizedMessage,
+          RegExp(
+            r'(\d+(?:[,.]\d+)?)\s*(?:g\s*/?\s*kg|gramas?\s*(?:por|p)?\s*(?:kg|quilo|kilo))\s+(?:de|of)\s*(?:gordura|gorduras|grasa|grasas|fat|fats)\b',
+          ),
+        ) ??
+        _extractMacroNumberAfterTerm(
+          normalizedMessage,
+          RegExp(
+            r'\b(?:gordura|gorduras|grasa|grasas|fat|fats)\b\s*(?:para|em|a|to|at|en|=|:)?\s*(\d+(?:[,.]\d+)?)\s*(?:g\s*/?\s*kg|gramas?\s*(?:por|p)?\s*(?:kg|quilo|kilo))',
+          ),
+        ) ??
+        lowGramAsPerKg(
+          _extractMacroNumber(
+            normalizedMessage,
+            RegExp(
+              r'(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\s*(?:de\s*)?(?:gordura|gorduras|grasa|grasas|fat|fats)\b',
+            ),
+          ),
+          20,
+        ) ??
+        lowGramAsPerKg(
+          _extractMacroNumberAfterTerm(
+            normalizedMessage,
+            RegExp(
+              r'\b(?:gordura|gorduras|grasa|grasas|fat|fats)\b\s*(?:para|em|a|to|at|en|=|:)?\s*(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\b',
+            ),
+          ),
+          20,
+        );
+
+    return <String, dynamic>{
+      if (proteinPerKg != null) 'proteinPerKg': proteinPerKg,
+      if (carbsPerKg != null) 'carbsPerKg': carbsPerKg,
+      if (fatPerKg != null) 'fatPerKg': fatPerKg,
+    };
+  }
+
+  static Map<String, dynamic> _extractMacroGramTargets(
+    String normalizedMessage,
+  ) {
+    final proteinGrams = _extractMacroNumber(
+      normalizedMessage,
+      RegExp(
+        r'(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\s*(?:de\s*)?(?:proteina|protein)\b',
+      ),
+    );
+    final carbsGrams = _extractMacroNumber(
+      normalizedMessage,
+      RegExp(
+        r'(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\s*(?:de\s*)?(?:carbo|carboidratos?|carbohidratos?|carbs?)\b',
+      ),
+    );
+    final fatGrams = _extractMacroNumber(
+      normalizedMessage,
+      RegExp(
+        r'(\d+(?:[,.]\d+)?)\s*(?:g|gramas?)\s*(?:de\s*)?(?:gordura|gorduras|grasa|grasas|fat|fats)\b',
+      ),
+    );
+
+    return <String, dynamic>{
+      if (proteinGrams != null) 'proteinGrams': proteinGrams,
+      if (carbsGrams != null) 'carbsGrams': carbsGrams,
+      if (fatGrams != null) 'fatGrams': fatGrams,
+    };
+  }
+
+  static double? _extractMacroNumber(
+    String normalizedMessage,
+    RegExp pattern,
+  ) {
+    final match = pattern.firstMatch(normalizedMessage);
+    if (match == null) {
+      return null;
+    }
+    return _tryParseDouble(match.group(1));
+  }
+
+  static double? _extractMacroNumberAfterTerm(
+    String normalizedMessage,
+    RegExp pattern,
+  ) {
+    final match = pattern.firstMatch(normalizedMessage);
+    if (match == null) {
+      return null;
+    }
+    return _tryParseDouble(match.group(1));
   }
 
   static bool _isMacroRecalculationApproval(String normalizedMessage) {
@@ -3235,7 +3858,7 @@ class AppAgentService {
     required List<AppAgentExecutionResult> executionResults,
     required String responseContent,
   }) {
-    if (!_isCreditExhaustedResponse(responseContent)) {
+    if (!isCreditExhaustedResponse(responseContent)) {
       return null;
     }
 
@@ -3374,6 +3997,348 @@ class AppAgentService {
     }
   }
 
+  static _PromptIntent _resolvePromptIntentFromCommandName(
+    String commandName,
+  ) {
+    switch (commandName) {
+      case getDailyNutritionStatus:
+      case getWeeklyNutritionSummary:
+      case getWeightStatus:
+        return _PromptIntent.dailyStatus;
+      case recalculateNutritionGoals:
+      case getMacroTargetsStatus:
+      case updateMacroTargetsPercentage:
+      case updateMacroTargetsGrams:
+      case updateMacroTargetsGramsPerKg:
+        return _PromptIntent.macroGoals;
+      case getDietGenerationPreferencesStatus:
+      case updateDietGenerationPreferences:
+      case generateNewDietPlan:
+        return _PromptIntent.dietGeneration;
+      case getGoalSetupStatus:
+      case updateGoalSetupProfile:
+      case updateGoalSetupPreferences:
+        return _PromptIntent.profileSetup;
+      default:
+        return _PromptIntent.accountScoped;
+    }
+  }
+
+  static _PromptIntent _resolvePromptIntentFromBasePrompt(String basePrompt) {
+    final isFreeNutritionChatMode = basePrompt.contains(
+      'Conversation mode: free nutrition chat.',
+    );
+
+    final pendingAction = AppAgentPendingAction.tryParse(basePrompt);
+    if (pendingAction != null) {
+      return _resolvePromptIntentFromCommandName(pendingAction.command.name);
+    }
+
+    if (basePrompt.contains('[APP_COMMAND_RESULTS_BEGIN]') ||
+        basePrompt.contains('[APP_COMMAND_RESULT_BEGIN]')) {
+      return _PromptIntent.commandResults;
+    }
+
+    if (basePrompt.contains(
+      'Conversation mode: nutrition goal and macro target review',
+    )) {
+      return _PromptIntent.macroGoals;
+    }
+
+    final userText = _extractPromptUserRequest(basePrompt);
+    final normalized = _normalizeRoutingText(userText);
+    if (normalized.isEmpty || _isGreetingOnly(normalized)) {
+      return _PromptIntent.simpleChat;
+    }
+    if (_looksLikeDailyStatusRequest(normalized)) {
+      return _PromptIntent.dailyStatus;
+    }
+    if (_looksLikeDietGenerationRequest(normalized)) {
+      return _PromptIntent.dietGeneration;
+    }
+    if (_looksLikeMacroGoalRequest(normalized)) {
+      return _PromptIntent.macroGoals;
+    }
+    if (_looksLikeProfileSetupRequest(normalized)) {
+      return _PromptIntent.profileSetup;
+    }
+    if (!isFreeNutritionChatMode && _isStandaloneFoodLoggingText(normalized)) {
+      return _PromptIntent.foodLogging;
+    }
+    if (_looksLikeAccountScopedRequest(normalized)) {
+      return _PromptIntent.accountScoped;
+    }
+    return _PromptIntent.simpleChat;
+  }
+
+  static _PromptIntent _resolvePromptIntentFromExecutionResults({
+    required String originalUserMessage,
+    required List<AppAgentExecutionResult> executionResults,
+  }) {
+    final userIntent = _resolvePromptIntentFromBasePrompt(
+      'User request:\n$originalUserMessage',
+    );
+    if (userIntent != _PromptIntent.simpleChat &&
+        userIntent != _PromptIntent.foodLogging) {
+      return userIntent;
+    }
+
+    if (executionResults.isEmpty) {
+      return _PromptIntent.commandResults;
+    }
+    return _resolvePromptIntentFromCommandName(
+      executionResults.last.commandName,
+    );
+  }
+
+  static String _promptIntentTag(_PromptIntent intent) {
+    switch (intent) {
+      case _PromptIntent.simpleChat:
+        return 'simple_chat';
+      case _PromptIntent.foodLogging:
+        return 'food_logging';
+      case _PromptIntent.dailyStatus:
+        return 'daily_status';
+      case _PromptIntent.macroGoals:
+        return 'macro_goals';
+      case _PromptIntent.dietGeneration:
+        return 'diet_generation';
+      case _PromptIntent.profileSetup:
+        return 'profile_setup';
+      case _PromptIntent.pendingAction:
+        return 'pending_action';
+      case _PromptIntent.commandResults:
+        return 'command_results';
+      case _PromptIntent.accountScoped:
+        return 'account_scoped';
+    }
+  }
+
+  static String _extractPromptUserRequest(String prompt) {
+    final marker = RegExp(
+      r'(User request|Mensagem do usuário|Pedido do usuário)\s*:\s*',
+      caseSensitive: false,
+    );
+    final matches = marker.allMatches(prompt).toList();
+    if (matches.isEmpty) {
+      return prompt.trim();
+    }
+    return prompt.substring(matches.last.end).trim();
+  }
+
+  static String _normalizeRoutingText(String text) {
+    var normalized = text.toLowerCase().trim();
+    const replacements = {
+      'á': 'a',
+      'à': 'a',
+      'ã': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'õ': 'o',
+      'ô': 'o',
+      'ö': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ç': 'c',
+      'ñ': 'n',
+    };
+    replacements.forEach((from, to) {
+      normalized = normalized.replaceAll(from, to);
+    });
+    return normalized.replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  static bool _containsAnyRoutingTerm(
+    String normalizedText,
+    List<String> terms,
+  ) {
+    return terms.any((term) => normalizedText.contains(term));
+  }
+
+  static bool _isGreetingOnly(String normalizedText) {
+    return RegExp(
+      r'^(oi|ola|hello|hi|hey|bom dia|boa tarde|boa noite)[\s!.?]*$',
+    ).hasMatch(normalizedText);
+  }
+
+  static bool _looksLikeDailyStatusRequest(String normalizedText) {
+    final asksAmount = RegExp(
+      r'\b(quanto|quantas|qto|qtas|posso comer|ainda posso|how much|how many|still eat)\b',
+    ).hasMatch(normalizedText);
+    final dayContext = RegExp(
+      r'\b(hoje|hj|ontem|anteontem|today|yesterday|agora|ainda|resta|restam|sobrou|sobram|falta|faltam|remaining|left)\b',
+    ).hasMatch(normalizedText);
+    final nutritionContext = RegExp(
+      r'\b(caloria|calorias|kcal|macro|macros|proteina|carbo|carboidrato|gordura|comer|eat)\b',
+    ).hasMatch(normalizedText);
+    final targetEditContext = RegExp(
+      r'\b(meta|metas|objetivo|objetivos|target|goal|ajustar|mudar|alterar|editar|definir|change|update)\b',
+    ).hasMatch(normalizedText);
+    final suggestionContext = RegExp(
+      r'\b(sugestao|sugestoes|sugerir|sugere|sugira|recomenda|recomendar|indica|indicar|ideia|opcao|opcoes|suggest|recommend|idea|option)\b',
+    ).hasMatch(normalizedText);
+    final mealSuggestionContext = RegExp(
+      r'\b(lanche|snack|refeicao|comida|alimento|comer|meal|food)\b',
+    ).hasMatch(normalizedText);
+    final remainingBudgetContext = RegExp(
+          r'\b(posso comer|ainda posso|ja posso|que eu posso|que posso|resta|restam|sobrou|sobram|falta|faltam|remaining|left|available)\b',
+        ).hasMatch(normalizedText) ||
+        RegExp(
+          r'\b(com|dentro)\s+(as|das|minhas|os|dos|meus)?\s*(calorias|kcal|macros)\b',
+        ).hasMatch(normalizedText);
+
+    return !targetEditContext &&
+        ((asksAmount && dayContext && nutritionContext) ||
+            (suggestionContext &&
+                mealSuggestionContext &&
+                remainingBudgetContext) ||
+            RegExp(
+              r'^\s*(e\s*)?(calorias|kcal|proteina|carbo|carboidratos|gordura|macros)\s*\??\s*$',
+            ).hasMatch(normalizedText));
+  }
+
+  static bool _looksLikeDietGenerationRequest(String normalizedText) {
+    return RegExp(
+          r'\b(gerar|gere|gera|criar|crie|cria|montar|monte|monta|fazer|faz|generate|create|build)\b.*\b(dieta|cardapio|plano alimentar|meal plan|refeicoes|refeicao|diet)\b',
+        ).hasMatch(normalizedText) ||
+        RegExp(
+          r'\b(dieta|cardapio|plano alimentar|meal plan|diet)\b.*\b(nova|novo|gerar|gera|criar|cria|montar|monta|personalizada|plano)\b',
+        ).hasMatch(normalizedText);
+  }
+
+  static bool _looksLikeMacroGoalRequest(String normalizedText) {
+    return _containsAnyRoutingTerm(normalizedText, const [
+          'cutting',
+          'cut',
+          'secar',
+          'emagrecer',
+          'perder peso',
+          'perder gordura',
+          'bulking',
+          'bulk',
+          'ganhar massa',
+          'ganhar peso',
+          'hipertrofia',
+          'manter peso',
+          'manutencao',
+        ]) ||
+        RegExp(
+          r'\b(meta|metas|objetivo|objetivos|alvo|alvos|target|goal|macro|macros|caloria|calorias|kcal|proteina|carbo|carboidrato|gordura)\b.*\b(ajustar|ajuste|mudar|mude|alterar|altere|editar|definir|colocar|coloque|subir|aumentar|baixar|reduzir|recalcular|calcular|apply|save|update|change)\b',
+        ).hasMatch(normalizedText) ||
+        RegExp(
+          r'\b(ajustar|ajuste|mudar|mude|alterar|altere|editar|definir|colocar|coloque|subir|aumentar|baixar|reduzir|recalcular|calcular|apply|save|update|change)\b.*\b(meta|metas|objetivo|objetivos|alvo|alvos|target|goal|macro|macros|caloria|calorias|kcal|proteina|carbo|carboidrato|gordura)\b',
+        ).hasMatch(normalizedText) ||
+        RegExp(
+          r'\b\d+([,.]\d+)?\s*(g/kg|gramas?\s*(por|p/)?\s*(kg|quilo)|kcal|calorias?)\b',
+        ).hasMatch(normalizedText);
+  }
+
+  static bool _looksLikeProfileSetupRequest(String normalizedText) {
+    return RegExp(
+      r'\b(configurar|configura|setup|definir|ajustar)\b.*\b(perfil|profile|dados|meta inicial|metas iniciais|objetivo inicial)\b',
+    ).hasMatch(normalizedText);
+  }
+
+  static bool _looksLikeAccountScopedRequest(String normalizedText) {
+    return _containsAnyRoutingTerm(normalizedText, const [
+      'progresso',
+      'semana',
+      'weekly',
+      'peso',
+      'imc',
+      'historico',
+      'minha dieta',
+      'meu plano',
+      'metas atuais',
+      'macros atuais',
+    ]);
+  }
+
+  static bool _isStandaloneFoodLoggingText(String normalizedText) {
+    if (normalizedText.isEmpty ||
+        normalizedText.length > 180 ||
+        normalizedText.contains('?')) {
+      return false;
+    }
+    if (_isGreetingOnly(normalizedText)) {
+      return false;
+    }
+    if (_looksLikeDailyStatusRequest(normalizedText) ||
+        _looksLikeMacroGoalRequest(normalizedText) ||
+        _looksLikeDietGenerationRequest(normalizedText)) {
+      return false;
+    }
+
+    const foodTerms = [
+      'arroz',
+      'feijao',
+      'frango',
+      'carne',
+      'ovo',
+      'ovos',
+      'pao',
+      'leite',
+      'banana',
+      'maca',
+      'batata',
+      'macarrao',
+      'queijo',
+      'iogurte',
+      'aveia',
+      'whey',
+      'cafe',
+      'suco',
+      'salada',
+      'peixe',
+      'pizza',
+      'sanduiche',
+      'chicken',
+      'rice',
+      'beans',
+      'egg',
+      'bread',
+      'milk',
+    ];
+    final hasKnownFood = foodTerms.any(
+      (term) => RegExp('\\b${RegExp.escape(term)}s?\\b').hasMatch(
+        normalizedText,
+      ),
+    );
+    final hasFoodVerb = RegExp(
+      r'\b(comi|comer|comendo|almoco|almocei|jantar|jantei|lanche|lanchei|tomei|bebi|consumi|registra|registrar|adicione|adicionar)\b',
+    ).hasMatch(normalizedText);
+
+    return hasKnownFood || hasFoodVerb;
+  }
+
+  static bool _shouldAttachAppState(_PromptIntent intent) {
+    switch (intent) {
+      case _PromptIntent.simpleChat:
+      case _PromptIntent.foodLogging:
+        return false;
+      case _PromptIntent.dailyStatus:
+      case _PromptIntent.macroGoals:
+      case _PromptIntent.dietGeneration:
+      case _PromptIntent.profileSetup:
+      case _PromptIntent.pendingAction:
+      case _PromptIntent.commandResults:
+      case _PromptIntent.accountScoped:
+        return true;
+    }
+  }
+
   static Future<String> buildFollowUpPrompt({
     required String originalUserMessage,
     required List<AppAgentExecutionResult> executionResults,
@@ -3381,6 +4346,10 @@ class AppAgentService {
     String conversationContext = '',
   }) async {
     final appReplyLanguage = _promptLanguageTag(context);
+    final promptIntent = _resolvePromptIntentFromExecutionResults(
+      originalUserMessage: originalUserMessage,
+      executionResults: executionResults,
+    );
     final resultJson = jsonEncode(
       executionResults.map(_summarizeExecutionResultForPrompt).toList(),
     );
@@ -3392,7 +4361,10 @@ class AppAgentService {
             maxChars: 8000,
           );
     final currentAppStateJson = jsonEncode(
-      _buildPromptStatePayload(await _getCurrentAppStatePayload(context)),
+      _buildPromptStatePayloadForIntent(
+        await _getCurrentAppStatePayload(context),
+        promptIntent,
+      ),
     );
 
     return '''
@@ -3403,6 +4375,7 @@ $resultJson
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
 App reply language: $appReplyLanguage.
+Prompt intent: ${_promptIntentTag(_PromptIntent.commandResults)}.
 ${sanitizedConversationContext.isEmpty ? '' : 'Current chat history, oldest to newest (accessible conversation context):\n$sanitizedConversationContext\n'}
 User request:
 $originalUserMessage
@@ -3419,6 +4392,17 @@ Reply in App reply language.
     required String basePrompt,
   }) async {
     final appReplyLanguage = _promptLanguageTag(context);
+    final promptIntent = _resolvePromptIntentFromBasePrompt(basePrompt);
+    final intentLine = 'Prompt intent: ${_promptIntentTag(promptIntent)}.';
+
+    if (!_shouldAttachAppState(promptIntent)) {
+      return '''
+App reply language: $appReplyLanguage.
+$intentLine
+$basePrompt
+''';
+    }
+
     final authService = Provider.of<AuthService>(context, listen: false);
     if (!authService.isAuthenticated || authService.token == null) {
       const currentAppStateJson = '{"auth":{"isAuthenticated":false}}';
@@ -3427,12 +4411,16 @@ Reply in App reply language.
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
 App reply language: $appReplyLanguage.
+$intentLine
 $basePrompt
 ''';
     }
 
     final currentAppStateJson = jsonEncode(
-      _buildPromptStatePayload(await _getCurrentAppStatePayload(context)),
+      _buildPromptStatePayloadForIntent(
+        await _getCurrentAppStatePayload(context),
+        promptIntent,
+      ),
     );
 
     return '''
@@ -3440,6 +4428,7 @@ $basePrompt
 $currentAppStateJson
 [APP_CURRENT_STATE_END]
 App reply language: $appReplyLanguage.
+$intentLine
 $basePrompt
 ''';
   }
@@ -3466,6 +4455,50 @@ $basePrompt
         return 'it-IT';
       default:
         return language;
+    }
+  }
+
+  static Map<String, dynamic> _buildPromptStatePayloadForIntent(
+    Map<String, dynamic> state,
+    _PromptIntent intent,
+  ) {
+    final fullState = _buildPromptStatePayload(state);
+    final auth = (fullState['auth'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    final goalSetup =
+        (fullState['goalSetup'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    final dietPreferences = (fullState['dietGenerationPreferences'] as Map?)
+            ?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+
+    switch (intent) {
+      case _PromptIntent.simpleChat:
+      case _PromptIntent.foodLogging:
+        return _pruneNullEntries({
+          'auth': {
+            'isAuthenticated': auth['isAuthenticated'] == true,
+          },
+        });
+      case _PromptIntent.dailyStatus:
+      case _PromptIntent.accountScoped:
+      case _PromptIntent.pendingAction:
+      case _PromptIntent.commandResults:
+        return _pruneNullEntries({
+          'auth': auth,
+        });
+      case _PromptIntent.profileSetup:
+      case _PromptIntent.macroGoals:
+        return _pruneNullEntries({
+          'auth': auth,
+          'goalSetup': goalSetup,
+        });
+      case _PromptIntent.dietGeneration:
+        return _pruneNullEntries({
+          'auth': auth,
+          'goalSetup': goalSetup,
+          'dietGenerationPreferences': dietPreferences,
+        });
     }
   }
 
@@ -3760,7 +4793,7 @@ $basePrompt
     return items.isEmpty ? null : items;
   }
 
-  static bool _isCreditExhaustedResponse(String responseContent) {
+  static bool isCreditExhaustedResponse(String responseContent) {
     final normalized = responseContent.toLowerCase();
     return normalized.contains('sem créditos') ||
         normalized.contains('sem creditos') ||
@@ -3839,8 +4872,13 @@ $basePrompt
   }
 
   static bool shouldIncludeConversationContext(String userMessage) {
+    final hasQuestionMark = userMessage.contains('?');
     final normalized = _normalizeLooseText(userMessage);
     if (normalized.isEmpty) {
+      return false;
+    }
+
+    if (_isLowContextStandaloneMessage(normalized)) {
       return false;
     }
 
@@ -3850,7 +4888,6 @@ $basePrompt
       'quero sim',
       'nao',
       'não',
-      'ok',
       'certo',
     }.contains(normalized)) {
       return true;
@@ -3880,12 +4917,9 @@ $basePrompt
         .split(RegExp(r'\s+'))
         .where((word) => word.trim().isNotEmpty)
         .toList();
-    if (words.length > 6) {
-      return false;
-    }
 
     final firstWord = words.first;
-    return {
+    if ({
       'e',
       'entao',
       'então',
@@ -3901,7 +4935,83 @@ $basePrompt
       'ela',
       'eles',
       'elas',
-    }.contains(firstWord);
+    }.contains(firstWord)) {
+      return true;
+    }
+
+    if (hasQuestionMark) {
+      return true;
+    }
+
+    if (_looksLikeProfileDeclaration(normalized)) {
+      return false;
+    }
+
+    if (_isObviousStandaloneFoodLogging(normalized)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static bool _isLowContextStandaloneMessage(String normalizedText) {
+    return RegExp(
+      r'^(oi|ola|hello|hi|hey|bom dia|boa tarde|boa noite|valeu|obrigad[oa]|ok|okay|beleza|blz|show|thanks|thank you)[\s!.?]*$',
+    ).hasMatch(normalizedText);
+  }
+
+  static bool _looksLikeProfileDeclaration(String normalizedText) {
+    if (normalizedText.contains('?')) {
+      return false;
+    }
+    final hasProfileCue = _containsAnyTerm(normalizedText, const [
+      'sou homem',
+      'sou mulher',
+      'tenho',
+      'anos',
+      'idade',
+      'peso',
+      'altura',
+      'quilos',
+      'kg',
+    ]);
+    final hasSetupCue = _containsAnyTerm(normalizedText, const [
+      'ganhar peso',
+      'perder peso',
+      'manter peso',
+      'atividade',
+      'sedentario',
+      'moderado',
+    ]);
+    return hasProfileCue && hasSetupCue;
+  }
+
+  static bool _isObviousStandaloneFoodLogging(String normalizedText) {
+    if (normalizedText.contains('?') || normalizedText.length > 180) {
+      return false;
+    }
+    if (_looksLikeSnackSuggestionRequest(normalizedText)) {
+      return false;
+    }
+    if (_containsAnyTerm(normalizedText, const [
+      'isso',
+      'essa',
+      'esse',
+      'mesmo',
+      'igual',
+      'anterior',
+      'ontem',
+    ])) {
+      return false;
+    }
+
+    final hasFoodVerb = RegExp(
+      r'\b(comi|comer|comendo|almoco|almocei|jantar|jantei|lanchei|tomei|bebi|consumi|registra|registrar|adicione|adicionar)\b',
+    ).hasMatch(normalizedText);
+    final hasKnownFood = RegExp(
+      r'\b(arroz|feijao|frango|carne|ovo|ovos|pao|leite|banana|maca|batata|macarrao|queijo|iogurte|aveia|whey|cafe|suco|salada|peixe|pizza|sanduiche|chicken|rice|beans|egg|bread|milk)\b',
+    ).hasMatch(normalizedText);
+    return hasFoodVerb || hasKnownFood;
   }
 
   static Future<Map<String, dynamic>> _getCurrentAppStatePayload(
@@ -4072,34 +5182,46 @@ $basePrompt
     final proteinGoal = goalsProvider.proteinGoal;
     final carbsGoal = goalsProvider.carbsGoal;
     final fatGoal = goalsProvider.fatGoal;
-    final caloriesRemaining = caloriesGoal - mealsProvider.totalCalories;
-    final proteinRemaining = proteinGoal - mealsProvider.totalProtein.toInt();
-    final carbsRemaining = carbsGoal - mealsProvider.totalCarbs.toInt();
-    final fatRemaining = fatGoal - mealsProvider.totalFat.toInt();
+    final selectedDate = _resolveDailyStatusDate(
+      command.arguments,
+      fallbackDate: mealsProvider.selectedDate,
+    )!;
+    final meals = mealsProvider.getMealsForDate(selectedDate);
+    final waterGlasses = mealsProvider.getWaterGlassesForDate(selectedDate);
+    final totalCalories =
+        meals.fold<int>(0, (sum, meal) => sum + meal.totalCalories);
+    final totalProtein =
+        meals.fold<double>(0, (sum, meal) => sum + meal.totalProtein);
+    final totalCarbs =
+        meals.fold<double>(0, (sum, meal) => sum + meal.totalCarbs);
+    final totalFat = meals.fold<double>(0, (sum, meal) => sum + meal.totalFat);
+    final caloriesRemaining = caloriesGoal - totalCalories;
+    final proteinRemaining = proteinGoal - totalProtein.toInt();
+    final carbsRemaining = carbsGoal - totalCarbs.toInt();
+    final fatRemaining = fatGoal - totalFat.toInt();
 
     return AppAgentExecutionResult(
       commandName: command.name,
       success: true,
       payload: {
-        'selectedDate': mealsProvider.selectedDate.toIso8601String(),
+        'selectedDate': selectedDate.toIso8601String(),
         'caloriesGoal': caloriesGoal,
         'proteinGoal': proteinGoal,
         'carbsGoal': carbsGoal,
         'fatGoal': fatGoal,
         'waterGoal': mealsProvider.waterGoal,
-        'caloriesConsumed': mealsProvider.totalCalories,
-        'proteinConsumed': _round1(mealsProvider.totalProtein),
-        'carbsConsumed': _round1(mealsProvider.totalCarbs),
-        'fatConsumed': _round1(mealsProvider.totalFat),
-        'waterConsumed': mealsProvider.todayWaterGlasses,
+        'caloriesConsumed': totalCalories,
+        'proteinConsumed': _round1(totalProtein),
+        'carbsConsumed': _round1(totalCarbs),
+        'fatConsumed': _round1(totalFat),
+        'waterConsumed': waterGlasses,
         'caloriesRemaining': caloriesRemaining,
         'proteinRemaining': proteinRemaining,
         'carbsRemaining': carbsRemaining,
         'fatRemaining': fatRemaining,
-        'waterRemaining':
-            (mealsProvider.waterGoal - mealsProvider.todayWaterGlasses)
-                .clamp(0, mealsProvider.waterGoal),
-        'meals': mealsProvider.todayMeals
+        'waterRemaining': (mealsProvider.waterGoal - waterGlasses)
+            .clamp(0, mealsProvider.waterGoal),
+        'meals': meals
             .map((meal) => {
                   'type': meal.type.name,
                   'calories': meal.totalCalories,

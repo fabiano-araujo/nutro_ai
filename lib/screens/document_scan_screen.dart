@@ -167,9 +167,10 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
         promptPrefix = 'Answer in English: ';
       }
 
-      final prompt = _questionController.text.isEmpty
+      final question = _questionController.text.trim();
+      final prompt = question.isEmpty
           ? '$promptPrefix${context.tr.translate('solve_and_explain_detailed') ?? 'Por favor, resolva este problema e forneça uma explicação detalhada da solução.'}'
-          : '$promptPrefix${_questionController.text}';
+          : '$promptPrefix$question';
 
       print(
           '🚀 DocumentScanScreen - Iniciando processamento de imagem com streaming');
@@ -216,10 +217,10 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
             final studyItem = StudyItem(
               title: context.tr.translate('scanned_question') ??
                   'Pergunta Digitalizada',
-              content: _questionController.text.isEmpty
+              content: question.isEmpty
                   ? context.tr.translate('image_scan') ??
                       'Digitalização de imagem'
-                  : _questionController.text,
+                  : question,
               response: responseContent,
               type: 'scan',
             );

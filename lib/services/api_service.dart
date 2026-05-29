@@ -16,14 +16,19 @@ class ApiService {
     required String picture,
   }) async {
     try {
+      final normalizedEmail = email.trim();
+      final normalizedName = name.trim();
+      final normalizedGoogleId = googleId.trim();
+      final normalizedPicture = picture.trim();
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/google'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': email,
-          'name': name,
-          'googleId': googleId,
-          'photo': picture,
+          'email': normalizedEmail,
+          'name': normalizedName,
+          'googleId': normalizedGoogleId,
+          'photo': normalizedPicture,
         }),
       );
 
@@ -52,12 +57,15 @@ class ApiService {
     required String senha,
   }) async {
     try {
+      final normalizedEmail = email.trim();
+      final normalizedSenha = senha.trim();
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': email,
-          'senha': senha,
+          'email': normalizedEmail,
+          'senha': normalizedSenha,
         }),
       );
 
@@ -91,13 +99,17 @@ class ApiService {
     required String senha,
   }) async {
     try {
+      final normalizedName = name.trim();
+      final normalizedEmail = email.trim();
+      final normalizedSenha = senha.trim();
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/registro'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'nome': name, // API espera 'nome' em português
-          'email': email,
-          'senha': senha,
+          'nome': normalizedName, // API espera 'nome' em português
+          'email': normalizedEmail,
+          'senha': normalizedSenha,
         }),
       );
 

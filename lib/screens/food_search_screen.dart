@@ -209,7 +209,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   }
 
   void _onSearchSubmitted(String query) async {
-    if (query.trim().isEmpty) return;
+    final searchQuery = query.trim();
+    if (searchQuery.isEmpty) return;
 
     setState(() {
       _isLoading = true;
@@ -233,11 +234,11 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     });
 
     // Search API
-    _searchApi(query);
+    _searchApi(searchQuery);
 
     // On mobile, also search via WebView
     if (!kIsWeb) {
-      final url = _buildFatSecretSearchUrl(query);
+      final url = _buildFatSecretSearchUrl(searchQuery);
       await _setWebViewSettings(WebViewHelper.getOptimizedSettings());
       await _scraperHelper.loadUrl(url);
     }

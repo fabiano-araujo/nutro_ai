@@ -134,6 +134,108 @@ Quer que eu recalcule automaticamente?
     expect(AppAgentPendingAction.isLikelyApproval('pão'), isFalse);
   });
 
+  test('keeps unresolved pending action across an unrelated interruption', () {
+    const assistantWithPending = '''
+Posso recalcular suas metas para cutting com base no seu perfil. Posso seguir com isso?
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"loseWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+
+    final pendingAction =
+        AppAgentPendingAction.findLatestUnresolvedInConversation([
+      {
+        'isUser': true,
+        'message': 'quero fazer cutting',
+      },
+      {
+        'isUser': false,
+        'message': assistantWithPending,
+      },
+      {
+        'isUser': true,
+        'message': 'antes disso, quantas calorias posso comer hoje?',
+      },
+      {
+        'isUser': false,
+        'message':
+            'Hoje você ainda pode consumir 2910 kcal, 169g de proteína, 368g de carboidratos e 85g de gorduras.',
+      },
+    ]);
+
+    expect(AppAgentPendingAction.isLikelyApproval('agora faça isso'), isTrue);
+    expect(pendingAction, isNotNull);
+    expect(
+      pendingAction!.command.name,
+      AppAgentService.recalculateNutritionGoals,
+    );
+    expect(pendingAction.command.arguments['fitnessGoal'], 'loseWeight');
+  });
+
+  test('does not reuse a pending action after a completion boundary', () {
+    const assistantWithPending = '''
+Posso recalcular suas metas para cutting com base no seu perfil. Posso seguir com isso?
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"loseWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+
+    final pendingAction =
+        AppAgentPendingAction.findLatestUnresolvedInConversation([
+      {
+        'isUser': true,
+        'message': 'quero fazer cutting',
+      },
+      {
+        'isUser': false,
+        'message': assistantWithPending,
+      },
+      {
+        'isUser': true,
+        'message': 'faça isso',
+      },
+      {
+        'isUser': false,
+        'message':
+            'Pronto, recalculei suas metas com uma recomendação padrão para o seu objetivo.',
+      },
+    ]);
+
+    expect(pendingAction, isNull);
+  });
+
+  test('cancels unresolved pending action after user rejection', () {
+    const assistantWithPending = '''
+Posso recalcular suas metas para cutting com base no seu perfil. Posso seguir com isso?
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"loseWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+
+    final pendingAction =
+        AppAgentPendingAction.findLatestUnresolvedInConversation([
+      {
+        'isUser': true,
+        'message': 'quero fazer cutting',
+      },
+      {
+        'isUser': false,
+        'message': assistantWithPending,
+      },
+      {
+        'isUser': true,
+        'message': 'não quero mais',
+      },
+      {
+        'isUser': false,
+        'message': 'Tudo bem, não vou alterar suas metas.',
+      },
+    ]);
+
+    expect(AppAgentPendingAction.isLikelyApproval('não faça isso'), isFalse);
+    expect(pendingAction, isNull);
+  });
+
   test('infers pending macro target update from conversation context', () {
     final pendingAction =
         AppAgentPendingAction.findLatestInTrailingAssistantTurn([
@@ -254,6 +356,27 @@ Se você quiser, vou recalcular suas metas para manutenção depois da sua confi
     );
   });
 
+  test('does not execute pending action when assistant asks confirmation', () {
+    const pendingResponse = '''
+Posso recalcular suas metas para cutting com base no seu perfil. Posso seguir com isso?
+[APP_PENDING_ACTION_BEGIN]
+{"app_command":{"name":"recalculate_nutrition_goals","arguments":{"fitnessGoal":"loseWeight"}}}
+[APP_PENDING_ACTION_END]
+''';
+    final pendingAction = AppAgentPendingAction.tryParse(pendingResponse);
+    expect(pendingAction, isNotNull);
+
+    expect(
+      pendingAction!.shouldExecuteImmediately(
+        userMessage: 'quero fazer cutting',
+        visibleAssistantText: AppAgentPendingAction.removeBlock(
+          pendingResponse,
+        ),
+      ),
+      isFalse,
+    );
+  });
+
   test('pending action approval bypasses ambiguous mutation block', () {
     const pendingResponse = '''
 [APP_PENDING_ACTION_BEGIN]
@@ -287,7 +410,7 @@ Se você quiser, vou recalcular suas metas para manutenção depois da sua confi
     );
   });
 
-  test('only keeps prior conversation for contextual short replies', () {
+  test('keeps prior conversation for non-trivial chat turns', () {
     expect(
       AppAgentService.shouldIncludeConversationContext('Pode seguir'),
       isTrue,
@@ -306,6 +429,28 @@ Se você quiser, vou recalcular suas metas para manutenção depois da sua confi
     );
     expect(
       AppAgentService.shouldIncludeConversationContext('Qual a minha idade?'),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldIncludeConversationContext(
+        'me dá uma sugestão de lanche com as calorias que eu já posso comer',
+      ),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldIncludeConversationContext('aumente as proteinas'),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldIncludeConversationContext('2 gramas'),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldIncludeConversationContext('oi'),
+      isFalse,
+    );
+    expect(
+      AppAgentService.shouldIncludeConversationContext('pão com ovo'),
       isFalse,
     );
     expect(
@@ -431,6 +576,165 @@ Assistant: Quer passar detalhes como restrições, alimentos preferidos ou rotin
     );
     expect(adjustedDiet, isNotNull);
     expect(adjustedDiet!.arguments['caloriesGoal'], 2000);
+  });
+
+  test('treats tiny macro gram targets as grams per kg in macro edits', () {
+    final command = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'coloque 2 gramas de proteina',
+      rawJson: '',
+    );
+
+    expect(command, isNotNull);
+    expect(command!.name, AppAgentService.updateMacroTargetsGramsPerKg);
+    expect(command.arguments, <String, dynamic>{
+      'proteinPerKg': 2.0,
+    });
+
+    final dailyTotalCommand =
+        AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'coloque 180 gramas de proteina',
+      rawJson: '',
+    );
+    expect(dailyTotalCommand, isNotNull);
+    expect(dailyTotalCommand!.name, AppAgentService.updateMacroTargetsGrams);
+    expect(dailyTotalCommand.arguments['proteinGrams'], 180.0);
+  });
+
+  test('keeps explicit daily total macro grams as grams', () {
+    final command = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'coloque 2 gramas de proteina por dia',
+      rawJson: '',
+    );
+
+    expect(command, isNotNull);
+    expect(command!.name, AppAgentService.updateMacroTargetsGrams);
+    expect(command.arguments['proteinGrams'], 2.0);
+  });
+
+  test('uses recent macro context for short numeric follow-up', () {
+    const proteinContext = '''
+Humano: aumentar as proteinas da minha dieta
+IA: Qual valor de proteína você gostaria? Por exemplo, 1,8 g/kg (~154g) ou um número específico em gramas?
+''';
+
+    final proteinCommand =
+        AppAgentService.buildMacroTargetsCommandFromContextualMessage(
+      '2 gramas',
+      proteinContext,
+      rawJson: '',
+    );
+
+    expect(proteinCommand, isNotNull);
+    expect(proteinCommand!.name, AppAgentService.updateMacroTargetsGramsPerKg);
+    expect(proteinCommand.arguments, <String, dynamic>{
+      'proteinPerKg': 2.0,
+    });
+
+    final dailyProteinCommand =
+        AppAgentService.buildMacroTargetsCommandFromContextualMessage(
+      '180 gramas',
+      proteinContext,
+      rawJson: '',
+    );
+
+    expect(dailyProteinCommand, isNotNull);
+    expect(dailyProteinCommand!.name, AppAgentService.updateMacroTargetsGrams);
+    expect(dailyProteinCommand.arguments, <String, dynamic>{
+      'proteinGrams': 180.0,
+    });
+
+    const carbContext = '''
+Humano: quero ajustar carbo
+IA: Qual valor de carboidratos você gostaria? Pode ser em g/kg ou gramas totais.
+''';
+
+    final carbCommand =
+        AppAgentService.buildMacroTargetsCommandFromContextualMessage(
+      '4 gramas',
+      carbContext,
+      rawJson: '',
+    );
+
+    expect(carbCommand, isNotNull);
+    expect(carbCommand!.name, AppAgentService.updateMacroTargetsGramsPerKg);
+    expect(carbCommand.arguments, <String, dynamic>{
+      'carbsPerKg': 4.0,
+    });
+  });
+
+  test('routes tiny fat and carb gram targets as grams per kg', () {
+    final command = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'coloque 1 grama de gordura e 4 gramas de carbo',
+      rawJson: '',
+    );
+
+    expect(command, isNotNull);
+    expect(command!.name, AppAgentService.updateMacroTargetsGramsPerKg);
+    expect(command.arguments, <String, dynamic>{
+      'carbsPerKg': 4.0,
+      'fatPerKg': 1.0,
+    });
+  });
+
+  test('routes macro before kilo expression as grams per kg', () {
+    const messages = [
+      'vamos aumentar a quantidade de gordura para 1 grama kilo',
+      'aumente gordura para 1g/kg',
+      'subir gordura para 1 grama por quilo',
+      'gordura em 1 grama',
+      'set fat to 1 g/kg',
+      'sube grasa a 1 grama kilo',
+    ];
+
+    for (final message in messages) {
+      final command = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+        message,
+        rawJson: '',
+      );
+
+      expect(command, isNotNull, reason: message);
+      expect(
+        command!.name,
+        AppAgentService.updateMacroTargetsGramsPerKg,
+        reason: message,
+      );
+      expect(command.arguments['fatPerKg'], 1.0, reason: message);
+    }
+  });
+
+  test('routes carb-only and multiple macro per-kg edits together', () {
+    final carbOnly = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'aumente carbo para 4 gramas kilo',
+      rawJson: '',
+    );
+    expect(carbOnly, isNotNull);
+    expect(carbOnly!.name, AppAgentService.updateMacroTargetsGramsPerKg);
+    expect(carbOnly.arguments, <String, dynamic>{
+      'carbsPerKg': 4.0,
+    });
+
+    final twoMacros = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'proteina 2g/kg e gordura 1g/kg',
+      rawJson: '',
+    );
+    expect(twoMacros, isNotNull);
+    expect(twoMacros!.name, AppAgentService.updateMacroTargetsGramsPerKg);
+    expect(twoMacros.arguments, <String, dynamic>{
+      'proteinPerKg': 2.0,
+      'fatPerKg': 1.0,
+    });
+
+    final allMacros = AppAgentService.buildMacroTargetsCommandFromUserMessage(
+      'proteina 2g/kg, carbo 4g/kg e gordura 1g/kg',
+      rawJson: '',
+    );
+    expect(allMacros, isNotNull);
+    expect(allMacros!.name, AppAgentService.updateMacroTargetsGramsPerKg);
+    expect(allMacros.arguments, <String, dynamic>{
+      'proteinPerKg': 2.0,
+      'carbsPerKg': 4.0,
+      'fatPerKg': 1.0,
+    });
   });
 
   test('does not treat logged calories as a goal update', () {

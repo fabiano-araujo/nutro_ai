@@ -32,6 +32,7 @@ class UserAppStateService {
     List<Map<String, dynamic>>? freeChatConversations,
     List<Map<String, dynamic>>? mealTypes,
     Map<String, dynamic>? foodHistory,
+    Map<String, dynamic>? nutritionChatByDate,
   }) async {
     final body = <String, dynamic>{
       if (goalSetup != null) 'goalSetup': goalSetup,
@@ -42,6 +43,8 @@ class UserAppStateService {
         'freeChatConversations': freeChatConversations,
       if (mealTypes != null) 'mealTypes': mealTypes,
       if (foodHistory != null) 'foodHistory': foodHistory,
+      if (nutritionChatByDate != null)
+        'nutritionChatByDate': nutritionChatByDate,
     };
 
     final response = await http

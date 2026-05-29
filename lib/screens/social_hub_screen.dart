@@ -320,10 +320,12 @@ class _SocialHubScreenState extends State<SocialHubScreen>
               child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              if (nameCtrl.text.isNotEmpty) {
+              final name = nameCtrl.text.trim();
+              final description = descCtrl.text.trim();
+              if (name.isNotEmpty) {
                 await context.read<ChallengesProvider>().createChallenge(
-                      name: nameCtrl.text,
-                      description: descCtrl.text.isEmpty ? null : descCtrl.text,
+                      name: name,
+                      description: description.isEmpty ? null : description,
                       type: type,
                     );
                 Navigator.pop(ctx);
@@ -1671,10 +1673,10 @@ class _ChallengesContentState extends State<_ChallengesContent> {
               child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              if (codeCtrl.text.isNotEmpty) {
-                final ok = await context
-                    .read<ChallengesProvider>()
-                    .joinByCode(codeCtrl.text.toUpperCase());
+              final code = codeCtrl.text.trim().toUpperCase();
+              if (code.isNotEmpty) {
+                final ok =
+                    await context.read<ChallengesProvider>().joinByCode(code);
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

@@ -62,6 +62,10 @@ class NotificationService {
   static const String _androidChannelName = 'Nutro AI lembretes';
   static const String _androidChannelDescription =
       'Lembretes de refeicao, peso e dicas personalizadas.';
+  static const String _androidPushChannelId = 'social';
+  static const String _androidPushChannelName = 'Nutro AI';
+  static const String _androidPushChannelDescription =
+      'Notificacoes de social, dieta e atualizacoes do app.';
 
   static final List<int> _localNotificationIds = <int>[
     for (var index = 0; index < 100; index++) 1000 + index,
@@ -150,8 +154,45 @@ class NotificationService {
       settings: initializationSettings,
       onDidReceiveNotificationResponse: _handleLocalNotificationResponse,
     );
+    final launchDetails =
+        await _localNotifications.getNotificationAppLaunchDetails();
+    final launchResponse = launchDetails?.notificationResponse;
+    if (launchDetails?.didNotificationLaunchApp == true &&
+        launchResponse != null) {
+      Future.microtask(() => _handleLocalNotificationResponse(launchResponse));
+    }
+
+    try {
+      await _ensureAndroidNotificationChannels();
+    } catch (e) {
+      print('[NotificationService] Error creating Android channels: $e');
+    }
 
     _localNotificationsInitialized = true;
+  }
+
+  Future<void> _ensureAndroidNotificationChannels() async {
+    final androidImplementation =
+        _localNotifications.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImplementation == null) return;
+
+    await androidImplementation.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _androidChannelId,
+        _androidChannelName,
+        description: _androidChannelDescription,
+        importance: Importance.high,
+      ),
+    );
+    await androidImplementation.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _androidPushChannelId,
+        _androidPushChannelName,
+        description: _androidPushChannelDescription,
+        importance: Importance.high,
+      ),
+    );
   }
 
   Future<void> _initializeTimeZone() async {
@@ -229,11 +270,21 @@ class NotificationService {
     }
   }
 
-  void _navigateFromNotification(Map<String, dynamic> data) {
+  void _navigateFromNotification(
+    Map<String, dynamic> data, {
+    int attempt = 0,
+  }) {
     final type = data['type'];
     final screen = data['screen'];
 
     print('[NotificationService] Navigate to: $screen (type: $type)');
+
+    if (navigationController.tabChangeCallback == null && attempt < 20) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _navigateFromNotification(data, attempt: attempt + 1);
+      });
+      return;
+    }
 
     if (type == 'friend_request' ||
         type == 'friend_accepted' ||
@@ -243,6 +294,10 @@ class NotificationService {
         socialTabController.changeTab(3);
       });
     } else if (type == 'streak_risk' || type == 'meal_reminder') {
+      navigationController.changeTab(1);
+    } else if (type == 'diet_generation_completed' ||
+        type == 'diet_generation_failed' ||
+        screen == '/diet') {
       navigationController.changeTab(1);
     } else if (type == 'weight_reminder') {
       navigationController.changeTab(3);

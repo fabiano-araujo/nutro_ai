@@ -176,6 +176,7 @@ final Map<String, String> esESTranslations = {
   // Acciones comunes
   'save': 'Guardar',
   'cancel': 'Cancelar',
+  'close': 'Cerrar',
   'delete': 'Eliminar',
   'edit': 'Editar',
   'share': 'Compartir',
@@ -183,6 +184,17 @@ final Map<String, String> esESTranslations = {
   'back': 'Atrás',
   'next': 'Siguiente',
   'done': 'Listo',
+  'voice_settings_no_voices': 'No hay voces disponibles en este momento.',
+  'voice_settings_title': 'Configuracion de voz',
+  'tts_engine_label': 'Motor de voz:',
+  'tts_engine_system_description': 'Motor predeterminado del sistema',
+  'tts_piper_unavailable_description':
+      'Instala un motor Piper/Sherpa TTS en Android para usar esta opcion.',
+  'speech_rate_label': 'Velocidad del habla:',
+  'voice_pitch_label': 'Tono de voz:',
+  'voice_select_label': 'Selecciona una voz:',
+  'voice_unknown_language': 'Idioma desconocido',
+  'voice_demo_text': 'Esta es una demostracion de voz.',
 
   // Mensajes
   'loading': 'Cargando...',
@@ -924,16 +936,16 @@ final Map<String, String> esESTranslations = {
   'streak_keep_today': 'Actualizar hoy',
   'streak_freeze_none_title': 'No tienes protecciones de racha',
   'streak_freeze_none_message':
-      'Las protecciones salvan tu racha cuando no puedes registrar comidas.',
+      'Mantén tu racha para ganar protecciones. Salvan tu racha automáticamente cuando te saltas un día.',
   'streak_freeze_available_title': 'Tienes {count} protección(es)',
   'streak_freeze_available_message':
-      'Usa una protección para congelar tu racha durante 24 horas.',
+      'Si te saltas un día, se usa una protección automáticamente para salvar tu racha.',
   'streak_freeze_active_message': 'Tu racha está protegida temporalmente.',
   'streak_freeze_activated': 'Protección activada correctamente.',
-  'streak_get_more_freezes': 'Obtener más',
+  'streak_get_more_freezes': 'Cómo ganar protecciones',
   'streak_freeze_info_title': 'Protecciones de racha',
   'streak_freeze_info_message':
-      'Las protecciones extra quedan disponibles cuando mantienes constancia y participas en acciones sociales de la app.',
+      'Ganas 1 protección cada 7 días de racha, guardando hasta 2. Si te saltas un día, se usa una protección automáticamente para no perder tu racha.',
   'streak_calendar_title': 'Calendario de la racha',
   'streak_calendar_logged_day': 'Comida registrada',
   'streak_today': 'Hoy',
@@ -1027,6 +1039,14 @@ final Map<String, String> esESTranslations = {
       'Introduce un ID en formato proveedor/modelo, sin espacios.',
   'benchmark_model_already_added': 'Este modelo ya fue añadido.',
   'benchmark_no_models': 'Añade al menos un modelo para empezar.',
+  'benchmark_reasoning_title': 'Nivel de razonamiento de la IA',
+  'benchmark_reasoning_helper':
+      'Envía reasoning.effort a modelos compatibles en OpenRouter. Los modelos sin soporte pueden ignorarlo o fallar.',
+  'benchmark_reasoning_none': 'Predeterminado del modelo',
+  'benchmark_reasoning_low': 'Bajo',
+  'benchmark_reasoning_medium': 'Medio',
+  'benchmark_reasoning_high': 'Alto',
+  'benchmark_reasoning_xhigh': 'Máximo',
   'benchmark_run_all': 'Ejecutar benchmark',
   'benchmark_running': 'Ejecutando benchmark...',
   'benchmark_running_short': 'Ejecutando',

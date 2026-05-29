@@ -218,10 +218,11 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (nameController.text.isNotEmpty) {
+                  final name = nameController.text.trim();
+                  if (name.isNotEmpty) {
                     Provider.of<MealTypesProvider>(context, listen: false)
                         .addMealType(
-                      nameController.text,
+                      name,
                       selectedEmoji,
                       reminderTime: selectedTime,
                     );
@@ -305,11 +306,12 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (nameController.text.isNotEmpty) {
+                  final name = nameController.text.trim();
+                  if (name.isNotEmpty) {
                     Provider.of<MealTypesProvider>(context, listen: false)
                         .updateMealType(
                       mealType.id,
-                      name: nameController.text,
+                      name: name,
                       emoji: selectedEmoji,
                       reminderTime: selectedTime,
                     );

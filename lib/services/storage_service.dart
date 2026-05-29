@@ -403,6 +403,17 @@ class StorageService {
     }
   }
 
+  // Retorna todas as chaves salvas no SharedPreferences
+  Future<Set<String>> getAllKeys() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getKeys();
+    } catch (e) {
+      print('Erro ao obter chaves: $e');
+      return <String>{};
+    }
+  }
+
   // Método genérico para remover dados
   Future<bool> removeData(String key) async {
     try {

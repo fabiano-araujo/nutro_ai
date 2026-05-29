@@ -61,7 +61,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text;
+    final query = _searchController.text.trim();
     final provider = Provider.of<EssayTemplateProvider>(context, listen: false);
 
     setState(() {

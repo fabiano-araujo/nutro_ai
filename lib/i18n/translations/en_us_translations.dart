@@ -173,6 +173,7 @@ final Map<String, String> enUSTranslations = {
   // Common actions
   'save': 'Save',
   'cancel': 'Cancel',
+  'close': 'Close',
   'delete': 'Delete',
   'edit': 'Edit',
   'share': 'Share',
@@ -181,6 +182,17 @@ final Map<String, String> enUSTranslations = {
   'next': 'Next',
   'skip_setup': 'Skip',
   'done': 'Done',
+  'voice_settings_no_voices': 'No voices are available right now.',
+  'voice_settings_title': 'Voice settings',
+  'tts_engine_label': 'Voice engine:',
+  'tts_engine_system_description': 'System default engine',
+  'tts_piper_unavailable_description':
+      'Install a Piper/Sherpa TTS engine on Android to use this option.',
+  'speech_rate_label': 'Speech rate:',
+  'voice_pitch_label': 'Voice pitch:',
+  'voice_select_label': 'Select a voice:',
+  'voice_unknown_language': 'Unknown language',
+  'voice_demo_text': 'This is a voice demonstration.',
 
   // Messages
   'loading': 'Loading...',
@@ -1265,6 +1277,8 @@ final Map<String, String> enUSTranslations = {
   'no_daily_diet_description':
       'Our virtual nutritionist will create a complete, balanced daily menu personalized to your goals',
   'generating_diet_plan': 'Your nutritionist is preparing your menu...',
+  'diet_generation_background_hint':
+      'You can leave the app; generation will continue on the server.',
   'generating_meals': 'Preparing meals...',
   'create_weekly_diet': 'Create Weekly Diet',
   'generate_diet_ai': 'Create my Menu',
@@ -1343,9 +1357,19 @@ final Map<String, String> enUSTranslations = {
   'tracking_not_available': 'This feature is available on Android.',
 
   // Statistics Screen
+  'stats_loading': 'Loading statistics...',
+  'stats_syncing': 'Updating latest data...',
   'stats_7_days': '7 days',
   'stats_14_days': '14 days',
   'stats_30_days': '30 days',
+  'stats_period_insights': 'Period insights',
+  'stats_avg_calories': 'Average calories',
+  'stats_avg_deviation': 'Goal deviation',
+  'stats_avg_protein': 'Average protein',
+  'stats_missing_days': 'Days not logged',
+  'stats_avg_water': 'Average water',
+  'stats_avg_fiber': 'Average fiber',
+  'stats_glasses_per_day': 'glasses',
   'stats_streak': 'Streak',
   'stats_days_logged': 'Days logged',
   'stats_on_target': 'On target',
@@ -1361,6 +1385,7 @@ final Map<String, String> enUSTranslations = {
       'Your calories consumed compared to your daily goal',
   'stats_consumed': 'Consumed',
   'stats_goal': 'Goal',
+  'stats_not_logged': 'Not logged',
   'stats_weekly_consistency': 'Weekly Consistency',
   'stats_weekly_consistency_desc':
       'Which days you log your meals most frequently',
@@ -1368,6 +1393,7 @@ final Map<String, String> enUSTranslations = {
   'stats_macros_average_desc':
       'Your average macronutrients for the selected period',
   'stats_no_data': 'Log your meals to see the data',
+  'stats_open_diary': 'Log meal',
   'day_sun_short': 'Sun',
   'day_mon_short': 'Mon',
   'day_tue_short': 'Tue',
@@ -1411,16 +1437,16 @@ final Map<String, String> enUSTranslations = {
   'streak_keep_today': 'Update today',
   'streak_freeze_none_title': 'You have no streak protections',
   'streak_freeze_none_message':
-      'Protections save your streak when you cannot log meals.',
+      'Keep your streak going to earn protections. They automatically save your streak when you miss a day.',
   'streak_freeze_available_title': 'You have {count} protection(s)',
   'streak_freeze_available_message':
-      'Use a protection to freeze your streak for 24 hours.',
+      'If you miss a day, a protection is used automatically to save your streak.',
   'streak_freeze_active_message': 'Your streak is temporarily protected.',
   'streak_freeze_activated': 'Protection activated successfully.',
-  'streak_get_more_freezes': 'Get more',
+  'streak_get_more_freezes': 'How to earn protections',
   'streak_freeze_info_title': 'Streak protections',
   'streak_freeze_info_message':
-      'Extra protections become available as you stay consistent and participate in social actions in the app.',
+      'You earn 1 protection every 7 days of streak, storing up to 2. If you miss a day, a protection is used automatically so you don\'t lose your streak.',
   'streak_calendar_title': 'Streak calendar',
   'streak_calendar_logged_day': 'Meal logged',
   'streak_today': 'Today',
@@ -1497,6 +1523,14 @@ final Map<String, String> enUSTranslations = {
       'Enter an ID in provider/model format, without spaces.',
   'benchmark_model_already_added': 'This model was already added.',
   'benchmark_no_models': 'Add at least one model to start.',
+  'benchmark_reasoning_title': 'AI reasoning level',
+  'benchmark_reasoning_helper':
+      'Sends reasoning.effort to compatible OpenRouter models. Unsupported models may ignore it or fail.',
+  'benchmark_reasoning_none': 'Model default',
+  'benchmark_reasoning_low': 'Low',
+  'benchmark_reasoning_medium': 'Medium',
+  'benchmark_reasoning_high': 'High',
+  'benchmark_reasoning_xhigh': 'Maximum',
   'benchmark_run_all': 'Run benchmark',
   'benchmark_running': 'Running benchmark...',
   'benchmark_running_short': 'Running',

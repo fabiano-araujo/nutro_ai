@@ -116,26 +116,36 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
             // Cabeçalho dos dias da semana (D S T Q Q S S)
             _buildWeekdaysHeader(materialLoc, subtleColor),
             const SizedBox(height: 4),
-            SizedBox(
-              height: 300,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (page) {
-                  setState(() {
-                    _visibleMonth = _monthForPage(page);
-                  });
-                },
-                itemBuilder: (context, page) {
-                  final month = _monthForPage(page);
-                  return _MonthGrid(
-                    month: month,
-                    selectedDate: widget.selectedDate,
-                    hasMeals: widget.hasMeals,
-                    isDarkMode: isDarkMode,
-                    onDaySelected: widget.onDaySelected,
-                  );
-                },
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Célula quadrada = largura disponível / 7 colunas. Reservamos
+                // sempre 6 linhas (máximo que um mês pode ocupar) para não cortar
+                // dias e manter a altura estável ao trocar de mês.
+                const gridHorizontalPadding = 16.0; // 8 de cada lado em _MonthGrid
+                final cellSize =
+                    (constraints.maxWidth - gridHorizontalPadding) / 7;
+                return SizedBox(
+                  height: cellSize * 6,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (page) {
+                      setState(() {
+                        _visibleMonth = _monthForPage(page);
+                      });
+                    },
+                    itemBuilder: (context, page) {
+                      final month = _monthForPage(page);
+                      return _MonthGrid(
+                        month: month,
+                        selectedDate: widget.selectedDate,
+                        hasMeals: widget.hasMeals,
+                        isDarkMode: isDarkMode,
+                        onDaySelected: widget.onDaySelected,
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ],
         ),

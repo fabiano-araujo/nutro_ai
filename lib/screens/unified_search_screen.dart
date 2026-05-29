@@ -33,14 +33,15 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
   }
 
   Future<void> _searchDiary(String query) async {
-    if (query.trim().isEmpty) {
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
       setState(() => _diaryHits = []);
       return;
     }
     setState(() => _loadingDiary = true);
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys().where((k) => k.startsWith('nutrition_chat_'));
-    final q = query.toLowerCase();
+    final q = trimmedQuery.toLowerCase();
     final hits = <_DiaryHit>[];
     for (final key in keys) {
       final raw = prefs.getString(key);
@@ -92,11 +93,9 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
           }).toList();
 
     return Scaffold(
-      backgroundColor:
-          isDarkMode ? const Color(0xFF171717) : Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF171717) : Colors.white,
       appBar: AppBar(
-        backgroundColor:
-            isDarkMode ? const Color(0xFF171717) : Colors.white,
+        backgroundColor: isDarkMode ? const Color(0xFF171717) : Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back,
@@ -107,16 +106,15 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
           controller: _queryController,
           autofocus: true,
           style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black87),
+              fontSize: 16, color: isDarkMode ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             hintText: 'Buscar em conversas e diário...',
-            hintStyle: TextStyle(
-                color: isDarkMode ? Colors.white38 : Colors.black38),
+            hintStyle:
+                TextStyle(color: isDarkMode ? Colors.white38 : Colors.black38),
             border: InputBorder.none,
           ),
           onChanged: (v) {
-            setState(() => _query = v);
+            setState(() => _query = v.trim());
             _searchDiary(v);
           },
         ),
@@ -137,9 +135,8 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                   ...freeHits.map((c) => ListTile(
                         leading: Icon(Icons.chat_bubble_outline,
                             size: 20,
-                            color: isDarkMode
-                                ? Colors.white70
-                                : Colors.black54),
+                            color:
+                                isDarkMode ? Colors.white70 : Colors.black54),
                         title: Text(c.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -168,9 +165,8 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                   ..._diaryHits.map((h) => ListTile(
                         leading: Icon(Icons.calendar_today,
                             size: 20,
-                            color: isDarkMode
-                                ? Colors.white70
-                                : Colors.black54),
+                            color:
+                                isDarkMode ? Colors.white70 : Colors.black54),
                         title: Text(_formatDate(h.date),
                             style: TextStyle(
                                 fontSize: 14,

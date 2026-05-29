@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
 import 'nutrition_assistant_screen.dart';
 import 'profile_screen.dart';
@@ -13,7 +14,9 @@ import 'free_chat_screen.dart';
 import 'social_hub_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../services/user_app_state_service.dart';
+import '../services/daily_chat_sync_service.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/free_chat_provider.dart';
 import '../providers/daily_meals_provider.dart';
@@ -87,6 +90,11 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
+  // Credenciais usadas apenas em modo desenvolvedor (kDebugMode) para
+  // oferecer login automático ao abrir o app.
+  static const String _devAutoLoginEmail = 'fabiano.araujo2056@gmail.com';
+  static const String _devAutoLoginPassword = '12345678';
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Chave para reiniciar o NutritionAssistantScreen
@@ -123,7 +131,85 @@ class _MainNavigationState extends State<MainNavigation> {
 
       // Configurar sync de refeições com auth
       _setupMealsSyncAuth();
+
+      // Em modo desenvolvedor, oferecer login automático na conta de testes.
+      _maybeOfferDevAutoLogin();
     });
+  }
+
+  /// Em builds de debug (kDebugMode), pergunta se o desenvolvedor quer entrar
+  /// automaticamente na conta de testes. Não faz nada em release nem quando já
+  /// existe uma sessão autenticada.
+  Future<void> _maybeOfferDevAutoLogin() async {
+    if (!kDebugMode) return;
+
+    final authService = context.read<AuthService>();
+
+    // Aguarda a restauração de sessão (leitura do secure storage) concluir.
+    var waitedMs = 0;
+    while (authService.isLoading && waitedMs < 5000) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      waitedMs += 100;
+    }
+
+    if (!mounted || authService.isAuthenticated) return;
+
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Modo desenvolvedor'),
+        content: Text(
+          'Fazer login automático na conta $_devAutoLoginEmail?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Não'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Entrar'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogin == true) {
+      await _performDevAutoLogin(authService);
+    }
+  }
+
+  Future<void> _performDevAutoLogin(AuthService authService) async {
+    try {
+      final data = await ApiService.authenticateWithEmail(
+        email: _devAutoLoginEmail,
+        senha: _devAutoLoginPassword,
+      );
+
+      final ok = data['success'] == true &&
+          await authService.updateUserDataFromLoginResponse(data);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? 'Login automático: $_devAutoLoginEmail'
+                : 'Falha no login automático: ${data['message'] ?? 'erro desconhecido'}',
+          ),
+          backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro no login automático: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
   }
 
   /// Configura a sincronização de refeições com o servidor baseado no estado de auth
@@ -263,6 +349,7 @@ class _MainNavigationState extends State<MainNavigation> {
       freeChatProvider.clearAuth();
       mealTypesProvider.clearAuth();
       foodHistoryProvider.clearAuth();
+      DailyChatSyncService.instance.clearAuth();
 
       // Forçar recriação do NutritionAssistantScreen para limpar estado visual
       print('[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen...');
@@ -338,12 +425,21 @@ class _MainNavigationState extends State<MainNavigation> {
         serverFoodHistory:
             (appState['foodHistory'] as Map?)?.cast<String, dynamic>(),
       );
+
+      // Restaura o chat diário do AI Tutor vindo do servidor (sobrevive a
+      // limpeza de dados/reinstalação/troca de aparelho) e habilita o upload.
+      await DailyChatSyncService.instance.restoreFromServer(
+        (appState['nutritionChatByDate'] as Map?)?.cast<String, dynamic>(),
+        scope: 'user_$userId',
+      );
+      DailyChatSyncService.instance.setAuth(token, userId);
     } catch (e) {
       print('[MainNavigation] Erro ao carregar app-state do servidor: $e');
       await nutritionGoalsProvider.setAuth(token, userId);
       await freeChatProvider.setAuth(token, userId);
       await mealTypesProvider.setAuth(token, userId);
       await foodHistoryProvider.setAuth(token, userId);
+      DailyChatSyncService.instance.setAuth(token, userId);
     }
 
     await _maybeOpenInitialGoalsWizard(

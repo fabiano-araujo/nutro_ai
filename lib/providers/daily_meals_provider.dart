@@ -11,6 +11,7 @@ class DailyMealsProvider extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now();
   final Map<String, List<Meal>> _mealsByDate = {};
   final Map<String, int> _waterByDate = {};
+  final Map<String, _StoredDailySummary> _serverSummariesByDate = {};
   late final Future<void> _initialLoadFuture;
   bool _isLoaded = false;
 
@@ -34,6 +35,7 @@ class DailyMealsProvider extends ChangeNotifier {
 
   // Getters para estado de sync
   bool get isSyncing => _isSyncing;
+  bool get isLoadingFromServer => _isLoadingFromServer;
   bool get isAuthenticated => _userId != null && _token != null;
   bool get isLoaded => _isLoaded;
   Future<void> get ready => _initialLoadFuture;
@@ -69,6 +71,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (_isLoadingFromServer) return;
 
     _isLoadingFromServer = true;
+    notifyListeners();
     print('[DailyMealsProvider] Carregando dados do servidor...');
 
     try {
@@ -84,11 +87,13 @@ class DailyMealsProvider extends ChangeNotifier {
       // Mesclar com dados locais (servidor tem prioridade)
       for (final summary in summaries) {
         final dateKey = _formatDate(summary.date);
+        _serverSummariesByDate[dateKey] =
+            _StoredDailySummary.fromServer(summary);
+        _waterByDate[dateKey] = summary.waterGlasses;
 
         // Se há dados do servidor, sobrescreve os locais
         if (summary.meals.isNotEmpty) {
           _mealsByDate[dateKey] = _normalizeMeals(summary.meals);
-          _waterByDate[dateKey] = summary.waterGlasses;
         }
       }
 
@@ -99,6 +104,7 @@ class DailyMealsProvider extends ChangeNotifier {
       print('[DailyMealsProvider] Erro ao carregar do servidor: $e');
     } finally {
       _isLoadingFromServer = false;
+      notifyListeners();
     }
   }
 
@@ -117,6 +123,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (_isSyncing || _userId == null || _token == null) return;
 
     _isSyncing = true;
+    notifyListeners();
     print('[DailyMealsProvider] Sincronizando com servidor...');
 
     final syncDate = _selectedDate;
@@ -127,7 +134,7 @@ class DailyMealsProvider extends ChangeNotifier {
       final meals = _mealsByDate[dateKey] ?? [];
       final water = _waterByDate[dateKey] ?? 0;
 
-      await MealsSyncService.syncDay(
+      final summary = await MealsSyncService.syncDay(
         token: _token!,
         date: syncDate,
         meals: meals,
@@ -139,6 +146,12 @@ class DailyMealsProvider extends ChangeNotifier {
           fat: fatsGoal,
         ),
       );
+      if (summary != null) {
+        _serverSummariesByDate[dateKey] =
+            _StoredDailySummary.fromServer(summary);
+        _waterByDate[dateKey] = summary.waterGlasses;
+        await _saveToPreferences();
+      }
 
       synced = true;
       print('[DailyMealsProvider] Sincronização concluída');
@@ -146,6 +159,7 @@ class DailyMealsProvider extends ChangeNotifier {
       print('[DailyMealsProvider] Erro ao sincronizar: $e');
     } finally {
       _isSyncing = false;
+      notifyListeners();
     }
 
     if (synced && _isSameDay(syncDate, DateTime.now())) {
@@ -198,6 +212,11 @@ class DailyMealsProvider extends ChangeNotifier {
   List<Meal> get todayMeals {
     final dateKey = _formatDate(_selectedDate);
     return _mealsByDate[dateKey] ?? [];
+  }
+
+  List<Meal> getMealsForDate(DateTime date) {
+    final dateKey = _formatDate(date);
+    return List<Meal>.unmodifiable(_mealsByDate[dateKey] ?? const <Meal>[]);
   }
 
   // Get meals by type — agrega todos os foods das refeicoes deste tipo
@@ -255,9 +274,15 @@ class DailyMealsProvider extends ChangeNotifier {
     return _waterByDate[dateKey] ?? 0;
   }
 
+  int getWaterGlassesForDate(DateTime date) {
+    final dateKey = _formatDate(date);
+    return _waterByDate[dateKey] ?? 0;
+  }
+
   void addWater() {
     final dateKey = _formatDate(_selectedDate);
     _waterByDate[dateKey] = (_waterByDate[dateKey] ?? 0) + 1;
+    _serverSummariesByDate.remove(dateKey);
     _saveWaterToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -267,6 +292,7 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     if ((_waterByDate[dateKey] ?? 0) > 0) {
       _waterByDate[dateKey] = _waterByDate[dateKey]! - 1;
+      _serverSummariesByDate.remove(dateKey);
       _saveWaterToPreferences();
       _scheduleSync(); // Sync com servidor
       notifyListeners();
@@ -318,6 +344,21 @@ class DailyMealsProvider extends ChangeNotifier {
         });
       }
 
+      final summariesJson = prefs.getString('daily_meal_summaries');
+      if (summariesJson != null) {
+        final Map<String, dynamic> decodedSummaries = jsonDecode(summariesJson);
+        _serverSummariesByDate.clear();
+        decodedSummaries.forEach((dateKey, value) {
+          if (value is Map<String, dynamic>) {
+            _serverSummariesByDate[dateKey] =
+                _StoredDailySummary.fromJson(value);
+          } else if (value is Map) {
+            _serverSummariesByDate[dateKey] =
+                _StoredDailySummary.fromJson(Map<String, dynamic>.from(value));
+          }
+        });
+      }
+
       _isLoaded = true;
       notifyListeners();
     } catch (e) {
@@ -338,6 +379,15 @@ class DailyMealsProvider extends ChangeNotifier {
       });
 
       await prefs.setString('daily_meals', jsonEncode(mealsToSave));
+
+      final Map<String, dynamic> summariesToSave = {};
+      _serverSummariesByDate.forEach((dateKey, summary) {
+        summariesToSave[dateKey] = summary.toJson();
+      });
+      await prefs.setString(
+        'daily_meal_summaries',
+        jsonEncode(summariesToSave),
+      );
 
       // Save goals
       await prefs.setInt('meals_calories_goal', caloriesGoal);
@@ -386,6 +436,7 @@ class DailyMealsProvider extends ChangeNotifier {
   void addMeal(Meal meal) {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] ??= [];
+    _serverSummariesByDate.remove(dateKey);
 
     final meals = _mealsByDate[dateKey]!;
     final normalizedMeal = _normalizeMeal(
@@ -439,6 +490,7 @@ class DailyMealsProvider extends ChangeNotifier {
   void addFoodToMeal(MealType type, Food food) {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] ??= [];
+    _serverSummariesByDate.remove(dateKey);
 
     final meals = _mealsByDate[dateKey]!;
     final mealIndex = meals.indexWhere((m) => m.type == type);
@@ -465,6 +517,7 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
+    _serverSummariesByDate.remove(dateKey);
 
     final mealIndex = meals.indexWhere((m) => m.type == type);
     if (mealIndex == -1) return;
@@ -489,6 +542,7 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
+    _serverSummariesByDate.remove(dateKey);
 
     final index = meals.indexWhere((m) => m.id == updatedMeal.id);
     if (index == -1) return;
@@ -558,6 +612,7 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
+    _serverSummariesByDate.remove(dateKey);
 
     meals.removeWhere((m) => m.id == mealId);
 
@@ -571,6 +626,7 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
+    _serverSummariesByDate.remove(dateKey);
 
     meals.removeWhere((m) => m.type == type);
 
@@ -589,6 +645,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (protein != null) proteinGoal = protein;
     if (carbs != null) carbsGoal = carbs;
     if (fats != null) fatsGoal = fats;
+    _serverSummariesByDate.remove(_formatDate(_selectedDate));
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -633,6 +690,7 @@ class DailyMealsProvider extends ChangeNotifier {
   // Load sample data for testing
   void loadSampleData() {
     final dateKey = _formatDate(_selectedDate);
+    _serverSummariesByDate.remove(dateKey);
 
     // Create sample foods with complete nutrient data
     final eggs = Food(
@@ -856,6 +914,7 @@ class DailyMealsProvider extends ChangeNotifier {
   void clearAllMeals() {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] = [];
+    _serverSummariesByDate.remove(dateKey);
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -892,44 +951,96 @@ class DailyMealsProvider extends ChangeNotifier {
   }
 
   /// Get historical calories data for the last N days
-  List<Map<String, dynamic>> getCaloriesHistory(int days) {
+  List<Map<String, dynamic>> getCaloriesHistory(
+    int days, {
+    MealGoals? fallbackGoals,
+  }) {
+    return getNutritionHistory(days, fallbackGoals: fallbackGoals)
+        .map(
+          (day) => {
+            'date': day['date'],
+            'calories': day['calories'],
+            'calorieGoal': day['calorieGoal'],
+            'hasData': day['hasData'],
+          },
+        )
+        .toList();
+  }
+
+  /// Get historical macros data for the last N days
+  List<Map<String, dynamic>> getMacrosHistory(
+    int days, {
+    MealGoals? fallbackGoals,
+  }) {
+    return getNutritionHistory(days, fallbackGoals: fallbackGoals)
+        .map(
+          (day) => {
+            'date': day['date'],
+            'protein': day['protein'],
+            'carbs': day['carbs'],
+            'fat': day['fat'],
+            'fiber': day['fiber'],
+            'proteinGoal': day['proteinGoal'],
+            'carbsGoal': day['carbsGoal'],
+            'fatGoal': day['fatGoal'],
+            'hasData': day['hasData'],
+          },
+        )
+        .toList();
+  }
+
+  /// Get historical nutrition data using server daily goals when available.
+  List<Map<String, dynamic>> getNutritionHistory(
+    int days, {
+    MealGoals? fallbackGoals,
+  }) {
     final List<Map<String, dynamic>> history = [];
     final now = DateTime.now();
 
     for (int i = days - 1; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
-      final calories = getCaloriesForDate(date);
+      final dateKey = _formatDate(date);
+      final summary = _serverSummariesByDate[dateKey];
+      final macros = summary == null ? getMacrosForDate(date) : null;
+      final goals = summary?.goals ?? _fallbackGoals(fallbackGoals);
+      final calories = summary?.totalCalories ?? getCaloriesForDate(date);
+      final protein = summary?.totalProtein ?? macros!['protein']!;
+      final carbs = summary?.totalCarbs ?? macros!['carbs']!;
+      final fat = summary?.totalFat ?? macros!['fat']!;
+      final fiber = summary?.totalFiber ?? macros!['fiber']!;
+      final waterGlasses = _waterByDate[dateKey] ?? summary?.waterGlasses ?? 0;
+      final hasMealData = summary?.hasMealData ??
+          (calories > 0 || protein > 0 || carbs > 0 || fat > 0);
+
       history.add({
         'date': date,
         'calories': calories,
-        'hasData': calories > 0,
+        'protein': protein,
+        'carbs': carbs,
+        'fat': fat,
+        'fiber': fiber,
+        'waterGlasses': waterGlasses,
+        'waterGoal': summary?.waterGoal ?? waterGoal,
+        'calorieGoal': goals.calories,
+        'proteinGoal': goals.protein,
+        'carbsGoal': goals.carbs,
+        'fatGoal': goals.fat,
+        'hasData': hasMealData,
+        'hasAnyData': hasMealData || waterGlasses > 0,
       });
     }
 
     return history;
   }
 
-  /// Get historical macros data for the last N days
-  List<Map<String, dynamic>> getMacrosHistory(int days) {
-    final List<Map<String, dynamic>> history = [];
-    final now = DateTime.now();
-
-    for (int i = days - 1; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final macros = getMacrosForDate(date);
-      history.add({
-        'date': date,
-        'protein': macros['protein']!,
-        'carbs': macros['carbs']!,
-        'fat': macros['fat']!,
-        'fiber': macros['fiber']!,
-        'hasData': macros['protein']! > 0 ||
-            macros['carbs']! > 0 ||
-            macros['fat']! > 0,
-      });
-    }
-
-    return history;
+  MealGoals _fallbackGoals(MealGoals? fallbackGoals) {
+    return fallbackGoals ??
+        MealGoals(
+          calories: caloriesGoal,
+          protein: proteinGoal,
+          carbs: carbsGoal,
+          fat: fatsGoal,
+        );
   }
 
   /// Get average calories for the last N days (only counting days with data)
@@ -1005,14 +1116,16 @@ class DailyMealsProvider extends ChangeNotifier {
 
     _mealsByDate.clear();
     _waterByDate.clear();
+    _serverSummariesByDate.clear();
 
     // Limpar do SharedPreferences
     try {
       final prefs = await SharedPreferences.getInstance();
       final removedMeals = await prefs.remove('daily_meals');
       final removedWater = await prefs.remove('water_by_date');
+      final removedSummaries = await prefs.remove('daily_meal_summaries');
       print(
-          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater');
+          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater, summaries=$removedSummaries');
 
       // Verificar se foi removido
       final checkMeals = prefs.getString('daily_meals');
@@ -1027,5 +1140,122 @@ class DailyMealsProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+}
+
+class _StoredDailySummary {
+  final int totalCalories;
+  final double totalProtein;
+  final double totalCarbs;
+  final double totalFat;
+  final double totalFiber;
+  final int waterGlasses;
+  final int waterGoal;
+  final MealGoals goals;
+  final bool hitProtein;
+  final bool hitCalories;
+  final bool hasMealData;
+
+  const _StoredDailySummary({
+    required this.totalCalories,
+    required this.totalProtein,
+    required this.totalCarbs,
+    required this.totalFat,
+    required this.totalFiber,
+    required this.waterGlasses,
+    required this.waterGoal,
+    required this.goals,
+    required this.hitProtein,
+    required this.hitCalories,
+    required this.hasMealData,
+  });
+
+  factory _StoredDailySummary.fromServer(DailySummary summary) {
+    return _StoredDailySummary(
+      totalCalories: summary.totalCalories,
+      totalProtein: summary.totalProtein,
+      totalCarbs: summary.totalCarbs,
+      totalFat: summary.totalFat,
+      totalFiber: summary.totalFiber,
+      waterGlasses: summary.waterGlasses,
+      waterGoal: summary.waterGoal,
+      goals: MealGoals(
+        calories: summary.calorieGoal,
+        protein: summary.proteinGoal,
+        carbs: summary.carbsGoal,
+        fat: summary.fatGoal,
+      ),
+      hitProtein: summary.hitProtein,
+      hitCalories: summary.hitCalories,
+      hasMealData: summary.meals.isNotEmpty ||
+          summary.totalCalories > 0 ||
+          summary.totalProtein > 0 ||
+          summary.totalCarbs > 0 ||
+          summary.totalFat > 0,
+    );
+  }
+
+  factory _StoredDailySummary.fromJson(Map<String, dynamic> json) {
+    final goalsJson = json['goals'];
+    final goalsMap = goalsJson is Map
+        ? Map<String, dynamic>.from(goalsJson)
+        : const <String, dynamic>{};
+
+    return _StoredDailySummary(
+      totalCalories: _readInt(json['totalCalories']),
+      totalProtein: _readDouble(json['totalProtein']),
+      totalCarbs: _readDouble(json['totalCarbs']),
+      totalFat: _readDouble(json['totalFat']),
+      totalFiber: _readDouble(json['totalFiber']),
+      waterGlasses: _readInt(json['waterGlasses']),
+      waterGoal: _readInt(json['waterGoal'], fallback: 8),
+      goals: MealGoals(
+        calories: _readInt(goalsMap['calories'], fallback: 2000),
+        protein: _readInt(goalsMap['protein'], fallback: 150),
+        carbs: _readInt(goalsMap['carbs'], fallback: 250),
+        fat: _readInt(goalsMap['fat'], fallback: 67),
+      ),
+      hitProtein: _readBool(json['hitProtein']),
+      hitCalories: _readBool(json['hitCalories']),
+      hasMealData: _readBool(json['hasMealData']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'totalCalories': totalCalories,
+      'totalProtein': totalProtein,
+      'totalCarbs': totalCarbs,
+      'totalFat': totalFat,
+      'totalFiber': totalFiber,
+      'waterGlasses': waterGlasses,
+      'waterGoal': waterGoal,
+      'goals': goals.toJson(),
+      'hitProtein': hitProtein,
+      'hitCalories': hitCalories,
+      'hasMealData': hasMealData,
+    };
+  }
+
+  static int _readInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  static double _readDouble(dynamic value, {double fallback = 0}) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString().replaceAll(',', '.') ?? '') ??
+        fallback;
+  }
+
+  static bool _readBool(dynamic value, {bool fallback = false}) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().toLowerCase();
+    if (text == 'true') return true;
+    if (text == 'false') return false;
+    return fallback;
   }
 }

@@ -8,6 +8,7 @@ import '../providers/nutrition_goals_provider.dart'
     show DietType, NutritionGoalsProvider;
 import '../providers/meal_types_provider.dart' show MealTypeConfig;
 import '../services/app_integrity_service.dart';
+import '../services/diet_generation_background_service.dart';
 import '../services/user_app_state_service.dart';
 import '../util/app_constants.dart';
 
@@ -148,6 +149,8 @@ class DietPlanProvider extends ChangeNotifier {
     r'^[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._:+-]*(/[A-Za-z0-9][A-Za-z0-9._:+-]*)*$',
   );
   static const Duration _dietGenerationRequestTimeout = Duration(minutes: 5);
+  static const Duration _dietGenerationJobPollInterval = Duration(seconds: 3);
+  static const Duration _dietGenerationJobWaitTimeout = Duration(minutes: 20);
 
   // Autenticação
   String? _authToken;
@@ -160,12 +163,16 @@ class DietPlanProvider extends ChangeNotifier {
   final UserAppStateService _appStateService = UserAppStateService();
   static const String _pendingPreferencesSyncKey =
       'diet_preferences_pending_server_sync';
+  DietGenerationBackgroundTask? _activeDietGenerationJob;
+  bool _isPollingDietGenerationJob = false;
 
   // Getters para status de autenticação
   bool get isAuthenticated => _authToken != null && _userId != null;
   bool get isPremium => _isPremium;
   bool get hasPendingPreferencesSync => _hasPendingPreferencesSync;
   bool get isSyncingPreferences => _isSyncingPreferences;
+  bool get hasActiveDietGenerationJob => _activeDietGenerationJob != null;
+  String? get activeDietGenerationJobId => _activeDietGenerationJob?.taskId;
 
   // Getters
   Map<String, DietPlan> get dietPlans => _dietPlans;
@@ -676,6 +683,11 @@ class DietPlanProvider extends ChangeNotifier {
       return;
     }
 
+    if (_activeDietGenerationJob != null) {
+      await _resumeActiveDietGenerationJob();
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     _activeMealTypes = _resolveMealTypes(mealTypes);
@@ -707,34 +719,23 @@ class DietPlanProvider extends ChangeNotifier {
       print('👤 UserId: $userId');
       print('🤖 AgentType: diet, Model: $_selectedDietGenerationModel');
 
-      final dietPlan = await _generateDietPlanCandidate(
-        date: date,
-        prompt: prompt,
-        targetNutrition: targetNutrition,
-        userId: userId,
-        languageCode: languageCode,
-      );
-
-      // Store the diet plan (using weekly key if in weekly mode)
       final dateKey = _preferences.dietMode == DietMode.weekly
           ? _weeklyKey
           : _formatDate(date);
-      _dietPlans[dateKey] = dietPlan;
+      final job = await DietGenerationBackgroundService.startGeneration(
+        prompt: prompt,
+        date: _formatDate(date),
+        dateKey: dateKey,
+        userId: userId,
+        languageCode: languageCode,
+        modelId: _selectedDietGenerationModel,
+        targetNutrition: targetNutrition.toJson(),
+        mealTypes: _activeMealTypes.map((meal) => meal.toJson()).toList(),
+      );
+      _activeDietGenerationJob = job;
+      print('🧵 Serviço de dieta iniciado: ${job.taskId}');
 
-      _isLoading = false;
-      _error = null;
-      _partialDietPlan = null; // Clear partial state
-      _activeMealTypes = const [];
-
-      // Save to preferences
-      await _saveToPreferences();
-
-      // Save to server
-      await _saveToServer(dateKey, dietPlan);
-
-      notifyListeners();
-
-      print('✅ Plano de dieta gerado com sucesso para $dateKey');
+      await _resumeActiveDietGenerationJob();
     } catch (e) {
       _isLoading = false;
       _error = 'Erro ao gerar plano de dieta: $e';
@@ -753,6 +754,7 @@ class DietPlanProvider extends ChangeNotifier {
     List<MealTypeConfig> mealTypes = const [],
     String userId = '',
     String languageCode = 'pt_BR',
+    String? reasoningEffort,
   }) async {
     if (!isAuthenticated) {
       throw Exception('É necessário estar logado para gerar o benchmark');
@@ -771,6 +773,9 @@ class DietPlanProvider extends ChangeNotifier {
 
     print('🧪 Benchmark dieta - modelo: $normalizedModel');
     print('🧪 Benchmark dieta - alvo: ${targetNutrition.calories} kcal');
+    if (reasoningEffort != null && reasoningEffort.isNotEmpty) {
+      print('🧪 Benchmark dieta - reasoning.effort: $reasoningEffort');
+    }
 
     DietGenerationUsage? usage;
     final plan = await _generateDietPlanCandidate(
@@ -781,6 +786,7 @@ class DietPlanProvider extends ChangeNotifier {
       languageCode: languageCode,
       modelId: normalizedModel,
       mealTypes: benchmarkMealTypes,
+      reasoningEffort: reasoningEffort,
       trackPartialMeals: false,
       onUsage: (value) => usage = value,
     );
@@ -803,6 +809,7 @@ class DietPlanProvider extends ChangeNotifier {
     required String languageCode,
     String? modelId,
     List<MealTypeConfig>? mealTypes,
+    String? reasoningEffort,
     bool trackPartialMeals = true,
     void Function(DietGenerationUsage usage)? onUsage,
   }) async {
@@ -828,6 +835,8 @@ class DietPlanProvider extends ChangeNotifier {
       'language': languageCode,
       'mealTypes':
           resolvedMealTypes.map((m) => {'id': m.id, 'name': m.name}).toList(),
+      if (reasoningEffort != null && reasoningEffort.isNotEmpty)
+        'reasoning': {'effort': reasoningEffort},
     };
 
     request.bodyBytes = utf8.encode(jsonEncode(requestBody));
@@ -928,21 +937,11 @@ class DietPlanProvider extends ChangeNotifier {
       print(response);
       print('═' * 80);
 
-      final jsonString = _extractJsonPayload(response);
-      if (jsonString == null) {
-        throw Exception('Não foi possível extrair JSON da resposta da IA');
-      }
-
-      final jsonData = _normalizeAiJson(_decodeAiJson(jsonString));
-      final parsedDietPlan = DietPlan.fromAiJson(
-        jsonData,
+      final dietPlan = _parseDietPlanFromAiResponse(
+        response: response,
         date: _formatDate(date),
-        mealNames: _buildMealNameMap(resolvedMealTypes),
-        generatedForNutrition: targetNutrition,
-      );
-      final dietPlan = _normalizeDietPlanToTargets(
-        parsedDietPlan,
-        targetNutrition,
+        targetNutrition: targetNutrition,
+        mealTypes: resolvedMealTypes,
       );
       print(
         '✓ DietPlan criado: '
@@ -953,6 +952,178 @@ class DietPlanProvider extends ChangeNotifier {
     } finally {
       client.close();
     }
+  }
+
+  DietPlan _parseDietPlanFromAiResponse({
+    required String response,
+    required String date,
+    required DailyNutrition targetNutrition,
+    required List<MealTypeConfig> mealTypes,
+  }) {
+    final jsonString = _extractJsonPayload(response);
+    if (jsonString == null) {
+      throw Exception('Não foi possível extrair JSON da resposta da IA');
+    }
+
+    final jsonData = _normalizeAiJson(_decodeAiJson(jsonString));
+    final parsedDietPlan = DietPlan.fromAiJson(
+      jsonData,
+      date: date,
+      mealNames: _buildMealNameMap(mealTypes),
+      generatedForNutrition: targetNutrition,
+    );
+    return _normalizeDietPlanToTargets(
+      parsedDietPlan,
+      targetNutrition,
+    );
+  }
+
+  Future<DietGenerationBackgroundTask> _waitForDietGenerationJob(
+    DietGenerationBackgroundTask job,
+  ) async {
+    final deadline = DateTime.now().add(_dietGenerationJobWaitTimeout);
+    Object? lastPollingError;
+
+    while (DateTime.now().isBefore(deadline)) {
+      DietGenerationBackgroundTask? latestJob;
+      try {
+        latestJob = await DietGenerationBackgroundService.readActiveTask();
+        lastPollingError = null;
+      } catch (e) {
+        lastPollingError = e;
+        print('⚠️ Erro temporário ao consultar serviço de dieta: $e');
+        await Future.delayed(_dietGenerationJobPollInterval);
+        continue;
+      }
+
+      if (latestJob == null) {
+        throw Exception('Serviço de geração de dieta não encontrado');
+      }
+
+      if (latestJob.taskId != job.taskId) {
+        throw Exception('Há outra geração de dieta em andamento');
+      }
+
+      if (latestJob.status == DietGenerationBackgroundTask.statusCompleted) {
+        final text = latestJob.responseText;
+        if (text == null || text.isEmpty) {
+          throw Exception('Serviço de dieta finalizou sem resposta da IA');
+        }
+        return latestJob;
+      }
+
+      if (latestJob.status == DietGenerationBackgroundTask.statusFailed ||
+          latestJob.status == DietGenerationBackgroundTask.statusCancelled) {
+        throw Exception(
+          latestJob.error ??
+              'Geração de dieta finalizada com status ${latestJob.status}',
+        );
+      }
+
+      if (_activeDietGenerationJob?.taskId == latestJob.taskId) {
+        _activeDietGenerationJob = latestJob;
+      }
+
+      await Future.delayed(_dietGenerationJobPollInterval);
+    }
+
+    throw Exception(
+      lastPollingError != null
+          ? 'Tempo limite ao consultar a geração da dieta: $lastPollingError'
+          : 'Tempo limite ao aguardar a geração da dieta',
+    );
+  }
+
+  void _restoreLoadingStateFromActiveDietGenerationJob(
+    DietGenerationBackgroundTask job,
+  ) {
+    final targetNutrition = DailyNutrition.fromJson(job.targetNutrition);
+    _isLoading = true;
+    _error = null;
+    _activeMealTypes = _resolveMealTypes(_mealTypesFromBackgroundTask(job));
+    _expectedMealsCount = _activeMealTypes.length;
+    _parsedMealIndices.clear();
+    _partialDietPlan = DietPlan(
+      date: job.date,
+      totalNutrition: targetNutrition,
+      generatedForNutrition: targetNutrition,
+      meals: const [],
+    );
+  }
+
+  DailyNutrition _targetNutritionFromBackgroundTask(
+    DietGenerationBackgroundTask job,
+  ) {
+    return DailyNutrition.fromJson(job.targetNutrition);
+  }
+
+  List<MealTypeConfig> _mealTypesFromBackgroundTask(
+    DietGenerationBackgroundTask job,
+  ) {
+    return job.mealTypes
+        .map(MealTypeConfig.fromJson)
+        .where((meal) => meal.id.isNotEmpty && meal.name.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _resumeActiveDietGenerationJob() async {
+    if (_isPollingDietGenerationJob || _activeDietGenerationJob == null) {
+      return;
+    }
+
+    final job = _activeDietGenerationJob!;
+    _isPollingDietGenerationJob = true;
+    await DietGenerationBackgroundService.resumeActiveGeneration();
+    _restoreLoadingStateFromActiveDietGenerationJob(job);
+    notifyListeners();
+
+    try {
+      final completedJob = await _waitForDietGenerationJob(job);
+      if (_activeDietGenerationJob?.taskId != job.taskId) {
+        return;
+      }
+
+      final dietPlan = _parseDietPlanFromAiResponse(
+        response: completedJob.responseText!,
+        date: completedJob.date,
+        targetNutrition: _targetNutritionFromBackgroundTask(completedJob),
+        mealTypes: _resolveMealTypes(
+          _mealTypesFromBackgroundTask(completedJob),
+        ),
+      );
+
+      _dietPlans[job.dateKey] = dietPlan;
+      _isLoading = false;
+      _error = null;
+      _partialDietPlan = null;
+      _activeMealTypes = const [];
+      await _clearActiveDietGenerationJob(job.taskId);
+      await _saveToPreferences();
+      await _saveToServer(job.dateKey, dietPlan);
+      notifyListeners();
+      print('✅ Serviço de dieta concluiu com sucesso para ${job.dateKey}');
+    } catch (e) {
+      if (_activeDietGenerationJob?.taskId == job.taskId) {
+        _isLoading = false;
+        _error = 'Erro ao gerar plano de dieta: $e';
+        _partialDietPlan = null;
+        _activeMealTypes = const [];
+        await _clearActiveDietGenerationJob(job.taskId);
+        notifyListeners();
+      }
+      print('❌ Erro ao acompanhar serviço de dieta: $e');
+    } finally {
+      _isPollingDietGenerationJob = false;
+    }
+  }
+
+  Future<void> _clearActiveDietGenerationJob([String? jobId]) async {
+    if (jobId != null && _activeDietGenerationJob?.taskId != jobId) {
+      return;
+    }
+
+    _activeDietGenerationJob = null;
+    await DietGenerationBackgroundService.clearActiveTask();
   }
 
   void _tryParseIncrementalMeals(String partialJson) {
@@ -1807,6 +1978,8 @@ Rules:
     _isLoading = false;
     _error = null;
     _parsedMealIndices.clear();
+    _activeMealTypes = const [];
+    _activeDietGenerationJob = null;
 
     // Limpar autenticação
     _authToken = null;
@@ -1818,8 +1991,9 @@ Rules:
       final prefs = await SharedPreferences.getInstance();
       final removedPrefs = await prefs.remove('diet_preferences');
       final removedPlans = await prefs.remove('diet_plans');
+      await DietGenerationBackgroundService.stopActiveGeneration();
       print(
-          '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - SharedPreferences: prefs=$removedPrefs, plans=$removedPlans');
+          '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - SharedPreferences: prefs=$removedPrefs, plans=$removedPlans, job=true');
 
       // Verificar se foi removido
       final checkPrefs = prefs.getString('diet_preferences');
@@ -1856,6 +2030,15 @@ Rules:
         plansMap.forEach((dateKey, planJson) {
           _dietPlans[dateKey] = DietPlan.fromJson(planJson);
         });
+      }
+
+      _activeDietGenerationJob =
+          await DietGenerationBackgroundService.readActiveTask();
+      if (_activeDietGenerationJob != null) {
+        _restoreLoadingStateFromActiveDietGenerationJob(
+          _activeDietGenerationJob!,
+        );
+        unawaited(_resumeActiveDietGenerationJob());
       }
 
       notifyListeners();

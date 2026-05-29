@@ -54,13 +54,23 @@ class DietBenchmarkScreen extends StatefulWidget {
 
 class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
   static const String _modelsPrefsKey = 'diet_benchmark_models';
+  static const String _reasoningEffortPrefsKey =
+      'diet_benchmark_reasoning_effort';
   static const String _resultsPrefsKey = 'diet_benchmark_results_v1';
+  static const List<String> _reasoningEffortValues = [
+    '',
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+  ];
 
   final TextEditingController _modelController = TextEditingController();
   final TextEditingController _bulkModelsController = TextEditingController();
   final List<String> _models = [];
   final List<_DietBenchmarkEntry> _results = [];
   final Map<String, Map<String, dynamic>> _cachedResults = {};
+  String _selectedReasoningEffort = '';
   bool _isLoadingModels = true;
   bool _isRunning = false;
   String? _modelError;
@@ -83,6 +93,7 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
   Future<void> _loadModels() async {
     final prefs = await SharedPreferences.getInstance();
     final savedModels = prefs.getStringList(_modelsPrefsKey);
+    final savedReasoningEffort = prefs.getString(_reasoningEffortPrefsKey);
     _loadCachedResultsFromPrefs(prefs);
     final predefinedModels = DietPlanProvider.dietGenerationModelOptions
         .map((option) => option['id']!)
@@ -111,6 +122,8 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
       _models
         ..clear()
         ..addAll(initialModels);
+      _selectedReasoningEffort =
+          _normalizeReasoningEffort(savedReasoningEffort);
       _isLoadingModels = false;
     });
 
@@ -138,6 +151,36 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
         .toList();
 
     await prefs.setStringList(_modelsPrefsKey, persistableModels);
+  }
+
+  String _normalizeReasoningEffort(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    return _reasoningEffortValues.contains(normalized) ? normalized : '';
+  }
+
+  String? get _benchmarkReasoningEffort =>
+      _selectedReasoningEffort.isEmpty ? null : _selectedReasoningEffort;
+
+  void _updateReasoningEffort(String? value) {
+    if (_isRunning) {
+      return;
+    }
+
+    final normalized = _normalizeReasoningEffort(value);
+    if (normalized == _selectedReasoningEffort) {
+      return;
+    }
+
+    setState(() {
+      _selectedReasoningEffort = normalized;
+      _runError = null;
+    });
+    _saveReasoningEffort(normalized);
+  }
+
+  Future<void> _saveReasoningEffort(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_reasoningEffortPrefsKey, value);
   }
 
   void _loadCachedResultsFromPrefs(SharedPreferences prefs) {
@@ -323,11 +366,13 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
       final selectedDate = dietProvider.selectedDate;
       final mealTypes = mealTypesProvider.mealTypes;
       final targetCalories = nutritionGoals.caloriesGoal;
+      final reasoningEffort = _benchmarkReasoningEffort;
       final benchmarkSignature = _buildBenchmarkSignature(
         dietProvider: dietProvider,
         nutritionGoals: nutritionGoals,
         mealTypes: mealTypes,
         languageCode: languageCode,
+        reasoningEffort: reasoningEffort,
       );
 
       setState(() {
@@ -367,6 +412,7 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
             mealTypes: mealTypes,
             userId: userId,
             languageCode: languageCode,
+            reasoningEffort: reasoningEffort,
           );
 
           if (!mounted) return;
@@ -406,10 +452,13 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
     required NutritionGoalsProvider nutritionGoals,
     required List<MealTypeConfig> mealTypes,
     required String languageCode,
+    required String? reasoningEffort,
   }) {
     return jsonEncode({
       'promptVersion': 3,
       'languageCode': languageCode,
+      if (reasoningEffort != null && reasoningEffort.isNotEmpty)
+        'reasoningEffort': reasoningEffort,
       'targets': {
         'calories': nutritionGoals.caloriesGoal,
         'protein': nutritionGoals.proteinGoal,
@@ -840,6 +889,25 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
             ],
           ),
           const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: _selectedReasoningEffort,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: context.tr.translate('benchmark_reasoning_title'),
+              helperText: context.tr.translate('benchmark_reasoning_helper'),
+              border: const OutlineInputBorder(),
+            ),
+            items: _reasoningEffortValues
+                .map(
+                  (effort) => DropdownMenuItem<String>(
+                    value: effort,
+                    child: Text(_reasoningEffortLabel(effort)),
+                  ),
+                )
+                .toList(),
+            onChanged: _isRunning ? null : _updateReasoningEffort,
+          ),
+          const SizedBox(height: 14),
           if (_models.isEmpty)
             Text(
               context.tr.translate('benchmark_no_models'),
@@ -858,6 +926,21 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
         ],
       ),
     );
+  }
+
+  String _reasoningEffortLabel(String effort) {
+    switch (effort) {
+      case 'low':
+        return context.tr.translate('benchmark_reasoning_low');
+      case 'medium':
+        return context.tr.translate('benchmark_reasoning_medium');
+      case 'high':
+        return context.tr.translate('benchmark_reasoning_high');
+      case 'xhigh':
+        return context.tr.translate('benchmark_reasoning_xhigh');
+      default:
+        return context.tr.translate('benchmark_reasoning_none');
+    }
   }
 
   Widget _buildRunSection(bool isDarkMode) {

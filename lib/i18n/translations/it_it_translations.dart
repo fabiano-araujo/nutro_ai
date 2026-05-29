@@ -122,6 +122,7 @@ final Map<String, String> itITTranslations = {
   // Azioni comuni
   'save': 'Salva',
   'cancel': 'Annulla',
+  'close': 'Chiudi',
   'delete': 'Elimina',
   'edit': 'Modifica',
   'share': 'Condividi',
@@ -129,6 +130,17 @@ final Map<String, String> itITTranslations = {
   'back': 'Indietro',
   'next': 'Avanti',
   'done': 'Fatto',
+  'voice_settings_no_voices': 'Nessuna voce disponibile al momento.',
+  'voice_settings_title': 'Impostazioni voce',
+  'tts_engine_label': 'Motore vocale:',
+  'tts_engine_system_description': 'Motore predefinito del sistema',
+  'tts_piper_unavailable_description':
+      'Installa un motore Piper/Sherpa TTS su Android per usare questa opzione.',
+  'speech_rate_label': 'Velocita del parlato:',
+  'voice_pitch_label': 'Tono della voce:',
+  'voice_select_label': 'Seleziona una voce:',
+  'voice_unknown_language': 'Lingua sconosciuta',
+  'voice_demo_text': 'Questa e una dimostrazione della voce.',
 
   // Messaggi
   'loading': 'Caricamento...',
@@ -752,16 +764,16 @@ final Map<String, String> itITTranslations = {
   'streak_keep_today': 'Aggiorna oggi',
   'streak_freeze_none_title': 'Non hai protezioni per lo streak',
   'streak_freeze_none_message':
-      'Le protezioni salvano lo streak quando non puoi registrare pasti.',
+      'Continua il tuo streak per guadagnare protezioni. Salvano automaticamente il tuo streak quando salti un giorno.',
   'streak_freeze_available_title': 'Hai {count} protezione/i',
   'streak_freeze_available_message':
-      'Usa una protezione per congelare lo streak per 24 ore.',
+      'Se salti un giorno, una protezione viene usata automaticamente per salvare il tuo streak.',
   'streak_freeze_active_message': 'Il tuo streak è temporaneamente protetto.',
   'streak_freeze_activated': 'Protezione attivata con successo.',
-  'streak_get_more_freezes': 'Ottieni altre',
+  'streak_get_more_freezes': 'Come guadagnare protezioni',
   'streak_freeze_info_title': 'Protezioni streak',
   'streak_freeze_info_message':
-      'Le protezioni extra diventano disponibili quando resti costante e partecipi alle azioni social dell\'app.',
+      'Guadagni 1 protezione ogni 7 giorni di streak, fino a 2 in riserva. Se salti un giorno, una protezione viene usata automaticamente per non perdere lo streak.',
   'streak_calendar_title': 'Calendario streak',
   'streak_calendar_logged_day': 'Pasto registrato',
   'streak_today': 'Oggi',
@@ -853,6 +865,14 @@ final Map<String, String> itITTranslations = {
       'Inserisci un ID nel formato provider/modello, senza spazi.',
   'benchmark_model_already_added': 'Questo modello è già stato aggiunto.',
   'benchmark_no_models': 'Aggiungi almeno un modello per iniziare.',
+  'benchmark_reasoning_title': 'Livello di ragionamento IA',
+  'benchmark_reasoning_helper':
+      'Invia reasoning.effort ai modelli OpenRouter compatibili. I modelli non supportati possono ignorarlo o fallire.',
+  'benchmark_reasoning_none': 'Predefinito del modello',
+  'benchmark_reasoning_low': 'Basso',
+  'benchmark_reasoning_medium': 'Medio',
+  'benchmark_reasoning_high': 'Alto',
+  'benchmark_reasoning_xhigh': 'Massimo',
   'benchmark_run_all': 'Esegui benchmark',
   'benchmark_running': 'Benchmark in esecuzione...',
   'benchmark_running_short': 'In esecuzione',

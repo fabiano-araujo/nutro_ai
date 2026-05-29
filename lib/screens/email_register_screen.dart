@@ -248,12 +248,13 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                         primaryColor: primaryColor,
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        final name = value?.trim() ?? '';
+                                        if (name.isEmpty) {
                                           return context.tr.translate(
                                             'please_enter_name',
                                           );
                                         }
-                                        if (value.trim().length < 2) {
+                                        if (name.length < 2) {
                                           return context.tr.translate(
                                             'name_min_length',
                                           );
@@ -282,14 +283,15 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                         primaryColor: primaryColor,
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        final email = value?.trim() ?? '';
+                                        if (email.isEmpty) {
                                           return context.tr.translate(
                                             'please_enter_email',
                                           );
                                         }
                                         if (!RegExp(
                                           r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                                        ).hasMatch(value)) {
+                                        ).hasMatch(email)) {
                                           return context.tr.translate(
                                             'please_enter_valid_email',
                                           );
@@ -334,12 +336,13 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                         ),
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        final password = value?.trim() ?? '';
+                                        if (password.isEmpty) {
                                           return context.tr.translate(
                                             'please_enter_password',
                                           );
                                         }
-                                        if (value.length < 6) {
+                                        if (password.length < 6) {
                                           return context.tr.translate(
                                             'password_min_length',
                                           );
@@ -386,12 +389,15 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                         ),
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        final confirmPassword =
+                                            value?.trim() ?? '';
+                                        if (confirmPassword.isEmpty) {
                                           return context.tr.translate(
                                             'please_confirm_password',
                                           );
                                         }
-                                        if (value != _passwordController.text) {
+                                        if (confirmPassword !=
+                                            _passwordController.text.trim()) {
                                           return context.tr.translate(
                                             'passwords_dont_match',
                                           );

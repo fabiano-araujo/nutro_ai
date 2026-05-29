@@ -2,25 +2,54 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum TtsState { playing, stopped, paused, continued }
 
+class TtsEngineOption {
+  final String id;
+  final String label;
+  final bool isAvailable;
+  final bool isPiper;
+  final String? packageName;
+
+  const TtsEngineOption({
+    required this.id,
+    required this.label,
+    required this.isAvailable,
+    required this.isPiper,
+    this.packageName,
+  });
+}
+
 mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
+  static const String _systemEngineId = 'system_default';
+  static const String _ttsEnginePreferenceKey = 'tts_engine_preference';
+  static const Set<String> _knownPiperEnginePackages = {
+    'io.onyx.tts',
+    'org.woheller69.ttsengine',
+  };
+
   final FlutterTts _flutterTts = FlutterTts();
   bool _isSpeaking = false;
   bool _isInitialized = false;
   String? _currentLanguageCode;
   String? _currentVoice;
+  String? _currentEngineId = _systemEngineId;
+  String? _defaultEnginePackageName;
   TtsState _ttsState = TtsState.stopped;
   double _pitch = 1.0;
   double _rate = 0.5;
   double _volume = 1.0;
   List<Map<String, String>> _availableVoices = [];
+  List<TtsEngineOption> _availableTtsEngines = [];
 
   // Getters para o estado de fala
   bool get isSpeaking => _isSpeaking;
   List<Map<String, String>> get availableVoices => _availableVoices;
+  List<TtsEngineOption> get availableTtsEngines => _availableTtsEngines;
   String? get currentVoice => _currentVoice;
+  String? get currentEngineId => _currentEngineId;
   double get pitch => _pitch;
   double get rate => _rate;
   double get volume => _volume;
@@ -109,15 +138,15 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
         }
       });
 
-      // Definir volume e pitch iniciais
-      await _flutterTts.setVolume(_volume);
-      await _flutterTts.setPitch(_pitch);
-      await _flutterTts.setSpeechRate(_rate);
+      await _loadTtsEngines();
+      await _restoreSavedTtsEngine();
+      await _applyVoiceParameters();
 
       // Definir o idioma com base no idioma regional do dispositivo
       final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
-      final deviceLanguageTag = '${deviceLocale.languageCode}-${deviceLocale.countryCode}';
-      await _setLanguage(deviceLanguageTag);
+      final deviceLanguageTag =
+          '${deviceLocale.languageCode}-${deviceLocale.countryCode}';
+      await _setLanguage(deviceLanguageTag, allowBeforeInitialized: true);
 
       // Carregar as vozes disponíveis
       await _loadVoices();
@@ -130,6 +159,150 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
       print('Falha ao inicializar TTS: $e');
       _isInitialized = false;
     }
+  }
+
+  Future<void> _loadTtsEngines() async {
+    _availableTtsEngines = [];
+
+    if (!Platform.isAndroid) {
+      _currentEngineId = _systemEngineId;
+      _availableTtsEngines = const [
+        TtsEngineOption(
+          id: _systemEngineId,
+          label: 'Sistema',
+          isAvailable: true,
+          isPiper: false,
+        ),
+      ];
+      return;
+    }
+
+    try {
+      final defaultEngine = await _flutterTts.getDefaultEngine;
+      _defaultEnginePackageName = defaultEngine?.toString();
+
+      final enginesResult = await _flutterTts.getEngines;
+      final engineIds = <String>[];
+      if (enginesResult is List) {
+        for (final engine in enginesResult) {
+          final engineId = engine?.toString();
+          if (engineId != null && engineId.isNotEmpty) {
+            engineIds.add(engineId);
+          }
+        }
+      }
+
+      _availableTtsEngines.add(
+        TtsEngineOption(
+          id: _systemEngineId,
+          label: _isGoogleTtsEngine(_defaultEnginePackageName)
+              ? 'Sistema / Google TTS'
+              : 'Sistema',
+          isAvailable: true,
+          isPiper: false,
+          packageName: _defaultEnginePackageName,
+        ),
+      );
+
+      final piperEngines = engineIds.where(_looksLikePiperEngine).toList();
+      if (piperEngines.isEmpty) {
+        _availableTtsEngines.add(
+          const TtsEngineOption(
+            id: 'piper_unavailable',
+            label: 'Piper TTS',
+            isAvailable: false,
+            isPiper: true,
+          ),
+        );
+      } else {
+        for (final engineId in piperEngines) {
+          _availableTtsEngines.add(
+            TtsEngineOption(
+              id: engineId,
+              label: 'Piper TTS',
+              isAvailable: true,
+              isPiper: true,
+              packageName: engineId,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Erro ao carregar mecanismos de TTS: $e');
+      _availableTtsEngines = const [
+        TtsEngineOption(
+          id: _systemEngineId,
+          label: 'Sistema',
+          isAvailable: true,
+          isPiper: false,
+        ),
+      ];
+    }
+  }
+
+  Future<void> _restoreSavedTtsEngine() async {
+    if (!Platform.isAndroid) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEngineId =
+          prefs.getString(_ttsEnginePreferenceKey) ?? _systemEngineId;
+      final engine = _findAvailableEngine(savedEngineId);
+
+      if (engine == null) {
+        _currentEngineId = _systemEngineId;
+        return;
+      }
+
+      await _applyTtsEngine(engine);
+    } catch (e) {
+      print('Erro ao restaurar mecanismo de TTS: $e');
+      _currentEngineId = _systemEngineId;
+    }
+  }
+
+  TtsEngineOption? _findAvailableEngine(String engineId) {
+    for (final engine in _availableTtsEngines) {
+      if (engine.id == engineId && engine.isAvailable) {
+        return engine;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _applyTtsEngine(TtsEngineOption engine) async {
+    if (!Platform.isAndroid) {
+      _currentEngineId = _systemEngineId;
+      return;
+    }
+
+    final enginePackageName =
+        engine.id == _systemEngineId ? _defaultEnginePackageName : engine.id;
+    if (enginePackageName == null || enginePackageName.isEmpty) {
+      _currentEngineId = _systemEngineId;
+      return;
+    }
+
+    await _flutterTts.setEngine(enginePackageName);
+    _currentEngineId = engine.id;
+  }
+
+  Future<void> _applyVoiceParameters() async {
+    await _flutterTts.setVolume(_volume);
+    await _flutterTts.setPitch(_pitch);
+    await _flutterTts.setSpeechRate(_rate);
+  }
+
+  bool _looksLikePiperEngine(String engineId) {
+    final normalized = engineId.toLowerCase();
+    return normalized.contains('piper') ||
+        normalized.contains('sherpa') ||
+        normalized.contains('onnx') ||
+        _knownPiperEnginePackages.contains(normalized);
+  }
+
+  bool _isGoogleTtsEngine(String? engineId) {
+    return engineId?.toLowerCase() == 'com.google.android.tts';
   }
 
   // Carrega as vozes disponíveis
@@ -183,8 +356,12 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
 
       // Obter o idioma regional do dispositivo
       final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
-      final deviceLanguageTag = '${deviceLocale.languageCode}_${deviceLocale.countryCode}'.toLowerCase();
-      final deviceLanguageTagAlt = '${deviceLocale.languageCode}-${deviceLocale.countryCode}'.toLowerCase();
+      final deviceLanguageTag =
+          '${deviceLocale.languageCode}_${deviceLocale.countryCode}'
+              .toLowerCase();
+      final deviceLanguageTagAlt =
+          '${deviceLocale.languageCode}-${deviceLocale.countryCode}'
+              .toLowerCase();
 
       print('Idioma do dispositivo: $deviceLanguageTag');
 
@@ -193,15 +370,18 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
           .where((voice) =>
               voice['locale'] != null &&
               (voice['locale']!.toLowerCase() == deviceLanguageTag ||
-               voice['locale']!.toLowerCase() == deviceLanguageTagAlt ||
-               voice['locale']!.toLowerCase().replaceAll('-', '_') == deviceLanguageTag))
+                  voice['locale']!.toLowerCase() == deviceLanguageTagAlt ||
+                  voice['locale']!.toLowerCase().replaceAll('-', '_') ==
+                      deviceLanguageTag))
           .toList();
 
       // Se não encontrar correspondência exata, usar vozes do mesmo idioma base
       var ptVoices = _availableVoices
           .where((voice) =>
               voice['locale'] != null &&
-              voice['locale']!.toLowerCase().startsWith(deviceLocale.languageCode))
+              voice['locale']!
+                  .toLowerCase()
+                  .startsWith(deviceLocale.languageCode))
           .toList();
 
       // Priorizar correspondência exata, depois idioma base, depois todas as vozes
@@ -307,6 +487,37 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
+  Future<void> setTtsEngine(String engineId) async {
+    if (!_isInitialized || !_isPlatformSupported() || !Platform.isAndroid) {
+      return;
+    }
+
+    final engine = _findAvailableEngine(engineId);
+    if (engine == null) return;
+
+    try {
+      await stopSpeech();
+      await _applyTtsEngine(engine);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_ttsEnginePreferenceKey, engine.id);
+
+      await _applyVoiceParameters();
+      final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
+      final deviceLanguageTag =
+          '${deviceLocale.languageCode}-${deviceLocale.countryCode}';
+      await _setLanguage(deviceLanguageTag);
+      await _loadVoices();
+      await _selectBestVoice();
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Erro ao definir mecanismo de TTS: $e');
+    }
+  }
+
   // Métodos para ajustar os parâmetros de voz
   Future<void> setPitch(double pitch) async {
     if (!_isInitialized) return;
@@ -348,8 +559,9 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
   }
 
   // Configura o idioma para a síntese de voz
-  Future<void> _setLanguage(String languageCode) async {
-    if (!_isInitialized) return;
+  Future<void> _setLanguage(String languageCode,
+      {bool allowBeforeInitialized = false}) async {
+    if (!_isInitialized && !allowBeforeInitialized) return;
 
     try {
       // Verifica se o idioma é suportado
@@ -388,7 +600,10 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
         String? fallbackLanguage;
         if (languages is List) {
           for (final lang in languages) {
-            if (lang.toString().toLowerCase().startsWith(baseLanguage.toLowerCase())) {
+            if (lang
+                .toString()
+                .toLowerCase()
+                .startsWith(baseLanguage.toLowerCase())) {
               fallbackLanguage = lang.toString();
               break;
             }
@@ -404,7 +619,8 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
         else if (languages is List && languages.isNotEmpty) {
           await _flutterTts.setLanguage(languages.first.toString());
           _currentLanguageCode = languages.first.toString();
-          print('TTS language fallback to first available: $_currentLanguageCode');
+          print(
+              'TTS language fallback to first available: $_currentLanguageCode');
         }
       }
     } catch (e) {

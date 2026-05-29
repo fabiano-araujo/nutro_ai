@@ -124,6 +124,7 @@ final Map<String, String> frFRTranslations = {
   // Actions communes
   'save': 'Enregistrer',
   'cancel': 'Annuler',
+  'close': 'Fermer',
   'delete': 'Supprimer',
   'edit': 'Modifier',
   'share': 'Partager',
@@ -131,6 +132,17 @@ final Map<String, String> frFRTranslations = {
   'back': 'Retour',
   'next': 'Suivant',
   'done': 'Terminé',
+  'voice_settings_no_voices': 'Aucune voix disponible pour le moment.',
+  'voice_settings_title': 'Parametres vocaux',
+  'tts_engine_label': 'Moteur vocal :',
+  'tts_engine_system_description': 'Moteur systeme par defaut',
+  'tts_piper_unavailable_description':
+      'Installez un moteur Piper/Sherpa TTS sur Android pour utiliser cette option.',
+  'speech_rate_label': 'Vitesse de parole :',
+  'voice_pitch_label': 'Ton de la voix :',
+  'voice_select_label': 'Selectionnez une voix :',
+  'voice_unknown_language': 'Langue inconnue',
+  'voice_demo_text': 'Ceci est une demonstration vocale.',
 
   // Messages
   'loading': 'Chargement...',
@@ -757,16 +769,16 @@ final Map<String, String> frFRTranslations = {
   'streak_keep_today': 'Mettre à jour aujourd\'hui',
   'streak_freeze_none_title': 'Vous n\'avez aucune protection de série',
   'streak_freeze_none_message':
-      'Les protections sauvent votre série lorsque vous ne pouvez pas enregistrer de repas.',
+      'Continuez votre série pour gagner des protections. Elles sauvent votre série automatiquement si vous manquez un jour.',
   'streak_freeze_available_title': 'Vous avez {count} protection(s)',
   'streak_freeze_available_message':
-      'Utilisez une protection pour geler votre série pendant 24 heures.',
+      'Si vous manquez un jour, une protection est utilisée automatiquement pour sauver votre série.',
   'streak_freeze_active_message': 'Votre série est temporairement protégée.',
   'streak_freeze_activated': 'Protection activée avec succès.',
-  'streak_get_more_freezes': 'En obtenir plus',
+  'streak_get_more_freezes': 'Comment gagner des protections',
   'streak_freeze_info_title': 'Protections de série',
   'streak_freeze_info_message':
-      'Des protections supplémentaires deviennent disponibles lorsque vous restez régulier et participez aux actions sociales de l\'app.',
+      'Vous gagnez 1 protection tous les 7 jours de série, jusqu\'à 2 en réserve. Si vous manquez un jour, une protection est utilisée automatiquement pour ne pas perdre votre série.',
   'streak_calendar_title': 'Calendrier de la série',
   'streak_calendar_logged_day': 'Repas enregistré',
   'streak_today': 'Aujourd\'hui',
@@ -861,6 +873,14 @@ final Map<String, String> frFRTranslations = {
       'Saisissez un ID au format fournisseur/modèle, sans espaces.',
   'benchmark_model_already_added': 'Ce modèle a déjà été ajouté.',
   'benchmark_no_models': 'Ajoutez au moins un modèle pour commencer.',
+  'benchmark_reasoning_title': 'Niveau de raisonnement IA',
+  'benchmark_reasoning_helper':
+      'Envoie reasoning.effort aux modèles OpenRouter compatibles. Les modèles non compatibles peuvent l’ignorer ou échouer.',
+  'benchmark_reasoning_none': 'Valeur par défaut du modèle',
+  'benchmark_reasoning_low': 'Bas',
+  'benchmark_reasoning_medium': 'Moyen',
+  'benchmark_reasoning_high': 'Élevé',
+  'benchmark_reasoning_xhigh': 'Maximum',
   'benchmark_run_all': 'Lancer le benchmark',
   'benchmark_running': 'Benchmark en cours...',
   'benchmark_running_short': 'En cours',

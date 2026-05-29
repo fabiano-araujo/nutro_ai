@@ -1246,6 +1246,18 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
           Text(l10n.translate('generating_diet_plan')),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              l10n.translate('diet_generation_background_hint'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 13,
+              ),
+            ),
+          ),
         ],
       ),
     );

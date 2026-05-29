@@ -39,6 +39,7 @@ import '../widgets/weekly_calendar.dart';
 import '../widgets/month_calendar_sheet.dart';
 import '../widgets/nutrition_card.dart';
 import '../widgets/food_json_display.dart';
+import '../widgets/meal_card.dart';
 import '../providers/free_chat_provider.dart';
 import 'daily_meals_screen.dart';
 import 'food_search_screen.dart';
@@ -881,10 +882,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   // Mostrar diálogo para configurar a voz
   void _showVoiceSettingsDialog() {
-    if (availableVoices.isEmpty) {
+    final appLocalizations = AppLocalizations.of(context);
+
+    if (availableVoices.isEmpty && availableTtsEngines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Não há vozes disponíveis no momento.'),
+          content: Text(appLocalizations.translate('voice_settings_no_voices')),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
@@ -892,17 +895,20 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       return;
     }
 
-    // Filtrar vozes em português quando disponíveis
-    var ptVoices = availableVoices
-        .where((voice) =>
-            voice['locale'] != null &&
-            voice['locale']!.toLowerCase().startsWith('pt'))
-        .toList();
-    var voicesToShow = ptVoices.isEmpty ? availableVoices : ptVoices;
+    List<Map<String, String>> getVoicesToShow() {
+      // Filtrar vozes em português quando disponíveis
+      final ptVoices = availableVoices
+          .where((voice) =>
+              voice['locale'] != null &&
+              voice['locale']!.toLowerCase().startsWith('pt'))
+          .toList();
+      var voicesToShow = ptVoices.isEmpty ? availableVoices : ptVoices;
 
-    // Limitar para exibir apenas 10 vozes para não sobrecarregar a UI
-    if (voicesToShow.length > 10) {
-      voicesToShow = voicesToShow.sublist(0, 10);
+      // Limitar para exibir apenas 10 vozes para não sobrecarregar a UI
+      if (voicesToShow.length > 10) {
+        voicesToShow = voicesToShow.sublist(0, 10);
+      }
+      return voicesToShow;
     }
 
     showDialog(
@@ -910,9 +916,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final voicesToShow = getVoicesToShow();
+
             return AlertDialog(
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              title: Text('Configurações de Voz',
+              scrollable: true,
+              title: Text(appLocalizations.translate('voice_settings_title'),
                   style: TextStyle(
                       color: Theme.of(context).textTheme.bodyLarge?.color)),
               content: Container(
@@ -921,7 +930,59 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Velocidade da fala:',
+                    if (availableTtsEngines.isNotEmpty) ...[
+                      Text(appLocalizations.translate('tts_engine_label'),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.color)),
+                      SizedBox(height: 8),
+                      ...availableTtsEngines.map((engine) {
+                        final isSelected =
+                            (currentEngineId ?? 'system_default') == engine.id;
+                        final packageName = engine.packageName;
+                        final subtitle = engine.isAvailable
+                            ? (packageName == null || packageName.isEmpty
+                                ? appLocalizations
+                                    .translate('tts_engine_system_description')
+                                : packageName)
+                            : appLocalizations
+                                .translate('tts_piper_unavailable_description');
+
+                        return RadioListTile<String>(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          title: Text(engine.label,
+                              style: TextStyle(
+                                  color: isSelected
+                                      ? Theme.of(context).primaryColor
+                                      : Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.color)),
+                          subtitle: Text(subtitle,
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.color)),
+                          value: engine.id,
+                          groupValue: currentEngineId ?? 'system_default',
+                          onChanged: engine.isAvailable
+                              ? (value) async {
+                                  if (value == null) return;
+                                  await setTtsEngine(value);
+                                  setState(() {});
+                                  speak(appLocalizations
+                                      .translate('voice_demo_text'));
+                                }
+                              : null,
+                        );
+                      }).toList(),
+                      Divider(height: 24),
+                    ],
+                    Text(appLocalizations.translate('speech_rate_label'),
                         style: TextStyle(
                             color:
                                 Theme.of(context).textTheme.bodyLarge?.color)),
@@ -938,7 +999,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                       },
                       activeColor: Theme.of(context).primaryColor,
                     ),
-                    Text('Tom de voz:',
+                    Text(appLocalizations.translate('voice_pitch_label'),
                         style: TextStyle(
                             color:
                                 Theme.of(context).textTheme.bodyLarge?.color)),
@@ -956,55 +1017,70 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                       activeColor: Theme.of(context).primaryColor,
                     ),
                     SizedBox(height: 16),
-                    Text('Selecione uma voz:',
+                    Text(appLocalizations.translate('voice_select_label'),
                         style: TextStyle(
                             color:
                                 Theme.of(context).textTheme.bodyLarge?.color)),
                     SizedBox(height: 4),
-                    Expanded(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: voicesToShow.length,
-                        itemBuilder: (context, index) {
-                          var voice = voicesToShow[index];
-                          var voiceName = voice['name'] ?? 'Voz $index';
-                          var isSelected = currentVoice == voiceName;
+                    SizedBox(
+                      height: 240,
+                      child: voicesToShow.isEmpty
+                          ? Center(
+                              child: Text(
+                                  appLocalizations
+                                      .translate('voice_settings_no_voices'),
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.color)),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: voicesToShow.length,
+                              itemBuilder: (context, index) {
+                                var voice = voicesToShow[index];
+                                var voiceName = voice['name'] ?? 'Voz $index';
+                                var isSelected = currentVoice == voiceName;
 
-                          return ListTile(
-                            title: Text(voiceName,
-                                style: TextStyle(
-                                    color: isSelected
-                                        ? Theme.of(context).primaryColor
-                                        : Theme.of(context)
-                                            .textTheme
-                                            .bodyLarge
-                                            ?.color)),
-                            subtitle: Text(
-                                voice['locale'] ?? 'Idioma desconhecido',
-                                style: TextStyle(
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.color)),
-                            selected: isSelected,
-                            onTap: () async {
-                              if (voice['name'] != null) {
-                                await setVoice(voice['name']!);
-                                setState(() {}); // Atualizar UI
-                                // Falar uma frase de teste
-                                speak('Esta é uma demonstração da voz.');
-                              }
-                            },
-                          );
-                        },
-                      ),
+                                return ListTile(
+                                  title: Text(voiceName,
+                                      style: TextStyle(
+                                          color: isSelected
+                                              ? Theme.of(context).primaryColor
+                                              : Theme.of(context)
+                                                  .textTheme
+                                                  .bodyLarge
+                                                  ?.color)),
+                                  subtitle: Text(
+                                      voice['locale'] ??
+                                          appLocalizations.translate(
+                                              'voice_unknown_language'),
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.color)),
+                                  selected: isSelected,
+                                  onTap: () async {
+                                    if (voice['name'] != null) {
+                                      await setVoice(voice['name']!);
+                                      setState(() {}); // Atualizar UI
+                                      // Falar uma frase de teste
+                                      speak(appLocalizations
+                                          .translate('voice_demo_text'));
+                                    }
+                                  },
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  child: Text('Fechar',
+                  child: Text(appLocalizations.translate('close'),
                       style: TextStyle(color: Theme.of(context).primaryColor)),
                   onPressed: () {
                     stopSpeech(); // Parar qualquer voz de teste
@@ -1042,12 +1118,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   // Método para lidar com o envio de mensagem (botão Enviar ou Enter)
   Future<void> _handleSendMessage() async {
-    final message = _messageController.text;
+    final message = _messageController.text.trim();
     final shouldScrollAfterSend =
-        message.trim().isNotEmpty || _chatController.hasSelectedImage;
+        message.isNotEmpty || _chatController.hasSelectedImage;
 
     // Incrementar contador de mensagens do usuário se a mensagem não estiver vazia
-    if (message.trim().isNotEmpty) {
+    if (message.isNotEmpty) {
       _userMessageCount++;
       print("Contador de mensagens incrementado: $_userMessageCount");
     }
@@ -1596,132 +1672,157 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                           // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens e não há sugestões)
                           if (messages.isEmpty && _suggestions.isEmpty)
                             Positioned.fill(
-                              child: Container(
-                                color: currentScaffoldBackgroundColor,
-                                child: Align(
-                                  alignment: Alignment
-                                      .center, // Centralizado vertical e horizontalmente
-                                  child: SingleChildScrollView(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 16),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        // Saudação baseada no horário
-                                        Text(
-                                          _getTimeBasedGreeting(context),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.getSoftTextColor(
-                                                isDarkMode),
-                                            height: 1.3,
-                                          ),
-                                        ),
-                                        SizedBox(height: 16),
-                                        // Chips de ação estilo ChatGPT (2 por linha, centralizados)
-                                        Consumer<NutritionGoalsProvider>(
-                                          builder: (context, nutritionProvider,
-                                              child) {
-                                            final bool hasGoals =
-                                                nutritionProvider
-                                                    .hasConfiguredGoals;
-                                            final List<Widget> chips = [
-                                              _buildActionChip(
-                                                icon: Icons.restaurant_menu,
-                                                label: 'Anotar comida',
-                                                isDarkMode: isDarkMode,
-                                                onTap: () {
-                                                  _showSuggestionsForAction(
-                                                      'registrar_refeicao');
-                                                },
+                              child: Consumer<DailyMealsProvider>(
+                                builder:
+                                    (context, reconstructMealsProvider, _) {
+                                  final reconstructedDayMeals =
+                                      reconstructMealsProvider.getMealsForDate(
+                                          reconstructMealsProvider
+                                              .selectedDate);
+                                  if (reconstructedDayMeals.isNotEmpty) {
+                                    return _buildReconstructedMealsView(
+                                      meals: reconstructedDayMeals,
+                                      mealsProvider: reconstructMealsProvider,
+                                      isDarkMode: isDarkMode,
+                                      backgroundColor:
+                                          currentScaffoldBackgroundColor,
+                                    );
+                                  }
+                                  return Container(
+                                    color: currentScaffoldBackgroundColor,
+                                    child: Align(
+                                      alignment: Alignment
+                                          .center, // Centralizado vertical e horizontalmente
+                                      child: SingleChildScrollView(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 16),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            // Saudação baseada no horário
+                                            Text(
+                                              _getTimeBasedGreeting(context),
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w600,
+                                                color:
+                                                    AppTheme.getSoftTextColor(
+                                                        isDarkMode),
+                                                height: 1.3,
                                               ),
-                                              _buildActionChip(
-                                                icon: Icons.camera_alt,
-                                                label: 'Tirar foto',
-                                                isDarkMode: isDarkMode,
-                                                onTap: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          CameraScanScreen(),
+                                            ),
+                                            SizedBox(height: 16),
+                                            // Chips de ação estilo ChatGPT (2 por linha, centralizados)
+                                            Consumer<NutritionGoalsProvider>(
+                                              builder: (context,
+                                                  nutritionProvider, child) {
+                                                final bool hasGoals =
+                                                    nutritionProvider
+                                                        .hasConfiguredGoals;
+                                                final List<Widget> chips = [
+                                                  _buildActionChip(
+                                                    icon: Icons.restaurant_menu,
+                                                    label: 'Anotar comida',
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: () {
+                                                      _showSuggestionsForAction(
+                                                          'registrar_refeicao');
+                                                    },
+                                                  ),
+                                                  _buildActionChip(
+                                                    icon: Icons.camera_alt,
+                                                    label: 'Tirar foto',
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              CameraScanScreen(),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                  if (hasGoals)
+                                                    _buildActionChip(
+                                                      icon: Icons
+                                                          .lightbulb_outline,
+                                                      label: 'Ideias de comida',
+                                                      isDarkMode: isDarkMode,
+                                                      onTap: () {
+                                                        _showSuggestionsForAction(
+                                                            'sugestoes_refeicoes');
+                                                      },
                                                     ),
-                                                  );
-                                                },
-                                              ),
-                                              if (hasGoals)
-                                                _buildActionChip(
-                                                  icon: Icons.lightbulb_outline,
-                                                  label: 'Ideias de comida',
-                                                  isDarkMode: isDarkMode,
-                                                  onTap: () {
-                                                    _showSuggestionsForAction(
-                                                        'sugestoes_refeicoes');
-                                                  },
-                                                ),
-                                              if (hasGoals)
-                                                _buildActionChip(
-                                                  icon: Icons.help_outline,
-                                                  label: 'Tirar dúvida',
-                                                  isDarkMode: isDarkMode,
-                                                  onTap: () {
-                                                    _showSuggestionsForAction(
-                                                        'perguntar_nutricao');
-                                                  },
-                                                ),
-                                              if (!hasGoals)
-                                                _buildActionChip(
-                                                  icon: Icons.flag_outlined,
-                                                  label: 'Definir metas',
-                                                  isDarkMode: isDarkMode,
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            const NutritionGoalsWizardScreen(),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                            ];
-                                            final List<Widget> rows = [];
-                                            for (int i = 0;
-                                                i < chips.length;
-                                                i += 2) {
-                                              final rowChips = <Widget>[
-                                                chips[i],
-                                                if (i + 1 < chips.length) ...[
-                                                  SizedBox(width: 8),
-                                                  chips[i + 1],
-                                                ],
-                                              ];
-                                              if (rows.isNotEmpty) {
-                                                rows.add(SizedBox(height: 8));
-                                              }
-                                              rows.add(Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: rowChips,
-                                              ));
-                                            }
-                                            return Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: rows,
-                                            );
-                                          },
+                                                  if (hasGoals)
+                                                    _buildActionChip(
+                                                      icon: Icons.help_outline,
+                                                      label: 'Tirar dúvida',
+                                                      isDarkMode: isDarkMode,
+                                                      onTap: () {
+                                                        _showSuggestionsForAction(
+                                                            'perguntar_nutricao');
+                                                      },
+                                                    ),
+                                                  if (!hasGoals)
+                                                    _buildActionChip(
+                                                      icon: Icons.flag_outlined,
+                                                      label: 'Definir metas',
+                                                      isDarkMode: isDarkMode,
+                                                      onTap: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) =>
+                                                                const NutritionGoalsWizardScreen(),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                ];
+                                                final List<Widget> rows = [];
+                                                for (int i = 0;
+                                                    i < chips.length;
+                                                    i += 2) {
+                                                  final rowChips = <Widget>[
+                                                    chips[i],
+                                                    if (i + 1 <
+                                                        chips.length) ...[
+                                                      SizedBox(width: 8),
+                                                      chips[i + 1],
+                                                    ],
+                                                  ];
+                                                  if (rows.isNotEmpty) {
+                                                    rows.add(
+                                                        SizedBox(height: 8));
+                                                  }
+                                                  rows.add(Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: rowChips,
+                                                  ));
+                                                }
+                                                return Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: rows,
+                                                );
+                                              },
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                },
                               ),
                             ),
                         ],
@@ -2444,15 +2545,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }
 
   bool _isCreditExhaustedMessage(String rawMessage) {
-    final normalized = rawMessage.toLowerCase();
-    return normalized.contains('sem créditos') ||
-        normalized.contains('sem creditos') ||
-        normalized.contains('créditos acabaram') ||
-        normalized.contains('creditos acabaram') ||
-        normalized.contains('créditos insuficientes') ||
-        normalized.contains('creditos insuficientes') ||
-        normalized.contains('out of credits') ||
-        normalized.contains('insufficient credits');
+    return AppAgentService.isCreditExhaustedResponse(rawMessage);
   }
 
   bool _isDailyRemainingStatusMessage(String rawMessage) {
@@ -2551,7 +2644,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             ),
           if (actions.contains(AppAgentUiHint.actionWatchRewardedAd))
             FilledButton.tonalIcon(
-              onPressed: () => RewardAdDialog.showRewardedAd(context),
+              onPressed: () => RewardAdDialog.showRewardedAd(
+                context,
+                onRewardEarned: _chatController.removeCreditExhaustedMessages,
+              ),
               icon: const Icon(Icons.play_circle_fill_rounded, size: 18),
               label: Text(
                 appLocalizations.translate('watch_ad_for_credits'),
@@ -2599,16 +2695,23 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       imageBytes = messageData['imageBytes'];
     }
 
-    // Verificar se a mensagem contém JSON de alimentos (apenas para mensagens da IA)
+    // Verificar se a mensagem contém JSON de alimentos (apenas para mensagens da IA).
+    // No modo conversa livre, isso nunca deve montar FoodJsonDisplay, pois esse
+    // widget registra a refeição no diário ao ser renderizado.
     final bool hasFoodJson =
         !isUser && FoodJsonParser.containsFoodJson(message);
+    final bool canRenderFoodDiaryCards = !widget.isFreeChat;
+    final bool shouldRenderFoodCard = canRenderFoodDiaryCards && hasFoodJson;
     final foodMessageId = 'msg-${timestamp.microsecondsSinceEpoch}-$index';
     final String displayMessage = AppAgentService.sanitizeDisplayMessage(
       message,
-      autoRegisterFoods: hasFoodJson,
+      autoRegisterFoods: shouldRenderFoodCard,
       fallbackSanitizer: (content) {
         if (!hasFoodJson) {
           return content;
+        }
+        if (!canRenderFoodDiaryCards) {
+          return _getReadableMessage(content);
         }
         return FoodJsonParser.removeJsonCandidateFromMessage(content);
       },
@@ -2622,7 +2725,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           builder: (context, notifier, _) {
             final hasJsonInNotifier =
                 FoodJsonParser.containsFoodJson(notifier.message);
-            final showsMealCard = hasJsonInNotifier && !notifier.isStreaming;
+            final showsMealCard = canRenderFoodDiaryCards &&
+                hasJsonInNotifier &&
+                !notifier.isStreaming;
             final cleanMessage = notifier.displayMessage;
             final contextualActions = _buildContextualMessageActions(
               rawMessage: notifier.message,
@@ -2648,8 +2753,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     isStreaming: notifier.isStreaming,
                     onLongPress: () =>
                         _showMessageOptions(notifier.message, isUser),
-                    bottomSpacing:
-                        hasJsonInNotifier && !notifier.isStreaming ? 4 : 8,
+                    bottomSpacing: showsMealCard ? 4 : 8,
                   ),
                 if (showsMealCard)
                   Consumer<DailyMealsProvider>(
@@ -2677,7 +2781,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
       final bool showMessageBubble =
           displayMessage.trim().isNotEmpty || isStreaming || imageBytes != null;
-      final bool showsMealCard = hasFoodJson && !isStreaming;
+      final bool showsMealCard = shouldRenderFoodCard && !isStreaming;
       final contextualActions = _buildContextualMessageActions(
         rawMessage: message,
         isUser: isUser,
@@ -2697,7 +2801,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               isStreaming: isStreaming,
               onLongPress: () => _showMessageOptions(message, isUser),
               imageBytes: imageBytes,
-              bottomSpacing: hasFoodJson && !isStreaming ? 4 : 8,
+              bottomSpacing: showsMealCard ? 4 : 8,
             ),
           if (showsMealCard) ...[
             Consumer<DailyMealsProvider>(
@@ -2719,6 +2823,44 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         ],
       );
     }
+  }
+
+  /// Reconstrói no chat os cartões de comida a partir das refeições registradas
+  /// do dia selecionado, quando não há conversa salva para essa data.
+  /// Funciona para comida registrada em qualquer tela, sync do servidor ou
+  /// após reinstalar o app.
+  Widget _buildReconstructedMealsView({
+    required List<Meal> meals,
+    required DailyMealsProvider mealsProvider,
+    required bool isDarkMode,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      color: backgroundColor,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: meals.length,
+        itemBuilder: (context, index) {
+          final meal = meals[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: MealCard(
+              key: ValueKey('reconstructed-${meal.id}'),
+              meal: meal,
+              topContentPadding: 16,
+              onMealUpdated: (updatedMeal) {
+                if (updatedMeal.foods.isEmpty) {
+                  mealsProvider.deleteMeal(updatedMeal.id);
+                } else {
+                  mealsProvider.updateMeal(updatedMeal);
+                }
+              },
+              onDelete: () => mealsProvider.deleteMeal(meal.id),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   /// Converte uma mensagem da IA em texto amigavel para copiar/ler em voz alta.

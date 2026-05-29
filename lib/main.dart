@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart'
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/app_integrity_service.dart';
+import 'services/diet_generation_background_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation.dart';
@@ -82,6 +83,7 @@ Future<void> _initializeFirebaseServices() async {
 
     if (!kIsWeb) {
       await NotificationService().initialize();
+      await DietGenerationBackgroundService.initialize();
     }
 
     print('[Main] Firebase initialized');

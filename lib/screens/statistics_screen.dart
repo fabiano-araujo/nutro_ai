@@ -6,9 +6,11 @@ import 'package:fl_chart/fl_chart.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/streak_provider.dart';
+import '../services/meals_sync_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/streak_helper.dart';
 import '../i18n/app_localizations_extension.dart';
+import 'daily_meals_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({Key? key}) : super(key: key);
@@ -27,12 +29,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
+      backgroundColor:
+          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
           statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
         ),
         leading: IconButton(
@@ -53,31 +57,83 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
       body: Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
         builder: (context, mealsProvider, nutritionProvider, child) {
+          if (!mealsProvider.isLoaded) {
+            return _buildLoadingState(theme, colorScheme);
+          }
+
+          final fallbackGoals = _buildFallbackGoals(nutritionProvider);
+
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             children: [
+              if (mealsProvider.isSyncing ||
+                  mealsProvider.isLoadingFromServer) ...[
+                _buildSyncBanner(theme, colorScheme, isDarkMode),
+                const SizedBox(height: 16),
+              ],
+
               // Period Selector
               _buildPeriodSelector(theme, colorScheme),
               const SizedBox(height: 24),
 
               // Summary Stats
-              _buildSummaryStats(mealsProvider, nutritionProvider, theme, colorScheme, isDarkMode),
+              _buildSummaryStats(
+                mealsProvider,
+                theme,
+                colorScheme,
+                isDarkMode,
+                fallbackGoals,
+              ),
+              const SizedBox(height: 20),
+
+              // Period Insights
+              _buildPeriodInsightsCard(
+                mealsProvider,
+                theme,
+                colorScheme,
+                isDarkMode,
+                fallbackGoals,
+              ),
               const SizedBox(height: 24),
 
               // Goal Adherence Chart
-              _buildGoalAdherenceCard(mealsProvider, nutritionProvider, theme, colorScheme, isDarkMode),
+              _buildGoalAdherenceCard(
+                mealsProvider,
+                theme,
+                colorScheme,
+                isDarkMode,
+                fallbackGoals,
+              ),
               const SizedBox(height: 20),
 
               // Calories History Chart
-              _buildCaloriesHistoryCard(mealsProvider, nutritionProvider, theme, colorScheme, isDarkMode),
+              _buildCaloriesHistoryCard(
+                mealsProvider,
+                theme,
+                colorScheme,
+                isDarkMode,
+                fallbackGoals,
+              ),
               const SizedBox(height: 20),
 
               // Weekly Consistency
-              _buildWeeklyConsistencyCard(mealsProvider, theme, colorScheme, isDarkMode),
+              _buildWeeklyConsistencyCard(
+                mealsProvider,
+                theme,
+                colorScheme,
+                isDarkMode,
+                fallbackGoals,
+              ),
               const SizedBox(height: 20),
 
               // Macros Average Chart
-              _buildMacrosAverageCard(mealsProvider, nutritionProvider, theme, colorScheme, isDarkMode),
+              _buildMacrosAverageCard(
+                mealsProvider,
+                theme,
+                colorScheme,
+                isDarkMode,
+                fallbackGoals,
+              ),
               const SizedBox(height: 40),
             ],
           );
@@ -86,20 +142,90 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  MealGoals _buildFallbackGoals(NutritionGoalsProvider nutritionProvider) {
+    return MealGoals(
+      calories: nutritionProvider.caloriesGoal,
+      protein: nutritionProvider.proteinGoal,
+      carbs: nutritionProvider.carbsGoal,
+      fat: nutritionProvider.fatGoal,
+    );
+  }
+
+  Widget _buildLoadingState(ThemeData theme, ColorScheme colorScheme) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: colorScheme.primary),
+          const SizedBox(height: 16),
+          Text(
+            context.tr.translate('stats_loading'),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncBanner(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    bool isDarkMode,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: isDarkMode ? 0.16 : 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.tr.translate('stats_syncing'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPeriodSelector(ThemeData theme, ColorScheme colorScheme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildPeriodChip('7', context.tr.translate('stats_7_days'), theme, colorScheme),
+        _buildPeriodChip(
+            '7', context.tr.translate('stats_7_days'), theme, colorScheme),
         const SizedBox(width: 12),
-        _buildPeriodChip('14', context.tr.translate('stats_14_days'), theme, colorScheme),
+        _buildPeriodChip(
+            '14', context.tr.translate('stats_14_days'), theme, colorScheme),
         const SizedBox(width: 12),
-        _buildPeriodChip('30', context.tr.translate('stats_30_days'), theme, colorScheme),
+        _buildPeriodChip(
+            '30', context.tr.translate('stats_30_days'), theme, colorScheme),
       ],
     );
   }
 
-  Widget _buildPeriodChip(String period, String label, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildPeriodChip(
+      String period, String label, ThemeData theme, ColorScheme colorScheme) {
     final isSelected = _selectedPeriod == period;
     return GestureDetector(
       onTap: () => setState(() => _selectedPeriod = period),
@@ -107,13 +233,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primary : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: isSelected
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(24),
         ),
         child: Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+            color: isSelected
+                ? colorScheme.onPrimary
+                : colorScheme.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -123,14 +253,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildSummaryStats(
     DailyMealsProvider mealsProvider,
-    NutritionGoalsProvider nutritionProvider,
     ThemeData theme,
     ColorScheme colorScheme,
     bool isDarkMode,
+    MealGoals fallbackGoals,
   ) {
     final days = int.parse(_selectedPeriod);
-    final history = mealsProvider.getCaloriesHistory(days);
-    final goal = nutritionProvider.caloriesGoal;
+    final history = mealsProvider.getNutritionHistory(
+      days,
+      fallbackGoals: fallbackGoals,
+    );
 
     // Calculate stats
     final daysWithData = history.where((d) => d['hasData'] == true).length;
@@ -144,11 +276,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     for (var day in history) {
       if (day['hasData'] == true) {
         final calories = day['calories'] as int;
+        final goal = day['calorieGoal'] as int;
+        if (goal <= 0) continue;
         final diff = (calories - goal).abs();
         if (diff <= goal * 0.1) onTarget++; // Within 10% of goal
       }
     }
-    final adherencePercent = daysWithData > 0 ? (onTarget / daysWithData * 100).round() : 0;
+    final adherencePercent =
+        daysWithData > 0 ? (onTarget / daysWithData * 100).round() : 0;
 
     return Row(
       children: [
@@ -220,31 +355,235 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+          SizedBox(
+            height: 28,
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGoalAdherenceCard(
+  Widget _buildPeriodInsightsCard(
     DailyMealsProvider mealsProvider,
-    NutritionGoalsProvider nutritionProvider,
     ThemeData theme,
     ColorScheme colorScheme,
     bool isDarkMode,
+    MealGoals fallbackGoals,
   ) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final days = int.parse(_selectedPeriod);
-    final history = mealsProvider.getCaloriesHistory(days);
-    final goal = nutritionProvider.caloriesGoal;
+    final history = mealsProvider.getNutritionHistory(
+      days,
+      fallbackGoals: fallbackGoals,
+    );
+    final loggedDays = history.where((d) => d['hasData'] == true).toList();
+
+    final avgCalories = _averageInt(loggedDays, 'calories');
+    final avgDeviation = loggedDays.isEmpty
+        ? 0.0
+        : loggedDays.fold<double>(0, (sum, day) {
+              final calories = day['calories'] as int;
+              final goal = day['calorieGoal'] as int;
+              return sum + (calories - goal).abs();
+            }) /
+            loggedDays.length;
+    final avgProtein = _averageDouble(loggedDays, 'protein');
+    final avgProteinGoal = _averageInt(loggedDays, 'proteinGoal');
+    final avgWater = history.isEmpty
+        ? 0.0
+        : history.fold<double>(
+              0,
+              (sum, day) => sum + (day['waterGlasses'] as int),
+            ) /
+            history.length;
+    final avgFiber = _averageDouble(loggedDays, 'fiber');
+    final missedDays = days - loggedDays.length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.insights_rounded,
+                  size: 24, color: colorScheme.primary),
+              const SizedBox(width: 12),
+              Text(
+                context.tr.translate('stats_period_insights'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          if (loggedDays.isEmpty)
+            _buildNoDataMessage(theme, colorScheme)
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final tileWidth = (constraints.maxWidth - 12) / 2;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildInsightTile(
+                      width: tileWidth,
+                      icon: Icons.local_fire_department_rounded,
+                      label: context.tr.translate('stats_avg_calories'),
+                      value: '${avgCalories.round()} kcal',
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    ),
+                    _buildInsightTile(
+                      width: tileWidth,
+                      icon: Icons.compare_arrows_rounded,
+                      label: context.tr.translate('stats_avg_deviation'),
+                      value: '${avgDeviation.round()} kcal',
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    ),
+                    _buildInsightTile(
+                      width: tileWidth,
+                      icon: Icons.fitness_center_rounded,
+                      label: context.tr.translate('stats_avg_protein'),
+                      value:
+                          '${avgProtein.round()}g / ${avgProteinGoal.round()}g',
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    ),
+                    _buildInsightTile(
+                      width: tileWidth,
+                      icon: Icons.event_busy_rounded,
+                      label: context.tr.translate('stats_missing_days'),
+                      value:
+                          '$missedDays ${context.tr.translate('stats_days')}',
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    ),
+                    _buildInsightTile(
+                      width: tileWidth,
+                      icon: Icons.water_drop_rounded,
+                      label: context.tr.translate('stats_avg_water'),
+                      value:
+                          '${avgWater.toStringAsFixed(1)} ${context.tr.translate('stats_glasses_per_day')}',
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    ),
+                    _buildInsightTile(
+                      width: tileWidth,
+                      icon: Icons.eco_rounded,
+                      label: context.tr.translate('stats_avg_fiber'),
+                      value: '${avgFiber.round()}g',
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightTile({
+    required double width,
+    required IconData icon,
+    required String label,
+    required String value,
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+  }) {
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: colorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _averageInt(List<Map<String, dynamic>> days, String key) {
+    if (days.isEmpty) return 0;
+    return days.fold<double>(0, (sum, day) => sum + (day[key] as int)) /
+        days.length;
+  }
+
+  double _averageDouble(List<Map<String, dynamic>> days, String key) {
+    if (days.isEmpty) return 0;
+    return days.fold<double>(0, (sum, day) => sum + (day[key] as double)) /
+        days.length;
+  }
+
+  Widget _buildGoalAdherenceCard(
+    DailyMealsProvider mealsProvider,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    bool isDarkMode,
+    MealGoals fallbackGoals,
+  ) {
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final days = int.parse(_selectedPeriod);
+    final history = mealsProvider.getNutritionHistory(
+      days,
+      fallbackGoals: fallbackGoals,
+    );
 
     // Count days by category
     int onTarget = 0;
@@ -256,6 +595,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         continue;
       } else {
         final calories = day['calories'] as int;
+        final goal = day['calorieGoal'] as int;
+        if (goal <= 0) continue;
         final diff = calories - goal;
         if (diff.abs() <= goal * 0.1) {
           onTarget++;
@@ -286,7 +627,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.pie_chart_rounded, size: 24, color: colorScheme.primary),
+              Icon(Icons.pie_chart_rounded,
+                  size: 24, color: colorScheme.primary),
               const SizedBox(width: 12),
               Text(
                 context.tr.translate('stats_goal_adherence'),
@@ -349,7 +691,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       _buildLegendRow(
                         color: _getSuccessColor(colorScheme),
                         label: context.tr.translate('stats_on_target_days'),
-                        value: '$onTarget ${context.tr.translate('stats_days')}',
+                        value:
+                            '$onTarget ${context.tr.translate('stats_days')}',
                         theme: theme,
                       ),
                       const SizedBox(height: 12),
@@ -413,18 +756,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildCaloriesHistoryCard(
     DailyMealsProvider mealsProvider,
-    NutritionGoalsProvider nutritionProvider,
     ThemeData theme,
     ColorScheme colorScheme,
     bool isDarkMode,
+    MealGoals fallbackGoals,
   ) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final days = int.parse(_selectedPeriod);
-    final history = mealsProvider.getCaloriesHistory(days);
-    final goal = nutritionProvider.caloriesGoal.toDouble();
-
-    final caloriesData = history.map((d) => (d['calories'] as int).toDouble()).toList();
-    final hasData = caloriesData.any((c) => c > 0);
+    final history = mealsProvider.getNutritionHistory(
+      days,
+      fallbackGoals: fallbackGoals,
+    );
+    final hasData = history.any((d) => d['hasData'] == true);
 
     if (!hasData) {
       return _buildEmptyCard(
@@ -437,9 +780,86 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       );
     }
 
-    final maxDataValue = caloriesData.reduce((a, b) => a > b ? a : b);
-    final maxValue = [maxDataValue, goal].reduce((a, b) => a > b ? a : b);
+    final calorieSpots = <FlSpot>[];
+    final missingSpots = <FlSpot>[];
+    final goalSpots = <FlSpot>[];
+
+    for (final entry in history.asMap().entries) {
+      final index = entry.key.toDouble();
+      final day = entry.value;
+      final goal = (day['calorieGoal'] as int).toDouble();
+      goalSpots.add(FlSpot(index, goal));
+
+      if (day['hasData'] == true) {
+        calorieSpots.add(FlSpot(index, (day['calories'] as int).toDouble()));
+      } else {
+        missingSpots.add(FlSpot(index, 0));
+      }
+    }
+
+    final maxDataValue = history.fold<double>(0, (max, day) {
+      final calories =
+          day['hasData'] == true ? (day['calories'] as int).toDouble() : 0.0;
+      final goal = (day['calorieGoal'] as int).toDouble();
+      final dayMax = calories > goal ? calories : goal;
+      return dayMax > max ? dayMax : max;
+    });
+    final maxValue = maxDataValue > 0 ? maxDataValue : fallbackGoals.calories;
     final chartMaxY = (maxValue * 1.15).ceilToDouble();
+    final lineBarsData = <LineChartBarData>[
+      LineChartBarData(
+        spots: goalSpots,
+        isCurved: false,
+        color: colorScheme.primary.withValues(alpha: 0.4),
+        barWidth: 2,
+        dotData: const FlDotData(show: false),
+        dashArray: [6, 4],
+      ),
+      LineChartBarData(
+        spots: calorieSpots,
+        isCurved: true,
+        curveSmoothness: 0.3,
+        color: colorScheme.primary,
+        barWidth: 3,
+        isStrokeCapRound: true,
+        dotData: FlDotData(
+          show: true,
+          getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+            radius: 4,
+            color: colorScheme.primary,
+            strokeWidth: 2,
+            strokeColor: cardColor,
+          ),
+        ),
+        belowBarData: BarAreaData(
+          show: true,
+          gradient: LinearGradient(
+            colors: [
+              colorScheme.primary.withValues(alpha: 0.15),
+              colorScheme.primary.withValues(alpha: 0.0),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+      ),
+      if (missingSpots.isNotEmpty)
+        LineChartBarData(
+          spots: missingSpots,
+          isCurved: false,
+          color: Colors.transparent,
+          barWidth: 0,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) =>
+                FlDotCirclePainter(
+              radius: 3,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+              strokeWidth: 0,
+            ),
+          ),
+        ),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -457,7 +877,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.show_chart_rounded, size: 24, color: colorScheme.primary),
+              Icon(Icons.show_chart_rounded,
+                  size: 24, color: colorScheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -491,8 +912,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 ),
                 titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -500,13 +923,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       interval: days > 14 ? 7 : (days > 7 ? 2 : 1),
                       getTitlesWidget: (value, meta) {
                         if (value.toInt() >= 0 && value.toInt() < days) {
-                          final date = history[value.toInt()]['date'] as DateTime;
+                          final date =
+                              history[value.toInt()]['date'] as DateTime;
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               '${date.day}',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                                color: colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.6),
                                 fontSize: 10,
                               ),
                             ),
@@ -524,7 +949,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          color: colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.6),
                           fontSize: 10,
                         ),
                       ),
@@ -536,55 +962,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 maxX: (days - 1).toDouble(),
                 minY: 0,
                 maxY: chartMaxY,
-                lineBarsData: [
-                  // Goal line (dashed)
-                  LineChartBarData(
-                    spots: [
-                      FlSpot(0, goal),
-                      FlSpot((days - 1).toDouble(), goal),
-                    ],
-                    isCurved: false,
-                    color: colorScheme.primary.withValues(alpha: 0.4),
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                    dashArray: [6, 4],
-                  ),
-                  // Calories line
-                  LineChartBarData(
-                    spots: caloriesData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
-                    isCurved: true,
-                    curveSmoothness: 0.3,
-                    color: colorScheme.primary,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                        radius: spot.y > 0 ? 4 : 2,
-                        color: spot.y > 0 ? colorScheme.primary : colorScheme.primary.withValues(alpha: 0.3),
-                        strokeWidth: 2,
-                        strokeColor: cardColor,
-                      ),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        colors: [
-                          colorScheme.primary.withValues(alpha: 0.15),
-                          colorScheme.primary.withValues(alpha: 0.0),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                ],
+                lineBarsData: lineBarsData,
               ),
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 24,
+            runSpacing: 10,
             children: [
               _buildChartLegend(
                 color: colorScheme.primary,
@@ -592,11 +978,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 isDashed: false,
                 theme: theme,
               ),
-              const SizedBox(width: 24),
               _buildChartLegend(
                 color: colorScheme.primary.withValues(alpha: 0.4),
                 label: context.tr.translate('stats_goal'),
                 isDashed: true,
+                theme: theme,
+              ),
+              _buildChartLegend(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                label: context.tr.translate('stats_not_logged'),
+                isDashed: false,
                 theme: theme,
               ),
             ],
@@ -642,10 +1033,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     ThemeData theme,
     ColorScheme colorScheme,
     bool isDarkMode,
+    MealGoals fallbackGoals,
   ) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final days = int.parse(_selectedPeriod);
-    final history = mealsProvider.getCaloriesHistory(days);
+    final history = mealsProvider.getNutritionHistory(
+      days,
+      fallbackGoals: fallbackGoals,
+    );
+    final hasAnyLoggedDay = history.any((day) => day['hasData'] == true);
 
     // Group by day of week (0 = Sunday, 6 = Saturday)
     final Map<int, List<bool>> dayData = {};
@@ -697,7 +1093,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.calendar_month_rounded, size: 24, color: colorScheme.primary),
+              Icon(Icons.calendar_month_rounded,
+                  size: 24, color: colorScheme.primary),
               const SizedBox(width: 12),
               Text(
                 context.tr.translate('stats_weekly_consistency'),
@@ -715,76 +1112,85 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            height: 140,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 100,
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      return BarTooltipItem(
-                        '${rod.toY.round()}%',
-                        TextStyle(
-                          color: colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 25,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                    strokeWidth: 1,
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 28,
-                      getTitlesWidget: (value, meta) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            dayLabels[value.toInt()],
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 11,
-                            ),
+          if (!hasAnyLoggedDay)
+            _buildNoDataMessage(theme, colorScheme)
+          else
+            SizedBox(
+              height: 140,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: 100,
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          '${rod.toY.round()}%',
+                          TextStyle(
+                            color: colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
                           ),
                         );
                       },
                     ),
                   ),
-                ),
-                barGroups: List.generate(7, (i) {
-                  final value = consistency[i];
-                  return BarChartGroupData(
-                    x: i,
-                    barRods: [
-                      BarChartRodData(
-                        toY: value,
-                        color: _getConsistencyColor(value, colorScheme),
-                        width: 24,
-                        borderRadius: BorderRadius.circular(6),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 25,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        getTitlesWidget: (value, meta) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              dayLabels[value.toInt()],
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  );
-                }),
+                    ),
+                  ),
+                  barGroups: List.generate(7, (i) {
+                    final value = consistency[i];
+                    return BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: value,
+                          color: _getConsistencyColor(value, colorScheme),
+                          width: 24,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -792,24 +1198,28 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildMacrosAverageCard(
     DailyMealsProvider mealsProvider,
-    NutritionGoalsProvider nutritionProvider,
     ThemeData theme,
     ColorScheme colorScheme,
     bool isDarkMode,
+    MealGoals fallbackGoals,
   ) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final days = int.parse(_selectedPeriod);
-    final avgMacros = mealsProvider.getAverageMacros(days);
+    final history = mealsProvider.getNutritionHistory(
+      days,
+      fallbackGoals: fallbackGoals,
+    );
+    final loggedDays = history.where((d) => d['hasData'] == true).toList();
 
-    final protein = avgMacros['protein']!;
-    final carbs = avgMacros['carbs']!;
-    final fat = avgMacros['fat']!;
+    final protein = _averageDouble(loggedDays, 'protein');
+    final carbs = _averageDouble(loggedDays, 'carbs');
+    final fat = _averageDouble(loggedDays, 'fat');
 
-    final proteinGoal = nutritionProvider.proteinGoal.toDouble();
-    final carbsGoal = nutritionProvider.carbsGoal.toDouble();
-    final fatGoal = nutritionProvider.fatGoal.toDouble();
+    final proteinGoal = _averageInt(loggedDays, 'proteinGoal');
+    final carbsGoal = _averageInt(loggedDays, 'carbsGoal');
+    final fatGoal = _averageInt(loggedDays, 'fatGoal');
 
-    final hasData = protein > 0 || carbs > 0 || fat > 0;
+    final hasData = loggedDays.isNotEmpty;
 
     if (!hasData) {
       return _buildEmptyCard(
@@ -838,7 +1248,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.donut_large_rounded, size: 24, color: colorScheme.primary),
+              Icon(Icons.donut_large_rounded,
+                  size: 24, color: colorScheme.primary),
               const SizedBox(width: 12),
               Text(
                 context.tr.translate('stats_macros_average'),
@@ -956,10 +1367,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             children: [
               Icon(icon, size: 24, color: colorScheme.primary),
               const SizedBox(width: 12),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -988,7 +1401,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: 14),
+        TextButton.icon(
+          onPressed: _openDailyMeals,
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: Text(context.tr.translate('stats_open_diary')),
+        ),
       ],
+    );
+  }
+
+  void _openDailyMeals() {
+    context.read<DailyMealsProvider>().setSelectedDate(DateTime.now());
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const DailyMealsScreen(),
+      ),
     );
   }
 

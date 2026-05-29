@@ -175,6 +175,7 @@ final Map<String, String> deDETranslations = {
   // Allgemeine Aktionen
   'save': 'Speichern',
   'cancel': 'Abbrechen',
+  'close': 'Schliessen',
   'delete': 'Löschen',
   'edit': 'Bearbeiten',
   'share': 'Teilen',
@@ -182,6 +183,17 @@ final Map<String, String> deDETranslations = {
   'back': 'Zurück',
   'next': 'Weiter',
   'done': 'Fertig',
+  'voice_settings_no_voices': 'Derzeit sind keine Stimmen verfugbar.',
+  'voice_settings_title': 'Spracheinstellungen',
+  'tts_engine_label': 'Sprach-Engine:',
+  'tts_engine_system_description': 'Standard-Engine des Systems',
+  'tts_piper_unavailable_description':
+      'Installiere eine Piper/Sherpa-TTS-Engine unter Android, um diese Option zu verwenden.',
+  'speech_rate_label': 'Sprechgeschwindigkeit:',
+  'voice_pitch_label': 'Stimmlage:',
+  'voice_select_label': 'Stimme auswahlen:',
+  'voice_unknown_language': 'Unbekannte Sprache',
+  'voice_demo_text': 'Dies ist eine Sprachdemonstration.',
 
   // Nachrichten
   'loading': 'Wird geladen...',
@@ -757,16 +769,16 @@ final Map<String, String> deDETranslations = {
   'streak_keep_today': 'Heute aktualisieren',
   'streak_freeze_none_title': 'Du hast keine Streak-Schutzoptionen',
   'streak_freeze_none_message':
-      'Schutzoptionen retten deinen Streak, wenn du keine Mahlzeiten protokollieren kannst.',
+      'Halte deinen Streak, um Schutzoptionen zu verdienen. Sie retten deinen Streak automatisch, wenn du einen Tag verpasst.',
   'streak_freeze_available_title': 'Du hast {count} Schutzoption(en)',
   'streak_freeze_available_message':
-      'Nutze eine Schutzoption, um deinen Streak 24 Stunden einzufrieren.',
+      'Wenn du einen Tag verpasst, wird automatisch eine Schutzoption eingesetzt, um deinen Streak zu retten.',
   'streak_freeze_active_message': 'Dein Streak ist vorübergehend geschützt.',
   'streak_freeze_activated': 'Schutz erfolgreich aktiviert.',
-  'streak_get_more_freezes': 'Mehr erhalten',
+  'streak_get_more_freezes': 'So verdienst du Schutz',
   'streak_freeze_info_title': 'Streak-Schutz',
   'streak_freeze_info_message':
-      'Zusätzlicher Schutz wird verfügbar, wenn du konsequent bleibst und soziale Aktionen in der App nutzt.',
+      'Du erhältst alle 7 Tage Streak 1 Schutzoption und kannst bis zu 2 aufbewahren. Wenn du einen Tag verpasst, wird automatisch eine eingesetzt, damit du deinen Streak nicht verlierst.',
   'streak_calendar_title': 'Streak-Kalender',
   'streak_calendar_logged_day': 'Mahlzeit protokolliert',
   'streak_today': 'Heute',
@@ -858,6 +870,14 @@ final Map<String, String> deDETranslations = {
       'Gib eine ID im Format anbieter/modell ohne Leerzeichen ein.',
   'benchmark_model_already_added': 'Dieses Modell wurde bereits hinzugefügt.',
   'benchmark_no_models': 'Füge mindestens ein Modell hinzu.',
+  'benchmark_reasoning_title': 'KI-Denkniveau',
+  'benchmark_reasoning_helper':
+      'Sendet reasoning.effort an kompatible OpenRouter-Modelle. Nicht unterstützte Modelle können es ignorieren oder fehlschlagen.',
+  'benchmark_reasoning_none': 'Modellstandard',
+  'benchmark_reasoning_low': 'Niedrig',
+  'benchmark_reasoning_medium': 'Mittel',
+  'benchmark_reasoning_high': 'Hoch',
+  'benchmark_reasoning_xhigh': 'Maximum',
   'benchmark_run_all': 'Benchmark ausführen',
   'benchmark_running': 'Benchmark läuft...',
   'benchmark_running_short': 'Läuft',

@@ -126,14 +126,15 @@ class RewardAdDialog {
 
   // Método para mostrar o anúncio premiado
   static Future<void> showRewardedAd(BuildContext context,
-      {int retryAttempt = 0}) async {
+      {int retryAttempt = 0, VoidCallback? onRewardEarned}) async {
     final creditProvider = Provider.of<CreditProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
     final token = authService.isAuthenticated ? authService.token : null;
     final maxRetryAttempt = 3;
 
     if (kIsWeb) {
-      await _grantRewardedCreditsForWeb(context, creditProvider, token);
+      await _grantRewardedCreditsForWeb(context, creditProvider, token,
+          onRewardEarned: onRewardEarned);
       return;
     }
 
@@ -163,6 +164,7 @@ class RewardAdDialog {
         try {
           await creditProvider.addRewardedCredits(7, token: token);
           rewardProcessed = true;
+          onRewardEarned?.call();
 
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -205,7 +207,9 @@ class RewardAdDialog {
             debugPrint('Tentando carregar o anúncio novamente...');
             Future.delayed(Duration(seconds: 2), () {
               if (context.mounted) {
-                showRewardedAd(context, retryAttempt: retryAttempt + 1);
+                showRewardedAd(context,
+                    retryAttempt: retryAttempt + 1,
+                    onRewardEarned: onRewardEarned);
               }
             });
           }
@@ -262,7 +266,9 @@ class RewardAdDialog {
           debugPrint('Tentando carregar o anúncio novamente após falha...');
           Future.delayed(Duration(seconds: 2), () {
             if (context.mounted) {
-              showRewardedAd(context, retryAttempt: retryAttempt + 1);
+              showRewardedAd(context,
+                  retryAttempt: retryAttempt + 1,
+                  onRewardEarned: onRewardEarned);
             }
           });
           return;
@@ -287,7 +293,9 @@ class RewardAdDialog {
                     onPressed: () {
                       Navigator.of(context).pop();
                       showRewardedAd(context,
-                          retryAttempt: 0); // Reiniciar contagem
+                          retryAttempt: 0,
+                          onRewardEarned:
+                              onRewardEarned); // Reiniciar contagem
                     },
                     child: Text(context.tr.translate('retry')),
                   ),
@@ -313,8 +321,9 @@ class RewardAdDialog {
   static Future<void> _grantRewardedCreditsForWeb(
     BuildContext context,
     CreditProvider creditProvider,
-    String? token,
-  ) async {
+    String? token, {
+    VoidCallback? onRewardEarned,
+  }) async {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -326,6 +335,7 @@ class RewardAdDialog {
 
     try {
       await creditProvider.addRewardedCredits(7, token: token);
+      onRewardEarned?.call();
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

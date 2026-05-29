@@ -324,8 +324,7 @@ class _MealCardState extends State<MealCard> {
       final macros = foodData['macros'] as Map<String, dynamic>?;
       if (macros == null) return null;
 
-      final detectedName =
-          foodData['name'] as String? ?? originalFood.name;
+      final detectedName = foodData['name'] as String? ?? originalFood.name;
       final detectedPortion = foodData['portion'] as String? ?? '';
       final newNutrient = Nutrient(
         idFood: 0,
@@ -365,7 +364,7 @@ class _MealCardState extends State<MealCard> {
     if (value == null) return null;
     if (value is double) return value;
     if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value);
+    if (value is String) return double.tryParse(value.replaceAll(',', '.'));
     return null;
   }
 
@@ -1524,7 +1523,8 @@ class _FoodDetailsEditSheetState extends State<_FoodDetailsEditSheet> {
   }) {
     final isDark = widget.isDarkMode;
     final colorScheme = Theme.of(context).colorScheme;
-    final borderColor = isDark ? AppTheme.darkBorderColor : AppTheme.dividerColor;
+    final borderColor =
+        isDark ? AppTheme.darkBorderColor : AppTheme.dividerColor;
 
     return InputDecoration(
       labelText: label,
@@ -2078,13 +2078,12 @@ class _FoodItemState extends State<_FoodItem> {
   String _catalogSourceLabel(dynamic value) {
     switch (value?.toString()) {
       case 'fatsecret':
-        return 'FatSecret';
       case 'open_food_facts':
-        return 'Open Food Facts';
+        return 'Internet';
       case 'user':
         return 'Usuários';
       default:
-        return 'Banco Nutro';
+        return 'Internet';
     }
   }
 
@@ -2097,38 +2096,64 @@ class _FoodItemState extends State<_FoodItem> {
     return brand == null ? name : '$name · $brand';
   }
 
-  String _catalogOptionSubtitle(Map<String, dynamic> suggestion) {
-    final source = _readText(suggestion['sourceLabel']) ?? 'Banco Nutro';
+  _SourceMacroValues _catalogOptionMacros(Map<String, dynamic> suggestion) {
     final servingProportion = _parseNumeric(suggestion['servingProportion']);
     final ratio = servingProportion > 0 ? servingProportion : 1.0;
-    final servingDescription = _readText(suggestion['servingDescription']) ??
-        _formatServingAmount(
-          _parseNumeric(suggestion['servingAmount']),
-          _readText(suggestion['servingUnit']) ?? 'g',
-        );
-    final baseServing = _formatServingAmount(
-      _parseNumeric(suggestion['baseAmount']),
-      _readText(suggestion['baseUnit']) ?? 'g',
-    );
 
-    final servingSummary = _formatMacroSummary(
+    return _SourceMacroValues(
       calories: _parseNumeric(suggestion['calories']) * ratio,
       protein: _parseNumeric(suggestion['protein']) * ratio,
       carbs: _parseNumeric(suggestion['carbs']) * ratio,
       fat: _parseNumeric(suggestion['fat']) * ratio,
     );
-
-    if (ratio == 1.0) {
-      return '$source · $servingSummary (por $baseServing)';
-    }
-
-    return '$source · $servingSummary (por $servingDescription)\n'
-        'Base: ${_macrosSummary(suggestion)}';
   }
 
-  String _currentFoodMacrosSummary({Food? food}) {
+  String _catalogOptionFooter(Map<String, dynamic> suggestion) {
+    final servingDescription = _readText(suggestion['servingDescription']) ??
+        _formatServingAmount(
+          _parseNumeric(suggestion['servingAmount']),
+          _readText(suggestion['servingUnit']) ?? 'g',
+        );
+
+    return servingDescription;
+  }
+
+  String _catalogOptionSubtitle(Map<String, dynamic> suggestion) {
+    return '${_sourceMacroSubtitle(_catalogOptionMacros(suggestion))} · ${_catalogOptionFooter(suggestion)}';
+  }
+
+  _SourceMacroValues _macroValuesFromMap(Map<String, dynamic> data) {
+    return _SourceMacroValues(
+      calories: _parseNumeric(data['calories']),
+      protein: _parseNumeric(data['protein']),
+      carbs: _parseNumeric(data['carbs']),
+      fat: _parseNumeric(data['fat']),
+    );
+  }
+
+  String _macroServingFooter(Map<String, dynamic> data) {
+    final base = _parseNumeric(data['baseAmount']);
+    final unit = _readText(data['baseUnit']) ?? 'g';
+    return 'por ${_formatServingAmount(base, unit)}';
+  }
+
+  String _sourceMacroSubtitle(
+    _SourceMacroValues values, {
+    String? suffix,
+  }) {
+    final summary = '${_formatNumber(values.calories, decimals: 0)} kcal · '
+        '${values.protein.toStringAsFixed(1)}p · '
+        '${values.carbs.toStringAsFixed(1)}c · '
+        '${values.fat.toStringAsFixed(1)}g';
+    final suffixText = suffix?.trim();
+    return suffixText == null || suffixText.isEmpty
+        ? summary
+        : '$summary · $suffixText';
+  }
+
+  _SourceMacroValues _currentFoodMacros({Food? food}) {
     final sourceFood = food ?? widget.food;
-    return _formatMacroSummary(
+    return _SourceMacroValues(
       calories: sourceFood.calories.toDouble(),
       protein: sourceFood.protein,
       carbs: sourceFood.carbs,
@@ -2161,7 +2186,19 @@ class _FoodItemState extends State<_FoodItem> {
 
     final favorite = alternatives?['favorite'] as Map<String, dynamic>?;
     final recent = alternatives?['recent'] as Map<String, dynamic>?;
-    final currentSource = sourceFood.source;
+    var effectiveFood = sourceFood;
+    if (favorite != null &&
+        sourceFood.source != FoodSource.manual &&
+        (sourceFood.source != FoodSource.favorite ||
+            sourceFood.sourceId != _parseInt(favorite['id']))) {
+      effectiveFood = _applyAlternativeMacros(
+        favorite,
+        FoodSource.favorite,
+        food: sourceFood,
+      );
+      widget.onSwap?.call(effectiveFood);
+    }
+    final currentSource = effectiveFood.source;
     var showAllCatalogSuggestions = false;
 
     final action = await showModalBottomSheet<_FoodSourcePickerResult>(
@@ -2216,48 +2253,57 @@ class _FoodItemState extends State<_FoodItem> {
                         Row(
                           children: [
                             FoodIcon(
-                              name: sourceFood.name,
-                              emoji: sourceFood.emoji,
+                              name: effectiveFood.name,
+                              emoji: effectiveFood.emoji,
                               size: 26,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                sourceFood.name,
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                  color: textColor,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    effectiveFood.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    (effectiveFood.amount ?? '').trim().isEmpty
+                                        ? context.tr.translate('serving')
+                                        : effectiveFood.amount!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: secondary.withValues(alpha: 0.85),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Editar nome e porção',
+                              onPressed: () => Navigator.pop(
+                                ctx,
+                                const _FoodSourcePickerResult(
+                                  _FoodSourceAction.editDetails,
                                 ),
+                              ),
+                              icon: Icon(
+                                Icons.edit_note_rounded,
+                                color: primary,
+                                size: 22,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Escolha a fonte dos macros',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: secondary.withValues(alpha: 0.85)),
-                        ),
                         const SizedBox(height: 16),
-
-                        _SourceOption(
-                          icon: Icons.edit_note_rounded,
-                          iconColor: primary,
-                          title: 'Editar nome e porção',
-                          subtitle: (sourceFood.amount ?? '').trim().isEmpty
-                              ? context.tr.translate('serving')
-                              : sourceFood.amount!,
-                          selected: false,
-                          isDarkMode: isDark,
-                          onTap: () => Navigator.pop(
-                            ctx,
-                            const _FoodSourcePickerResult(
-                              _FoodSourceAction.editDetails,
-                            ),
-                          ),
-                        ),
 
                         // Favorito
                         if (favorite != null)
@@ -2265,7 +2311,12 @@ class _FoodItemState extends State<_FoodItem> {
                             icon: Icons.star_rounded,
                             iconColor: const Color(0xFFFFB300),
                             title: 'Seu favorito',
-                            subtitle: _macrosSummary(favorite),
+                            subtitle: _sourceMacroSubtitle(
+                              _macroValuesFromMap(favorite),
+                              suffix: _macroServingFooter(favorite),
+                            ),
+                            macros: _macroValuesFromMap(favorite),
+                            footer: _macroServingFooter(favorite),
                             selected: currentSource == FoodSource.favorite,
                             isDarkMode: isDark,
                             onTap: () => Navigator.pop(
@@ -2281,8 +2332,12 @@ class _FoodItemState extends State<_FoodItem> {
                             icon: Icons.tune_rounded,
                             iconColor: primary,
                             title: 'Personalizado',
-                            subtitle:
-                                '${_currentFoodMacrosSummary(food: sourceFood)} · editado manualmente',
+                            subtitle: _sourceMacroSubtitle(
+                              _currentFoodMacros(food: effectiveFood),
+                              suffix: 'editado manualmente',
+                            ),
+                            macros: _currentFoodMacros(food: effectiveFood),
+                            footer: 'editado manualmente',
                             selected: true,
                             isDarkMode: isDark,
                             onTap: () => Navigator.pop(
@@ -2299,7 +2354,12 @@ class _FoodItemState extends State<_FoodItem> {
                             icon: Icons.history_rounded,
                             iconColor: primary,
                             title: 'Recente',
-                            subtitle: _macrosSummary(recent),
+                            subtitle: _sourceMacroSubtitle(
+                              _macroValuesFromMap(recent),
+                              suffix: _macroServingFooter(recent),
+                            ),
+                            macros: _macroValuesFromMap(recent),
+                            footer: _macroServingFooter(recent),
                             selected: currentSource == FoodSource.recent,
                             isDarkMode: isDark,
                             onTap: () => Navigator.pop(
@@ -2315,28 +2375,34 @@ class _FoodItemState extends State<_FoodItem> {
                         // aiNutrients para mostrar e restaurar os valores da IA.
                         Builder(builder: (_) {
                           final aiNut =
-                              sourceFood.aiNutrients?.isNotEmpty == true
-                                  ? sourceFood.aiNutrients!.first
+                              effectiveFood.aiNutrients?.isNotEmpty == true
+                                  ? effectiveFood.aiNutrients!.first
                                   : null;
                           final aiCalories = currentSource == FoodSource.ai
-                              ? sourceFood.calories
+                              ? effectiveFood.calories
                               : (aiNut?.calories?.toInt() ??
-                                  sourceFood.calories);
+                                  effectiveFood.calories);
                           final aiProtein = currentSource == FoodSource.ai
-                              ? sourceFood.protein
-                              : (aiNut?.protein ?? sourceFood.protein);
+                              ? effectiveFood.protein
+                              : (aiNut?.protein ?? effectiveFood.protein);
                           final aiCarbs = currentSource == FoodSource.ai
-                              ? sourceFood.carbs
-                              : (aiNut?.carbohydrate ?? sourceFood.carbs);
+                              ? effectiveFood.carbs
+                              : (aiNut?.carbohydrate ?? effectiveFood.carbs);
                           final aiFat = currentSource == FoodSource.ai
-                              ? sourceFood.fat
-                              : (aiNut?.fat ?? sourceFood.fat);
+                              ? effectiveFood.fat
+                              : (aiNut?.fat ?? effectiveFood.fat);
+                          final aiMacros = _SourceMacroValues(
+                            calories: aiCalories.toDouble(),
+                            protein: aiProtein,
+                            carbs: aiCarbs,
+                            fat: aiFat,
+                          );
                           return _SourceOption(
                             icon: Icons.auto_awesome_rounded,
                             iconColor: const Color(0xFF14B8A6),
                             title: 'Estimativa da IA',
-                            subtitle:
-                                '$aiCalories kcal · ${aiProtein.toStringAsFixed(1)}p · ${aiCarbs.toStringAsFixed(1)}c · ${aiFat.toStringAsFixed(1)}g',
+                            subtitle: _sourceMacroSubtitle(aiMacros),
+                            macros: aiMacros,
                             selected: currentSource == FoodSource.ai,
                             isDarkMode: isDark,
                             onTap: () => Navigator.pop(
@@ -2350,10 +2416,30 @@ class _FoodItemState extends State<_FoodItem> {
                           );
                         }),
 
+                        if (currentSource != FoodSource.manual) ...[
+                          const SizedBox(height: 8),
+                          _SourceOption(
+                            icon: Icons.tune_rounded,
+                            iconColor: primary,
+                            title: 'Editar manualmente',
+                            subtitle: 'Digite os macros manualmente',
+                            macros: null,
+                            footer: null,
+                            selected: false,
+                            isDarkMode: isDark,
+                            onTap: () => Navigator.pop(
+                              ctx,
+                              const _FoodSourcePickerResult(
+                                _FoodSourceAction.manual,
+                              ),
+                            ),
+                          ),
+                        ],
+
                         if (catalogSuggestions.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           Text(
-                            'Outras sugestões',
+                            'Sugestões da internet',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -2364,15 +2450,17 @@ class _FoodItemState extends State<_FoodItem> {
                           ...visibleCatalogSuggestions.map((suggestion) {
                             final suggestionId = _parseInt(suggestion['id']);
                             return _SourceOption(
-                              icon: Icons.storage_rounded,
+                              icon: Icons.public_rounded,
                               iconColor: const Color(0xFF2563EB),
                               title: _catalogOptionTitle(
                                 suggestion,
-                                food: sourceFood,
+                                food: effectiveFood,
                               ),
                               subtitle: _catalogOptionSubtitle(suggestion),
+                              macros: _catalogOptionMacros(suggestion),
+                              footer: _catalogOptionFooter(suggestion),
                               selected: currentSource == FoodSource.catalog &&
-                                  sourceFood.sourceId == suggestionId,
+                                  effectiveFood.sourceId == suggestionId,
                               isDarkMode: isDark,
                               onTap: () => Navigator.pop(
                                 ctx,
@@ -2411,30 +2499,12 @@ class _FoodItemState extends State<_FoodItem> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              'Voce ainda nao tem versoes salvas ou outras sugestoes para ${sourceFood.name}. Edite o alimento para salvar como favorito.',
+                              'Voce ainda nao tem versoes salvas ou outras sugestoes para ${effectiveFood.name}. Edite o alimento para salvar como favorito.',
                               style: TextStyle(
                                   fontSize: 12,
                                   color: secondary.withValues(alpha: 0.8)),
                             ),
                           ),
-
-                        if (currentSource != FoodSource.manual) ...[
-                          const SizedBox(height: 8),
-                          _SourceOption(
-                            icon: Icons.tune_rounded,
-                            iconColor: primary,
-                            title: 'Editar manualmente',
-                            subtitle: 'Digite os macros manualmente',
-                            selected: false,
-                            isDarkMode: isDark,
-                            onTap: () => Navigator.pop(
-                              ctx,
-                              const _FoodSourcePickerResult(
-                                _FoodSourceAction.manual,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -2454,7 +2524,7 @@ class _FoodItemState extends State<_FoodItem> {
 
     switch (action.action) {
       case _FoodSourceAction.editDetails:
-        await _openFoodDetailsEditor(food: sourceFood);
+        await _openFoodDetailsEditor(food: effectiveFood);
         break;
       case _FoodSourceAction.favorite:
         if (favorite != null) {
@@ -2462,7 +2532,7 @@ class _FoodItemState extends State<_FoodItem> {
             _applyAlternativeMacros(
               favorite,
               FoodSource.favorite,
-              food: sourceFood,
+              food: effectiveFood,
             ),
           );
         }
@@ -2473,7 +2543,7 @@ class _FoodItemState extends State<_FoodItem> {
             _applyAlternativeMacros(
               recent,
               FoodSource.recent,
-              food: sourceFood,
+              food: effectiveFood,
             ),
           );
         }
@@ -2485,21 +2555,177 @@ class _FoodItemState extends State<_FoodItem> {
             _applyAlternativeMacros(
               suggestion,
               FoodSource.catalog,
-              food: sourceFood,
+              food: effectiveFood,
             ),
           );
         }
         break;
       case _FoodSourceAction.ai:
-        final restored = _restoreAiMacros(food: sourceFood);
+        final restored = _restoreAiMacros(food: effectiveFood);
         if (restored != null) {
           widget.onSwap?.call(restored);
         }
         break;
       case _FoodSourceAction.manual:
-        await _openManualMacroEditor();
+        await _openManualMacroEditor(food: effectiveFood);
         break;
     }
+  }
+
+  Future<void> _openFoodDetailsEditor({Food? food}) async {
+    final sourceFood = food ?? widget.food;
+    final result = await showModalBottomSheet<_FoodDetailsEditResult>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (ctx) {
+        return _FoodDetailsEditSheet(
+          food: sourceFood,
+          isDarkMode: widget.isDarkMode,
+        );
+      },
+    );
+
+    if (!mounted || result == null) return;
+
+    final newName = result.name.trim();
+    final newAmount = result.amount.trim();
+    if (newName.isEmpty) return;
+
+    final oldName = sourceFood.name.trim();
+    final oldAmount = (sourceFood.amount ?? '').trim();
+    final nameChanged = newName.toLowerCase() != oldName.toLowerCase();
+    final amountChanged = newAmount != oldAmount;
+    if (!nameChanged && !amountChanged) return;
+
+    if (!nameChanged) {
+      final metricServing = _parseMetricServing(newAmount);
+      final scaledFood = metricServing == null
+          ? null
+          : _applyMetricServing(sourceFood, newName, newAmount, metricServing);
+      if (scaledFood != null) {
+        widget.onSwap?.call(scaledFood);
+        await _openSourcePicker(foodOverride: scaledFood);
+        return;
+      }
+    }
+
+    final description = _buildFoodDescription(newAmount, newName);
+    final regeneratedFood =
+        await widget.onRegenerateWithAI?.call(sourceFood, description);
+    if (!mounted) return;
+
+    if (regeneratedFood != null) {
+      widget.onSwap?.call(regeneratedFood);
+      await _openSourcePicker(foodOverride: regeneratedFood);
+    }
+  }
+
+  ({double amount, String unit})? _parseMetricServing(String amount) {
+    final parsed = FoodJsonParser.parseServingFromPortion(amount);
+    if (parsed == null) return null;
+    if (parsed.unit != 'g' && parsed.unit != 'ml') return null;
+    return parsed;
+  }
+
+  Food? _applyMetricServing(
+    Food food,
+    String name,
+    String amount,
+    ({double amount, String unit}) targetServing,
+  ) {
+    final nutrient = food.primaryNutrient;
+    if (nutrient == null) return null;
+
+    final currentServing = _currentMetricServing(food, nutrient);
+    if (currentServing == null ||
+        currentServing.unit != targetServing.unit ||
+        currentServing.amount <= 0) {
+      return null;
+    }
+
+    final ratio = targetServing.amount / currentServing.amount;
+    double? scale(double? value) {
+      if (value == null) return null;
+      return (value * ratio * 10).roundToDouble() / 10;
+    }
+
+    double? scaleCalories(double? value) {
+      if (value == null) return null;
+      return (value * ratio).roundToDouble();
+    }
+
+    final updatedNutrient = nutrient.copyWith(
+      servingSize: targetServing.amount,
+      servingUnit: targetServing.unit,
+      calories: scaleCalories(nutrient.calories),
+      carbohydrate: scale(nutrient.carbohydrate),
+      protein: scale(nutrient.protein),
+      fat: scale(nutrient.fat),
+      saturatedFat: scale(nutrient.saturatedFat),
+      polyunsaturatedFat: scale(nutrient.polyunsaturatedFat),
+      monounsaturatedFat: scale(nutrient.monounsaturatedFat),
+      transFat: scale(nutrient.transFat),
+      cholesterol: scale(nutrient.cholesterol),
+      sodium: scale(nutrient.sodium),
+      potassium: scale(nutrient.potassium),
+      dietaryFiber: scale(nutrient.dietaryFiber),
+      sugars: scale(nutrient.sugars),
+      addedSugars: scale(nutrient.addedSugars),
+      vitaminD: scale(nutrient.vitaminD),
+      vitaminA: scale(nutrient.vitaminA),
+      vitaminC: scale(nutrient.vitaminC),
+      calcium: scale(nutrient.calcium),
+      iron: scale(nutrient.iron),
+      vitaminB6: scale(nutrient.vitaminB6),
+      vitaminB12: scale(nutrient.vitaminB12),
+    );
+    final aiSnapshot = food.aiNutrients ??
+        (food.source == FoodSource.ai ? food.nutrients : null);
+
+    return food.copyWith(
+      name: name,
+      amount: amount,
+      nutrients: [updatedNutrient],
+      source: FoodSource.manual,
+      clearSourceId: true,
+      aiNutrients: aiSnapshot,
+    );
+  }
+
+  ({double amount, String unit})? _currentMetricServing(
+    Food food,
+    Nutrient nutrient,
+  ) {
+    final nutrientUnit = _normalizeUnit(nutrient.servingUnit);
+    if ((nutrientUnit == 'g' || nutrientUnit == 'ml') &&
+        nutrient.servingSize > 0) {
+      return (amount: nutrient.servingSize, unit: nutrientUnit);
+    }
+
+    final parsedAmount = _parseMetricServing(food.amount ?? '');
+    if (parsedAmount != null) return parsedAmount;
+
+    return null;
+  }
+
+  String _buildFoodDescription(String? amount, String name) {
+    final amountStr = (amount ?? '').trim();
+    final nameStr = name.trim();
+
+    if (amountStr.isEmpty) return nameStr;
+    if (nameStr.isEmpty) return amountStr;
+
+    if (amountStr.toLowerCase().contains(nameStr.toLowerCase())) {
+      return amountStr;
+    }
+    if (nameStr.toLowerCase().contains(amountStr.toLowerCase())) {
+      return nameStr;
+    }
+
+    return '$amountStr $nameStr';
   }
 
   void _openFoodPage() {
@@ -2511,8 +2737,8 @@ class _FoodItemState extends State<_FoodItem> {
     );
   }
 
-  Future<void> _openManualMacroEditor() async {
-    final food = widget.food;
+  Future<void> _openManualMacroEditor({Food? food}) async {
+    final sourceFood = food ?? widget.food;
     final updatedFood = await showModalBottomSheet<Food>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -2521,7 +2747,7 @@ class _FoodItemState extends State<_FoodItem> {
       enableDrag: false,
       builder: (ctx) {
         return _ManualMacroEditorSheet(
-          food: food,
+          food: sourceFood,
           isDarkMode: widget.isDarkMode,
         );
       },
@@ -2529,30 +2755,6 @@ class _FoodItemState extends State<_FoodItem> {
 
     if (!mounted || updatedFood == null) return;
     widget.onSwap?.call(updatedFood);
-  }
-
-  String _macrosSummary(Map<String, dynamic> data) {
-    final summary = _formatMacroSummary(
-      calories: _parseNumeric(data['calories']),
-      protein: _parseNumeric(data['protein']),
-      carbs: _parseNumeric(data['carbs']),
-      fat: _parseNumeric(data['fat']),
-    );
-    final base = _parseNumeric(data['baseAmount']);
-    final unit = _readText(data['baseUnit']) ?? 'g';
-    return '$summary  (por ${_formatServingAmount(base, unit)})';
-  }
-
-  String _formatMacroSummary({
-    required double calories,
-    required double protein,
-    required double carbs,
-    required double fat,
-  }) {
-    return '${_formatNumber(calories, decimals: 0)} kcal · '
-        '${protein.toStringAsFixed(1)}p · '
-        '${carbs.toStringAsFixed(1)}c · '
-        '${fat.toStringAsFixed(1)}g';
   }
 
   String _formatServingAmount(double amount, String unit) {
@@ -2777,11 +2979,133 @@ class _SourceInlineBadge extends StatelessWidget {
 }
 
 /// Linha de opcao no bottom sheet do seletor de fonte.
+class _SourceMacroValues {
+  final double calories;
+  final double protein;
+  final double carbs;
+  final double fat;
+
+  const _SourceMacroValues({
+    required this.calories,
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+  });
+}
+
+class _SourceMacroLine extends StatelessWidget {
+  final _SourceMacroValues values;
+  final String? footer;
+  final bool isDarkMode;
+
+  const _SourceMacroLine({
+    required this.values,
+    required this.footer,
+    required this.isDarkMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final secondary =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final footerText = footer?.trim();
+
+    TextSpan separator() => TextSpan(
+          text: ' · ',
+          style: TextStyle(
+            color: secondary,
+            fontWeight: FontWeight.w600,
+          ),
+        );
+
+    List<InlineSpan> macro({
+      required IconData icon,
+      required String value,
+      required String unit,
+      required Color color,
+    }) {
+      return [
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Icon(icon, size: 12, color: color),
+        ),
+        const TextSpan(text: ' '),
+        TextSpan(
+          text: value,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        TextSpan(
+          text: unit,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ];
+    }
+
+    return RichText(
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      text: TextSpan(
+        style: const TextStyle(
+          fontSize: 11,
+          height: 1.25,
+        ),
+        children: [
+          ...macro(
+            icon: MacroTheme.caloriesIcon,
+            value: values.calories.round().toString(),
+            unit: ' kcal',
+            color: MacroTheme.caloriesColor,
+          ),
+          separator(),
+          ...macro(
+            icon: MacroTheme.proteinIcon,
+            value: values.protein.toStringAsFixed(1),
+            unit: 'p',
+            color: MacroTheme.proteinColor,
+          ),
+          separator(),
+          ...macro(
+            icon: MacroTheme.carbsIcon,
+            value: values.carbs.toStringAsFixed(1),
+            unit: 'c',
+            color: MacroTheme.carbsColor,
+          ),
+          separator(),
+          ...macro(
+            icon: MacroTheme.fatIcon,
+            value: values.fat.toStringAsFixed(1),
+            unit: 'g',
+            color: MacroTheme.fatColor,
+          ),
+          if (footerText != null && footerText.isNotEmpty) ...[
+            separator(),
+            TextSpan(
+              text: footerText,
+              style: TextStyle(
+                color: secondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _SourceOption extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
   final String subtitle;
+  final _SourceMacroValues? macros;
+  final String? footer;
   final bool selected;
   final bool isDarkMode;
   final VoidCallback onTap;
@@ -2792,6 +3116,8 @@ class _SourceOption extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.subtitle,
+    this.macros,
+    this.footer,
     required this.selected,
     required this.isDarkMode,
     required this.onTap,
@@ -2865,13 +3191,22 @@ class _SourceOption extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: secondary,
+                      if (macros != null)
+                        _SourceMacroLine(
+                          values: macros!,
+                          footer: footer,
+                          isDarkMode: isDarkMode,
+                        )
+                      else
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: secondary,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

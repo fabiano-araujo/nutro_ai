@@ -65,6 +65,8 @@ dependencies:
   timezone: ^0.11.0
   flutter_timezone: ^5.0.2
   mobile_scanner: ^7.2.0
+  flutter_background_service: ^5.1.0
+  flutter_background_service_android: ^6.3.1
 
 dev_dependencies:
   flutter_test:

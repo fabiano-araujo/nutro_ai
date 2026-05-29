@@ -442,20 +442,15 @@ class _FreezeStatusCard extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primary = _streakPrimaryColor(isDarkMode);
     final freezes = streakProvider.freezesAvailable;
-    final hasFreeze = freezes > 0 && !streakProvider.isFreezeActive;
-    final isActive = streakProvider.isFreezeActive;
-    final title = isActive
-        ? context.tr.translate('streak_freeze_active')
-        : hasFreeze
-            ? context.tr
-                .translate('streak_freeze_available_title')
-                .replaceAll('{count}', freezes.toString())
-            : context.tr.translate('streak_freeze_none_title');
-    final message = isActive
-        ? context.tr.translate('streak_freeze_active_message')
-        : hasFreeze
-            ? context.tr.translate('streak_freeze_available_message')
-            : context.tr.translate('streak_freeze_none_message');
+    final hasFreeze = freezes > 0;
+    final title = hasFreeze
+        ? context.tr
+            .translate('streak_freeze_available_title')
+            .replaceAll('{count}', freezes.toString())
+        : context.tr.translate('streak_freeze_none_title');
+    final message = hasFreeze
+        ? context.tr.translate('streak_freeze_available_message')
+        : context.tr.translate('streak_freeze_none_message');
 
     return _SocialStyleCard(
       child: Row(
@@ -468,7 +463,7 @@ class _FreezeStatusCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
             ),
             child: Icon(
-              isActive ? Icons.ac_unit_rounded : Icons.shield_rounded,
+              Icons.shield_rounded,
               color: Colors.lightBlueAccent.shade700,
               size: 30,
             ),
@@ -497,80 +492,31 @@ class _FreezeStatusCard extends StatelessWidget {
                     height: 1.35,
                   ),
                 ),
-                if (!isActive) ...[
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: hasFreeze
-                          ? () => _confirmActivateFreeze(context)
-                          : () => _showFreezeInfo(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: primary,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 32),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        hasFreeze
-                            ? context.tr.translate('activate_freeze')
-                            : context.tr.translate('streak_get_more_freezes'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => _showFreezeInfo(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: primary,
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      context.tr.translate('streak_get_more_freezes'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Future<void> _confirmActivateFreeze(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.tr.translate('activate_freeze_title')),
-        content: Text(
-          context.tr.translate('activate_freeze_description').replaceAll(
-                '{count}',
-                streakProvider.freezesAvailable.toString(),
-              ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(context.tr.translate('cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.tr.translate('activate')),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-    final success = await streakProvider.activateFreeze();
-    if (!context.mounted) return;
-
-    final String message;
-    if (success) {
-      message = context.tr.translate('streak_freeze_activated');
-    } else {
-      final serverError = streakProvider.error;
-      message = serverError != null && serverError.isNotEmpty
-          ? '${context.tr.translate('streak_checkin_error')} ($serverError)'
-          : context.tr.translate('streak_checkin_error');
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
     );
   }
 

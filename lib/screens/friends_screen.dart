@@ -29,7 +29,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Future<void> _searchUsers(String query) async {
-    if (query.length < 2) {
+    final searchQuery = query.trim();
+    if (searchQuery.length < 2) {
       setState(() {
         _searchResults = [];
       });
@@ -37,7 +38,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
 
     final provider = context.read<FriendsProvider>();
-    final results = await provider.searchUsers(query);
+    final results = await provider.searchUsers(searchQuery);
 
     setState(() {
       _searchResults = results;
@@ -338,11 +339,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final message = messageController.text.trim();
               final success = await provider.sendPing(
                 friendData.friend.id,
-                message: messageController.text.isEmpty
-                    ? null
-                    : messageController.text,
+                message: message.isEmpty ? null : message,
               );
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(

@@ -38,6 +38,7 @@ This file guides coding agents working in this repository.
   - Requires auth token, credits the authenticated user with the server-side rewarded ad amount, and returns the updated credit balance.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
   - Diet generation model: `google/gemini-3-flash-preview` for My Diet generation and the backend `diet` alias.
+  - DeepSeek models (`deepseek/...`) are forced through OpenRouter provider slug `alibaba` in `dieta_api/src/services/openrouter.service.ts`, with provider fallbacks disabled.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.
 - Prisma access: `dieta_api/src/services/prisma.ts`, schema at `dieta_api/prisma/schema.prisma`.

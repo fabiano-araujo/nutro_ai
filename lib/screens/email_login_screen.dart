@@ -310,14 +310,15 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                         primaryColor: primaryColor,
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        final email = value?.trim() ?? '';
+                                        if (email.isEmpty) {
                                           return context.tr.translate(
                                             'please_enter_email',
                                           );
                                         }
                                         if (!RegExp(
                                           r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                                        ).hasMatch(value)) {
+                                        ).hasMatch(email)) {
                                           return context.tr.translate(
                                             'please_enter_valid_email',
                                           );
@@ -362,12 +363,13 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                         ),
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        final password = value?.trim() ?? '';
+                                        if (password.isEmpty) {
                                           return context.tr.translate(
                                             'please_enter_password',
                                           );
                                         }
-                                        if (value.length < 6) {
+                                        if (password.length < 6) {
                                           return context.tr.translate(
                                             'password_min_length',
                                           );
