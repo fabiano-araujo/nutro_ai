@@ -130,11 +130,6 @@ class _SocialHubScreenState extends State<SocialHubScreen>
           child: Column(
             children: [
               _SocialShellHeader(onOpenDrawer: widget.onOpenDrawer),
-              const _SocialHero(
-                icon: Icons.people_alt_rounded,
-                title: 'Comunidade',
-                subtitle: 'Entre para acompanhar amigos e desafios.',
-              ),
               Expanded(
                 child: DietStyleMessageState(
                   title: 'Entre para acessar a Comunidade',
@@ -449,65 +444,6 @@ class _SocialFriendsHeaderActions extends StatelessWidget {
         SizedBox(width: 6),
         _FriendsHeaderIconButton(),
       ],
-    );
-  }
-}
-
-class _SocialHero extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _SocialHero({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primary = _socialPrimaryColor(isDarkMode);
-    final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-      child: Column(
-        children: [
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              color: _socialInputFillColor(isDarkMode),
-              shape: BoxShape.circle,
-              border: Border.all(color: _socialBorderColor(isDarkMode)),
-            ),
-            child: Icon(icon, color: primary, size: 30),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: textColor,
-              height: 1.08,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              height: 1.35,
-              color: _socialMutedTextColor(isDarkMode),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

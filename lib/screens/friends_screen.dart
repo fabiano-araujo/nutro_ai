@@ -119,9 +119,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                               },
                             )
                           : null,
+                      filled: false,
+                      fillColor: Colors.transparent,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     onChanged: _searchUsers,

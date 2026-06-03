@@ -14,6 +14,8 @@ import '../providers/essay_provider.dart';
 import '../providers/food_history_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/free_chat_provider.dart';
+import '../providers/meal_types_provider.dart';
+import '../services/daily_chat_sync_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import 'login_screen.dart';
@@ -60,7 +62,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
       dietPlanProvider: context.read<DietPlanProvider>(),
       freeChatProvider: context.read<FreeChatProvider>(),
       nutritionGoalsProvider: context.read<NutritionGoalsProvider>(),
+      mealTypesProvider: context.read<MealTypesProvider>(),
+      dailyChatSyncService: DailyChatSyncService.instance,
     );
+  }
+
+  bool _hasPendingLogoutSync(_LogoutCleanupDependencies deps) {
+    return deps.nutritionGoalsProvider.hasPendingServerSync ||
+        deps.freeChatProvider.hasPendingServerSync ||
+        deps.foodHistoryProvider.hasPendingServerSync ||
+        deps.mealTypesProvider.hasPendingServerSync ||
+        deps.dietPlanProvider.hasPendingPreferencesSync ||
+        deps.dailyChatSyncService.hasPending;
+  }
+
+  Future<bool> _syncPendingBeforeLogout(
+    _LogoutCleanupDependencies deps,
+  ) async {
+    try {
+      await Future.wait([
+        deps.nutritionGoalsProvider.syncPendingIfNeeded(),
+        deps.freeChatProvider.syncPendingIfNeeded(),
+        deps.foodHistoryProvider.syncPendingIfNeeded(),
+        deps.mealTypesProvider.syncPendingIfNeeded(),
+        deps.dietPlanProvider.syncPendingPreferencesIfNeeded(),
+        deps.dailyChatSyncService.syncPendingIfNeeded(),
+      ]);
+    } catch (e) {
+      print('[🔄 AUTH_DATA] ❌ ERRO ao sincronizar antes do logout: $e');
+    }
+
+    return !_hasPendingLogoutSync(deps);
+  }
+
+  Future<bool> _confirmPendingLogout(ColorScheme colorScheme) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.tr.translate('logout_pending_sync_title')),
+        content: Text(context.tr.translate('logout_pending_sync_message')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(context.tr.translate('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+            ),
+            child: Text(context.tr.translate('logout_sync_and_leave')),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _performLogout(
+    AuthService authService,
+    _LogoutCleanupDependencies cleanupDependencies,
+  ) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    await Future.wait([
+      authService.logout(),
+      _clearAllUserData(cleanupDependencies),
+    ]);
   }
 
   /// Limpa todos os dados do usuário de todos os providers e storage
@@ -92,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Limpar FoodHistoryProvider
       print('[🔄 AUTH_DATA] 5/7 Limpando FoodHistoryProvider...');
-      await deps.foodHistoryProvider.clearAll();
+      await deps.foodHistoryProvider.clearAll(markPendingSync: false);
       print('[🔄 AUTH_DATA] 5/7 ✅ FoodHistoryProvider limpo');
 
       // Limpar DietPlanProvider (dietas personalizadas)
@@ -104,6 +176,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       print('[🔄 AUTH_DATA] 7/7 Limpando FreeChatProvider...');
       await deps.freeChatProvider.clearAll();
       print('[🔄 AUTH_DATA] 7/7 ✅ FreeChatProvider limpo');
+
+      // Limpar MealTypesProvider (configuração de refeições)
+      print('[🔄 AUTH_DATA] EXTRA: Limpando MealTypesProvider...');
+      await deps.mealTypesProvider.clearAllData();
+      print('[🔄 AUTH_DATA] EXTRA: ✅ MealTypesProvider limpo');
 
       // Limpar NutritionGoalsProvider (metas nutricionais)
       print('[🔄 AUTH_DATA] EXTRA: Limpando NutritionGoalsProvider...');
@@ -885,40 +962,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () async {
-            final shouldLogout = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text(context.tr.translate('logout')),
-                content: Text(context.tr.translate('logout_confirmation')),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: Text(context.tr.translate('cancel')),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: Text(
-                      context.tr.translate('logout'),
-                      style: TextStyle(color: colorScheme.error),
-                    ),
-                  ),
-                ],
-              ),
-            );
+            if (_isLoggingOut) return;
 
-            if (shouldLogout == true) {
-              if (!mounted) return;
+            final cleanupDependencies = _captureLogoutCleanupDependencies();
+            if (_hasPendingLogoutSync(cleanupDependencies)) {
+              final shouldSyncAndLogout =
+                  await _confirmPendingLogout(colorScheme);
+              if (!shouldSyncAndLogout || !mounted) return;
 
-              final cleanupDependencies = _captureLogoutCleanupDependencies();
               setState(() {
                 _isLoggingOut = true;
               });
 
-              await Future.wait([
-                authService.logout(),
-                _clearAllUserData(cleanupDependencies),
-              ]);
+              final synced =
+                  await _syncPendingBeforeLogout(cleanupDependencies);
+              if (!mounted) return;
+
+              if (!synced) {
+                setState(() {
+                  _isLoggingOut = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      context.tr.translate('logout_pending_sync_failed'),
+                    ),
+                    backgroundColor: colorScheme.error,
+                  ),
+                );
+                return;
+              }
             }
+
+            await _performLogout(authService, cleanupDependencies);
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -1084,6 +1160,8 @@ class _LogoutCleanupDependencies {
   final DietPlanProvider dietPlanProvider;
   final FreeChatProvider freeChatProvider;
   final NutritionGoalsProvider nutritionGoalsProvider;
+  final MealTypesProvider mealTypesProvider;
+  final DailyChatSyncService dailyChatSyncService;
 
   const _LogoutCleanupDependencies({
     required this.storageService,
@@ -1094,5 +1172,7 @@ class _LogoutCleanupDependencies {
     required this.dietPlanProvider,
     required this.freeChatProvider,
     required this.nutritionGoalsProvider,
+    required this.mealTypesProvider,
+    required this.dailyChatSyncService,
   });
 }

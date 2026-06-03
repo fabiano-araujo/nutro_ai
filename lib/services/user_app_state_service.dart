@@ -10,10 +10,22 @@ class UserAppStateService {
 
   Future<Map<String, dynamic>> fetchAppState({
     required String token,
+    String? nutritionChatDateKey,
+    bool lightweight = false,
   }) async {
+    final query = <String, String>{
+      ..._appStateUri.queryParameters,
+      if (nutritionChatDateKey != null)
+        'nutritionChatDate': nutritionChatDateKey,
+      if (lightweight) 'lightweight': 'true',
+    };
+    final uri = query.isEmpty
+        ? _appStateUri
+        : _appStateUri.replace(queryParameters: query);
+
     final response = await http
         .get(
-          _appStateUri,
+          uri,
           headers: _headers(token),
         )
         .timeout(const Duration(seconds: 12));
@@ -33,6 +45,7 @@ class UserAppStateService {
     List<Map<String, dynamic>>? mealTypes,
     Map<String, dynamic>? foodHistory,
     Map<String, dynamic>? nutritionChatByDate,
+    String? nutritionChatDateKey,
   }) async {
     final body = <String, dynamic>{
       if (goalSetup != null) 'goalSetup': goalSetup,
@@ -49,7 +62,12 @@ class UserAppStateService {
 
     final response = await http
         .put(
-          _appStateUri,
+          nutritionChatDateKey == null
+              ? _appStateUri
+              : _appStateUri.replace(queryParameters: {
+                  ..._appStateUri.queryParameters,
+                  'nutritionChatDate': nutritionChatDateKey,
+                }),
           headers: _headers(token),
           body: jsonEncode(body),
         )
@@ -59,6 +77,12 @@ class UserAppStateService {
       response,
       fallbackMessage: 'Falha ao sincronizar os dados do usuário',
     );
+  }
+
+  static String formatDateKey(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   Map<String, String> _headers(String token) => {

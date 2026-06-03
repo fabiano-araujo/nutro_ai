@@ -14,6 +14,7 @@ class AuthService with ChangeNotifier {
   User? _currentUser;
   String? _token;
   bool _isLoading = false;
+  bool _authenticatedFromStoredSession = false;
   String? _errorMessage; // Para armazenar mensagens de erro
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: kIsWeb ? _webGoogleClientId : null,
@@ -24,6 +25,7 @@ class AuthService with ChangeNotifier {
   String? get token => _token;
   bool get isAuthenticated => _currentUser != null && _token != null;
   bool get isLoading => _isLoading;
+  bool get authenticatedFromStoredSession => _authenticatedFromStoredSession;
   String? get errorMessage =>
       _errorMessage; // Getter para acessar mensagem de erro
 
@@ -47,6 +49,7 @@ class AuthService with ChangeNotifier {
         final userData = jsonDecode(savedUserJson);
         _currentUser = User.fromJson(userData);
         _token = savedToken;
+        _authenticatedFromStoredSession = true;
 
         print(
             '[AuthService] Dados de sessão restaurados para: ${_currentUser!.name}');
@@ -113,6 +116,7 @@ class AuthService with ChangeNotifier {
         // Salvar os dados do usuário e token
         _currentUser = User.fromJson(response['user']);
         _token = response['token'];
+        _authenticatedFromStoredSession = false;
 
         // Salvar o token e dados do usuário para uso futuro
         await _storage.write(key: 'auth_token', value: _token);
@@ -210,6 +214,7 @@ class AuthService with ChangeNotifier {
     _isLoading = true;
     _currentUser = null;
     _token = null;
+    _authenticatedFromStoredSession = false;
 
     // Limpar mensagem de erro se o logout for silencioso
     if (silent) {
@@ -422,6 +427,7 @@ class AuthService with ChangeNotifier {
         // Salvar os dados do usuário e token
         _currentUser = User.fromJson(data['user']);
         _token = data['token'];
+        _authenticatedFromStoredSession = false;
 
         // Salvar o token e dados do usuário para uso futuro
         await _storage.write(key: 'auth_token', value: _token);

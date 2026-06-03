@@ -74,7 +74,24 @@ flutter run
 flutter analyze
 flutter test
 flutter test test/ai_service_stream_test.dart
+dart run tool/remote_android_runner.dart quick
+dart run tool/remote_android_runner.dart hot
 ```
+
+### Android device run rule
+
+- When the user asks to run/open/test the app on Android, default to:
+  `dart run tool/remote_android_runner.dart quick`
+- This runner is the preferred path over `flutter devices` / plain `flutter run` for normal device checks because it:
+  - connects to the default remote device `100.72.202.76:5555`
+  - detects whether the local debug APK is stale
+  - rebuilds only when needed
+  - installs only when needed
+  - force-stops and opens `br.com.snapdark.apps.nutreai/.MainActivity`
+- If any code or asset was changed before the Android run, ensure the APK is rebuilt before opening the app. Prefer letting `quick` detect stale sources automatically; if there is any doubt, run `dart run tool/remote_android_runner.dart quick --force-build`.
+- Use `dart run tool/remote_android_runner.dart hot` only when the user explicitly needs a persistent hot-reload session.
+- After running, report whether the APK was rebuilt/installed and whether the app was opened. If useful, confirm with:
+  `adb -s 100.72.202.76:5555 shell pidof br.com.snapdark.apps.nutreai`
 
 ### Backend (`dieta_api/`)
 
@@ -87,6 +104,13 @@ npx prisma generate
 npx prisma migrate dev --name <migration_name>
 npx prisma studio
 ```
+
+### Backend deploy (`dieta_api`)
+
+- When the user asks to deploy the backend API, follow `dieta_api/deploy.md`.
+- Deploys must use Git: commit and push the intended `dieta_api` changes, then update production with `git pull origin main`.
+- Do not use `pscp`, manual file copy, or direct server edits as an automatic fallback; ask the user before using any non-Git deploy path.
+- Preserve production data directories, especially `/var/dieta_api/data`.
 
 ## 5) Agent Workflow
 

@@ -16,11 +16,13 @@ class FoodHistoryProvider extends ChangeNotifier {
   int _stateRevision = 0;
   Timer? _syncDebounce;
   final UserAppStateService _appStateService = UserAppStateService();
+  late final Future<void> _loadFuture;
 
   List<Food> get favorites => _favorites;
   List<Food> get recents => _recents;
   bool get hasPendingServerSync => _hasPendingServerSync;
   bool get isSyncingToServer => _isSyncingToServer;
+  bool get hasLocalData => _hasAnyLocalData;
 
   List<Food> get frequents {
     // Sort foods by frequency count
@@ -43,13 +45,17 @@ class FoodHistoryProvider extends ChangeNotifier {
   static const String _pendingSyncKey = 'food_history_pending_server_sync';
 
   FoodHistoryProvider() {
-    _loadData();
+    _loadFuture = _loadData();
   }
+
+  Future<void> ensureLoaded() => _loadFuture;
 
   Future<void> setAuth(
     String token,
     int userId, {
     Map<String, dynamic>? serverFoodHistory,
+    bool syncPendingOnAuth = true,
+    bool syncLocalIfServerEmpty = true,
   }) async {
     _token = token;
     _userId = userId;
@@ -60,7 +66,8 @@ class FoodHistoryProvider extends ChangeNotifier {
       return;
     }
 
-    if (_hasPendingServerSync || _hasAnyLocalData) {
+    if ((syncPendingOnAuth && _hasPendingServerSync) ||
+        (syncLocalIfServerEmpty && _hasAnyLocalData)) {
       await syncPendingIfNeeded();
     }
   }
@@ -201,7 +208,7 @@ class FoodHistoryProvider extends ChangeNotifier {
   }
 
   // Clear all data
-  Future<void> clearAll() async {
+  Future<void> clearAll({bool markPendingSync = true}) async {
     _favorites.clear();
     _recents.clear();
     _frequencyMap.clear();
@@ -211,7 +218,12 @@ class FoodHistoryProvider extends ChangeNotifier {
     await prefs.remove(_recentsKey);
     await prefs.remove(_frequencyKey);
     _stateRevision++;
-    await _markPendingAndScheduleSync();
+    if (markPendingSync) {
+      await _markPendingAndScheduleSync();
+    } else {
+      _hasPendingServerSync = false;
+      await _savePendingSyncFlag();
+    }
 
     notifyListeners();
   }
@@ -229,7 +241,8 @@ class FoodHistoryProvider extends ChangeNotifier {
     if (payload == null) return false;
     return (payload['favorites'] is List &&
             (payload['favorites'] as List).isNotEmpty) ||
-        (payload['recents'] is List && (payload['recents'] as List).isNotEmpty) ||
+        (payload['recents'] is List &&
+            (payload['recents'] as List).isNotEmpty) ||
         (payload['frequency'] is Map &&
             (payload['frequency'] as Map).isNotEmpty);
   }
@@ -249,7 +262,8 @@ class FoodHistoryProvider extends ChangeNotifier {
       final parsedCount =
           count is int ? count : int.tryParse(count?.toString() ?? '') ?? 0;
       return MapEntry(key.toString(), parsedCount);
-    })..removeWhere((key, count) => key.trim().isEmpty || count <= 0);
+    })
+      ..removeWhere((key, count) => key.trim().isEmpty || count <= 0);
   }
 
   Future<void> _saveAll({bool markPendingSync = true}) async {

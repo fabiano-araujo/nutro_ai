@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/rate_app_bottom_sheet.dart';
@@ -20,6 +21,9 @@ class RateAppService {
   static const Duration _inAppReviewCooldown = Duration(days: 30);
 
   static final InAppReview _inAppReview = InAppReview.instance;
+  static const MethodChannel _rateAppChannel = MethodChannel(
+    'br.com.snapdark.apps.nutro_ia/rate_app',
+  );
 
   // Incrementa o contador de sessões e verifica se deve mostrar o diálogo
   static Future<bool> incrementSessionAndCheckIfShouldPrompt() async {
@@ -107,10 +111,31 @@ class RateAppService {
 
   static Future<void> _openStoreListing() async {
     try {
+      final googlePlayResult = await _openGooglePlayListing();
+      // null significa que o canal nativo Android nao existe, como no iOS.
+      if (googlePlayResult != null) {
+        return;
+      }
+
       await _inAppReview.openStoreListing();
     } catch (e, stackTrace) {
       debugPrint('RateAppService._openStoreListing error: $e');
       debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  static Future<bool?> _openGooglePlayListing() async {
+    try {
+      return await _rateAppChannel.invokeMethod<bool>(
+            'openGooglePlayListing',
+          ) ??
+          false;
+    } on MissingPluginException {
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('RateAppService._openGooglePlayListing error: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      return false;
     }
   }
 

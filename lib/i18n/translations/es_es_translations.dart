@@ -38,6 +38,29 @@ final Map<String, String> esESTranslations = {
   'sign_out': 'Cerrar Sesión',
   'logout': 'Cerrar Sesión',
   'logout_confirmation': '¿Estás seguro de que deseas cerrar sesión?',
+  'logout_pending_sync_title': 'Sincronizar antes de salir',
+  'logout_pending_sync_message':
+      'Hay cambios en este dispositivo que aún no se guardaron en tu cuenta. Para no perder nada, conéctate a internet y sincroniza ahora.',
+  'logout_sync_and_leave': 'Sincronizar y salir',
+  'logout_pending_sync_failed':
+      'No fue posible sincronizar. Sigues conectado para no perder datos.',
+  'guest_local_data_title': '¿Guardar datos de este dispositivo?',
+  'guest_local_data_message':
+      'Encontramos información creada antes del inicio de sesión. Puedes guardarla en esta cuenta o descartarla de este dispositivo.',
+  'guest_local_data_save_action': 'Guardar en la cuenta',
+  'guest_local_data_discard_action': 'No guardar',
+  'guest_local_data_saved': 'Datos locales guardados en tu cuenta.',
+  'guest_local_data_save_failed':
+      'No fue posible guardar estos datos ahora. Inténtalo de nuevo cuando estés en línea.',
+  'guest_local_data_discarded':
+      'Datos locales descartados de este dispositivo.',
+  'guest_local_data_discard_failed':
+      'No fue posible descartar los datos locales ahora.',
+  'guest_local_data_summary_goals': 'Metas',
+  'guest_local_data_summary_meals': 'Comidas',
+  'guest_local_data_summary_chats': 'Conversaciones',
+  'guest_local_data_summary_foods': 'Alimentos',
+  'guest_local_data_summary_preferences': 'Preferencias',
   'edit_profile': 'Editar Perfil',
 
   // Pantallas de Registro
@@ -187,6 +210,8 @@ final Map<String, String> esESTranslations = {
   'voice_settings_no_voices': 'No hay voces disponibles en este momento.',
   'voice_settings_title': 'Configuracion de voz',
   'tts_engine_label': 'Motor de voz:',
+  'tts_engine_system_label': 'Sistema',
+  'tts_engine_system_google_label': 'Sistema / Google TTS',
   'tts_engine_system_description': 'Motor predeterminado del sistema',
   'tts_piper_unavailable_description':
       'Instala un motor Piper/Sherpa TTS en Android para usar esta opcion.',

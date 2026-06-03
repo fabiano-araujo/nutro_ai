@@ -7,13 +7,31 @@ import '../models/food_model.dart';
 import '../models/Nutrient.dart';
 import '../services/meals_sync_service.dart';
 
+class DailyMealsSyncSnapshot {
+  final DateTime date;
+  final List<Meal> meals;
+  final int waterGlasses;
+  final MealGoals goals;
+
+  DailyMealsSyncSnapshot({
+    required this.date,
+    required List<Meal> meals,
+    required this.waterGlasses,
+    required this.goals,
+  }) : meals = List.unmodifiable(meals);
+}
+
 class DailyMealsProvider extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now();
   final Map<String, List<Meal>> _mealsByDate = {};
   final Map<String, int> _waterByDate = {};
   final Map<String, _StoredDailySummary> _serverSummariesByDate = {};
+  final Set<String> _loadedDetailDateKeys = {};
+  final Set<String> _loadingDetailDateKeys = {};
+  final Set<String> _loadedSummaryMonthKeys = {};
   late final Future<void> _initialLoadFuture;
   bool _isLoaded = false;
+  static const int _initialSummaryLookbackDays = 90;
 
   // Goals (can be customized by user later)
   int caloriesGoal = 2000;
@@ -21,6 +39,7 @@ class DailyMealsProvider extends ChangeNotifier {
   int carbsGoal = 250;
   int fatsGoal = 67;
   int waterGoal = 8; // Default 8 glasses
+  String? fitnessGoal;
 
   // ========== SYNC WITH SERVER ==========
   String? _userId;
@@ -39,6 +58,7 @@ class DailyMealsProvider extends ChangeNotifier {
   bool get isAuthenticated => _userId != null && _token != null;
   bool get isLoaded => _isLoaded;
   Future<void> get ready => _initialLoadFuture;
+  bool get hasAnyLocalMealData => getLocalSyncSnapshots().isNotEmpty;
 
   DailyMealsProvider() {
     _initialLoadFuture = _loadFromPreferences();
@@ -65,46 +85,115 @@ class DailyMealsProvider extends ChangeNotifier {
     print('[🔄 AUTH_DATA] DailyMealsProvider.clearAuth() - ✅ Auth limpo');
   }
 
-  /// Carrega dados do servidor (últimos 30 dias)
+  /// Carrega resumos leves e somente os detalhes do dia selecionado.
   Future<void> _loadFromServer() async {
     if (_userId == null || _token == null) return;
     if (_isLoadingFromServer) return;
 
     _isLoadingFromServer = true;
     notifyListeners();
-    print('[DailyMealsProvider] Carregando dados do servidor...');
+    print('[DailyMealsProvider] Carregando resumo leve do servidor...');
 
     try {
-      final summaries = await MealsSyncService.getMealsRange(
-        token: _token!,
-        from: DateTime.now().subtract(const Duration(days: 30)),
-        to: DateTime.now(),
+      final now = DateTime.now();
+      await _loadServerSummariesRange(
+        from: now.subtract(const Duration(days: _initialSummaryLookbackDays)),
+        to: now,
       );
 
-      print(
-          '[DailyMealsProvider] ${summaries.length} dias carregados do servidor');
-
-      // Mesclar com dados locais (servidor tem prioridade)
-      for (final summary in summaries) {
-        final dateKey = _formatDate(summary.date);
-        _serverSummariesByDate[dateKey] =
-            _StoredDailySummary.fromServer(summary);
-        _waterByDate[dateKey] = summary.waterGlasses;
-
-        // Se há dados do servidor, sobrescreve os locais
-        if (summary.meals.isNotEmpty) {
-          _mealsByDate[dateKey] = _normalizeMeals(summary.meals);
-        }
-      }
-
-      // Salvar dados mesclados localmente
-      await _saveToPreferences();
-      notifyListeners();
+      await _loadDayDetailsFromServer(_selectedDate, force: true);
     } catch (e) {
       print('[DailyMealsProvider] Erro ao carregar do servidor: $e');
     } finally {
       _isLoadingFromServer = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _loadServerSummariesRange({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    if (_token == null) return;
+
+    final summaries = await MealsSyncService.getMealsRange(
+      token: _token!,
+      from: from,
+      to: to,
+      summaryOnly: true,
+    );
+
+    for (final summary in summaries) {
+      _applyServerSummary(summary, includeMeals: false);
+    }
+    _markSummaryMonthsLoaded(from, to);
+
+    await _saveToPreferences();
+    print(
+        '[DailyMealsProvider] ${summaries.length} resumo(s) diário(s) carregado(s)');
+  }
+
+  Future<void> ensureMonthSummariesLoaded(DateTime visibleMonth) async {
+    if (_token == null) return;
+
+    final monthKey = _monthKey(visibleMonth);
+    if (_loadedSummaryMonthKeys.contains(monthKey)) return;
+
+    final start = DateTime(visibleMonth.year, visibleMonth.month, 1);
+    final end = DateTime(visibleMonth.year, visibleMonth.month + 1, 0);
+    _loadedSummaryMonthKeys.add(monthKey);
+
+    try {
+      await _loadServerSummariesRange(from: start, to: end);
+      notifyListeners();
+    } catch (e) {
+      _loadedSummaryMonthKeys.remove(monthKey);
+      print('[DailyMealsProvider] Erro ao carregar mês $monthKey: $e');
+    }
+  }
+
+  Future<void> _loadDayDetailsFromServer(
+    DateTime date, {
+    bool force = false,
+  }) async {
+    if (_token == null) return;
+
+    final dateKey = _formatDate(date);
+    if (!force && _loadedDetailDateKeys.contains(dateKey)) return;
+    if (_loadingDetailDateKeys.contains(dateKey)) return;
+
+    _loadingDetailDateKeys.add(dateKey);
+    try {
+      final summary = await MealsSyncService.getDaySummary(
+        token: _token!,
+        date: date,
+      );
+      if (summary == null) {
+        _loadedDetailDateKeys.add(dateKey);
+        return;
+      }
+
+      _applyServerSummary(summary, includeMeals: true);
+      _loadedDetailDateKeys.add(dateKey);
+      await _saveToPreferences();
+      notifyListeners();
+    } catch (e) {
+      print('[DailyMealsProvider] Erro ao carregar dia $dateKey: $e');
+    } finally {
+      _loadingDetailDateKeys.remove(dateKey);
+    }
+  }
+
+  void _applyServerSummary(
+    DailySummary summary, {
+    required bool includeMeals,
+  }) {
+    final dateKey = _formatDate(summary.date);
+    _serverSummariesByDate[dateKey] = _StoredDailySummary.fromServer(summary);
+    _waterByDate[dateKey] = summary.waterGlasses;
+
+    if (includeMeals) {
+      _mealsByDate[dateKey] = _normalizeMeals(summary.meals);
     }
   }
 
@@ -144,12 +233,12 @@ class DailyMealsProvider extends ChangeNotifier {
           protein: proteinGoal,
           carbs: carbsGoal,
           fat: fatsGoal,
+          fitnessGoal: fitnessGoal,
         ),
       );
       if (summary != null) {
-        _serverSummariesByDate[dateKey] =
-            _StoredDailySummary.fromServer(summary);
-        _waterByDate[dateKey] = summary.waterGlasses;
+        _applyServerSummary(summary, includeMeals: summary.meals.isNotEmpty);
+        _loadedDetailDateKeys.add(dateKey);
         await _saveToPreferences();
       }
 
@@ -177,17 +266,202 @@ class DailyMealsProvider extends ChangeNotifier {
     await _syncToServer();
   }
 
+  List<DailyMealsSyncSnapshot> getLocalSyncSnapshots() {
+    final dateKeys = <String>{
+      ..._mealsByDate.keys,
+      ..._waterByDate.keys,
+    }.toList()
+      ..sort();
+
+    final snapshots = <DailyMealsSyncSnapshot>[];
+    for (final dateKey in dateKeys) {
+      final meals = List<Meal>.from(_mealsByDate[dateKey] ?? const <Meal>[]);
+      final hasMealData = meals.any((meal) => meal.foods.isNotEmpty);
+      final waterGlasses = _waterByDate[dateKey] ?? 0;
+      if (!hasMealData && waterGlasses <= 0) {
+        continue;
+      }
+
+      final date = DateTime.tryParse(dateKey);
+      if (date == null) {
+        continue;
+      }
+
+      final summary = _serverSummariesByDate[dateKey];
+      snapshots.add(
+        DailyMealsSyncSnapshot(
+          date: date,
+          meals: meals,
+          waterGlasses: waterGlasses,
+          goals: summary?.goals ??
+              MealGoals(
+                calories: caloriesGoal,
+                protein: proteinGoal,
+                carbs: carbsGoal,
+                fat: fatsGoal,
+                fitnessGoal: fitnessGoal,
+              ),
+        ),
+      );
+    }
+
+    return snapshots;
+  }
+
+  Future<int> syncSnapshotsToServer(
+    String token,
+    List<DailyMealsSyncSnapshot> snapshots, {
+    bool skipServerConflicts = true,
+  }) async {
+    var synced = 0;
+    for (final snapshot in snapshots) {
+      final dateKey = _formatDate(snapshot.date);
+      final serverSummary = _serverSummariesByDate[dateKey];
+      final hasServerData = serverSummary != null &&
+          (serverSummary.hasMealData || serverSummary.waterGlasses > 0);
+      if (skipServerConflicts && hasServerData) {
+        continue;
+      }
+
+      final summary = await MealsSyncService.syncDay(
+        token: token,
+        date: snapshot.date,
+        meals: snapshot.meals,
+        waterGlasses: snapshot.waterGlasses,
+        goals: snapshot.goals,
+      );
+      if (summary == null) {
+        throw Exception('Falha ao sincronizar refeições de $dateKey');
+      }
+
+      _applyServerSummary(summary, includeMeals: summary.meals.isNotEmpty);
+      _loadedDetailDateKeys.add(dateKey);
+      synced++;
+    }
+
+    if (synced > 0) {
+      await _saveToPreferences();
+      notifyListeners();
+    }
+    return synced;
+  }
+
   DateTime get selectedDate => _selectedDate;
 
   /// Retorna true se houver algum alimento registrado na data informada.
   bool hasMealsOn(DateTime date) {
     final dateKey = _formatDate(date);
     final meals = _mealsByDate[dateKey];
-    if (meals == null || meals.isEmpty) return false;
-    for (final meal in meals) {
-      if (meal.foods.isNotEmpty) return true;
+    if (meals != null) {
+      for (final meal in meals) {
+        if (meal.foods.isNotEmpty) return true;
+      }
+    }
+
+    return _serverSummariesByDate[dateKey]?.hasMealData ?? false;
+  }
+
+  bool hasNutritionDataOn(DateTime date) {
+    final dateKey = _formatDate(date);
+    final summary = _serverSummariesByDate[dateKey];
+    if (summary != null) {
+      return summary.hasMealData ||
+          summary.totalCalories > 0 ||
+          summary.totalProtein > 0 ||
+          summary.totalCarbs > 0 ||
+          summary.totalFat > 0;
+    }
+    return hasMealsOn(date);
+  }
+
+  /// Retorna true se a meta de proteína foi batida na data informada.
+  bool hasHitProteinGoalOn(DateTime date, {int? proteinTarget}) {
+    final dateKey = _formatDate(date);
+    final summary = _serverSummariesByDate[dateKey];
+    if (summary != null) {
+      final target = proteinTarget ?? summary.goals.protein;
+      return summary.totalProtein > 0 && summary.totalProtein >= target;
+    }
+
+    final protein = getMacrosForDate(date)['protein'] ?? 0;
+    return protein > 0 && protein >= (proteinTarget ?? proteinGoal);
+  }
+
+  /// Retorna true se a meta de calorias foi batida na data informada.
+  ///
+  /// Para objetivos de perda, ficar abaixo da meta conta como sucesso, com uma
+  /// margem para passar um pouco. Para ganho, passar da meta conta como
+  /// sucesso, com uma margem para ficar um pouco abaixo. Para manutenção, usa
+  /// a faixa completa para mais e para menos.
+  bool hasHitCalorieGoalOn(
+    DateTime date, {
+    int? calorieGoal,
+    bool allowBelowGoal = true,
+    bool allowAboveGoal = true,
+    double margin = 0.1,
+  }) {
+    final dateKey = _formatDate(date);
+    final summary = _serverSummariesByDate[dateKey];
+    final calories = summary?.totalCalories ?? getCaloriesForDate(date);
+    final target = calorieGoal ?? summary?.goals.calories ?? caloriesGoal;
+    if (calories <= 0 || target <= 0) return false;
+
+    final lowerBound = target * (1 - margin);
+    final upperBound = target * (1 + margin);
+
+    if (allowBelowGoal && allowAboveGoal) {
+      return calories >= lowerBound && calories <= upperBound;
+    }
+    if (allowBelowGoal) {
+      return calories <= upperBound;
+    }
+    if (allowAboveGoal) {
+      return calories >= lowerBound;
     }
     return false;
+  }
+
+  int getCurrentProteinGoalStreak({int? proteinTarget}) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime cursor = hasHitProteinGoalOn(today, proteinTarget: proteinTarget)
+        ? today
+        : today.subtract(const Duration(days: 1));
+
+    int count = 0;
+    while (hasHitProteinGoalOn(cursor, proteinTarget: proteinTarget) &&
+        count < 365) {
+      count++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return count;
+  }
+
+  int getCurrentCalorieGoalStreak({
+    int? calorieGoal,
+    bool allowBelowGoal = true,
+    bool allowAboveGoal = true,
+    double margin = 0.1,
+  }) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    bool hit(DateTime date) => hasHitCalorieGoalOn(
+          date,
+          calorieGoal: calorieGoal,
+          allowBelowGoal: allowBelowGoal,
+          allowAboveGoal: allowAboveGoal,
+          margin: margin,
+        );
+
+    DateTime cursor =
+        hit(today) ? today : today.subtract(const Duration(days: 1));
+
+    int count = 0;
+    while (hit(cursor) && count < 365) {
+      count++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return count;
   }
 
   /// Conta dias consecutivos com refeições registradas (a partir de hoje, ou
@@ -217,6 +491,48 @@ class DailyMealsProvider extends ChangeNotifier {
   List<Meal> getMealsForDate(DateTime date) {
     final dateKey = _formatDate(date);
     return List<Meal>.unmodifiable(_mealsByDate[dateKey] ?? const <Meal>[]);
+  }
+
+  Map<String, dynamic> getNutritionSnapshotForDate(DateTime date) {
+    final dateKey = _formatDate(date);
+    final summary = _serverSummariesByDate[dateKey];
+    final meals = _mealsByDate[dateKey] ?? const <Meal>[];
+    final localCalories =
+        meals.fold<int>(0, (sum, meal) => sum + meal.totalCalories);
+    final localProtein =
+        meals.fold<double>(0, (sum, meal) => sum + meal.totalProtein);
+    final localCarbs =
+        meals.fold<double>(0, (sum, meal) => sum + meal.totalCarbs);
+    final localFat = meals.fold<double>(0, (sum, meal) => sum + meal.totalFat);
+    final hasLocalMealData = meals.any((meal) => meal.foods.isNotEmpty) ||
+        localCalories > 0 ||
+        localProtein > 0 ||
+        localCarbs > 0 ||
+        localFat > 0;
+    final goals = summary?.goals ??
+        MealGoals(
+          calories: caloriesGoal,
+          protein: proteinGoal,
+          carbs: carbsGoal,
+          fat: fatsGoal,
+        );
+
+    return {
+      'date': date,
+      'hasServerSummary': summary != null,
+      'hasData': summary?.hasMealData ?? hasLocalMealData,
+      'calories': summary?.totalCalories ?? localCalories,
+      'protein': summary?.totalProtein ?? localProtein,
+      'carbs': summary?.totalCarbs ?? localCarbs,
+      'fat': summary?.totalFat ?? localFat,
+      'fiber': summary?.totalFiber ?? getMacrosForDate(date)['fiber'] ?? 0.0,
+      'waterGlasses': _waterByDate[dateKey] ?? summary?.waterGlasses ?? 0,
+      'waterGoal': summary?.waterGoal ?? waterGoal,
+      'calorieGoal': goals.calories,
+      'proteinGoal': goals.protein,
+      'carbsGoal': goals.carbs,
+      'fatGoal': goals.fat,
+    };
   }
 
   // Get meals by type — agrega todos os foods das refeicoes deste tipo
@@ -325,6 +641,9 @@ class DailyMealsProvider extends ChangeNotifier {
                 .toList(),
           );
         });
+        _loadedDetailDateKeys
+          ..clear()
+          ..addAll(_mealsByDate.keys);
       }
 
       // Load goals
@@ -333,6 +652,7 @@ class DailyMealsProvider extends ChangeNotifier {
       carbsGoal = prefs.getInt('meals_carbs_goal') ?? 250;
       fatsGoal = prefs.getInt('meals_fats_goal') ?? 67;
       waterGoal = prefs.getInt('water_goal') ?? 8;
+      fitnessGoal = prefs.getString('meals_fitness_goal');
 
       // Load water data
       final waterJson = prefs.getString('water_by_date');
@@ -357,6 +677,9 @@ class DailyMealsProvider extends ChangeNotifier {
                 _StoredDailySummary.fromJson(Map<String, dynamic>.from(value));
           }
         });
+        _loadedSummaryMonthKeys
+          ..clear()
+          ..addAll(_serverSummariesByDate.keys.map(_monthKeyFromDateKey));
       }
 
       _isLoaded = true;
@@ -388,6 +711,7 @@ class DailyMealsProvider extends ChangeNotifier {
         'daily_meal_summaries',
         jsonEncode(summariesToSave),
       );
+      await prefs.setString('water_by_date', jsonEncode(_waterByDate));
 
       // Save goals
       await prefs.setInt('meals_calories_goal', caloriesGoal);
@@ -395,6 +719,11 @@ class DailyMealsProvider extends ChangeNotifier {
       await prefs.setInt('meals_carbs_goal', carbsGoal);
       await prefs.setInt('meals_fats_goal', fatsGoal);
       await prefs.setInt('water_goal', waterGoal);
+      if (fitnessGoal == null) {
+        await prefs.remove('meals_fitness_goal');
+      } else {
+        await prefs.setString('meals_fitness_goal', fitnessGoal!);
+      }
     } catch (e) {
       print('Error saving daily meals: $e');
     }
@@ -414,9 +743,27 @@ class DailyMealsProvider extends ChangeNotifier {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  String _monthKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  }
+
+  String _monthKeyFromDateKey(String dateKey) {
+    return dateKey.length >= 7 ? dateKey.substring(0, 7) : dateKey;
+  }
+
+  void _markSummaryMonthsLoaded(DateTime from, DateTime to) {
+    var cursor = DateTime(from.year, from.month, 1);
+    final end = DateTime(to.year, to.month, 1);
+    while (!cursor.isAfter(end)) {
+      _loadedSummaryMonthKeys.add(_monthKey(cursor));
+      cursor = DateTime(cursor.year, cursor.month + 1, 1);
+    }
+  }
+
   void setSelectedDate(DateTime date) {
-    _selectedDate = date;
+    _selectedDate = DateTime(date.year, date.month, date.day);
     notifyListeners();
+    unawaited(_loadDayDetailsFromServer(_selectedDate));
   }
 
   /// Busca uma refeição pelo messageId (ID da mensagem do chat que a gerou)
@@ -640,11 +987,13 @@ class DailyMealsProvider extends ChangeNotifier {
     int? protein,
     int? carbs,
     int? fats,
+    String? fitnessGoal,
   }) {
     if (calories != null) caloriesGoal = calories;
     if (protein != null) proteinGoal = protein;
     if (carbs != null) carbsGoal = carbs;
     if (fats != null) fatsGoal = fats;
+    if (fitnessGoal != null) this.fitnessGoal = fitnessGoal;
     _serverSummariesByDate.remove(_formatDate(_selectedDate));
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
@@ -1117,6 +1466,9 @@ class DailyMealsProvider extends ChangeNotifier {
     _mealsByDate.clear();
     _waterByDate.clear();
     _serverSummariesByDate.clear();
+    _loadedDetailDateKeys.clear();
+    _loadingDetailDateKeys.clear();
+    _loadedSummaryMonthKeys.clear();
 
     // Limpar do SharedPreferences
     try {

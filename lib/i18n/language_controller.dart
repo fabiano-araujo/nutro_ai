@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_localizations.dart';
@@ -40,6 +41,14 @@ class LanguageController extends ChangeNotifier {
   // Carregar o idioma salvo nas preferências
   Future<void> _loadSavedLanguage() async {
     final prefs = await SharedPreferences.getInstance();
+    final qaLocale = _readQaLocaleOverride();
+    if (qaLocale != null) {
+      _currentLocale = qaLocale;
+      await prefs.setString(LANGUAGE_CODE, _currentLocale.languageCode);
+      await prefs.setString(COUNTRY_CODE, _currentLocale.countryCode!);
+      notifyListeners();
+      return;
+    }
 
     // Verifica se já existe um idioma salvo
     if (prefs.containsKey(LANGUAGE_CODE)) {
@@ -90,5 +99,29 @@ class LanguageController extends ChangeNotifier {
   // Converter Locale para string
   String localeToString(Locale locale) {
     return '${locale.languageCode}_${locale.countryCode}';
+  }
+
+  Locale? _readQaLocaleOverride() {
+    if (!kDebugMode) {
+      return null;
+    }
+    final params = Uri.base.queryParameters;
+    final raw = params['qaLang'] ?? params['qaLocale'];
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+
+    final normalized = raw.trim().replaceAll('-', '_');
+    final parts = normalized.split('_');
+    final language = parts.first.toLowerCase();
+    final country = parts.length > 1 ? parts[1].toUpperCase() : null;
+    for (final candidate in AppLocalizations.supportedLocales) {
+      if (candidate.languageCode == language &&
+          (country == null || candidate.countryCode == country) &&
+          isLocaleSupported(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 }

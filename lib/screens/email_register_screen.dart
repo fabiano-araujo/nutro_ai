@@ -14,6 +14,8 @@ class EmailRegisterScreen extends StatefulWidget {
 
 class _EmailRegisterScreenState extends State<EmailRegisterScreen>
     with SingleTickerProviderStateMixin {
+  static const String _appIconAsset = 'assets/images/logo.png';
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -156,10 +158,10 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
     final isDarkMode = theme.brightness == Brightness.dark;
     final bgColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
-    final textPrimary =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final textSecondary =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final titleColor = isDarkMode ? Colors.white : Colors.black;
+    final fieldTextColor = isDarkMode ? Colors.white : Colors.black;
     final primaryColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
     final onPrimary = AppTheme.onColor(primaryColor);
@@ -169,7 +171,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
       body: SafeArea(
         child: Column(
           children: [
-            _buildMinimalHeader(textColor: textPrimary),
+            _buildMinimalHeader(textColor: titleColor),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -193,7 +195,6 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                       CrossAxisAlignment.stretch,
                                   children: [
                                     _buildRegisterMark(
-                                      textColor: textPrimary,
                                       isDarkMode: isDarkMode,
                                     ),
                                     const SizedBox(height: 16),
@@ -203,9 +204,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                       style: TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.w700,
-                                        color: AppTheme.getSoftTextColor(
-                                          isDarkMode,
-                                        ),
+                                        color: titleColor,
                                         height: 1.2,
                                       ),
                                     ),
@@ -228,7 +227,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                     ],
                                     _FieldLabel(
                                       label: context.tr.translate('name'),
-                                      color: textSecondary,
+                                      color: fieldTextColor,
                                     ),
                                     const SizedBox(height: 8),
                                     TextFormField(
@@ -238,7 +237,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                           TextCapitalization.words,
                                       style: TextStyle(
                                         fontSize: 15,
-                                        color: textPrimary,
+                                        color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
                                         hintText: context.tr.translate('name'),
@@ -265,7 +264,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                     const SizedBox(height: 16),
                                     _FieldLabel(
                                       label: context.tr.translate('email'),
-                                      color: textSecondary,
+                                      color: fieldTextColor,
                                     ),
                                     const SizedBox(height: 8),
                                     TextFormField(
@@ -273,7 +272,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                       keyboardType: TextInputType.emailAddress,
                                       style: TextStyle(
                                         fontSize: 15,
-                                        color: textPrimary,
+                                        color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
                                         hintText: 'exemplo@email.com',
@@ -302,7 +301,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                     const SizedBox(height: 16),
                                     _FieldLabel(
                                       label: context.tr.translate('password'),
-                                      color: textSecondary,
+                                      color: fieldTextColor,
                                     ),
                                     const SizedBox(height: 8),
                                     TextFormField(
@@ -310,7 +309,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                       obscureText: _obscurePassword,
                                       style: TextStyle(
                                         fontSize: 15,
-                                        color: textPrimary,
+                                        color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
                                         hintText: '••••••••',
@@ -355,7 +354,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                       label: context.tr.translate(
                                         'confirm_password',
                                       ),
-                                      color: textSecondary,
+                                      color: fieldTextColor,
                                     ),
                                     const SizedBox(height: 8),
                                     TextFormField(
@@ -363,7 +362,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                       obscureText: _obscureConfirmPassword,
                                       style: TextStyle(
                                         fontSize: 15,
-                                        color: textPrimary,
+                                        color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
                                         hintText: '••••••••',
@@ -464,23 +463,21 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
     );
   }
 
-  Widget _buildRegisterMark({
-    required Color textColor,
-    required bool isDarkMode,
-  }) {
+  Widget _buildRegisterMark({required bool isDarkMode}) {
     return Center(
       child: Container(
-        width: 52,
-        height: 52,
+        width: 56,
+        height: 56,
         decoration: BoxDecoration(
           color: _surfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(100),
+          shape: BoxShape.circle,
           border: Border.all(color: _subtleBorderColor(isDarkMode)),
         ),
-        child: Icon(
-          Icons.person_add_alt_outlined,
-          size: 23,
-          color: textColor.withValues(alpha: 0.82),
+        child: ClipOval(
+          child: Image.asset(
+            _appIconAsset,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );

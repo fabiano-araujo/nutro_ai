@@ -293,12 +293,14 @@ class NutritionGoalsProvider extends ChangeNotifier {
     String token,
     int userId, {
     Map<String, dynamic>? appState,
+    bool syncPendingOnAuth = true,
+    bool syncLocalIfServerEmpty = true,
   }) async {
     _authToken = token;
     _authUserId = userId;
     await ensureLoaded();
 
-    if (_hasPendingServerSync) {
+    if (_hasPendingServerSync && syncPendingOnAuth) {
       await syncPendingIfNeeded();
       return;
     }
@@ -320,7 +322,9 @@ class NutritionGoalsProvider extends ChangeNotifier {
     if (goalSetup.isNotEmpty) {
       final serverIsConfigured =
           goalSetup['configurationStatus']?.toString() == 'configured';
-      if (!serverIsConfigured && _hasConfiguredGoals) {
+      if (syncLocalIfServerEmpty &&
+          !serverIsConfigured &&
+          _hasConfiguredGoals) {
         _hasPendingServerSync = true;
         await _saveToPreferences();
         await syncPendingIfNeeded();

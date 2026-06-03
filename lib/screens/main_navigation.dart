@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -113,6 +115,9 @@ class _MainNavigationState extends State<MainNavigation> {
   bool _authInitialized = false;
   String? _configuredAuthKey;
   String? _initialGoalsPromptAuthKey;
+  bool _isResolvingGuestLocalData = false;
+  _GuestLocalDataSnapshot? _pendingGuestLocalData;
+  Map<String, dynamic> _latestAppState = const <String, dynamic>{};
   final UserAppStateService _appStateService = UserAppStateService();
 
   @override
@@ -260,59 +265,24 @@ class _MainNavigationState extends State<MainNavigation> {
         print('[🔄 AUTH_DATA] ========== LOGIN DETECTADO ==========');
         print('[🔄 AUTH_DATA] UserId: $userId');
         print('[🔄 AUTH_DATA] Configurando providers...');
-
-        dailyMealsProvider.setAuth(userId, token);
-        print('[🔄 AUTH_DATA] ✅ DailyMealsProvider configurado');
-
-        streakProvider.setToken(token);
-        print('[🔄 AUTH_DATA] ✅ StreakProvider configurado');
-
-        // Auto check-in de streak após sync de refeições do dia atual.
-        // O backend só aceita check-in quando há UserDailySummary com calorias > 0,
-        // então disparar logo após o sync garante a sincronização das duas pontas.
-        dailyMealsProvider.onTodaySynced = () {
-          streakProvider.performCheckIn();
-        };
-
-        friendsProvider.setToken(token);
-        print('[🔄 AUTH_DATA] ✅ FriendsProvider configurado');
-
-        challengesProvider.setToken(token);
-        print('[🔄 AUTH_DATA] ✅ ChallengesProvider configurado');
-
-        feedProvider.setToken(token);
-        print('[🔄 AUTH_DATA] ✅ FeedProvider configurado');
-
-        // Configurar auth para DietPlanProvider (carrega dietas do servidor)
-        dietPlanProvider.setAuth(token, authService.currentUser!.id);
-        print('[🔄 AUTH_DATA] ✅ DietPlanProvider configurado');
-
-        nutritionGoalsProvider.setAuth(token, authService.currentUser!.id);
-        freeChatProvider.setAuth(token, authService.currentUser!.id);
-
-        // Carregar estado do usuário em uma única solicitação: perfil/créditos,
-        // metas nutricionais e conversas livres.
-        _loadAppStateFromServer(
-          token,
-          authService.currentUser!.id,
-          authService,
-          creditProvider,
-          dietPlanProvider,
-          nutritionGoalsProvider,
-          freeChatProvider,
-          mealTypesProvider,
-          foodHistoryProvider,
-        );
-
-        // Forçar recriação do NutritionAssistantScreen para carregar dados do usuário
-        print(
-            '[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen para login...');
-        setState(() {
-          _nutritionAssistantKey = UniqueKey();
-          _currentMode = 'diary';
-          _currentFreeChatId = null;
-        });
-        print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
+        unawaited(_configureAuthenticatedProviders(
+          authKey: authKey,
+          token: token,
+          userId: authService.currentUser!.id,
+          restoredSession: authService.authenticatedFromStoredSession,
+          authService: authService,
+          dailyMealsProvider: dailyMealsProvider,
+          streakProvider: streakProvider,
+          friendsProvider: friendsProvider,
+          challengesProvider: challengesProvider,
+          feedProvider: feedProvider,
+          creditProvider: creditProvider,
+          dietPlanProvider: dietPlanProvider,
+          nutritionGoalsProvider: nutritionGoalsProvider,
+          freeChatProvider: freeChatProvider,
+          mealTypesProvider: mealTypesProvider,
+          foodHistoryProvider: foodHistoryProvider,
+        ));
 
         print(
             '[🔄 AUTH_DATA] ========== LOGIN CONFIGURAÇÃO CONCLUÍDA ==========');
@@ -320,6 +290,8 @@ class _MainNavigationState extends State<MainNavigation> {
     } else {
       _configuredAuthKey = null;
       _initialGoalsPromptAuthKey = null;
+      _pendingGuestLocalData = null;
+      _latestAppState = const <String, dynamic>{};
       print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
       print('[🔄 AUTH_DATA] Limpando auth de todos os providers...');
 
@@ -365,10 +337,215 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
+  Future<void> _configureAuthenticatedProviders({
+    required String authKey,
+    required String token,
+    required int userId,
+    required bool restoredSession,
+    required AuthService authService,
+    required DailyMealsProvider dailyMealsProvider,
+    required StreakProvider streakProvider,
+    required FriendsProvider friendsProvider,
+    required ChallengesProvider challengesProvider,
+    required FeedProvider feedProvider,
+    required CreditProvider creditProvider,
+    required DietPlanProvider dietPlanProvider,
+    required NutritionGoalsProvider nutritionGoalsProvider,
+    required FreeChatProvider freeChatProvider,
+    required MealTypesProvider mealTypesProvider,
+    required FoodHistoryProvider foodHistoryProvider,
+  }) async {
+    final shouldOfferGuestDataPrompt = !restoredSession;
+    _GuestLocalDataSnapshot? guestSnapshot;
+    if (shouldOfferGuestDataPrompt) {
+      try {
+        guestSnapshot = await _captureGuestLocalDataSnapshot(
+          dailyMealsProvider: dailyMealsProvider,
+          dietPlanProvider: dietPlanProvider,
+          nutritionGoalsProvider: nutritionGoalsProvider,
+          freeChatProvider: freeChatProvider,
+          mealTypesProvider: mealTypesProvider,
+          foodHistoryProvider: foodHistoryProvider,
+        );
+      } catch (e) {
+        print(
+            '[MainNavigation] Erro ao capturar dados locais de convidado: $e');
+      }
+    }
+
+    if (!mounted ||
+        _configuredAuthKey != authKey ||
+        !authService.isAuthenticated ||
+        authService.currentUser?.id != userId) {
+      return;
+    }
+
+    final allowLocalAutoSync = !shouldOfferGuestDataPrompt;
+    final mealsAuthFuture =
+        dailyMealsProvider.setAuth(userId.toString(), token);
+    print('[🔄 AUTH_DATA] ✅ DailyMealsProvider configurado');
+
+    streakProvider.setToken(token);
+    print('[🔄 AUTH_DATA] ✅ StreakProvider configurado');
+
+    // Auto check-in de streak após sync de refeições do dia atual.
+    // O backend só aceita check-in quando há UserDailySummary com calorias > 0,
+    // então disparar logo após o sync garante a sincronização das duas pontas.
+    dailyMealsProvider.onTodaySynced = () {
+      streakProvider.performCheckIn();
+    };
+
+    friendsProvider.setToken(token);
+    print('[🔄 AUTH_DATA] ✅ FriendsProvider configurado');
+
+    challengesProvider.setToken(token);
+    print('[🔄 AUTH_DATA] ✅ ChallengesProvider configurado');
+
+    feedProvider.setToken(token);
+    print('[🔄 AUTH_DATA] ✅ FeedProvider configurado');
+
+    final dietPlanAuthFuture = dietPlanProvider.setAuth(
+      token,
+      userId,
+      syncPendingPreferencesOnAuth: allowLocalAutoSync,
+    );
+    print('[🔄 AUTH_DATA] ✅ DietPlanProvider configurado');
+
+    // Carregar estado do usuário antes de recriar o diário. Assim o
+    // NutritionAssistantScreen já nasce com chat diário e refeições do
+    // servidor disponíveis no storage/provider.
+    await _finishAuthenticatedSetup(
+      authKey: authKey,
+      token: token,
+      userId: userId,
+      allowLocalAutoSync: allowLocalAutoSync,
+      guestSnapshot: guestSnapshot,
+      mealsAuthFuture: mealsAuthFuture,
+      dietPlanAuthFuture: dietPlanAuthFuture,
+      authService: authService,
+      creditProvider: creditProvider,
+      dietPlanProvider: dietPlanProvider,
+      nutritionGoalsProvider: nutritionGoalsProvider,
+      freeChatProvider: freeChatProvider,
+      mealTypesProvider: mealTypesProvider,
+      foodHistoryProvider: foodHistoryProvider,
+    );
+  }
+
+  Future<_GuestLocalDataSnapshot> _captureGuestLocalDataSnapshot({
+    required DailyMealsProvider dailyMealsProvider,
+    required DietPlanProvider dietPlanProvider,
+    required NutritionGoalsProvider nutritionGoalsProvider,
+    required FreeChatProvider freeChatProvider,
+    required MealTypesProvider mealTypesProvider,
+    required FoodHistoryProvider foodHistoryProvider,
+  }) async {
+    await Future.wait([
+      dailyMealsProvider.ready,
+      dietPlanProvider.ensureLoaded(),
+      nutritionGoalsProvider.ensureLoaded(),
+      freeChatProvider.ensureLoaded(),
+      mealTypesProvider.ensureLoaded(),
+      foodHistoryProvider.ensureLoaded(),
+    ]);
+
+    final freeChatConversations = freeChatProvider
+        .getServerConversationsSnapshot()
+        .where((conversation) =>
+            conversation['messages'] is List &&
+            (conversation['messages'] as List).isNotEmpty)
+        .toList();
+    final guestChatByDate =
+        await DailyChatSyncService.instance.buildGuestSnapshot();
+
+    return _GuestLocalDataSnapshot(
+      goalSetup: nutritionGoalsProvider.hasConfiguredGoals
+          ? nutritionGoalsProvider.getServerGoalSetupSnapshot()
+          : null,
+      macroTargets: nutritionGoalsProvider.hasConfiguredGoals
+          ? nutritionGoalsProvider.getMacroSnapshot()
+          : null,
+      freeChatConversations: freeChatConversations,
+      foodHistory: foodHistoryProvider.hasLocalData
+          ? foodHistoryProvider.toServerPayload()
+          : null,
+      mealTypes: mealTypesProvider.hasCustomMealTypes
+          ? mealTypesProvider.toServerPayload()
+          : const <Map<String, dynamic>>[],
+      dietGenerationPreferences: dietPlanProvider.hasLocalDietPreferences
+          ? dietPlanProvider.dietPreferencesToServerPayload()
+          : null,
+      nutritionChatByDate: guestChatByDate,
+      dailyMeals: dailyMealsProvider.getLocalSyncSnapshots(),
+    );
+  }
+
+  Future<void> _finishAuthenticatedSetup({
+    required String authKey,
+    required String token,
+    required int userId,
+    required bool allowLocalAutoSync,
+    required _GuestLocalDataSnapshot? guestSnapshot,
+    required Future<void> mealsAuthFuture,
+    required Future<void> dietPlanAuthFuture,
+    required AuthService authService,
+    required CreditProvider creditProvider,
+    required DietPlanProvider dietPlanProvider,
+    required NutritionGoalsProvider nutritionGoalsProvider,
+    required FreeChatProvider freeChatProvider,
+    required MealTypesProvider mealTypesProvider,
+    required FoodHistoryProvider foodHistoryProvider,
+  }) async {
+    await Future.wait([
+      mealsAuthFuture,
+      dietPlanAuthFuture,
+      _loadAppStateFromServer(
+        token,
+        userId,
+        allowLocalAutoSync,
+        authService,
+        creditProvider,
+        dietPlanProvider,
+        nutritionGoalsProvider,
+        freeChatProvider,
+        mealTypesProvider,
+        foodHistoryProvider,
+      ),
+    ]);
+
+    if (!mounted ||
+        _configuredAuthKey != authKey ||
+        !authService.isAuthenticated ||
+        authService.currentUser?.id != userId) {
+      return;
+    }
+
+    context.read<DailyMealsProvider>().updateGoals(
+          calories: nutritionGoalsProvider.caloriesGoal,
+          protein: nutritionGoalsProvider.proteinGoal,
+          carbs: nutritionGoalsProvider.carbsGoal,
+          fats: nutritionGoalsProvider.fatGoal,
+          fitnessGoal: nutritionGoalsProvider.fitnessGoal.name,
+        );
+
+    // Forçar recriação do NutritionAssistantScreen para carregar dados do usuário.
+    print(
+        '[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen após app-state...');
+    setState(() {
+      _nutritionAssistantKey = UniqueKey();
+      _currentMode = 'diary';
+      _currentFreeChatId = null;
+      _pendingGuestLocalData =
+          guestSnapshot != null && guestSnapshot.hasData ? guestSnapshot : null;
+    });
+    print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
+  }
+
   /// Carrega dados do usuário do servidor em uma única chamada.
   Future<void> _loadAppStateFromServer(
     String token,
     int userId,
+    bool allowLocalAutoSync,
     AuthService authService,
     CreditProvider creditProvider,
     DietPlanProvider dietPlanProvider,
@@ -379,7 +556,12 @@ class _MainNavigationState extends State<MainNavigation> {
   ) async {
     try {
       print('[MainNavigation] Carregando app-state do usuário do servidor...');
-      final appState = await _appStateService.fetchAppState(token: token);
+      final selectedDate = context.read<DailyMealsProvider>().selectedDate;
+      final appState = await _appStateService.fetchAppState(
+        token: token,
+        nutritionChatDateKey: UserAppStateService.formatDateKey(selectedDate),
+      );
+      _latestAppState = appState;
 
       final userData = (appState['user'] as Map?)?.cast<String, dynamic>();
       if (userData != null) {
@@ -396,6 +578,8 @@ class _MainNavigationState extends State<MainNavigation> {
         token,
         userId,
         appState: appState,
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
       );
 
       await freeChatProvider.setAuth(
@@ -404,19 +588,24 @@ class _MainNavigationState extends State<MainNavigation> {
         serverConversations:
             (appState['freeChatConversations'] as List<dynamic>?) ??
                 const <dynamic>[],
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
       );
 
       final dietPreferences = (appState['dietGenerationPreferences'] as Map?)
           ?.cast<String, dynamic>();
-      if (dietPreferences != null && dietPreferences.isNotEmpty) {
-        await dietPlanProvider.applyServerPreferencesSnapshot(dietPreferences);
-      }
+      await dietPlanProvider.applyServerPreferencesSnapshot(
+        dietPreferences ?? const <String, dynamic>{},
+        syncLocalIfServerEmpty: allowLocalAutoSync,
+      );
 
       await mealTypesProvider.setAuth(
         token,
         userId,
         serverMealTypes:
             (appState['mealTypes'] as List<dynamic>?) ?? const <dynamic>[],
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
       );
 
       await foodHistoryProvider.setAuth(
@@ -424,6 +613,8 @@ class _MainNavigationState extends State<MainNavigation> {
         userId,
         serverFoodHistory:
             (appState['foodHistory'] as Map?)?.cast<String, dynamic>(),
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
       );
 
       // Restaura o chat diário do AI Tutor vindo do servidor (sobrevive a
@@ -435,10 +626,31 @@ class _MainNavigationState extends State<MainNavigation> {
       DailyChatSyncService.instance.setAuth(token, userId);
     } catch (e) {
       print('[MainNavigation] Erro ao carregar app-state do servidor: $e');
-      await nutritionGoalsProvider.setAuth(token, userId);
-      await freeChatProvider.setAuth(token, userId);
-      await mealTypesProvider.setAuth(token, userId);
-      await foodHistoryProvider.setAuth(token, userId);
+      _latestAppState = const <String, dynamic>{};
+      await nutritionGoalsProvider.setAuth(
+        token,
+        userId,
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
+      );
+      await freeChatProvider.setAuth(
+        token,
+        userId,
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
+      );
+      await mealTypesProvider.setAuth(
+        token,
+        userId,
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
+      );
+      await foodHistoryProvider.setAuth(
+        token,
+        userId,
+        syncPendingOnAuth: allowLocalAutoSync,
+        syncLocalIfServerEmpty: allowLocalAutoSync,
+      );
       DailyChatSyncService.instance.setAuth(token, userId);
     }
 
@@ -483,6 +695,278 @@ class _MainNavigationState extends State<MainNavigation> {
         ),
       );
     });
+  }
+
+  Future<void> _saveGuestLocalData() async {
+    final snapshot = _pendingGuestLocalData;
+    final authService = context.read<AuthService>();
+    final token = authService.token;
+    final userId = authService.currentUser?.id;
+    if (snapshot == null || token == null || userId == null) return;
+
+    setState(() {
+      _isResolvingGuestLocalData = true;
+    });
+
+    try {
+      final mergedFreeChat = snapshot.freeChatConversations.isEmpty
+          ? null
+          : _mergeFreeChatConversations(
+              _mapListFromAppState(_latestAppState['freeChatConversations']),
+              snapshot.freeChatConversations,
+            );
+      final mergedFoodHistory = snapshot.foodHistory == null
+          ? null
+          : _mergeFoodHistory(
+              (_latestAppState['foodHistory'] as Map?)?.cast<String, dynamic>(),
+              snapshot.foodHistory!,
+            );
+      final mergedDailyChat = snapshot.nutritionChatByDate.isEmpty
+          ? null
+          : _mergeNutritionChatByDate(
+              (_latestAppState['nutritionChatByDate'] as Map?)
+                  ?.cast<String, dynamic>(),
+              snapshot.nutritionChatByDate,
+            );
+
+      final hasAppStatePayload = snapshot.goalSetup != null ||
+          snapshot.dietGenerationPreferences != null ||
+          snapshot.mealTypes.isNotEmpty ||
+          mergedFreeChat != null ||
+          mergedFoodHistory != null ||
+          mergedDailyChat != null;
+
+      if (hasAppStatePayload) {
+        await _appStateService.syncAppState(
+          token: token,
+          goalSetup: snapshot.goalSetup,
+          macroTargets: snapshot.macroTargets,
+          dietGenerationPreferences: snapshot.dietGenerationPreferences,
+          freeChatConversations: mergedFreeChat,
+          mealTypes: snapshot.mealTypes.isEmpty ? null : snapshot.mealTypes,
+          foodHistory: mergedFoodHistory,
+          nutritionChatByDate: mergedDailyChat,
+        );
+      }
+
+      if (snapshot.dailyMeals.isNotEmpty) {
+        await context.read<DailyMealsProvider>().syncSnapshotsToServer(
+              token,
+              snapshot.dailyMeals,
+            );
+      }
+
+      if (snapshot.goalSetup != null) {
+        await context.read<NutritionGoalsProvider>().applyServerSnapshot(
+              goalSetup: snapshot.goalSetup!,
+              macroTargets: snapshot.macroTargets,
+            );
+      }
+      if (mergedFreeChat != null) {
+        await context
+            .read<FreeChatProvider>()
+            .applyServerConversations(mergedFreeChat);
+      }
+      if (mergedFoodHistory != null) {
+        await context
+            .read<FoodHistoryProvider>()
+            .applyServerSnapshot(mergedFoodHistory);
+      }
+      if (snapshot.mealTypes.isNotEmpty) {
+        await context
+            .read<MealTypesProvider>()
+            .applyServerSnapshot(snapshot.mealTypes);
+      }
+      if (snapshot.dietGenerationPreferences != null) {
+        await context.read<DietPlanProvider>().applyServerPreferencesSnapshot(
+              snapshot.dietGenerationPreferences!,
+              syncLocalIfServerEmpty: false,
+            );
+      }
+      if (mergedDailyChat != null) {
+        await DailyChatSyncService.instance.restoreFromServer(
+          mergedDailyChat,
+          scope: 'user_$userId',
+        );
+      }
+
+      await DailyChatSyncService.instance.clearGuestChats();
+
+      if (!mounted) return;
+      setState(() {
+        _pendingGuestLocalData = null;
+        _isResolvingGuestLocalData = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr.translate('guest_local_data_saved')),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (e) {
+      print('[MainNavigation] Erro ao salvar dados locais na conta: $e');
+      if (!mounted) return;
+      setState(() {
+        _isResolvingGuestLocalData = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr.translate('guest_local_data_save_failed')),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  Future<void> _discardGuestLocalData() async {
+    final authService = context.read<AuthService>();
+    final token = authService.token;
+    final userId = authService.currentUser?.id;
+
+    setState(() {
+      _isResolvingGuestLocalData = true;
+    });
+
+    try {
+      await DailyChatSyncService.instance.clearGuestChats();
+      if (token != null && userId != null) {
+        final dailyMealsProvider = context.read<DailyMealsProvider>();
+        await dailyMealsProvider.clearAllData();
+        await dailyMealsProvider.setAuth(userId.toString(), token);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _pendingGuestLocalData = null;
+        _isResolvingGuestLocalData = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr.translate('guest_local_data_discarded')),
+        ),
+      );
+    } catch (e) {
+      print('[MainNavigation] Erro ao descartar dados locais: $e');
+      if (!mounted) return;
+      setState(() {
+        _isResolvingGuestLocalData = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(context.tr.translate('guest_local_data_discard_failed')),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  List<Map<String, dynamic>> _mapListFromAppState(dynamic value) {
+    if (value is! List) return const <Map<String, dynamic>>[];
+    return value
+        .whereType<Map>()
+        .map((item) => item.cast<String, dynamic>())
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _mergeFreeChatConversations(
+    List<Map<String, dynamic>> serverConversations,
+    List<Map<String, dynamic>> localConversations,
+  ) {
+    final mergedById = <String, Map<String, dynamic>>{};
+    for (final conversation in [
+      ...serverConversations,
+      ...localConversations
+    ]) {
+      final id = conversation['id']?.toString();
+      if (id == null || id.trim().isEmpty) continue;
+      final current = mergedById[id];
+      if (current == null ||
+          _messageCount(conversation['messages']) >=
+              _messageCount(current['messages'])) {
+        mergedById[id] = Map<String, dynamic>.from(conversation);
+      }
+    }
+
+    final merged = mergedById.values.toList();
+    merged.sort((a, b) {
+      final aDate = DateTime.tryParse(a['lastUpdated']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = DateTime.tryParse(b['lastUpdated']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+    return merged;
+  }
+
+  Map<String, dynamic> _mergeFoodHistory(
+    Map<String, dynamic>? serverFoodHistory,
+    Map<String, dynamic> localFoodHistory,
+  ) {
+    final server = serverFoodHistory ?? const <String, dynamic>{};
+    final frequency = <String, int>{};
+    for (final source in [server['frequency'], localFoodHistory['frequency']]) {
+      if (source is! Map) continue;
+      source.forEach((key, value) {
+        final count =
+            value is int ? value : int.tryParse(value?.toString() ?? '') ?? 0;
+        if (count > 0) {
+          frequency[key.toString()] = (frequency[key.toString()] ?? 0) + count;
+        }
+      });
+    }
+
+    return {
+      'favorites':
+          _mergeFoodList(server['favorites'], localFoodHistory['favorites']),
+      'recents': _mergeFoodList(server['recents'], localFoodHistory['recents']),
+      'frequency': frequency,
+    };
+  }
+
+  List<Map<String, dynamic>> _mergeFoodList(dynamic server, dynamic local) {
+    final mergedById = <String, Map<String, dynamic>>{};
+    for (final source in [server, local]) {
+      if (source is! List) continue;
+      for (final item in source.whereType<Map>()) {
+        final food = item.cast<String, dynamic>();
+        final id = food['idFatsecret']?.toString() ??
+            food['id']?.toString() ??
+            food['name']?.toString().trim().toLowerCase();
+        if (id == null || id.isEmpty) continue;
+        mergedById[id] = food;
+      }
+    }
+    return mergedById.values.toList();
+  }
+
+  Map<String, dynamic> _mergeNutritionChatByDate(
+    Map<String, dynamic>? serverChat,
+    Map<String, dynamic> localChat,
+  ) {
+    final merged = <String, dynamic>{};
+    void addEntries(Map<String, dynamic>? source) {
+      if (source == null) return;
+      source.forEach((dateKey, value) {
+        if (value is! Map) return;
+        final incoming = value.cast<String, dynamic>();
+        final existing = merged[dateKey];
+        if (existing is Map &&
+            _messageCount(existing['messages']) >=
+                _messageCount(incoming['messages'])) {
+          return;
+        }
+        merged[dateKey] = incoming;
+      });
+    }
+
+    addEntries(serverChat);
+    addEntries(localChat);
+    return merged;
+  }
+
+  int _messageCount(dynamic messages) {
+    return messages is List ? messages.length : 0;
   }
 
   void _onItemTapped(int index) {
@@ -601,13 +1085,146 @@ class _MainNavigationState extends State<MainNavigation> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: _buildDrawer(isDarkMode),
-      body: AppDebugLogOverlay(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: _buildScreens(onOpenDrawer: _openDrawer),
-        ),
+      body: Stack(
+        children: [
+          AppDebugLogOverlay(
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _buildScreens(onOpenDrawer: _openDrawer),
+            ),
+          ),
+          _buildGuestLocalDataPrompt(isWide: false),
+        ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(isDarkMode),
+    );
+  }
+
+  Widget _buildGuestLocalDataPrompt({required bool isWide}) {
+    final snapshot = _pendingGuestLocalData;
+    if (snapshot == null || !snapshot.hasData) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final labels = snapshot.summaryLabels(context);
+
+    return Positioned(
+      left: isWide ? 24 : 16,
+      right: isWide ? null : 16,
+      bottom: 16,
+      child: SafeArea(
+        top: false,
+        child: Align(
+          alignment: isWide ? Alignment.bottomLeft : Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Material(
+              color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+              elevation: 10,
+              borderRadius: BorderRadius.circular(18),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color:
+                                AppTheme.primaryColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.cloud_upload_outlined,
+                            color: AppTheme.primaryColor,
+                            size: 21,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr.translate('guest_local_data_title'),
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                context.tr
+                                    .translate('guest_local_data_message'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (labels.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        labels.join(' • '),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _isResolvingGuestLocalData
+                              ? null
+                              : _discardGuestLocalData,
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          label: Text(
+                            context.tr
+                                .translate('guest_local_data_discard_action'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: _isResolvingGuestLocalData
+                              ? null
+                              : _saveGuestLocalData,
+                          icon: _isResolvingGuestLocalData
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.check_rounded, size: 18),
+                          label: Text(
+                            context.tr
+                                .translate('guest_local_data_save_action'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -633,11 +1250,16 @@ class _MainNavigationState extends State<MainNavigation> {
             color: isDarkMode ? Colors.white12 : Colors.black12,
           ),
           Expanded(
-            child: AppDebugLogOverlay(
-              child: IndexedStack(
-                index: _selectedIndex,
-                children: _buildScreens(onOpenDrawer: null),
-              ),
+            child: Stack(
+              children: [
+                AppDebugLogOverlay(
+                  child: IndexedStack(
+                    index: _selectedIndex,
+                    children: _buildScreens(onOpenDrawer: null),
+                  ),
+                ),
+                _buildGuestLocalDataPrompt(isWide: true),
+              ],
             ),
           ),
         ],
@@ -1172,6 +1794,57 @@ class _MainNavigationState extends State<MainNavigation> {
         ],
       ),
     );
+  }
+}
+
+class _GuestLocalDataSnapshot {
+  final Map<String, dynamic>? goalSetup;
+  final Map<String, dynamic>? macroTargets;
+  final List<Map<String, dynamic>> freeChatConversations;
+  final Map<String, dynamic>? foodHistory;
+  final List<Map<String, dynamic>> mealTypes;
+  final Map<String, dynamic>? dietGenerationPreferences;
+  final Map<String, dynamic> nutritionChatByDate;
+  final List<DailyMealsSyncSnapshot> dailyMeals;
+
+  const _GuestLocalDataSnapshot({
+    required this.goalSetup,
+    required this.macroTargets,
+    required this.freeChatConversations,
+    required this.foodHistory,
+    required this.mealTypes,
+    required this.dietGenerationPreferences,
+    required this.nutritionChatByDate,
+    required this.dailyMeals,
+  });
+
+  bool get hasData =>
+      goalSetup != null ||
+      freeChatConversations.isNotEmpty ||
+      foodHistory != null ||
+      mealTypes.isNotEmpty ||
+      dietGenerationPreferences != null ||
+      nutritionChatByDate.isNotEmpty ||
+      dailyMeals.isNotEmpty;
+
+  List<String> summaryLabels(BuildContext context) {
+    final labels = <String>[];
+    if (goalSetup != null) {
+      labels.add(context.tr.translate('guest_local_data_summary_goals'));
+    }
+    if (dailyMeals.isNotEmpty) {
+      labels.add(context.tr.translate('guest_local_data_summary_meals'));
+    }
+    if (freeChatConversations.isNotEmpty || nutritionChatByDate.isNotEmpty) {
+      labels.add(context.tr.translate('guest_local_data_summary_chats'));
+    }
+    if (foodHistory != null) {
+      labels.add(context.tr.translate('guest_local_data_summary_foods'));
+    }
+    if (mealTypes.isNotEmpty || dietGenerationPreferences != null) {
+      labels.add(context.tr.translate('guest_local_data_summary_preferences'));
+    }
+    return labels;
   }
 }
 

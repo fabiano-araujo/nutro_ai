@@ -38,6 +38,29 @@ final Map<String, String> deDETranslations = {
   'sign_out': 'Abmelden',
   'logout': 'Abmelden',
   'logout_confirmation': 'Sind Sie sicher, dass Sie sich abmelden möchten?',
+  'logout_pending_sync_title': 'Vor dem Abmelden synchronisieren',
+  'logout_pending_sync_message':
+      'Einige Änderungen auf diesem Gerät wurden noch nicht in Ihrem Konto gespeichert. Stellen Sie eine Internetverbindung her und synchronisieren Sie jetzt, damit nichts verloren geht.',
+  'logout_sync_and_leave': 'Synchronisieren und abmelden',
+  'logout_pending_sync_failed':
+      'Synchronisierung nicht möglich. Sie bleiben angemeldet, damit keine Daten verloren gehen.',
+  'guest_local_data_title': 'Daten von diesem Gerät speichern?',
+  'guest_local_data_message':
+      'Wir haben Informationen gefunden, die vor der Anmeldung erstellt wurden. Sie können sie in diesem Konto speichern oder von diesem Gerät verwerfen.',
+  'guest_local_data_save_action': 'Im Konto speichern',
+  'guest_local_data_discard_action': 'Nicht speichern',
+  'guest_local_data_saved': 'Lokale Daten wurden in Ihrem Konto gespeichert.',
+  'guest_local_data_save_failed':
+      'Diese Daten konnten jetzt nicht gespeichert werden. Versuchen Sie es erneut, wenn Sie online sind.',
+  'guest_local_data_discarded':
+      'Lokale Daten wurden von diesem Gerät verworfen.',
+  'guest_local_data_discard_failed':
+      'Lokale Daten konnten jetzt nicht verworfen werden.',
+  'guest_local_data_summary_goals': 'Ziele',
+  'guest_local_data_summary_meals': 'Mahlzeiten',
+  'guest_local_data_summary_chats': 'Chats',
+  'guest_local_data_summary_foods': 'Lebensmittel',
+  'guest_local_data_summary_preferences': 'Einstellungen',
   'edit_profile': 'Profil bearbeiten',
 
   // Registrierungsbildschirme
@@ -186,6 +209,8 @@ final Map<String, String> deDETranslations = {
   'voice_settings_no_voices': 'Derzeit sind keine Stimmen verfugbar.',
   'voice_settings_title': 'Spracheinstellungen',
   'tts_engine_label': 'Sprach-Engine:',
+  'tts_engine_system_label': 'System',
+  'tts_engine_system_google_label': 'System / Google TTS',
   'tts_engine_system_description': 'Standard-Engine des Systems',
   'tts_piper_unavailable_description':
       'Installiere eine Piper/Sherpa-TTS-Engine unter Android, um diese Option zu verwenden.',

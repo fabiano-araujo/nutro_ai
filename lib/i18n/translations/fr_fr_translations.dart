@@ -135,6 +135,8 @@ final Map<String, String> frFRTranslations = {
   'voice_settings_no_voices': 'Aucune voix disponible pour le moment.',
   'voice_settings_title': 'Parametres vocaux',
   'tts_engine_label': 'Moteur vocal :',
+  'tts_engine_system_label': 'Systeme',
+  'tts_engine_system_google_label': 'Systeme / Google TTS',
   'tts_engine_system_description': 'Moteur systeme par defaut',
   'tts_piper_unavailable_description':
       'Installez un moteur Piper/Sherpa TTS sur Android pour utiliser cette option.',
@@ -468,6 +470,28 @@ final Map<String, String> frFRTranslations = {
   'sign_out': 'Déconnexion',
   'logout': 'Déconnexion',
   'logout_confirmation': 'Êtes-vous sûr de vouloir vous déconnecter?',
+  'logout_pending_sync_title': 'Synchroniser avant de se déconnecter',
+  'logout_pending_sync_message':
+      'Certaines modifications sur cet appareil ne sont pas encore enregistrées dans votre compte. Connectez-vous à internet et synchronisez maintenant pour ne rien perdre.',
+  'logout_sync_and_leave': 'Synchroniser et se déconnecter',
+  'logout_pending_sync_failed':
+      'Synchronisation impossible. Vous restez connecté pour éviter toute perte de données.',
+  'guest_local_data_title': 'Enregistrer les données de cet appareil?',
+  'guest_local_data_message':
+      'Nous avons trouvé des informations créées avant la connexion. Vous pouvez les enregistrer dans ce compte ou les supprimer de cet appareil.',
+  'guest_local_data_save_action': 'Enregistrer dans le compte',
+  'guest_local_data_discard_action': 'Ne pas enregistrer',
+  'guest_local_data_saved': 'Données locales enregistrées dans votre compte.',
+  'guest_local_data_save_failed':
+      'Impossible d’enregistrer ces données maintenant. Réessayez lorsque vous êtes en ligne.',
+  'guest_local_data_discarded': 'Données locales supprimées de cet appareil.',
+  'guest_local_data_discard_failed':
+      'Impossible de supprimer les données locales maintenant.',
+  'guest_local_data_summary_goals': 'Objectifs',
+  'guest_local_data_summary_meals': 'Repas',
+  'guest_local_data_summary_chats': 'Conversations',
+  'guest_local_data_summary_foods': 'Aliments',
+  'guest_local_data_summary_preferences': 'Préférences',
   'edit_profile': 'Modifier le profil',
 
   // Écrans d'inscription

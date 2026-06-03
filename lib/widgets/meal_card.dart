@@ -688,312 +688,345 @@ class _MealCardState extends State<MealCard> {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
-            child: AnimatedCrossFade(
+            child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              firstCurve: Curves.easeOut,
-              secondCurve: Curves.easeOut,
-              sizeCurve: Curves.easeInOut,
-              crossFadeState: _simpleView
-                  ? CrossFadeState.showFirst
-                  : CrossFadeState.showSecond,
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeOut,
+              layoutBuilder: (currentChild, previousChildren) {
+                return currentChild ?? const SizedBox.shrink();
+              },
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
               // ── RECOLHIDO: linha única estilo balão (como era antes) ──
-              firstChild: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => setState(() => _simpleView = false),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                        16, topPadding == 0 ? 14 : topPadding, 8, 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    _currentMeal.totalCalories
-                                        .toStringAsFixed(0),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDarkMode
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
+              child: _simpleView
+                  ? KeyedSubtree(
+                      key: const ValueKey('meal-card-collapsed'),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => setState(() => _simpleView = false),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                                16, topPadding == 0 ? 14 : topPadding, 8, 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.baseline,
+                                        textBaseline: TextBaseline.alphabetic,
+                                        children: [
+                                          Text(
+                                            _currentMeal.totalCalories
+                                                .toStringAsFixed(0),
+                                            style: TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w700,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'kcal',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: isDarkMode
+                                                  ? Colors.white54
+                                                  : Colors.black54,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _currentMeal.foods.isEmpty
+                                            ? getMealTypeName(_currentMeal.type)
+                                            : '${_currentMeal.foods.map((f) => f.name).join(' · ')} · ${getMealTypeName(_currentMeal.type)}',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDarkMode
+                                              ? Colors.white60
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'kcal',
+                                ),
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 8),
+                                  child: Text(
+                                    'Ver detalhes',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       color: isDarkMode
-                                          ? Colors.white54
+                                          ? Colors.white70
                                           : Colors.black54,
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _currentMeal.foods.isEmpty
-                                    ? getMealTypeName(_currentMeal.type)
-                                    : '${_currentMeal.foods.map((f) => f.name).join(' · ')} · ${getMealTypeName(_currentMeal.type)}',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDarkMode
-                                      ? Colors.white60
-                                      : Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            'Ver detalhes',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color:
-                                  isDarkMode ? Colors.white70 : Colors.black54,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              // ── EXPANDIDO: calorias + macros em cima, spinner embaixo, lista ──
-              // Tap em qualquer área "vazia" colapsa o card de volta.
-              secondChild: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => setState(() => _simpleView = true),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Linha 1: Calorias grandes + Spinner da refeição (à direita)
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                            16, topPadding == 0 ? 12 : topPadding, 16, 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Calorias grandes (mesma tipografia do colapsado)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                Text(
-                                  _currentMeal.totalCalories.toStringAsFixed(0),
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDarkMode
-                                        ? Colors.white
-                                        : Colors.black87,
-                                    height: 1,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'kcal',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: isDarkMode
-                                        ? Colors.white54
-                                        : Colors.black54,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(width: 16),
-                            // Spinner real do tipo de refeição (ocupa o resto)
-                            Expanded(
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _showMealTypeBottomSheet,
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Container(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(12, 8, 6, 8),
-                                    decoration: BoxDecoration(
-                                      color: isDarkMode
-                                          ? Colors.white.withValues(alpha: 0.04)
-                                          : Colors.black
-                                              .withValues(alpha: 0.025),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: borderColor),
-                                    ),
-                                    child: Row(
+                          ),
+                        ),
+                      ),
+                    )
+                  // ── EXPANDIDO: calorias + macros em cima, spinner embaixo, lista ──
+                  // Tap em qualquer área "vazia" colapsa o card de volta.
+                  : KeyedSubtree(
+                      key: const ValueKey('meal-card-expanded'),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => setState(() => _simpleView = true),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Linha 1: Calorias grandes + Spinner da refeição (à direita)
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(16,
+                                    topPadding == 0 ? 12 : topPadding, 16, 8),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // Calorias grandes (mesma tipografia do colapsado)
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.baseline,
+                                      textBaseline: TextBaseline.alphabetic,
                                       children: [
                                         Text(
-                                          _getMealEmoji(),
-                                          style: const TextStyle(fontSize: 16),
+                                          _currentMeal.totalCalories
+                                              .toStringAsFixed(0),
+                                          style: TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDarkMode
+                                                ? Colors.white
+                                                : Colors.black87,
+                                            height: 1,
+                                          ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            getMealTypeName(_currentMeal.type),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'kcal',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: isDarkMode
+                                                ? Colors.white54
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 16),
+                                    // Spinner real do tipo de refeição (ocupa o resto)
+                                    Expanded(
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: _showMealTypeBottomSheet,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: Container(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                12, 8, 6, 8),
+                                            decoration: BoxDecoration(
                                               color: isDarkMode
-                                                  ? AppTheme.darkTextColor
-                                                  : AppTheme.textPrimaryColor,
+                                                  ? Colors.white
+                                                      .withValues(alpha: 0.04)
+                                                  : Colors.black
+                                                      .withValues(alpha: 0.025),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                  color: borderColor),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  _getMealEmoji(),
+                                                  style: const TextStyle(
+                                                      fontSize: 16),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    getMealTypeName(
+                                                        _currentMeal.type),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: isDarkMode
+                                                          ? AppTheme
+                                                              .darkTextColor
+                                                          : AppTheme
+                                                              .textPrimaryColor,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Icon(
+                                                  Icons.arrow_drop_down_rounded,
+                                                  size: 22,
+                                                  color: secondaryTextColor
+                                                      .withValues(alpha: 0.7),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 2),
-                                        Icon(
-                                          Icons.arrow_drop_down_rounded,
-                                          size: 22,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Linha 2: Macros + ícones de editar/menu ao lado
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 4, 8),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: Wrap(
+                                        spacing: 8,
+                                        runSpacing: 6,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: [
+                                          _buildCompactMacro(
+                                            icon: MacroTheme.proteinIcon,
+                                            value: _currentMeal.totalProtein
+                                                .toStringAsFixed(1),
+                                            unit: 'g prot',
+                                            color: MacroTheme.proteinColor,
+                                            isDarkMode: isDarkMode,
+                                          ),
+                                          _buildCompactMacro(
+                                            icon: MacroTheme.carbsIcon,
+                                            value: _currentMeal.totalCarbs
+                                                .toStringAsFixed(1),
+                                            unit: 'g carb',
+                                            color: MacroTheme.carbsColor,
+                                            isDarkMode: isDarkMode,
+                                          ),
+                                          _buildCompactMacro(
+                                            icon: MacroTheme.fatIcon,
+                                            value: _currentMeal.totalFat
+                                                .toStringAsFixed(1),
+                                            unit: 'g gord',
+                                            color: MacroTheme.fatColor,
+                                            isDarkMode: isDarkMode,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    // Ícone de editar
+                                    Tooltip(
+                                      message:
+                                          context.tr.translate('edit_foods'),
+                                      child: IconButton(
+                                        onPressed: _showEditOptionsMenu,
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.all(4),
+                                        constraints: const BoxConstraints(),
+                                        icon: Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
                                           color: secondaryTextColor.withValues(
                                               alpha: 0.7),
                                         ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    // Menu de ações
+                                    IconButton(
+                                      onPressed: _showMoreOptionsMenu,
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.all(4),
+                                      constraints: const BoxConstraints(),
+                                      icon: Icon(
+                                        Icons.more_horiz_rounded,
+                                        size: 18,
+                                        color: secondaryTextColor.withValues(
+                                            alpha: 0.7),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                ),
+                              ),
+                              if (_currentMeal.foods.isNotEmpty) ...[
+                                // Divisor com gradiente
+                                Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  height: 1,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.transparent,
+                                        (isDarkMode
+                                                ? Colors.white
+                                                : Colors.black)
+                                            .withValues(alpha: 0.08),
+                                        Colors.transparent,
                                       ],
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Linha 2: Macros + ícones de editar/menu ao lado
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 4, 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 6,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  _buildCompactMacro(
-                                    icon: MacroTheme.proteinIcon,
-                                    value: _currentMeal.totalProtein
-                                        .toStringAsFixed(1),
-                                    unit: 'g prot',
-                                    color: MacroTheme.proteinColor,
-                                    isDarkMode: isDarkMode,
+                                // Lista de alimentos
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ..._currentMeal.foods
+                                          .asMap()
+                                          .entries
+                                          .map((entry) {
+                                        final index = entry.key;
+                                        final food = entry.value;
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 6),
+                                          child: _FoodItem(
+                                            food: food,
+                                            isDarkMode: isDarkMode,
+                                            onRegenerateWithAI:
+                                                _generateFoodNutritionFromAI,
+                                            onSwap: (newFood) =>
+                                                _replaceFood(index, newFood),
+                                          ),
+                                        );
+                                      }),
+                                    ],
                                   ),
-                                  _buildCompactMacro(
-                                    icon: MacroTheme.carbsIcon,
-                                    value: _currentMeal.totalCarbs
-                                        .toStringAsFixed(1),
-                                    unit: 'g carb',
-                                    color: MacroTheme.carbsColor,
-                                    isDarkMode: isDarkMode,
-                                  ),
-                                  _buildCompactMacro(
-                                    icon: MacroTheme.fatIcon,
-                                    value: _currentMeal.totalFat
-                                        .toStringAsFixed(1),
-                                    unit: 'g gord',
-                                    color: MacroTheme.fatColor,
-                                    isDarkMode: isDarkMode,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            // Ícone de editar
-                            Tooltip(
-                              message: context.tr.translate('edit_foods'),
-                              child: IconButton(
-                                onPressed: _showEditOptionsMenu,
-                                visualDensity: VisualDensity.compact,
-                                padding: const EdgeInsets.all(4),
-                                constraints: const BoxConstraints(),
-                                icon: Icon(
-                                  Icons.edit_outlined,
-                                  size: 18,
-                                  color:
-                                      secondaryTextColor.withValues(alpha: 0.7),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            // Menu de ações
-                            IconButton(
-                              onPressed: _showMoreOptionsMenu,
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(),
-                              icon: Icon(
-                                Icons.more_horiz_rounded,
-                                size: 18,
-                                color:
-                                    secondaryTextColor.withValues(alpha: 0.7),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                        ),
-                      ),
-                      if (_currentMeal.foods.isNotEmpty) ...[
-                        // Divisor com gradiente
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                (isDarkMode ? Colors.white : Colors.black)
-                                    .withValues(alpha: 0.08),
-                                Colors.transparent,
                               ],
-                            ),
-                          ),
-                        ),
-                        // Lista de alimentos
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ..._currentMeal.foods
-                                  .asMap()
-                                  .entries
-                                  .map((entry) {
-                                final index = entry.key;
-                                final food = entry.value;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: _FoodItem(
-                                    food: food,
-                                    isDarkMode: isDarkMode,
-                                    onRegenerateWithAI:
-                                        _generateFoodNutritionFromAI,
-                                    onSwap: (newFood) =>
-                                        _replaceFood(index, newFood),
-                                  ),
-                                );
-                              }),
                             ],
                           ),
                         ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+                      ),
+                    ),
             ),
           ),
         ), // fim do Container interno (com borda)
@@ -1772,6 +1805,7 @@ class _FoodItemState extends State<_FoodItem> {
     final targetServing = _targetServingForAlternative(
       original,
       originalNutrient,
+      baseAmount,
       baseUnit,
     );
     final ratio = baseAmount > 0 ? targetServing.amount / baseAmount : 1.0;
@@ -1814,9 +1848,13 @@ class _FoodItemState extends State<_FoodItem> {
   ({double amount, String unit}) _targetServingForAlternative(
     Food food,
     Nutrient? originalNutrient,
+    double baseAmount,
     String baseUnit,
   ) {
-    final amountFromLabel = _extractAmountFromText(food.amount);
+    final amountFromLabel = _extractAmountFromText(
+      food.amount,
+      preferredUnit: baseUnit,
+    );
     if (amountFromLabel != null &&
         _areComparableUnits(amountFromLabel.unit, baseUnit)) {
       return _convertServingToUnit(amountFromLabel, baseUnit);
@@ -1832,7 +1870,8 @@ class _FoodItemState extends State<_FoodItem> {
       );
     }
 
-    return (amount: 100.0, unit: baseUnit.isEmpty ? 'g' : baseUnit);
+    final fallbackAmount = baseAmount > 0 ? baseAmount : 100.0;
+    return (amount: fallbackAmount, unit: baseUnit.isEmpty ? 'g' : baseUnit);
   }
 
   ({double amount, String unit}) _convertServingToUnit(
@@ -1861,20 +1900,111 @@ class _FoodItemState extends State<_FoodItem> {
     return serving;
   }
 
-  ({double amount, String unit})? _extractAmountFromText(String? text) {
+  ({double amount, String unit})? _extractAmountFromText(
+    String? text, {
+    String? preferredUnit,
+  }) {
     if (text == null || text.trim().isEmpty) return null;
-    final normalized = text.toLowerCase().replaceAll(',', '.');
-    final matches = RegExp(r'(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)\b')
-        .allMatches(normalized)
+    final normalized = _stripDiacritics(text.toLowerCase())
+        .replaceAll(',', '.')
+        .replaceAll(RegExp(r'\s+'), ' ');
+    final matches = RegExp(
+      r'(\d+(?:\.\d+)?(?:\s*/\s*\d+(?:\.\d+)?)?)\s*'
+      r'(fl\s*oz|gramas?|g|mililitros?|ml|quilos?|kg|litros?|l|copos?|xicaras?|fatias?|unidades?|colheres?|scoops?|cups?|tbsp|tsp|oz)\b',
+    ).allMatches(normalized).toList();
+    final servings = matches
+        .map((match) {
+          final amount = _parseQuantity(match.group(1));
+          final unit = _normalizeServingToken(match.group(2));
+          if (amount == null || amount <= 0 || unit == null) return null;
+          return (
+            amount: amount * unit.multiplier,
+            unit: unit.name,
+          );
+        })
+        .whereType<({double amount, String unit})>()
         .toList();
-    if (matches.isEmpty) return null;
 
-    final match = matches.last;
-    final amount = double.tryParse(match.group(1) ?? '');
-    final unit = _normalizeUnit(match.group(2));
-    if (amount == null || amount <= 0 || unit.isEmpty) return null;
+    final normalizedPreferred = _normalizeUnit(preferredUnit ?? '');
+    if (normalizedPreferred.isNotEmpty) {
+      for (final serving in servings.reversed) {
+        if (_areComparableUnits(serving.unit, normalizedPreferred)) {
+          return serving;
+        }
+      }
+    }
 
-    return (amount: amount, unit: unit);
+    if (servings.isNotEmpty) return servings.last;
+
+    final parsed = FoodJsonParser.parseServingFromPortion(text);
+    if (parsed == null) return null;
+    if (normalizedPreferred.isNotEmpty &&
+        !_areComparableUnits(parsed.unit, normalizedPreferred)) {
+      return null;
+    }
+
+    return (amount: parsed.amount, unit: parsed.unit);
+  }
+
+  double? _parseQuantity(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final normalized = raw.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+    if (normalized.contains('/')) {
+      final parts = normalized.split('/');
+      if (parts.length != 2) return null;
+      final numerator = double.tryParse(parts[0]);
+      final denominator = double.tryParse(parts[1]);
+      if (numerator == null || denominator == null || denominator == 0) {
+        return null;
+      }
+      return numerator / denominator;
+    }
+    return double.tryParse(normalized);
+  }
+
+  ({String name, double multiplier})? _normalizeServingToken(String? raw) {
+    final unit = _stripDiacritics((raw ?? '').toLowerCase())
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (unit == 'g' || unit.startsWith('grama')) {
+      return (name: 'g', multiplier: 1);
+    }
+    if (unit == 'kg' || unit.startsWith('quilo')) {
+      return (name: 'g', multiplier: 1000);
+    }
+    if (unit == 'ml' || unit.startsWith('mililitro')) {
+      return (name: 'ml', multiplier: 1);
+    }
+    if (unit == 'l' || unit.startsWith('litro')) {
+      return (name: 'ml', multiplier: 1000);
+    }
+    if (unit == 'oz') return (name: 'oz', multiplier: 1);
+    if (unit == 'fl oz' || unit == 'floz') {
+      return (name: 'fl oz', multiplier: 1);
+    }
+    if (unit.startsWith('copo')) return (name: 'copo', multiplier: 1);
+    if (unit.startsWith('xicara') || unit == 'cup' || unit == 'cups') {
+      return (name: 'xicara', multiplier: 1);
+    }
+    if (unit.startsWith('fatia')) return (name: 'fatia', multiplier: 1);
+    if (unit.startsWith('unidade')) return (name: 'unidade', multiplier: 1);
+    if (unit.startsWith('colher') || unit == 'tbsp' || unit == 'tsp') {
+      return (name: 'colher', multiplier: 1);
+    }
+    if (unit.startsWith('scoop')) return (name: 'scoop', multiplier: 1);
+
+    return null;
+  }
+
+  String _stripDiacritics(String value) {
+    return value
+        .replaceAll(RegExp(r'[áàâãä]'), 'a')
+        .replaceAll(RegExp(r'[éèêë]'), 'e')
+        .replaceAll(RegExp(r'[íìîï]'), 'i')
+        .replaceAll(RegExp(r'[óòôõö]'), 'o')
+        .replaceAll(RegExp(r'[úùûü]'), 'u')
+        .replaceAll('ç', 'c');
   }
 
   /// Reconstrói o food com os macros originais da IA preservados em
@@ -2186,18 +2316,7 @@ class _FoodItemState extends State<_FoodItem> {
 
     final favorite = alternatives?['favorite'] as Map<String, dynamic>?;
     final recent = alternatives?['recent'] as Map<String, dynamic>?;
-    var effectiveFood = sourceFood;
-    if (favorite != null &&
-        sourceFood.source != FoodSource.manual &&
-        (sourceFood.source != FoodSource.favorite ||
-            sourceFood.sourceId != _parseInt(favorite['id']))) {
-      effectiveFood = _applyAlternativeMacros(
-        favorite,
-        FoodSource.favorite,
-        food: sourceFood,
-      );
-      widget.onSwap?.call(effectiveFood);
-    }
+    final effectiveFood = sourceFood;
     final currentSource = effectiveFood.source;
     var showAllCatalogSuggestions = false;
 
@@ -3298,6 +3417,7 @@ class _ManualMacroEditorSheetState extends State<_ManualMacroEditorSheet> {
   late final TextEditingController _fatCtrl;
   late final TextEditingController _fiberCtrl;
   bool _closing = false;
+  bool _updatingCalories = false;
 
   Nutrient? get _originalNutrient => widget.food.nutrients?.isNotEmpty == true
       ? widget.food.nutrients!.first
@@ -3315,10 +3435,16 @@ class _ManualMacroEditorSheetState extends State<_ManualMacroEditorSheet> {
     _fiberCtrl = TextEditingController(
       text: (originalNutrient?.dietaryFiber ?? 0).toStringAsFixed(1),
     );
+    _proteinCtrl.addListener(_recalculateCaloriesFromMacros);
+    _carbsCtrl.addListener(_recalculateCaloriesFromMacros);
+    _fatCtrl.addListener(_recalculateCaloriesFromMacros);
   }
 
   @override
   void dispose() {
+    _proteinCtrl.removeListener(_recalculateCaloriesFromMacros);
+    _carbsCtrl.removeListener(_recalculateCaloriesFromMacros);
+    _fatCtrl.removeListener(_recalculateCaloriesFromMacros);
     _caloriesCtrl.dispose();
     _proteinCtrl.dispose();
     _carbsCtrl.dispose();
@@ -3330,6 +3456,24 @@ class _ManualMacroEditorSheetState extends State<_ManualMacroEditorSheet> {
   double _parse(String value) {
     final cleaned = value.replaceAll(',', '.').trim();
     return double.tryParse(cleaned) ?? 0.0;
+  }
+
+  void _recalculateCaloriesFromMacros() {
+    if (_updatingCalories) return;
+
+    final calories = ((_parse(_proteinCtrl.text) * 4) +
+            (_parse(_carbsCtrl.text) * 4) +
+            (_parse(_fatCtrl.text) * 9))
+        .round()
+        .toString();
+    if (_caloriesCtrl.text == calories) return;
+
+    _updatingCalories = true;
+    _caloriesCtrl.value = TextEditingValue(
+      text: calories,
+      selection: TextSelection.collapsed(offset: calories.length),
+    );
+    _updatingCalories = false;
   }
 
   void _close([Food? result]) {

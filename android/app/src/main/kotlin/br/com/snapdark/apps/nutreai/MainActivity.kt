@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : FlutterActivity() {
     private val trackingAppsChannel = "br.com.snapdark.apps.nutro_ia/tracking_apps"
+    private val rateAppChannel = "br.com.snapdark.apps.nutro_ia/rate_app"
     private val healthPermissionRequestCode = 8317
     private val healthPermissionContract =
         PermissionController.createRequestPermissionResultContract()
@@ -100,6 +101,18 @@ class MainActivity : FlutterActivity() {
                     } else {
                         readHealthSummary(startMillis, endMillis, result)
                     }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            rateAppChannel
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openGooglePlayListing" -> {
+                    result.success(openPlayStore(packageName))
                 }
                 else -> result.notImplemented()
             }

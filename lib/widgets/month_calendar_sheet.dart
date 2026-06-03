@@ -9,12 +9,14 @@ class MonthCalendarSheet extends StatefulWidget {
   final DateTime selectedDate;
   final bool Function(DateTime date) hasMeals;
   final ValueChanged<DateTime> onDaySelected;
+  final ValueChanged<DateTime>? onVisibleMonthChanged;
 
   const MonthCalendarSheet({
     super.key,
     required this.selectedDate,
     required this.hasMeals,
     required this.onDaySelected,
+    this.onVisibleMonthChanged,
   });
 
   @override
@@ -25,14 +27,20 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
   // Usamos um índice grande como "ano base" para permitir navegação bem ampla.
   static const int _kInitialPage = 1200; // ~ano base
   late final PageController _pageController;
+  late final DateTime _baseMonth;
   late DateTime _visibleMonth;
 
   @override
   void initState() {
     super.initState();
-    _visibleMonth =
+    _baseMonth =
         DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
+    _visibleMonth = _baseMonth;
     _pageController = PageController(initialPage: _kInitialPage);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.onVisibleMonthChanged?.call(_visibleMonth);
+    });
   }
 
   @override
@@ -43,7 +51,7 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
 
   DateTime _monthForPage(int page) {
     final diff = page - _kInitialPage;
-    return DateTime(_visibleMonth.year, _visibleMonth.month + diff, 1);
+    return DateTime(_baseMonth.year, _baseMonth.month + diff, 1);
   }
 
   void _goToOffset(int offset) {
@@ -121,7 +129,8 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
                 // Célula quadrada = largura disponível / 7 colunas. Reservamos
                 // sempre 6 linhas (máximo que um mês pode ocupar) para não cortar
                 // dias e manter a altura estável ao trocar de mês.
-                const gridHorizontalPadding = 16.0; // 8 de cada lado em _MonthGrid
+                const gridHorizontalPadding =
+                    16.0; // 8 de cada lado em _MonthGrid
                 final cellSize =
                     (constraints.maxWidth - gridHorizontalPadding) / 7;
                 return SizedBox(
@@ -132,6 +141,7 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
                       setState(() {
                         _visibleMonth = _monthForPage(page);
                       });
+                      widget.onVisibleMonthChanged?.call(_visibleMonth);
                     },
                     itemBuilder: (context, page) {
                       final month = _monthForPage(page);
@@ -153,8 +163,7 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
     );
   }
 
-  Widget _buildWeekdaysHeader(
-      MaterialLocalizations loc, Color color) {
+  Widget _buildWeekdaysHeader(MaterialLocalizations loc, Color color) {
     final first = loc.firstDayOfWeekIndex; // 0 = domingo
     final labels = <String>[];
     for (int i = 0; i < 7; i++) {

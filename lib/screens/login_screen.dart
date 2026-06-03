@@ -196,7 +196,6 @@ class _LoginScreenState extends State<LoginScreen>
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   _buildLoginMark(
-                                    primaryColor: primaryColor,
                                     textColor: textPrimary,
                                     isDarkMode: isDarkMode,
                                   ),
@@ -365,7 +364,6 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLoginMark({
-    required Color primaryColor,
     required Color textColor,
     required bool isDarkMode,
   }) {
@@ -374,7 +372,7 @@ class _LoginScreenState extends State<LoginScreen>
       height: 56,
       decoration: BoxDecoration(
         color: _surfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(100),
+        shape: BoxShape.circle,
         border: Border.all(color: _subtleBorderColor(isDarkMode)),
       ),
       child: ClipOval(

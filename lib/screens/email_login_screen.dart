@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -16,19 +15,13 @@ class EmailLoginScreen extends StatefulWidget {
 
 class _EmailLoginScreenState extends State<EmailLoginScreen>
     with SingleTickerProviderStateMixin {
-  static const String _rememberCredentialsKey =
-      'email_login_remember_credentials';
-  static const String _rememberedEmailKey = 'email_login_remembered_email';
-  static const String _rememberedPasswordKey =
-      'email_login_remembered_password';
+  static const String _appIconAsset = 'assets/images/logo.png';
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _secureStorage = const FlutterSecureStorage();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _rememberCredentials = false;
   String _errorMessage = '';
 
   late AnimationController _animationController;
@@ -66,7 +59,6 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     );
 
     _animationController.forward();
-    _loadRememberedCredentials();
   }
 
   @override
@@ -112,8 +104,6 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
           return;
         }
 
-        await _syncRememberedCredentials(email, password);
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -146,73 +136,6 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     }
   }
 
-  Future<void> _loadRememberedCredentials() async {
-    try {
-      final shouldRemember =
-          await _secureStorage.read(key: _rememberCredentialsKey) == 'true';
-      final rememberedEmail =
-          await _secureStorage.read(key: _rememberedEmailKey);
-      final rememberedPassword =
-          await _secureStorage.read(key: _rememberedPasswordKey);
-
-      if (!mounted) return;
-
-      setState(() {
-        _rememberCredentials = shouldRemember;
-        if (shouldRemember) {
-          if (_emailController.text.isEmpty && rememberedEmail != null) {
-            _emailController.text = rememberedEmail;
-          }
-          if (_passwordController.text.isEmpty && rememberedPassword != null) {
-            _passwordController.text = rememberedPassword;
-          }
-        }
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar credenciais lembradas: $e');
-    }
-  }
-
-  Future<void> _syncRememberedCredentials(
-    String email,
-    String password,
-  ) async {
-    try {
-      if (_rememberCredentials) {
-        await _secureStorage.write(key: _rememberCredentialsKey, value: 'true');
-        await _secureStorage.write(key: _rememberedEmailKey, value: email);
-        await _secureStorage.write(
-          key: _rememberedPasswordKey,
-          value: password,
-        );
-      } else {
-        await _clearRememberedCredentials();
-      }
-    } catch (e) {
-      debugPrint('Erro ao salvar credenciais lembradas: $e');
-    }
-  }
-
-  Future<void> _clearRememberedCredentials() async {
-    await _secureStorage.delete(key: _rememberCredentialsKey);
-    await _secureStorage.delete(key: _rememberedEmailKey);
-    await _secureStorage.delete(key: _rememberedPasswordKey);
-  }
-
-  Future<void> _setRememberCredentials(bool value) async {
-    setState(() {
-      _rememberCredentials = value;
-    });
-
-    if (!value) {
-      try {
-        await _clearRememberedCredentials();
-      } catch (e) {
-        debugPrint('Erro ao limpar credenciais lembradas: $e');
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -220,10 +143,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
 
     final bgColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
-    final textPrimary =
-        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final textSecondary =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final titleColor = isDarkMode ? Colors.white : Colors.black;
+    final fieldTextColor = isDarkMode ? Colors.white : Colors.black;
     final primaryColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
     final onPrimary = AppTheme.onColor(primaryColor);
@@ -233,7 +156,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
       body: SafeArea(
         child: Column(
           children: [
-            _buildMinimalHeader(textColor: textPrimary),
+            _buildMinimalHeader(textColor: titleColor),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -257,7 +180,6 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                       CrossAxisAlignment.stretch,
                                   children: [
                                     _buildLoginMark(
-                                      textColor: textPrimary,
                                       isDarkMode: isDarkMode,
                                     ),
                                     const SizedBox(height: 16),
@@ -267,9 +189,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                       style: TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.w700,
-                                        color: AppTheme.getSoftTextColor(
-                                          isDarkMode,
-                                        ),
+                                        color: titleColor,
                                         height: 1.2,
                                       ),
                                     ),
@@ -292,7 +212,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                     ],
                                     _FieldLabel(
                                       label: context.tr.translate('email'),
-                                      color: textSecondary,
+                                      color: fieldTextColor,
                                     ),
                                     const SizedBox(height: 8),
                                     TextFormField(
@@ -300,7 +220,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                       keyboardType: TextInputType.emailAddress,
                                       style: TextStyle(
                                         fontSize: 15,
-                                        color: textPrimary,
+                                        color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
                                         hintText: 'exemplo@email.com',
@@ -329,7 +249,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                     const SizedBox(height: 16),
                                     _FieldLabel(
                                       label: context.tr.translate('password'),
-                                      color: textSecondary,
+                                      color: fieldTextColor,
                                     ),
                                     const SizedBox(height: 8),
                                     TextFormField(
@@ -337,7 +257,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                       obscureText: _obscurePassword,
                                       style: TextStyle(
                                         fontSize: 15,
-                                        color: textPrimary,
+                                        color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
                                         hintText: '••••••••',
@@ -378,10 +298,8 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                       },
                                     ),
                                     const SizedBox(height: 12),
-                                    _buildRememberAndForgotRow(
-                                      textSecondary: textSecondary,
+                                    _buildForgotPasswordLink(
                                       primaryColor: primaryColor,
-                                      onPrimary: onPrimary,
                                     ),
                                     const SizedBox(height: 24),
                                     _buildSubmitButton(
@@ -442,23 +360,21 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     );
   }
 
-  Widget _buildLoginMark({
-    required Color textColor,
-    required bool isDarkMode,
-  }) {
+  Widget _buildLoginMark({required bool isDarkMode}) {
     return Center(
       child: Container(
-        width: 52,
-        height: 52,
+        width: 56,
+        height: 56,
         decoration: BoxDecoration(
           color: _surfaceColor(isDarkMode),
-          borderRadius: BorderRadius.circular(100),
+          shape: BoxShape.circle,
           border: Border.all(color: _subtleBorderColor(isDarkMode)),
         ),
-        child: Icon(
-          Icons.email_outlined,
-          size: 23,
-          color: textColor.withValues(alpha: 0.82),
+        child: ClipOval(
+          child: Image.asset(
+            _appIconAsset,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );
@@ -539,67 +455,26 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     );
   }
 
-  Widget _buildRememberAndForgotRow({
-    required Color textSecondary,
+  Widget _buildForgotPasswordLink({
     required Color primaryColor,
-    required Color onPrimary,
   }) {
-    return Row(
-      children: [
-        Expanded(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(100),
-            onTap: _isLoading
-                ? null
-                : () => _setRememberCredentials(!_rememberCredentials),
-            child: Row(
-              children: [
-                Checkbox(
-                  value: _rememberCredentials,
-                  onChanged: _isLoading
-                      ? null
-                      : (value) => _setRememberCredentials(value ?? false),
-                  activeColor: primaryColor,
-                  checkColor: onPrimary,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    context.tr.translate('remember_email_password'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton(
+        onPressed: () {},
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(
+          context.tr.translate('forgot_password'),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: primaryColor,
           ),
         ),
-        TextButton(
-          onPressed: () {},
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            context.tr.translate('forgot_password'),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: primaryColor,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 

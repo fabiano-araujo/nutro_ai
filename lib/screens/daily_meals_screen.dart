@@ -50,6 +50,9 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             return MonthCalendarSheet(
               selectedDate: mealsProvider.selectedDate,
               hasMeals: mealsProvider.hasMealsOn,
+              onVisibleMonthChanged: (month) {
+                mealsProvider.ensureMonthSummariesLoaded(month);
+              },
               onDaySelected: (date) {
                 Navigator.of(sheetContext).pop();
                 mealsProvider.setSelectedDate(date);

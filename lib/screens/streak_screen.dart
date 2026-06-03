@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/friends_provider.dart';
+import '../providers/nutrition_goals_provider.dart';
 import '../providers/streak_provider.dart';
 import '../services/social_service.dart';
 import '../theme/app_theme.dart';
@@ -29,6 +30,104 @@ Color _streakMutedTextColor(bool isDarkMode) =>
 Color _streakPrimaryColor(bool isDarkMode) =>
     isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
 
+enum _StreakCalendarMode { registration, protein, calories }
+
+Color _calendarMarkColor(_StreakCalendarMode mode) {
+  switch (mode) {
+    case _StreakCalendarMode.registration:
+      return const Color(0xFFFF6B35);
+    case _StreakCalendarMode.protein:
+      return const Color(0xFF35A853);
+    case _StreakCalendarMode.calories:
+      return const Color(0xFF4E8CFF);
+  }
+}
+
+bool _calorieModeAllowsBelowGoal(FitnessGoal goal) {
+  switch (goal) {
+    case FitnessGoal.loseWeight:
+    case FitnessGoal.loseWeightSlowly:
+    case FitnessGoal.maintainWeight:
+      return true;
+    case FitnessGoal.gainWeightSlowly:
+    case FitnessGoal.gainWeight:
+      return false;
+  }
+}
+
+bool _calorieModeAllowsAboveGoal(FitnessGoal goal) {
+  switch (goal) {
+    case FitnessGoal.loseWeight:
+    case FitnessGoal.loseWeightSlowly:
+      return false;
+    case FitnessGoal.maintainWeight:
+    case FitnessGoal.gainWeightSlowly:
+    case FitnessGoal.gainWeight:
+      return true;
+  }
+}
+
+String _calendarModeLabel(BuildContext context, _StreakCalendarMode mode) {
+  switch (mode) {
+    case _StreakCalendarMode.registration:
+      return context.tr.translate('streak_calendar_logged_day');
+    case _StreakCalendarMode.protein:
+      return context.tr.translate('streak_secondary_protein');
+    case _StreakCalendarMode.calories:
+      return context.tr.translate('streak_secondary_goal');
+  }
+}
+
+int _resolveProteinStreak({
+  required StreakProvider streakProvider,
+  required DailyMealsProvider mealsProvider,
+  required int proteinTarget,
+}) {
+  final localStreak = mealsProvider.getCurrentProteinGoalStreak(
+    proteinTarget: proteinTarget,
+  );
+  final backendStreak = streakProvider.proteinStreak;
+  final lastDate = streakProvider.streak?.proteinLastDate;
+  if (backendStreak <= localStreak || lastDate == null) {
+    return localStreak;
+  }
+
+  final knowsLastDate = mealsProvider.hasNutritionDataOn(lastDate);
+  final lastDateStillHits = mealsProvider.hasHitProteinGoalOn(
+    lastDate,
+    proteinTarget: proteinTarget,
+  );
+  return knowsLastDate && !lastDateStillHits ? localStreak : backendStreak;
+}
+
+int _resolveCalorieStreak({
+  required StreakProvider streakProvider,
+  required DailyMealsProvider mealsProvider,
+  required int calorieGoal,
+  required bool allowBelowGoal,
+  required bool allowAboveGoal,
+}) {
+  final localStreak = mealsProvider.getCurrentCalorieGoalStreak(
+    calorieGoal: calorieGoal,
+    allowBelowGoal: allowBelowGoal,
+    allowAboveGoal: allowAboveGoal,
+  );
+  final backendStreak = streakProvider.goalStreak;
+  final lastDate = streakProvider.streak?.goalLastDate;
+  if (backendStreak <= localStreak || lastDate == null) {
+    return localStreak;
+  }
+
+  final knowsLastDate = mealsProvider.hasNutritionDataOn(lastDate);
+  final lastDateStillHits = mealsProvider.hasHitCalorieGoalOn(
+    lastDate,
+    calorieGoal: calorieGoal,
+    allowBelowGoal: allowBelowGoal,
+    allowAboveGoal: allowAboveGoal,
+  );
+  return knowsLastDate && !lastDateStillHits ? localStreak : backendStreak;
+}
+
 class StreakScreen extends StatefulWidget {
   const StreakScreen({super.key});
 
@@ -39,6 +138,7 @@ class StreakScreen extends StatefulWidget {
 class _StreakScreenState extends State<StreakScreen> {
   int _selectedTab = 0;
   late DateTime _visibleMonth;
+  _StreakCalendarMode _calendarMode = _StreakCalendarMode.registration;
 
   @override
   void initState() {
@@ -73,6 +173,24 @@ class _StreakScreenState extends State<StreakScreen> {
 
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
+    });
+  }
+
+  void _setCalendarMode(_StreakCalendarMode mode) {
+    final nextMode =
+        _calendarMode == mode ? _StreakCalendarMode.registration : mode;
+    final streak = context.read<StreakProvider>().streak;
+    final targetDate = switch (nextMode) {
+      _StreakCalendarMode.registration => streak?.registrationLastDate,
+      _StreakCalendarMode.protein => streak?.proteinLastDate,
+      _StreakCalendarMode.calories => streak?.goalLastDate,
+    };
+
+    setState(() {
+      _calendarMode = nextMode;
+      if (targetDate != null && !targetDate.isAfter(DateTime.now())) {
+        _visibleMonth = DateTime(targetDate.year, targetDate.month);
+      }
     });
   }
 
@@ -118,8 +236,10 @@ class _StreakScreenState extends State<StreakScreen> {
                     ? _PersonalStreakTab(
                         key: const ValueKey('personal-streak-tab'),
                         visibleMonth: _visibleMonth,
+                        calendarMode: _calendarMode,
                         onPreviousMonth: _previousMonth,
                         onNextMonth: _nextMonth,
+                        onCalendarModeChanged: _setCalendarMode,
                       )
                     : _FriendsStreakTab(
                         key: const ValueKey('friends-streak-tab'),
@@ -281,23 +401,44 @@ class _StreakModeChip extends StatelessWidget {
 
 class _PersonalStreakTab extends StatelessWidget {
   final DateTime visibleMonth;
+  final _StreakCalendarMode calendarMode;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
+  final ValueChanged<_StreakCalendarMode> onCalendarModeChanged;
 
   const _PersonalStreakTab({
     super.key,
     required this.visibleMonth,
+    required this.calendarMode,
     required this.onPreviousMonth,
     required this.onNextMonth,
+    required this.onCalendarModeChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<StreakProvider, DailyMealsProvider>(
-      builder: (context, streakProvider, mealsProvider, _) {
+    return Consumer3<StreakProvider, DailyMealsProvider,
+        NutritionGoalsProvider>(
+      builder: (context, streakProvider, mealsProvider, goalsProvider, _) {
         final isLoading = streakProvider.isLoading && !streakProvider.hasStreak;
         final effectiveStreak =
             effectiveRegistrationStreak(streakProvider, mealsProvider);
+        final allowCalorieBelowGoal =
+            _calorieModeAllowsBelowGoal(goalsProvider.fitnessGoal);
+        final allowCalorieAboveGoal =
+            _calorieModeAllowsAboveGoal(goalsProvider.fitnessGoal);
+        final effectiveProteinStreak = _resolveProteinStreak(
+          streakProvider: streakProvider,
+          mealsProvider: mealsProvider,
+          proteinTarget: goalsProvider.proteinGoal,
+        );
+        final effectiveCalorieStreak = _resolveCalorieStreak(
+          streakProvider: streakProvider,
+          mealsProvider: mealsProvider,
+          calorieGoal: goalsProvider.caloriesGoal,
+          allowBelowGoal: allowCalorieBelowGoal,
+          allowAboveGoal: allowCalorieAboveGoal,
+        );
 
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -316,13 +457,22 @@ class _PersonalStreakTab extends StatelessWidget {
               const SizedBox(height: 12),
               _FreezeStatusCard(streakProvider: streakProvider),
               const SizedBox(height: 12),
-              _StreakStatsGrid(streakProvider: streakProvider),
+              _StreakStatsGrid(
+                proteinStreak: effectiveProteinStreak,
+                calorieStreak: effectiveCalorieStreak,
+                selectedMode: calendarMode,
+                onModeSelected: onCalendarModeChanged,
+              ),
               const SizedBox(height: 12),
               _StreakCalendarCard(
                 visibleMonth: visibleMonth,
                 mealsProvider: mealsProvider,
+                goalsProvider: goalsProvider,
+                mode: calendarMode,
                 registrationLastDate:
                     streakProvider.streak?.registrationLastDate,
+                proteinLastDate: streakProvider.streak?.proteinLastDate,
+                calorieLastDate: streakProvider.streak?.goalLastDate,
                 onPreviousMonth: onPreviousMonth,
                 onNextMonth: onNextMonth,
               ),
@@ -538,9 +688,17 @@ class _FreezeStatusCard extends StatelessWidget {
 }
 
 class _StreakStatsGrid extends StatelessWidget {
-  final StreakProvider streakProvider;
+  final int proteinStreak;
+  final int calorieStreak;
+  final _StreakCalendarMode selectedMode;
+  final ValueChanged<_StreakCalendarMode> onModeSelected;
 
-  const _StreakStatsGrid({required this.streakProvider});
+  const _StreakStatsGrid({
+    required this.proteinStreak,
+    required this.calorieStreak,
+    required this.selectedMode,
+    required this.onModeSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -550,8 +708,10 @@ class _StreakStatsGrid extends StatelessWidget {
           child: _MiniStatCard(
             icon: Icons.fitness_center_rounded,
             color: const Color(0xFF35A853),
-            value: '${streakProvider.proteinStreak}',
+            value: '$proteinStreak',
             label: context.tr.translate('streak_secondary_protein'),
+            selected: selectedMode == _StreakCalendarMode.protein,
+            onTap: () => onModeSelected(_StreakCalendarMode.protein),
           ),
         ),
         const SizedBox(width: 10),
@@ -559,8 +719,10 @@ class _StreakStatsGrid extends StatelessWidget {
           child: _MiniStatCard(
             icon: Icons.flag_rounded,
             color: const Color(0xFF4E8CFF),
-            value: '${streakProvider.goalStreak}',
+            value: '$calorieStreak',
             label: context.tr.translate('streak_secondary_goal'),
+            selected: selectedMode == _StreakCalendarMode.calories,
+            onTap: () => onModeSelected(_StreakCalendarMode.calories),
           ),
         ),
       ],
@@ -573,53 +735,72 @@ class _MiniStatCard extends StatelessWidget {
   final Color color;
   final String value;
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   const _MiniStatCard({
     required this.icon,
     required this.color,
     required this.value,
     required this.label,
+    required this.selected,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 112),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _streakSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _streakBorderColor(isDarkMode)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 18),
-          Text(
-            value,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              height: 1,
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minHeight: 112),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withValues(alpha: isDarkMode ? 0.18 : 0.11)
+                : _streakSurfaceColor(isDarkMode),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? color : _streakBorderColor(isDarkMode),
+              width: selected ? 1.6 : 1,
             ),
           ),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _streakMutedTextColor(isDarkMode),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              height: 1.2,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 18),
+              Text(
+                value,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected
+                      ? (isDarkMode ? Colors.white : AppTheme.textPrimaryColor)
+                      : _streakMutedTextColor(isDarkMode),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -628,14 +809,22 @@ class _MiniStatCard extends StatelessWidget {
 class _StreakCalendarCard extends StatelessWidget {
   final DateTime visibleMonth;
   final DailyMealsProvider mealsProvider;
+  final NutritionGoalsProvider goalsProvider;
+  final _StreakCalendarMode mode;
   final DateTime? registrationLastDate;
+  final DateTime? proteinLastDate;
+  final DateTime? calorieLastDate;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
 
   const _StreakCalendarCard({
     required this.visibleMonth,
     required this.mealsProvider,
+    required this.goalsProvider,
+    required this.mode,
     required this.registrationLastDate,
+    required this.proteinLastDate,
+    required this.calorieLastDate,
     required this.onPreviousMonth,
     required this.onNextMonth,
   });
@@ -648,18 +837,52 @@ class _StreakCalendarCard extends StatelessWidget {
     final canGoNext = visibleMonth.isBefore(currentMonth);
     final monthLabel =
         MaterialLocalizations.of(context).formatMonthYear(visibleMonth);
+    final markColor = _calendarMarkColor(mode);
+    final modeLabel = _calendarModeLabel(context, mode);
 
     return _SocialStyleCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr.translate('streak_calendar_title'),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.tr.translate('streak_calendar_title'),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: markColor.withValues(alpha: isDarkMode ? 0.18 : 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: markColor.withValues(alpha: 0.42)),
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 132),
+                  child: Text(
+                    modeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           Container(
@@ -704,10 +927,18 @@ class _StreakCalendarCard extends StatelessWidget {
                 _CalendarGrid(
                   visibleMonth: visibleMonth,
                   mealsProvider: mealsProvider,
+                  goalsProvider: goalsProvider,
+                  mode: mode,
                   registrationLastDate: registrationLastDate,
+                  proteinLastDate: proteinLastDate,
+                  calorieLastDate: calorieLastDate,
                 ),
                 const SizedBox(height: 12),
-                _CalendarLegend(isDarkMode: isDarkMode),
+                _CalendarLegend(
+                  isDarkMode: isDarkMode,
+                  mode: mode,
+                  markColor: markColor,
+                ),
               ],
             ),
           ),
@@ -758,12 +989,20 @@ class _WeekdayHeader extends StatelessWidget {
 class _CalendarGrid extends StatelessWidget {
   final DateTime visibleMonth;
   final DailyMealsProvider mealsProvider;
+  final NutritionGoalsProvider goalsProvider;
+  final _StreakCalendarMode mode;
   final DateTime? registrationLastDate;
+  final DateTime? proteinLastDate;
+  final DateTime? calorieLastDate;
 
   const _CalendarGrid({
     required this.visibleMonth,
     required this.mealsProvider,
+    required this.goalsProvider,
+    required this.mode,
     required this.registrationLastDate,
+    required this.proteinLastDate,
+    required this.calorieLastDate,
   });
 
   @override
@@ -790,9 +1029,28 @@ class _CalendarGrid extends StatelessWidget {
         }
 
         final date = DateTime(visibleMonth.year, visibleMonth.month, dayNumber);
-        final hasMeal = mealsProvider.hasMealsOn(date);
         final isLastRegistration = _isSameDate(date, registrationLastDate);
-        final isMarked = hasMeal || isLastRegistration;
+        final isLastProtein = _isSameDate(date, proteinLastDate);
+        final isLastCalorie = _isSameDate(date, calorieLastDate);
+        final knowsNutritionData = mealsProvider.hasNutritionDataOn(date);
+        final isMarked = switch (mode) {
+          _StreakCalendarMode.registration =>
+            mealsProvider.hasMealsOn(date) || isLastRegistration,
+          _StreakCalendarMode.protein => mealsProvider.hasHitProteinGoalOn(
+                date,
+                proteinTarget: goalsProvider.proteinGoal,
+              ) ||
+              (isLastProtein && !knowsNutritionData),
+          _StreakCalendarMode.calories => mealsProvider.hasHitCalorieGoalOn(
+                date,
+                calorieGoal: goalsProvider.caloriesGoal,
+                allowBelowGoal:
+                    _calorieModeAllowsBelowGoal(goalsProvider.fitnessGoal),
+                allowAboveGoal:
+                    _calorieModeAllowsAboveGoal(goalsProvider.fitnessGoal),
+              ) ||
+              (isLastCalorie && !knowsNutritionData),
+        };
         final isToday = _isSameDate(date, DateTime.now());
         final isFuture = date.isAfter(DateTime.now());
 
@@ -801,6 +1059,7 @@ class _CalendarGrid extends StatelessWidget {
           isToday: isToday,
           isMarked: isMarked,
           isFuture: isFuture,
+          markColor: _calendarMarkColor(mode),
         );
       },
     );
@@ -812,19 +1071,20 @@ class _CalendarDayCell extends StatelessWidget {
   final bool isToday;
   final bool isMarked;
   final bool isFuture;
+  final Color markColor;
 
   const _CalendarDayCell({
     required this.day,
     required this.isToday,
     required this.isMarked,
     required this.isFuture,
+    required this.markColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primary = _streakPrimaryColor(isDarkMode);
-    final markColor = const Color(0xFFFF6B35);
     final textColor = isFuture
         ? _streakMutedTextColor(isDarkMode).withValues(alpha: 0.38)
         : isToday
@@ -880,8 +1140,14 @@ class _CalendarDayCell extends StatelessWidget {
 
 class _CalendarLegend extends StatelessWidget {
   final bool isDarkMode;
+  final _StreakCalendarMode mode;
+  final Color markColor;
 
-  const _CalendarLegend({required this.isDarkMode});
+  const _CalendarLegend({
+    required this.isDarkMode,
+    required this.mode,
+    required this.markColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -890,8 +1156,8 @@ class _CalendarLegend extends StatelessWidget {
       runSpacing: 8,
       children: [
         _LegendItem(
-          color: const Color(0xFFFF6B35),
-          label: context.tr.translate('streak_calendar_logged_day'),
+          color: markColor,
+          label: _calendarModeLabel(context, mode),
           isDarkMode: isDarkMode,
         ),
         _LegendItem(

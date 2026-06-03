@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../util/app_constants.dart';
 import '../models/meal_model.dart';
 import '../models/food_model.dart';
+import '../models/Nutrient.dart';
 
 /// Modelo para resumo diário do servidor
 class DailySummary {
@@ -61,6 +62,9 @@ class DailySummary {
           protein: _readDouble(foodJson['protein']),
           carbs: _readDouble(foodJson['carbs']),
           fat: _readDouble(foodJson['fat']),
+          fiber: _readDouble(foodJson['fiber']),
+          servingSize: _readDouble(foodJson['amount'], fallback: 100),
+          servingUnit: foodJson['unit']?.toString() ?? 'g',
         );
       }).toList();
 
@@ -154,12 +158,14 @@ class MealGoals {
   final int protein;
   final int carbs;
   final int fat;
+  final String? fitnessGoal;
 
   MealGoals({
     required this.calories,
     required this.protein,
     required this.carbs,
     required this.fat,
+    this.fitnessGoal,
   });
 
   Map<String, dynamic> toJson() => {
@@ -167,6 +173,7 @@ class MealGoals {
         'protein': protein,
         'carbs': carbs,
         'fat': fat,
+        if (fitnessGoal != null) 'fitnessGoal': fitnessGoal,
       };
 }
 
@@ -193,17 +200,20 @@ class MealsSyncService {
           'mealTime': meal.dateTime.toIso8601String(),
           'messageId': meal.messageId,
           'foods': meal.foods.map((food) {
+            final nutrient = food.primaryNutrient;
             return {
               'foodId': food.id,
               'name': food.name,
               'emoji': food.emoji,
-              'amount': double.tryParse(food.amount ?? '100') ?? 100,
-              'unit': 'g',
+              'amount': nutrient?.servingSize ??
+                  double.tryParse(food.amount ?? '100') ??
+                  100,
+              'unit': nutrient?.servingUnit ?? 'g',
               'calories': food.calories,
               'protein': food.protein,
               'carbs': food.carbs,
               'fat': food.fat,
-              'fiber': 0, // TODO: adicionar fibra se disponível
+              'fiber': nutrient?.dietaryFiber ?? 0,
             };
           }).toList(),
         };
@@ -280,14 +290,20 @@ class MealsSyncService {
     required String token,
     required DateTime from,
     required DateTime to,
+    bool summaryOnly = false,
   }) async {
     try {
       print(
           '[MealsSyncService] Buscando período: ${_formatDate(from)} a ${_formatDate(to)}');
 
+      final query = <String, String>{
+        'from': _formatDate(from),
+        'to': _formatDate(to),
+        if (summaryOnly) 'summaryOnly': 'true',
+      };
+
       final response = await http.get(
-        Uri.parse(
-            '$baseUrl/meals/range?from=${_formatDate(from)}&to=${_formatDate(to)}'),
+        Uri.parse('$baseUrl/meals/range').replace(queryParameters: query),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -406,10 +422,21 @@ extension FoodMacrosExtension on Food {
     required double protein,
     required double carbs,
     required double fat,
+    double fiber = 0,
+    double servingSize = 100,
+    String servingUnit = 'g',
   }) {
-    // Criamos um Food com os valores já definidos
-    // Como Food usa getters para calcular macros, precisamos usar uma abordagem diferente
-    // Por enquanto, retornamos o food original já que os valores são calculados no servidor
-    return this;
+    final nutrient = Nutrient(
+      idFood: id ?? 0,
+      servingSize: servingSize,
+      servingUnit: servingUnit,
+      calories: calories.toDouble(),
+      protein: protein,
+      carbohydrate: carbs,
+      fat: fat,
+      dietaryFiber: fiber,
+    );
+
+    return copyWith(nutrients: [nutrient]);
   }
 }

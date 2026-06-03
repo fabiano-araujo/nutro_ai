@@ -74,11 +74,16 @@ class FreeChatProvider extends ChangeNotifier {
   List<FreeChatConversation> get conversations => _conversations;
   bool get isSyncingWithServer => _isSyncingWithServer;
   bool get hasPendingServerSync => _hasPendingServerSync;
+  bool get hasLocalConversationData =>
+      _conversations.any((conversation) => conversation.messages.isNotEmpty);
   String? get lastServerSyncError => _lastServerSyncError;
+  late final Future<void> _loadFuture;
 
   FreeChatProvider() {
-    _loadConversations();
+    _loadFuture = _loadConversations();
   }
+
+  Future<void> ensureLoaded() => _loadFuture;
 
   /// Carrega conversas do armazenamento local
   Future<void> _loadConversations() async {
@@ -124,18 +129,22 @@ class FreeChatProvider extends ChangeNotifier {
     String token,
     int userId, {
     List<dynamic>? serverConversations,
+    bool syncPendingOnAuth = true,
+    bool syncLocalIfServerEmpty = true,
   }) async {
     _authToken = token;
     _authUserId = userId;
     await _loadConversations();
 
-    if (_hasPendingServerSync) {
+    if (_hasPendingServerSync && syncPendingOnAuth) {
       await syncPendingIfNeeded();
       return;
     }
 
     if (serverConversations != null) {
-      if (serverConversations.isEmpty && _conversations.isNotEmpty) {
+      if (syncLocalIfServerEmpty &&
+          serverConversations.isEmpty &&
+          _conversations.isNotEmpty) {
         _hasPendingServerSync = true;
         await _saveConversations(markPendingSync: false);
         await syncPendingIfNeeded();

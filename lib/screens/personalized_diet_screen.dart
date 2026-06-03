@@ -21,9 +21,7 @@ import '../screens/subscription_screen.dart';
 import '../i18n/app_localizations.dart';
 import '../widgets/diet_style_message_state.dart';
 import '../widgets/food_icon.dart';
-import '../widgets/native_ad_widget.dart';
 import '../widgets/header_streak_badge.dart';
-import '../services/ad_manager.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
@@ -41,7 +39,9 @@ class PersonalizedDietScreen extends StatefulWidget {
 
 class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   final ScrollController _scrollController = ScrollController();
+  static const double _scrollVisibilityThreshold = 6.0;
   bool _isHeaderCollapsed = false;
+  double _lastScrollOffset = 0;
 
   // Controle de refeições expandidas
   final Set<String> _expandedMeals = {};
@@ -60,10 +60,36 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   }
 
   void _handleScrollVisibility() {
-    final shouldCollapse =
-        _scrollController.hasClients && _scrollController.offset > 12;
-    if (shouldCollapse == _isHeaderCollapsed) return;
-    setState(() => _isHeaderCollapsed = shouldCollapse);
+    if (!_scrollController.hasClients) return;
+
+    final currentOffset = _scrollController.offset;
+    final scrollDelta = currentOffset - _lastScrollOffset;
+
+    if (currentOffset <= 0) {
+      _lastScrollOffset = 0;
+      _setHeaderCollapsed(false);
+      return;
+    }
+
+    if (scrollDelta.abs() < _scrollVisibilityThreshold) return;
+
+    _lastScrollOffset = currentOffset;
+    if (scrollDelta > 0) {
+      _setHeaderCollapsed(true);
+    } else {
+      _setHeaderCollapsed(false);
+    }
+  }
+
+  void _setHeaderCollapsed(bool collapsed) {
+    if (_isHeaderCollapsed == collapsed) return;
+    setState(() => _isHeaderCollapsed = collapsed);
+  }
+
+  void _showHeader() {
+    _lastScrollOffset =
+        _scrollController.hasClients ? _scrollController.offset : 0;
+    _setHeaderCollapsed(false);
   }
 
   Widget _buildWeeklyFixedHeader(bool isDarkMode, AppLocalizations l10n) {
@@ -1078,36 +1104,38 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           builder: (context, dietProvider, _) {
             final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
             final isLoading = dietProvider.isLoading;
+            final headerHeight = isWeeklyMode ? 56.0 : 112.0;
+            final header = isWeeklyMode
+                ? _buildWeeklyFixedHeader(isDarkMode, l10n)
+                : WeeklyCalendar(
+                    selectedDate: dietProvider.selectedDate,
+                    onDaySelected: (date) {
+                      _showHeader();
+                      dietProvider.setSelectedDate(date);
+                    },
+                    showAppBar: true,
+                    showCalendar: true,
+                    onOpenDrawer: widget.onOpenDrawer,
+                    onSearchPressed: widget.onSearchPressed,
+                  );
 
             return Column(
               children: [
-                if (isWeeklyMode)
-                  _buildWeeklyFixedHeader(isDarkMode, l10n)
-                else
-                  // AppBar/calendário some ao rolar; os chips seguem fixos.
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    height: _isHeaderCollapsed ? 0 : 112.0,
-                    child: ClipRect(
-                      child: OverflowBox(
-                        minHeight: 0,
-                        maxHeight: 112,
-                        alignment: Alignment.topCenter,
-                        child: WeeklyCalendar(
-                          selectedDate: dietProvider.selectedDate,
-                          onDaySelected: (date) {
-                            setState(() => _isHeaderCollapsed = false);
-                            dietProvider.setSelectedDate(date);
-                          },
-                          showAppBar: true,
-                          showCalendar: true,
-                          onOpenDrawer: widget.onOpenDrawer,
-                          onSearchPressed: widget.onSearchPressed,
-                        ),
-                      ),
+                // Header some ao rolar para baixo e reaparece ao rolar para cima;
+                // os chips seguem fixos.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  height: _isHeaderCollapsed ? 0 : headerHeight,
+                  child: ClipRect(
+                    child: OverflowBox(
+                      minHeight: 0,
+                      maxHeight: headerHeight,
+                      alignment: Alignment.topCenter,
+                      child: header,
                     ),
                   ),
+                ),
 
                 // Chips sempre visíveis
                 Padding(
@@ -1153,7 +1181,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           selected: isWeekly,
           onSelected: (selected) {
             if (selected) {
-              setState(() => _isHeaderCollapsed = false);
+              _showHeader();
               dietProvider.setDietMode(DietMode.weekly);
             }
           },
@@ -1188,7 +1216,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
           selected: !isWeekly,
           onSelected: (selected) {
             if (selected) {
-              setState(() => _isHeaderCollapsed = false);
+              _showHeader();
               dietProvider.setDietMode(DietMode.daily);
             }
           },
@@ -1326,7 +1354,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
     final buttonColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-    final emptyState = DietStyleMessageState(
+    return DietStyleMessageState(
       title: isWeeklyMode
           ? l10n.translate('no_weekly_diet')
           : l10n.translate('no_daily_diet'),
@@ -1340,27 +1368,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       topSpacing: 40,
       accentColor: buttonColor,
       pinActionsToBottom: false,
-    );
-
-    if (AdManager.adsBlocked) {
-      return emptyState;
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          emptyState,
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: NativeAdWidget(
-              adUnitId: AdManager.nativeDietEmptyAdUnitId,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

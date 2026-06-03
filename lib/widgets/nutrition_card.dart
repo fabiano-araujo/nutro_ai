@@ -61,148 +61,185 @@ class _NutritionCardState extends State<NutritionCard> {
           side: BorderSide(color: borderColor),
         ),
         color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(8, 6, 8, 6),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                // Lado esquerdo - Calorias
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      // Gráfico circular de calorias
-                      SizedBox(
-                        width: 64,
-                        height: 64,
-                        child: CustomPaint(
-                          painter: CalorieCirclePainter(
-                            consumed: widget.caloriesConsumed,
-                            goal: widget.caloriesGoal,
-                            isDarkMode: isDarkMode,
-                            isExceeded: isCaloriesExceeded,
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  '${widget.caloriesConsumed}',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                    color: isCaloriesExceeded
-                                        ? exceededColor
-                                        : (isDarkMode
-                                            ? AppTheme.darkTextColor
-                                            : AppTheme.textPrimaryColor),
-                                  ),
-                                ),
-                                Text(
-                                  'kcal',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isDarkMode
-                                        ? Color(0xFFAEB7CE)
-                                        : AppTheme.textSecondaryColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Meta de calorias + botão alterar
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                8,
+                6,
+                widget.onMinimize != null ? 34 : 8,
+                6,
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    // Lado esquerdo - Calorias
+                    Expanded(
+                      flex: 2,
+                      child: Column(
                         children: [
-                          Text(
-                            'de ${widget.caloriesGoal}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isCaloriesExceeded
-                                  ? exceededColor
-                                  : (isDarkMode
-                                      ? Color(0xFFAEB7CE)
-                                      : AppTheme.textSecondaryColor),
-                            ),
-                          ),
-                          if (!widget.hasConfiguredGoals &&
-                              widget.onEditGoals != null) ...[
-                            SizedBox(width: 6),
-                            InkWell(
-                              onTap: widget.onEditGoals,
-                              borderRadius: BorderRadius.circular(4),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 2, vertical: 2),
-                                child: Text(
-                                  'alterar meta',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    decoration: TextDecoration.underline,
-                                    color: isDarkMode
-                                        ? Color(0xFFAEB7CE)
-                                        : AppTheme.textSecondaryColor,
-                                  ),
+                          // Gráfico circular de calorias
+                          SizedBox(
+                            width: 64,
+                            height: 64,
+                            child: CustomPaint(
+                              painter: CalorieCirclePainter(
+                                consumed: widget.caloriesConsumed,
+                                goal: widget.caloriesGoal,
+                                isDarkMode: isDarkMode,
+                                isExceeded: isCaloriesExceeded,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${widget.caloriesConsumed}',
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold,
+                                        color: isCaloriesExceeded
+                                            ? exceededColor
+                                            : (isDarkMode
+                                                ? AppTheme.darkTextColor
+                                                : AppTheme.textPrimaryColor),
+                                      ),
+                                    ),
+                                    Text(
+                                      'kcal',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isDarkMode
+                                            ? Color(0xFFAEB7CE)
+                                            : AppTheme.textSecondaryColor,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ],
+                          ),
+                          // Meta de calorias + botão alterar
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'de ${widget.caloriesGoal}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isCaloriesExceeded
+                                      ? exceededColor
+                                      : (isDarkMode
+                                          ? Color(0xFFAEB7CE)
+                                          : AppTheme.textSecondaryColor),
+                                ),
+                              ),
+                              if (!widget.hasConfiguredGoals &&
+                                  widget.onEditGoals != null) ...[
+                                SizedBox(width: 4),
+                                Flexible(
+                                  flex: 2,
+                                  child: InkWell(
+                                    onTap: widget.onEditGoals,
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 2, vertical: 2),
+                                      child: Text(
+                                        'alterar meta',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          decoration: TextDecoration.underline,
+                                          color: isDarkMode
+                                              ? Color(0xFFAEB7CE)
+                                              : AppTheme.textSecondaryColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                // Divisor vertical entre calorias e macros
-                VerticalDivider(
-                  color: borderColor,
-                  width: 16,
-                  thickness: 1,
-                  indent: 4,
-                  endIndent: 4,
-                ),
+                    // Divisor vertical entre calorias e macros
+                    VerticalDivider(
+                      color: borderColor,
+                      width: 16,
+                      thickness: 1,
+                      indent: 4,
+                      endIndent: 4,
+                    ),
 
-                // Lado direito - Macros
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _MacroRow(
-                        label: context.tr.translate('protein'),
-                        consumed: widget.proteinConsumed,
-                        goal: widget.proteinGoal,
-                        unit: 'g',
-                        color: MacroTheme.proteinColor,
-                        isDarkMode: isDarkMode,
+                    // Lado direito - Macros
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _MacroRow(
+                            label: context.tr.translate('protein'),
+                            consumed: widget.proteinConsumed,
+                            goal: widget.proteinGoal,
+                            unit: 'g',
+                            color: MacroTheme.proteinColor,
+                            isDarkMode: isDarkMode,
+                          ),
+                          SizedBox(height: 8),
+                          _MacroRow(
+                            label: context.tr.translate('carbs'),
+                            consumed: widget.carbsConsumed,
+                            goal: widget.carbsGoal,
+                            unit: 'g',
+                            color: MacroTheme.carbsColor,
+                            isDarkMode: isDarkMode,
+                          ),
+                          SizedBox(height: 8),
+                          _MacroRow(
+                            label: context.tr.translate('fats'),
+                            consumed: widget.fatsConsumed,
+                            goal: widget.fatsGoal,
+                            unit: 'g',
+                            color: MacroTheme.fatColor,
+                            isDarkMode: isDarkMode,
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8),
-                      _MacroRow(
-                        label: context.tr.translate('carbs'),
-                        consumed: widget.carbsConsumed,
-                        goal: widget.carbsGoal,
-                        unit: 'g',
-                        color: MacroTheme.carbsColor,
-                        isDarkMode: isDarkMode,
-                      ),
-                      SizedBox(height: 8),
-                      _MacroRow(
-                        label: context.tr.translate('fats'),
-                        consumed: widget.fatsConsumed,
-                        goal: widget.fatsGoal,
-                        unit: 'g',
-                        color: MacroTheme.fatColor,
-                        isDarkMode: isDarkMode,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            if (widget.onMinimize != null)
+              Positioned(
+                top: 2,
+                right: 4,
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints.tight(Size(28, 28)),
+                    onPressed: widget.onMinimize,
+                    icon: Icon(
+                      Icons.expand_less_rounded,
+                      size: 21,
+                      color: isDarkMode
+                          ? Color(0xFFAEB7CE)
+                          : AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -240,26 +277,35 @@ class _MacroRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isDarkMode
-                        ? AppTheme.darkTextColor
-                        : AppTheme.textPrimaryColor,
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: isDarkMode
+                            ? AppTheme.darkTextColor
+                            : AppTheme.textPrimaryColor,
+                      ),
+                    ),
                   ),
-                ),
-                if (isExceeded) ...[
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_upward, size: 12, color: exceededColor),
+                  if (isExceeded) ...[
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_upward, size: 12, color: exceededColor),
+                  ],
                 ],
-              ],
+              ),
             ),
+            SizedBox(width: 6),
             Text(
               '${consumed}${unit}/${goal}${unit}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isExceeded ? FontWeight.w600 : FontWeight.w500,

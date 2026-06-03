@@ -54,6 +54,7 @@ class NutritionAssistantController with ChangeNotifier {
 
   // Estados de carregamento
   bool _isLoading = false;
+  bool _isLoadingMessages = false;
   bool _isProcessingMedia = false;
   bool _isRecording = false;
 
@@ -93,6 +94,7 @@ class NutritionAssistantController with ChangeNotifier {
   // Getters
   List<Map<String, dynamic>> get messages => _messages;
   bool get isLoading => _isLoading;
+  bool get isLoadingMessages => _isLoadingMessages;
   bool get isProcessingMedia => _isProcessingMedia;
   bool get isRecording => _isRecording;
   bool get hasSelectedImage => _hasSelectedImage;
@@ -375,6 +377,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     print(
         '📂 NutritionAssistantController - Iniciando carregamento da conversa ID: $conversationId');
     _isLoading = true;
+    _isLoadingMessages = true;
     _messages = []; // Limpar mensagens antigas enquanto carrega
     notifyListeners();
 
@@ -387,6 +390,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       if (loadedMessages != null) {
         _messages = loadedMessages;
         _isLoading = false;
+        _isLoadingMessages = false;
         notifyListeners();
         print(
             '✅ NutritionAssistantController - Conversa carregada com sucesso via Helper');
@@ -395,6 +399,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
             '⚠️ NutritionAssistantController - Conversa não encontrada ou erro no Helper, mostrando mensagem padrão');
         _addWelcomeMessage();
         _isLoading = false;
+        _isLoadingMessages = false;
         notifyListeners();
       }
     } catch (e) {
@@ -402,6 +407,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           '❌ NutritionAssistantController - Erro inesperado ao carregar conversa: $e');
       _addWelcomeMessage();
       _isLoading = false;
+      _isLoadingMessages = false;
       notifyListeners();
     }
   }
@@ -1095,6 +1101,61 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           context: context,
         );
         if (handled) {
+          return true;
+        }
+      }
+
+      final fallbackMacroStatusCommand =
+          AppAgentService.buildMacroTargetsStatusCommandFromUserMessage(
+        originalUserMessage,
+        rawJson: responseContent,
+        conversationContext: conversationContext,
+      );
+      if (fallbackMacroStatusCommand != null) {
+        AppAgentService.logAgentDebug('fallback_macro_status_from_message', {
+          'userMessage': originalUserMessage,
+          'arguments': fallbackMacroStatusCommand.arguments,
+          'conversationContext':
+              AppAgentService.debugPreview(conversationContext),
+        });
+        final executionResult = await AppAgentService.executeCommand(
+          fallbackMacroStatusCommand,
+          context,
+        );
+        final directMessage =
+            AppAgentService.buildMacroGoalsCommandResultMessage(
+          context: context,
+          executionResults: [executionResult],
+        );
+        if (directMessage != null) {
+          _finalizeInterceptedMessage(notifier, directMessage);
+          _saveMessagesForCurrentDate();
+          return true;
+        }
+      }
+
+      final fallbackDailyStatusCommand =
+          AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+        originalUserMessage,
+        rawJson: responseContent,
+      );
+      if (fallbackDailyStatusCommand != null) {
+        AppAgentService.logAgentDebug('fallback_daily_status_from_message', {
+          'userMessage': originalUserMessage,
+          'arguments': fallbackDailyStatusCommand.arguments,
+        });
+        final executionResult = await AppAgentService.executeCommand(
+          fallbackDailyStatusCommand,
+          context,
+        );
+        final directMessage = AppAgentService.buildCommandResultFallbackMessage(
+          context: context,
+          executionResults: [executionResult],
+          originalUserMessage: originalUserMessage,
+        );
+        if (directMessage != null) {
+          _finalizeInterceptedMessage(notifier, directMessage);
+          _saveMessagesForCurrentDate();
           return true;
         }
       }
@@ -2723,7 +2784,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           '✅ NutritionAssistantController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
       // Enviar para o servidor (debounced) para o chat sobreviver a
       // limpeza de dados/reinstalação/troca de aparelho.
-      DailyChatSyncService.instance.scheduleSync();
+      DailyChatSyncService.instance.scheduleSync(dateKey: dateKey);
     } catch (e) {
       print(
           '❌ NutritionAssistantController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
@@ -2732,6 +2793,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
   /// Carrega as mensagens de uma data específica
   Future<void> _loadMessagesForDate(DateTime date) async {
+    _isLoadingMessages = true;
+    if (!_disposed) {
+      notifyListeners();
+    }
+
     try {
       final dateKey = _formatDateKey(date);
       final storageKey = _buildStorageKey(dateKey);
@@ -2753,10 +2819,17 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       }
 
       if (!_hasMessages(data)) {
+        final restored = await DailyChatSyncService.instance
+            .restoreDateFromServer(dateKey, scope: storageScope);
+        if (restored) {
+          data = await _storageService.getData(storageKey);
+        }
+      }
+
+      if (!_hasMessages(data)) {
         print(
             '📭 NutritionAssistantController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
-        notifyListeners();
         return;
       }
 
@@ -2782,12 +2855,15 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
       print(
           '✅ NutritionAssistantController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
-      notifyListeners();
     } catch (e) {
       print(
           '❌ NutritionAssistantController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
       _messages = [];
-      notifyListeners();
+    } finally {
+      _isLoadingMessages = false;
+      if (!_disposed) {
+        notifyListeners();
+      }
     }
   }
 

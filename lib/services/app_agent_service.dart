@@ -1995,6 +1995,98 @@ class AppAgentService {
     }
   }
 
+  static String _contextLanguageCode(BuildContext context) =>
+      Localizations.localeOf(context).languageCode.toLowerCase();
+
+  static bool _isPortugueseLanguage(String language) =>
+      language.toLowerCase().startsWith('pt');
+
+  static String _localizedMacroTargetsStatusMessage({
+    required String language,
+    required int caloriesGoal,
+    required double protein,
+    required double carbs,
+    required double fat,
+  }) {
+    final proteinText = _formatOneDecimal(protein);
+    final carbsText = _formatOneDecimal(carbs);
+    final fatText = _formatOneDecimal(fat);
+    switch (language) {
+      case 'es':
+        return 'Tus metas actuales son $caloriesGoal kcal: ${proteinText}g de proteína, '
+            '${carbsText}g de carbohidratos y ${fatText}g de grasas. '
+            'Dime si quieres reducir o aumentar calorías, o cambiar algún macro.';
+      case 'fr':
+        return 'Tes objectifs actuels sont $caloriesGoal kcal : ${proteinText}g de protéines, '
+            '${carbsText}g de glucides et ${fatText}g de lipides. '
+            'Dis-moi si tu veux réduire ou augmenter les calories, ou modifier un macro.';
+      case 'de':
+        return 'Deine aktuellen Ziele sind $caloriesGoal kcal: ${proteinText}g Protein, '
+            '${carbsText}g Kohlenhydrate und ${fatText}g Fett. '
+            'Sag mir, ob du Kalorien senken oder erhöhen oder ein Makro ändern willst.';
+      case 'it':
+        return 'I tuoi obiettivi attuali sono $caloriesGoal kcal: ${proteinText}g di proteine, '
+            '${carbsText}g di carboidrati e ${fatText}g di grassi. '
+            'Dimmi se vuoi ridurre o aumentare le calorie, oppure cambiare un macro.';
+      case 'pt':
+        return 'Suas metas atuais são $caloriesGoal kcal: ${proteinText}g de proteína, '
+            '${carbsText}g de carboidratos e ${fatText}g de gorduras. '
+            'Me diga se quer reduzir ou aumentar calorias, ou mudar algum macro.';
+      default:
+        return 'Your current goals are $caloriesGoal kcal: ${proteinText}g protein, '
+            '${carbsText}g carbs, and ${fatText}g fat. '
+            'Tell me if you want to lower or raise calories, or change any macro.';
+    }
+  }
+
+  static String _localizedDailyRemainingStatusMessage({
+    required String language,
+    required DateTime? selectedDate,
+    required int caloriesRemaining,
+    required double proteinRemaining,
+    required double carbsRemaining,
+    required double fatRemaining,
+  }) {
+    final dateLabel = _dailyStatusDateLabelForLanguage(
+      selectedDate,
+      language: language,
+    );
+    final isToday = selectedDate == null ||
+        _isSameDay(
+          selectedDate,
+          DateTime.now(),
+        );
+    final proteinText = _formatOneDecimal(proteinRemaining);
+    final carbsText = _formatOneDecimal(carbsRemaining);
+    final fatText = _formatOneDecimal(fatRemaining);
+    switch (language) {
+      case 'es':
+        return '$dateLabel todavía ${isToday ? 'puedes' : 'podías'} consumir '
+            '$caloriesRemaining kcal, ${proteinText}g de proteína, '
+            '${carbsText}g de carbohidratos y ${fatText}g de grasas.';
+      case 'fr':
+        return '$dateLabel, tu ${isToday ? 'peux encore' : 'pouvais encore'} consommer '
+            '$caloriesRemaining kcal, ${proteinText}g de protéines, '
+            '${carbsText}g de glucides et ${fatText}g de lipides.';
+      case 'de':
+        return '$dateLabel ${isToday ? 'kannst du noch' : 'konntest du noch'} '
+            '$caloriesRemaining kcal, ${proteinText}g Protein, '
+            '${carbsText}g Kohlenhydrate und ${fatText}g Fett zu dir nehmen.';
+      case 'it':
+        return '$dateLabel ${isToday ? 'puoi ancora' : 'potevi ancora'} consumare '
+            '$caloriesRemaining kcal, ${proteinText}g di proteine, '
+            '${carbsText}g di carboidrati e ${fatText}g di grassi.';
+      case 'pt':
+        return '$dateLabel você ainda ${isToday ? 'pode' : 'podia'} consumir '
+            '$caloriesRemaining kcal, ${proteinText}g de proteína, '
+            '${carbsText}g de carboidratos e ${fatText}g de gorduras.';
+      default:
+        return '$dateLabel you ${isToday ? 'still have' : 'had'} '
+            '$caloriesRemaining kcal, ${proteinText}g protein, '
+            '${carbsText}g carbs, and ${fatText}g fat remaining.';
+    }
+  }
+
   static String? buildMacroGoalsCommandResultMessage({
     required BuildContext context,
     required List<AppAgentExecutionResult> executionResults,
@@ -2003,10 +2095,8 @@ class AppAgentService {
       return null;
     }
 
-    final isPortuguese =
-        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-              'pt',
-            );
+    final language = _contextLanguageCode(context);
+    final isPortuguese = _isPortugueseLanguage(language);
     final successfulResults =
         executionResults.where((result) => result.success).toList();
 
@@ -2042,33 +2132,20 @@ class AppAgentService {
     switch (lastResult.commandName) {
       case getDailyNutritionStatus:
         final selectedDate = _tryParseDate(payload['selectedDate']);
-        final dateLabel = _dailyStatusDateLabel(
-          selectedDate,
-          isPortuguese: isPortuguese,
-        );
-        final isToday = selectedDate == null ||
-            _isSameDay(
-              selectedDate,
-              DateTime.now(),
-            );
         final caloriesRemaining =
             _tryParseInt(payload['caloriesRemaining']) ?? 0;
         final proteinRemaining =
             _tryParseDouble(payload['proteinRemaining']) ?? 0;
         final carbsRemaining = _tryParseDouble(payload['carbsRemaining']) ?? 0;
         final fatRemaining = _tryParseDouble(payload['fatRemaining']) ?? 0;
-        if (isPortuguese) {
-          final verb = isToday ? 'pode' : 'podia';
-          return '$dateLabel você ainda $verb consumir $caloriesRemaining kcal, '
-              '${_formatOneDecimal(proteinRemaining)}g de proteína, '
-              '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
-              '${_formatOneDecimal(fatRemaining)}g de gorduras.';
-        }
-        final verb = isToday ? 'still have' : 'had';
-        return '$dateLabel you $verb $caloriesRemaining kcal, '
-            '${_formatOneDecimal(proteinRemaining)}g protein, '
-            '${_formatOneDecimal(carbsRemaining)}g carbs, and '
-            '${_formatOneDecimal(fatRemaining)}g fat remaining.';
+        return _localizedDailyRemainingStatusMessage(
+          language: language,
+          selectedDate: selectedDate,
+          caloriesRemaining: caloriesRemaining,
+          proteinRemaining: proteinRemaining,
+          carbsRemaining: carbsRemaining,
+          fatRemaining: fatRemaining,
+        );
       case updateMacroTargetsPercentage:
       case updateMacroTargetsGrams:
       case updateMacroTargetsGramsPerKg:
@@ -2104,18 +2181,13 @@ class AppAgentService {
             '${_formatOneDecimal(fat)}g fat. '
             'If you want a different target, just tell me.';
       case getMacroTargetsStatus:
-        if (isPortuguese) {
-          return 'Suas metas atuais são $caloriesGoal kcal: '
-              '${_formatOneDecimal(protein)}g de proteína, '
-              '${_formatOneDecimal(carbs)}g de carboidratos e '
-              '${_formatOneDecimal(fat)}g de gorduras. '
-              'Me diga se quer reduzir ou aumentar calorias, ou mudar algum macro.';
-        }
-        return 'Your current goals are $caloriesGoal kcal: '
-            '${_formatOneDecimal(protein)}g protein, '
-            '${_formatOneDecimal(carbs)}g carbs, and '
-            '${_formatOneDecimal(fat)}g fat. '
-            'Tell me if you want to lower or raise calories, or change any macro.';
+        return _localizedMacroTargetsStatusMessage(
+          language: language,
+          caloriesGoal: caloriesGoal,
+          protein: protein,
+          carbs: carbs,
+          fat: fat,
+        );
       case getDietGenerationPreferencesStatus:
       case updateDietGenerationPreferences:
       case generateNewDietPlan:
@@ -2171,10 +2243,8 @@ class AppAgentService {
     required String originalUserMessage,
   }) {
     final payload = result.payload;
-    final isPortuguese =
-        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-              'pt',
-            );
+    final language = _contextLanguageCode(context);
+    final isPortuguese = _isPortugueseLanguage(language);
     final normalized = _normalizeLooseText(originalUserMessage);
     final caloriesGoal = _tryParseInt(payload['caloriesGoal']) ?? 0;
     final proteinGoal = _tryParseDouble(payload['proteinGoal']) ?? 0;
@@ -2193,15 +2263,17 @@ class AppAgentService {
     final fatRemaining =
         _tryParseDouble(payload['fatRemaining']) ?? (fatGoal - fatConsumed);
     final selectedDate = _tryParseDate(payload['selectedDate']);
-    final dateLabel = _dailyStatusDateLabel(
+    final dateLabel = _dailyStatusDateLabelForLanguage(
       selectedDate,
-      isPortuguese: isPortuguese,
+      language: language,
     );
-    final isToday = selectedDate == null ||
-        _isSameDay(
-          selectedDate,
-          DateTime.now(),
-        );
+    final meals = (payload['meals'] as List?) ?? const [];
+    final hasData = payload['hasData'] == true ||
+        meals.isNotEmpty ||
+        caloriesConsumed > 0 ||
+        proteinConsumed > 0 ||
+        carbsConsumed > 0 ||
+        fatConsumed > 0;
 
     final asksConsumed = _containsAnyTerm(normalized, const [
       'consumo',
@@ -2236,8 +2308,36 @@ class AppAgentService {
       'fats',
     ]);
     final asksSnackSuggestion = _looksLikeSnackSuggestionRequest(normalized);
+    final asksEvaluation = _looksLikeDailyEvaluationRequest(normalized);
 
     if (isPortuguese) {
+      if (asksEvaluation) {
+        if (!hasData) {
+          return 'Não encontrei registros da sua alimentação de ${dateLabel.toLowerCase()}. '
+              'Se você registrou refeições nesse dia, pode ser que elas ainda não tenham sincronizado.';
+        }
+        final calorieRatio =
+            caloriesGoal > 0 ? caloriesConsumed / caloriesGoal : 0.0;
+        final proteinRatio =
+            proteinGoal > 0 ? proteinConsumed / proteinGoal : 0.0;
+        final calorieAssessment = calorieRatio < 0.7
+            ? 'bem abaixo da meta'
+            : calorieRatio > 1.15
+                ? 'acima da meta'
+                : 'perto da meta';
+        final proteinAssessment =
+            proteinRatio >= 0.9 ? 'proteína ficou boa' : 'proteína ficou baixa';
+        final mealCount = meals.length;
+        final mealPhrase = mealCount > 0
+            ? ' com $mealCount ${mealCount == 1 ? 'refeição registrada' : 'refeições registradas'}'
+            : '';
+        return '$dateLabel$mealPhrase: você consumiu $caloriesConsumed kcal de $caloriesGoal kcal, '
+            '${_formatOneDecimal(proteinConsumed)}g de proteína, '
+            '${_formatOneDecimal(carbsConsumed)}g de carboidratos e '
+            '${_formatOneDecimal(fatConsumed)}g de gorduras. '
+            'Foi um dia $calorieAssessment e a $proteinAssessment. '
+            '${calorieRatio < 0.7 ? 'Pelo registro, parece uma alimentação incompleta.' : 'No geral, o ponto principal é manter proteína e calorias dentro da meta.'}';
+      }
       if (asksSnackSuggestion) {
         if (caloriesRemaining < 250) {
           return 'Uma opção de lanche leve: iogurte natural ou uma fruta com '
@@ -2271,11 +2371,37 @@ class AppAgentService {
             '${_formatOneDecimal(fatConsumed)}g de gorduras. '
             'Ainda restam $caloriesRemaining kcal.';
       }
-      final verb = isToday ? 'pode' : 'podia';
-      return '$dateLabel você ainda $verb consumir $caloriesRemaining kcal, '
-          '${_formatOneDecimal(proteinRemaining)}g de proteína, '
-          '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
-          '${_formatOneDecimal(fatRemaining)}g de gorduras.';
+      return _localizedDailyRemainingStatusMessage(
+        language: language,
+        selectedDate: selectedDate,
+        caloriesRemaining: caloriesRemaining,
+        proteinRemaining: proteinRemaining,
+        carbsRemaining: carbsRemaining,
+        fatRemaining: fatRemaining,
+      );
+    }
+
+    if (asksEvaluation) {
+      if (!hasData) {
+        return 'I did not find food records for ${dateLabel.toLowerCase()}. '
+            'If you logged meals for that day, they may not have synced yet.';
+      }
+      final calorieRatio =
+          caloriesGoal > 0 ? caloriesConsumed / caloriesGoal : 0.0;
+      final proteinRatio =
+          proteinGoal > 0 ? proteinConsumed / proteinGoal : 0.0;
+      final calorieAssessment = calorieRatio < 0.7
+          ? 'well below target'
+          : calorieRatio > 1.15
+              ? 'above target'
+              : 'near target';
+      final proteinAssessment =
+          proteinRatio >= 0.9 ? 'protein was good' : 'protein was low';
+      return '$dateLabel: you consumed $caloriesConsumed kcal out of $caloriesGoal kcal, '
+          '${_formatOneDecimal(proteinConsumed)}g protein, '
+          '${_formatOneDecimal(carbsConsumed)}g carbs, and '
+          '${_formatOneDecimal(fatConsumed)}g fat. '
+          'That was $calorieAssessment, and $proteinAssessment.';
     }
 
     if (asksSnackSuggestion) {
@@ -2296,11 +2422,14 @@ class AppAgentService {
           '${_formatOneDecimal(fatConsumed)}g fat. You still have '
           '$caloriesRemaining kcal remaining.';
     }
-    final verb = isToday ? 'still have' : 'had';
-    return '$dateLabel you $verb $caloriesRemaining kcal, '
-        '${_formatOneDecimal(proteinRemaining)}g protein, '
-        '${_formatOneDecimal(carbsRemaining)}g carbs, and '
-        '${_formatOneDecimal(fatRemaining)}g fat remaining.';
+    return _localizedDailyRemainingStatusMessage(
+      language: language,
+      selectedDate: selectedDate,
+      caloriesRemaining: caloriesRemaining,
+      proteinRemaining: proteinRemaining,
+      carbsRemaining: carbsRemaining,
+      fatRemaining: fatRemaining,
+    );
   }
 
   static bool _looksLikeSnackSuggestionRequest(String normalizedText) {
@@ -2407,18 +2536,67 @@ class AppAgentService {
     DateTime? selectedDate, {
     required bool isPortuguese,
   }) {
+    return _dailyStatusDateLabelForLanguage(
+      selectedDate,
+      language: isPortuguese ? 'pt' : 'en',
+    );
+  }
+
+  static String _dailyStatusDateLabelForLanguage(
+    DateTime? selectedDate, {
+    required String language,
+  }) {
     final date = _dateOnly(selectedDate ?? DateTime.now());
     final today = _dateOnly(DateTime.now());
     final yesterday = today.subtract(const Duration(days: 1));
     if (_isSameDay(date, today)) {
-      return isPortuguese ? 'Hoje' : 'Today';
+      switch (language) {
+        case 'es':
+          return 'Hoy';
+        case 'fr':
+          return "Aujourd'hui";
+        case 'de':
+          return 'Heute';
+        case 'it':
+          return 'Oggi';
+        case 'pt':
+          return 'Hoje';
+        default:
+          return 'Today';
+      }
     }
     if (_isSameDay(date, yesterday)) {
-      return isPortuguese ? 'Ontem' : 'Yesterday';
+      switch (language) {
+        case 'es':
+          return 'Ayer';
+        case 'fr':
+          return 'Hier';
+        case 'de':
+          return 'Gestern';
+        case 'it':
+          return 'Ieri';
+        case 'pt':
+          return 'Ontem';
+        default:
+          return 'Yesterday';
+      }
     }
     final formatted =
         '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-    return isPortuguese ? 'Em $formatted' : 'On $formatted';
+    switch (language) {
+      case 'es':
+        return 'El $formatted';
+      case 'fr':
+        return 'Le $formatted';
+      case 'de':
+        return 'Am ${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.';
+      case 'it':
+        return 'Il $formatted';
+      case 'pt':
+        return 'Em $formatted';
+      default:
+        return 'On $formatted';
+    }
   }
 
   static String _formatRemainingPhrase(
@@ -3332,6 +3510,46 @@ class AppAgentService {
     );
   }
 
+  static AppAgentCommand? buildDailyNutritionStatusCommandFromUserMessage(
+    String userMessage, {
+    required String rawJson,
+  }) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty ||
+        (!_looksLikeDailyStatusRequest(normalized) &&
+            !_looksLikeDailyEvaluationRequest(normalized))) {
+      return null;
+    }
+
+    return AppAgentCommand(
+      name: getDailyNutritionStatus,
+      arguments: _buildDailyStatusArgsFromUserMessage(normalized),
+      rawJson: rawJson,
+    );
+  }
+
+  static AppAgentCommand? buildMacroTargetsStatusCommandFromUserMessage(
+    String userMessage, {
+    required String rawJson,
+    String conversationContext = '',
+  }) {
+    final normalized = _normalizeLooseText(userMessage);
+    if (normalized.isEmpty ||
+        _looksLikeTotalVsRemainingQuestion(normalized) ||
+        !_looksLikeMacroTargetsStatusRequest(
+          normalized,
+          conversationContext: conversationContext,
+        )) {
+      return null;
+    }
+
+    return AppAgentCommand(
+      name: getMacroTargetsStatus,
+      arguments: const <String, dynamic>{},
+      rawJson: rawJson,
+    );
+  }
+
   static AppAgentCommand? buildMacroTargetsCommandFromUserMessage(
     String userMessage, {
     required String rawJson,
@@ -3444,6 +3662,166 @@ class AppAgentService {
       },
       rawJson: rawJson,
     );
+  }
+
+  static Map<String, dynamic> _buildDailyStatusArgsFromUserMessage(
+    String normalizedMessage,
+  ) {
+    if (RegExp(r'\b(anteontem|antes de ontem|day before yesterday)\b')
+        .hasMatch(normalizedMessage)) {
+      return const {'dateOffsetDays': -2};
+    }
+    if (RegExp(r'\b(hoje|hj|today|hoy|aujourd hui|aujourdhui|heute|oggi)\b')
+        .hasMatch(normalizedMessage)) {
+      return const {'dateOffsetDays': 0};
+    }
+    if (RegExp(r'\b(ontem|yesterday|ayer|hier|gestern|ieri)\b')
+        .hasMatch(normalizedMessage)) {
+      return const {'dateOffsetDays': -1};
+    }
+
+    final resolvedDate = _extractDailyStatusDate(normalizedMessage);
+    if (resolvedDate != null) {
+      return {'date': _formatIsoDate(resolvedDate)};
+    }
+
+    return const <String, dynamic>{};
+  }
+
+  static DateTime? _extractDailyStatusDate(String normalizedMessage) {
+    final isoMatch = RegExp(r'\b(20\d{2})\s+(\d{1,2})\s+(\d{1,2})\b')
+        .firstMatch(normalizedMessage);
+    if (isoMatch != null) {
+      return _validDate(
+        int.tryParse(isoMatch.group(1) ?? ''),
+        int.tryParse(isoMatch.group(2) ?? ''),
+        int.tryParse(isoMatch.group(3) ?? ''),
+      );
+    }
+
+    final dayMonthYearMatch = RegExp(
+      r'\b(\d{1,2})\s+(?:de\s+)?(\d{1,2}|janeiro|jan|fevereiro|fev|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)\s+(?:de\s+)?(20\d{2})\b',
+    ).firstMatch(normalizedMessage);
+    if (dayMonthYearMatch != null) {
+      return _validDate(
+        int.tryParse(dayMonthYearMatch.group(3) ?? ''),
+        _parseMonthToken(dayMonthYearMatch.group(2)),
+        int.tryParse(dayMonthYearMatch.group(1) ?? ''),
+      );
+    }
+
+    final dayMonthMatch = RegExp(
+      r'\b(?:dia\s+)?(\d{1,2})\s+(?:de\s+)?(\d{1,2}|janeiro|jan|fevereiro|fev|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)\b',
+    ).firstMatch(normalizedMessage);
+    if (dayMonthMatch != null) {
+      return _resolvePartialDate(
+        day: int.tryParse(dayMonthMatch.group(1) ?? ''),
+        month: _parseMonthToken(dayMonthMatch.group(2)),
+      );
+    }
+
+    final dayOnlyMatch =
+        RegExp(r'\bdia\s+(\d{1,2})\b').firstMatch(normalizedMessage);
+    if (dayOnlyMatch != null) {
+      return _resolvePartialDate(
+        day: int.tryParse(dayOnlyMatch.group(1) ?? ''),
+      );
+    }
+
+    return null;
+  }
+
+  static int? _parseMonthToken(String? token) {
+    if (token == null || token.trim().isEmpty) {
+      return null;
+    }
+    final numeric = int.tryParse(token);
+    if (numeric != null) {
+      return numeric;
+    }
+    const months = {
+      'janeiro': 1,
+      'jan': 1,
+      'fevereiro': 2,
+      'fev': 2,
+      'marco': 3,
+      'mar': 3,
+      'abril': 4,
+      'abr': 4,
+      'maio': 5,
+      'mai': 5,
+      'junho': 6,
+      'jun': 6,
+      'julho': 7,
+      'jul': 7,
+      'agosto': 8,
+      'ago': 8,
+      'setembro': 9,
+      'set': 9,
+      'outubro': 10,
+      'out': 10,
+      'novembro': 11,
+      'nov': 11,
+      'dezembro': 12,
+      'dez': 12,
+    };
+    return months[token];
+  }
+
+  static DateTime? _resolvePartialDate({
+    required int? day,
+    int? month,
+  }) {
+    if (day == null) {
+      return null;
+    }
+    final today = _dateOnly(DateTime.now());
+    var year = today.year;
+    var resolvedMonth = month ?? today.month;
+
+    var date = _validDate(year, resolvedMonth, day);
+    if (date == null) {
+      return null;
+    }
+    if (!date.isAfter(today)) {
+      return date;
+    }
+
+    if (month == null) {
+      resolvedMonth -= 1;
+      if (resolvedMonth < 1) {
+        resolvedMonth = 12;
+        year -= 1;
+      }
+      return _validDate(year, resolvedMonth, day);
+    }
+
+    return _validDate(year - 1, resolvedMonth, day);
+  }
+
+  static DateTime? _validDate(int? year, int? month, int? day) {
+    if (year == null ||
+        month == null ||
+        day == null ||
+        year < 2000 ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31) {
+      return null;
+    }
+    final date = DateTime(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    return _dateOnly(date);
+  }
+
+  static String _formatIsoDate(DateTime date) {
+    final normalized = _dateOnly(date);
+    return '${normalized.year.toString().padLeft(4, '0')}-'
+        '${normalized.month.toString().padLeft(2, '0')}-'
+        '${normalized.day.toString().padLeft(2, '0')}';
   }
 
   static double? _extractShortContextualMacroValue(String normalizedMessage) {
@@ -4053,6 +4431,10 @@ class AppAgentService {
     if (_looksLikeDailyStatusRequest(normalized)) {
       return _PromptIntent.dailyStatus;
     }
+    if (_looksLikeMacroTargetsStatusRequest(normalized,
+        conversationContext: basePrompt)) {
+      return _PromptIntent.macroGoals;
+    }
     if (_looksLikeDietGenerationRequest(normalized)) {
       return _PromptIntent.dietGeneration;
     }
@@ -4169,19 +4551,26 @@ class AppAgentService {
 
   static bool _isGreetingOnly(String normalizedText) {
     return RegExp(
-      r'^(oi|ola|hello|hi|hey|bom dia|boa tarde|boa noite)[\s!.?]*$',
+      r'^(oi|ola|hello|hi|hey|hola|bonjour|salut|coucou|hallo|guten tag|guten morgen|guten abend|ciao|buongiorno|buonasera|bom dia|boa tarde|boa noite|buenos dias|buenas tardes|buenas noches)[\s!.?]*$',
     ).hasMatch(normalizedText);
   }
 
   static bool _looksLikeDailyStatusRequest(String normalizedText) {
+    if (_looksLikeTotalVsRemainingQuestion(normalizedText) ||
+        _looksLikeMacroTargetsStatusRequest(normalizedText)) {
+      return false;
+    }
+
+    final explicitDateContext = _extractDailyStatusDate(normalizedText) != null;
     final asksAmount = RegExp(
-      r'\b(quanto|quantas|qto|qtas|posso comer|ainda posso|how much|how many|still eat)\b',
+      r'\b(quanto|quantas|qto|qtas|cuanto|cuantas|combien|wie viel|wie viele|wieviel|quante|posso comer|ainda posso|how much|how many|still eat)\b',
     ).hasMatch(normalizedText);
     final dayContext = RegExp(
-      r'\b(hoje|hj|ontem|anteontem|today|yesterday|agora|ainda|resta|restam|sobrou|sobram|falta|faltam|remaining|left)\b',
-    ).hasMatch(normalizedText);
+          r'\b(hoje|hj|ontem|anteontem|today|yesterday|hoy|ayer|aujourd hui|aujourdhui|hier|heute|gestern|oggi|ieri|agora|ainda|resta|restam|sobrou|sobram|falta|faltam|quedan|queda|reste|restait|ubrig|rimane|rimaste|remaining|left)\b',
+        ).hasMatch(normalizedText) ||
+        explicitDateContext;
     final nutritionContext = RegExp(
-      r'\b(caloria|calorias|kcal|macro|macros|proteina|carbo|carboidrato|gordura|comer|eat)\b',
+      r'\b(caloria|calorias|calorie|calories|kalorien|kcal|macro|macros|proteina|proteine|protein|carbo|carboidrato|carbohidrato|gordura|grasa|graisse|fett|grassi|comer|eat|essen|mangiare)\b',
     ).hasMatch(normalizedText);
     final targetEditContext = RegExp(
       r'\b(meta|metas|objetivo|objetivos|target|goal|ajustar|mudar|alterar|editar|definir|change|update)\b',
@@ -4201,12 +4590,84 @@ class AppAgentService {
 
     return !targetEditContext &&
         ((asksAmount && dayContext && nutritionContext) ||
+            _looksLikeDailyEvaluationRequest(normalizedText) ||
             (suggestionContext &&
                 mealSuggestionContext &&
                 remainingBudgetContext) ||
             RegExp(
               r'^\s*(e\s*)?(calorias|kcal|proteina|carbo|carboidratos|gordura|macros)\s*\??\s*$',
             ).hasMatch(normalizedText));
+  }
+
+  static bool _looksLikeDailyEvaluationRequest(String normalizedText) {
+    final explicitDateContext = _extractDailyStatusDate(normalizedText) != null;
+    final relativeDayContext = RegExp(
+      r'\b(hoje|hj|ontem|anteontem|today|yesterday|dia|day)\b',
+    ).hasMatch(normalizedText);
+    final dayContext = relativeDayContext || explicitDateContext;
+    final nutritionContext = RegExp(
+      r'\b(alimentacao|dieta|refeicao|refeicoes|comida|alimento|calorias?|kcal|macros?|proteina|carbo|gordura|nutrition|diet|meal|food)\b',
+    ).hasMatch(normalizedText);
+    final evaluationContext = RegExp(
+      r'\b(foi boa|foi bom|foi ruim|boa|bom|ruim|bem|mal|avalie|avaliar|analise|analisar|analisa|como foi|good|bad|ok|evaluate|review|analyze)\b',
+    ).hasMatch(normalizedText);
+    final targetEditContext = RegExp(
+      r'\b(meta|metas|objetivo|objetivos|target|goal|ajustar|mudar|alterar|editar|definir|change|update)\b',
+    ).hasMatch(normalizedText);
+
+    return dayContext &&
+        (nutritionContext || explicitDateContext || relativeDayContext) &&
+        evaluationContext &&
+        !targetEditContext;
+  }
+
+  static bool _looksLikeTotalVsRemainingQuestion(String normalizedText) {
+    final asksTotal = RegExp(r'\b(total|totais)\b').hasMatch(normalizedText);
+    final asksRemaining = RegExp(
+      r'\b(livre|livres|restante|restantes|saldo|ainda|remaining|left|available)\b',
+    ).hasMatch(normalizedText);
+    return asksTotal && asksRemaining;
+  }
+
+  static bool _looksLikeMacroTargetsStatusRequest(
+    String normalizedText, {
+    String conversationContext = '',
+  }) {
+    final normalizedContext = _normalizeLooseText(conversationContext);
+    final asksAmount = RegExp(
+      r'\b(quanto|quantas|qual|quais|cuanto|cuantas|combien|wie viel|wie viele|wieviel|quante|me diga|mostra|mostrar|ver|saber|how much|how many|what)\b',
+    ).hasMatch(normalizedText);
+    final calorieContext = RegExp(
+      r'\b(caloria|calorias|calorie|calories|kalorien|kcal|macro|macros|proteina|proteine|protein|carbo|carboidrato|carbohidrato|gordura|grasa|graisse|fett|grassi|comer|consumir|eat|essen|mangiare|carbs|fat)\b',
+    ).hasMatch(normalizedText);
+    final totalCue = RegExp(
+      r'\b(total|totais|diariamente|diario|diaria|diarios|diarias|por dia|no dia|ao dia|al dia|par jour|pro tag|al giorno|daily|per day|meta diaria|meta calorica|meta de calorias)\b',
+    ).hasMatch(normalizedText);
+    final explicitTargetsCue = RegExp(
+      r'\b(metas atuais|macros atuais|alvos atuais|minhas metas|meus macros|quais sao minhas metas|quais sao meus macros|objetivo de calorias|meta calorica total|meta diaria)\b',
+    ).hasMatch(normalizedText);
+    final remainingCue = RegExp(
+      r'\b(ainda|resta|restam|sobrou|sobram|falta|faltam|livre|livres|restante|restantes|quedan|queda|reste|restait|ubrig|rimane|rimaste|remaining|left|available|hoje|hj|ontem|today|yesterday|hoy|ayer|aujourdhui|heute|gestern|oggi|ieri)\b',
+    ).hasMatch(normalizedText);
+
+    if (explicitTargetsCue) {
+      return true;
+    }
+    if (asksAmount && totalCue && calorieContext && !remainingCue) {
+      return true;
+    }
+
+    final shortTotalQuestion = RegExp(
+      r'^\s*(quanto|qual|me diga|e)?\s*(e\s*)?(o\s*)?total\s*(diario|diaria|por dia)?\s*$',
+    ).hasMatch(normalizedText);
+    if (!shortTotalQuestion) {
+      return false;
+    }
+
+    return normalizedContext.isNotEmpty &&
+        RegExp(
+          r'\b(caloria|calorias|kcal|macro|macros|meta|metas|saldo|restante|livre|total|diario|diaria|daily)\b',
+        ).hasMatch(normalizedContext);
   }
 
   static bool _looksLikeDietGenerationRequest(String normalizedText) {
@@ -4339,6 +4800,27 @@ class AppAgentService {
     }
   }
 
+  static bool _shouldUseSemanticActionGateway(String basePrompt) {
+    if (basePrompt.contains('Conversation mode: free nutrition chat.')) {
+      return false;
+    }
+
+    final userText = _extractPromptUserRequest(basePrompt);
+    final normalized = _normalizeRoutingText(userText);
+    if (normalized.isEmpty ||
+        _isGreetingOnly(normalized) ||
+        _isLowContextStandaloneMessage(_normalizeLooseText(userText))) {
+      return false;
+    }
+
+    if (_looksLikeProfileDeclaration(normalized) ||
+        _isStandaloneFoodLoggingText(normalized)) {
+      return false;
+    }
+
+    return true;
+  }
+
   static Future<String> buildFollowUpPrompt({
     required String originalUserMessage,
     required List<AppAgentExecutionResult> executionResults,
@@ -4392,7 +4874,14 @@ Reply in App reply language.
     required String basePrompt,
   }) async {
     final appReplyLanguage = _promptLanguageTag(context);
-    final promptIntent = _resolvePromptIntentFromBasePrompt(basePrompt);
+    var promptIntent = _resolvePromptIntentFromBasePrompt(basePrompt);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (promptIntent == _PromptIntent.simpleChat &&
+        authService.isAuthenticated &&
+        authService.token != null &&
+        _shouldUseSemanticActionGateway(basePrompt)) {
+      promptIntent = _PromptIntent.accountScoped;
+    }
     final intentLine = 'Prompt intent: ${_promptIntentTag(promptIntent)}.';
 
     if (!_shouldAttachAppState(promptIntent)) {
@@ -4403,7 +4892,6 @@ $basePrompt
 ''';
     }
 
-    final authService = Provider.of<AuthService>(context, listen: false);
     if (!authService.isAuthenticated || authService.token == null) {
       const currentAppStateJson = '{"auth":{"isAuthenticated":false}}';
       return '''
@@ -4956,7 +5444,7 @@ $basePrompt
 
   static bool _isLowContextStandaloneMessage(String normalizedText) {
     return RegExp(
-      r'^(oi|ola|hello|hi|hey|bom dia|boa tarde|boa noite|valeu|obrigad[oa]|ok|okay|beleza|blz|show|thanks|thank you)[\s!.?]*$',
+      r'^(oi|ola|hello|hi|hey|hola|bonjour|salut|coucou|hallo|guten tag|guten morgen|guten abend|ciao|buongiorno|buonasera|bom dia|boa tarde|boa noite|buenos dias|buenas tardes|buenas noches|valeu|obrigad[oa]|gracias|merci|danke|grazie|ok|okay|vale|daccord|beleza|blz|show|thanks|thank you)[\s!.?]*$',
     ).hasMatch(normalizedText);
   }
 
@@ -5178,23 +5666,29 @@ $basePrompt
     await mealsProvider.ready;
     await goalsProvider.ensureLoaded();
 
-    final caloriesGoal = goalsProvider.caloriesGoal;
-    final proteinGoal = goalsProvider.proteinGoal;
-    final carbsGoal = goalsProvider.carbsGoal;
-    final fatGoal = goalsProvider.fatGoal;
     final selectedDate = _resolveDailyStatusDate(
       command.arguments,
       fallbackDate: mealsProvider.selectedDate,
     )!;
+    final snapshot = mealsProvider.getNutritionSnapshotForDate(selectedDate);
+    final caloriesGoal =
+        _tryParseInt(snapshot['calorieGoal']) ?? goalsProvider.caloriesGoal;
+    final proteinGoal =
+        _tryParseInt(snapshot['proteinGoal']) ?? goalsProvider.proteinGoal;
+    final carbsGoal =
+        _tryParseInt(snapshot['carbsGoal']) ?? goalsProvider.carbsGoal;
+    final fatGoal = _tryParseInt(snapshot['fatGoal']) ?? goalsProvider.fatGoal;
     final meals = mealsProvider.getMealsForDate(selectedDate);
-    final waterGlasses = mealsProvider.getWaterGlassesForDate(selectedDate);
-    final totalCalories =
+    final waterGlasses = _tryParseInt(snapshot['waterGlasses']) ??
+        mealsProvider.getWaterGlassesForDate(selectedDate);
+    final totalCalories = _tryParseInt(snapshot['calories']) ??
         meals.fold<int>(0, (sum, meal) => sum + meal.totalCalories);
-    final totalProtein =
+    final totalProtein = _tryParseDouble(snapshot['protein']) ??
         meals.fold<double>(0, (sum, meal) => sum + meal.totalProtein);
-    final totalCarbs =
+    final totalCarbs = _tryParseDouble(snapshot['carbs']) ??
         meals.fold<double>(0, (sum, meal) => sum + meal.totalCarbs);
-    final totalFat = meals.fold<double>(0, (sum, meal) => sum + meal.totalFat);
+    final totalFat = _tryParseDouble(snapshot['fat']) ??
+        meals.fold<double>(0, (sum, meal) => sum + meal.totalFat);
     final caloriesRemaining = caloriesGoal - totalCalories;
     final proteinRemaining = proteinGoal - totalProtein.toInt();
     final carbsRemaining = carbsGoal - totalCarbs.toInt();
@@ -5209,7 +5703,10 @@ $basePrompt
         'proteinGoal': proteinGoal,
         'carbsGoal': carbsGoal,
         'fatGoal': fatGoal,
-        'waterGoal': mealsProvider.waterGoal,
+        'waterGoal':
+            _tryParseInt(snapshot['waterGoal']) ?? mealsProvider.waterGoal,
+        'hasData': snapshot['hasData'] == true,
+        'hasServerSummary': snapshot['hasServerSummary'] == true,
         'caloriesConsumed': totalCalories,
         'proteinConsumed': _round1(totalProtein),
         'carbsConsumed': _round1(totalCarbs),
@@ -5219,8 +5716,13 @@ $basePrompt
         'proteinRemaining': proteinRemaining,
         'carbsRemaining': carbsRemaining,
         'fatRemaining': fatRemaining,
-        'waterRemaining': (mealsProvider.waterGoal - waterGlasses)
-            .clamp(0, mealsProvider.waterGoal),
+        'waterRemaining':
+            ((_tryParseInt(snapshot['waterGoal']) ?? mealsProvider.waterGoal) -
+                    waterGlasses)
+                .clamp(
+          0,
+          _tryParseInt(snapshot['waterGoal']) ?? mealsProvider.waterGoal,
+        ),
         'meals': meals
             .map((meal) => {
                   'type': meal.type.name,

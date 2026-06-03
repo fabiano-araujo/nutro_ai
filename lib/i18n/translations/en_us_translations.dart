@@ -40,6 +40,27 @@ final Map<String, String> enUSTranslations = {
   'sign_out': 'Sign Out',
   'logout': 'Log Out',
   'logout_confirmation': 'Are you sure you want to log out of your account?',
+  'logout_pending_sync_title': 'Sync before logging out',
+  'logout_pending_sync_message':
+      'Some changes on this device have not been saved to your account yet. To avoid losing anything, connect to the internet and sync now.',
+  'logout_sync_and_leave': 'Sync and log out',
+  'logout_pending_sync_failed':
+      'Could not sync. You are still logged in so your data is not lost.',
+  'guest_local_data_title': 'Save this device data?',
+  'guest_local_data_message':
+      'We found information created before login. You can save it to this account or discard it from this device.',
+  'guest_local_data_save_action': 'Save to account',
+  'guest_local_data_discard_action': 'Do not save',
+  'guest_local_data_saved': 'Local data saved to your account.',
+  'guest_local_data_save_failed':
+      'Could not save this data now. Try again when you are online.',
+  'guest_local_data_discarded': 'Local data discarded from this device.',
+  'guest_local_data_discard_failed': 'Could not discard local data right now.',
+  'guest_local_data_summary_goals': 'Goals',
+  'guest_local_data_summary_meals': 'Meals',
+  'guest_local_data_summary_chats': 'Chats',
+  'guest_local_data_summary_foods': 'Foods',
+  'guest_local_data_summary_preferences': 'Preferences',
   'edit_profile': 'Edit Profile',
 
   // Registration Screens
@@ -185,6 +206,8 @@ final Map<String, String> enUSTranslations = {
   'voice_settings_no_voices': 'No voices are available right now.',
   'voice_settings_title': 'Voice settings',
   'tts_engine_label': 'Voice engine:',
+  'tts_engine_system_label': 'System',
+  'tts_engine_system_google_label': 'System / Google TTS',
   'tts_engine_system_description': 'System default engine',
   'tts_piper_unavailable_description':
       'Install a Piper/Sherpa TTS engine on Android to use this option.',

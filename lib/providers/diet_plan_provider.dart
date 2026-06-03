@@ -190,6 +190,7 @@ class DietPlanProvider extends ChangeNotifier {
       _preferences.hasReviewedRestrictions ||
       _preferences.hasReviewedFoodPreferences ||
       _preferences.hasReviewedRoutineNeeds;
+  bool get hasLocalDietPreferences => _hasLocalDietPreferences;
   List<String> get missingDietPersonalizationTopics {
     if (hasReviewedDietGenerationPreferences) {
       return const [];
@@ -233,7 +234,11 @@ class DietPlanProvider extends ChangeNotifier {
   Future<void> ensureLoaded() => _loadFuture;
 
   /// Define as credenciais de autenticação e carrega dados do servidor
-  Future<void> setAuth(String token, int userId) async {
+  Future<void> setAuth(
+    String token,
+    int userId, {
+    bool syncPendingPreferencesOnAuth = true,
+  }) async {
     _authToken = token;
     _userId = userId;
     await _loadPendingPreferencesSyncFlag();
@@ -242,7 +247,9 @@ class DietPlanProvider extends ChangeNotifier {
     // Verificar status premium e carregar dietas do servidor
     await _checkPremiumStatus();
     await _loadFromServer();
-    await syncPendingPreferencesIfNeeded();
+    if (syncPendingPreferencesOnAuth) {
+      await syncPendingPreferencesIfNeeded();
+    }
     notifyListeners();
   }
 
@@ -530,10 +537,24 @@ class DietPlanProvider extends ChangeNotifier {
   }
 
   Future<void> applyServerPreferencesSnapshot(
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    bool syncLocalIfServerEmpty = true,
+  }) async {
     if (!_serverHasReviewedDietPreferences(payload) &&
         (_hasPendingPreferencesSync || _hasLocalDietPreferences)) {
+      if (!syncLocalIfServerEmpty) {
+        _preferences = DietPreferences.fromJson(payload).copyWith(
+          dietGenerationModel: _normalizeDietGenerationModel(
+            payload['dietGenerationModel']?.toString(),
+          ),
+        );
+        await _saveToPreferences();
+        _hasPendingPreferencesSync = false;
+        await _savePendingPreferencesSyncFlag();
+        notifyListeners();
+        return;
+      }
+
       _hasPendingPreferencesSync = true;
       await _savePendingPreferencesSyncFlag();
       await _syncPreferencesToServer();
@@ -1980,6 +2001,9 @@ Rules:
     _parsedMealIndices.clear();
     _activeMealTypes = const [];
     _activeDietGenerationJob = null;
+    _hasPendingPreferencesSync = false;
+    _isSyncingPreferences = false;
+    _preferencesSyncDebounce?.cancel();
 
     // Limpar autenticação
     _authToken = null;
@@ -1991,6 +2015,7 @@ Rules:
       final prefs = await SharedPreferences.getInstance();
       final removedPrefs = await prefs.remove('diet_preferences');
       final removedPlans = await prefs.remove('diet_plans');
+      await prefs.remove(_pendingPreferencesSyncKey);
       await DietGenerationBackgroundService.stopActiveGeneration();
       print(
           '[🔄 AUTH_DATA] DietPlanProvider.clearAll() - SharedPreferences: prefs=$removedPrefs, plans=$removedPlans, job=true');

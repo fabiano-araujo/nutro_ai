@@ -2,6 +2,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nutro_ai/services/app_agent_service.dart';
 
 void main() {
+  String iso(DateTime date) => '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  DateTime previousOccurrence({required int day, int? month}) {
+    final today = DateTime.now();
+    var year = today.year;
+    var resolvedMonth = month ?? today.month;
+    var candidate = DateTime(year, resolvedMonth, day);
+    if (!candidate.isAfter(DateTime(today.year, today.month, today.day))) {
+      return candidate;
+    }
+    if (month == null) {
+      resolvedMonth -= 1;
+      if (resolvedMonth < 1) {
+        resolvedMonth = 12;
+        year -= 1;
+      }
+    } else {
+      year -= 1;
+    }
+    return DateTime(year, resolvedMonth, day);
+  }
+
   test('parses app_commands with root-level fields from the model', () {
     const response = '''
 Para configurar seus objetivos, preciso validar os dados.
@@ -450,6 +474,14 @@ Posso recalcular suas metas para cutting com base no seu perfil. Posso seguir co
       isFalse,
     );
     expect(
+      AppAgentService.shouldIncludeConversationContext('hola'),
+      isFalse,
+    );
+    expect(
+      AppAgentService.shouldIncludeConversationContext('merci'),
+      isFalse,
+    );
+    expect(
       AppAgentService.shouldIncludeConversationContext('pão com ovo'),
       isFalse,
     );
@@ -576,6 +608,126 @@ Assistant: Quer passar detalhes como restrições, alimentos preferidos ou rotin
     );
     expect(adjustedDiet, isNotNull);
     expect(adjustedDiet!.arguments['caloriesGoal'], 2000);
+  });
+
+  test('routes daily nutrition status and evaluation dates', () {
+    final yesterday =
+        AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+      'minha alimentação de ontem foi boa?',
+      rawJson: '',
+    );
+    expect(yesterday, isNotNull);
+    expect(yesterday!.name, AppAgentService.getDailyNutritionStatus);
+    expect(yesterday.arguments, <String, dynamic>{'dateOffsetDays': -1});
+
+    final frenchYesterday =
+        AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+      'combien de calories me restait-il hier ?',
+      rawJson: '',
+    );
+    expect(frenchYesterday, isNotNull);
+    expect(
+      frenchYesterday!.arguments,
+      <String, dynamic>{'dateOffsetDays': -1},
+    );
+
+    final dayBefore =
+        AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+      'e anteontem, foi bom?',
+      rawJson: '',
+    );
+    expect(dayBefore, isNotNull);
+    expect(dayBefore!.arguments, <String, dynamic>{'dateOffsetDays': -2});
+
+    final dayOnly =
+        AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+      'minha alimentação do dia 10 foi boa?',
+      rawJson: '',
+    );
+    expect(dayOnly, isNotNull);
+    expect(dayOnly!.arguments['date'], iso(previousOccurrence(day: 10)));
+
+    final slashDate =
+        AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+      'como foi minha dieta em 20/04?',
+      rawJson: '',
+    );
+    expect(slashDate, isNotNull);
+    expect(
+      slashDate!.arguments['date'],
+      iso(previousOccurrence(day: 20, month: 4)),
+    );
+
+    final isoDate =
+        AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+      'quantas calorias comi em 2026-04-20?',
+      rawJson: '',
+    );
+    expect(isoDate, isNotNull);
+    expect(isoDate!.arguments['date'], '2026-04-20');
+  });
+
+  test('routes total daily target questions to macro targets status', () {
+    final dailyTotal =
+        AppAgentService.buildMacroTargetsStatusCommandFromUserMessage(
+      'quantas calorias eu posso comer diariamente?',
+      rawJson: '',
+    );
+    expect(dailyTotal, isNotNull);
+    expect(dailyTotal!.name, AppAgentService.getMacroTargetsStatus);
+
+    final germanTotal =
+        AppAgentService.buildMacroTargetsStatusCommandFromUserMessage(
+      'wie viele Kalorien darf ich pro Tag essen?',
+      rawJson: '',
+    );
+    expect(germanTotal, isNotNull);
+    expect(germanTotal!.name, AppAgentService.getMacroTargetsStatus);
+
+    final italianTotal =
+        AppAgentService.buildMacroTargetsStatusCommandFromUserMessage(
+      'quante calorie posso mangiare al giorno?',
+      rawJson: '',
+    );
+    expect(italianTotal, isNotNull);
+    expect(italianTotal!.name, AppAgentService.getMacroTargetsStatus);
+
+    expect(
+      AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+        'quantas calorias eu posso comer diariamente?',
+        rawJson: '',
+      ),
+      isNull,
+    );
+
+    const context = '''
+Humano: isso é o total ou o livre?
+IA: Os valores que informei são o saldo restante para hoje. Não é o total diário. Se quiser saber sua meta calórica total, me avise.
+''';
+    final totalFollowUp =
+        AppAgentService.buildMacroTargetsStatusCommandFromUserMessage(
+      'quanto é o total?',
+      rawJson: '',
+      conversationContext: context,
+    );
+    expect(totalFollowUp, isNotNull);
+    expect(totalFollowUp!.name, AppAgentService.getMacroTargetsStatus);
+
+    expect(
+      AppAgentService.buildMacroTargetsStatusCommandFromUserMessage(
+        'isso é o total ou o livre?',
+        rawJson: '',
+        conversationContext: context,
+      ),
+      isNull,
+    );
+    expect(
+      AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+        'isso é o total ou o livre?',
+        rawJson: '',
+      ),
+      isNull,
+    );
   });
 
   test('treats tiny macro gram targets as grams per kg in macro edits', () {

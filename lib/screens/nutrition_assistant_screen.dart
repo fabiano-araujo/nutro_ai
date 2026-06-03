@@ -38,6 +38,7 @@ import '../i18n/app_localizations_extension.dart';
 import '../widgets/weekly_calendar.dart';
 import '../widgets/month_calendar_sheet.dart';
 import '../widgets/nutrition_card.dart';
+import '../widgets/mini_nutrition_card.dart';
 import '../widgets/food_json_display.dart';
 import '../widgets/meal_card.dart';
 import '../providers/free_chat_provider.dart';
@@ -135,6 +136,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         NutritionAssistantSpeechMixin,
         TextToSpeechMixin,
         WidgetsBindingObserver {
+  static const bool _useCompactNutritionHeaderByDefault = true;
+
   // Controller que gerenciará o estado e lógica (será inicializado no initState)
   late NutritionAssistantController _chatController;
 
@@ -153,8 +156,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   // Controle de visibilidade do header (calendário + nutrition card)
   // Usa offset gradual para efeito suave como o AppBar nativo
-  double _headerOffset =
-      0.0; // 0 = totalmente visível, negativo = parcialmente escondido
+  final ValueNotifier<double> _headerOffsetNotifier =
+      ValueNotifier<double>(0.0); // 0 = visível, negativo = escondido
+  bool _isNutritionHeaderCompact = _useCompactNutritionHeaderByDefault;
   double _lastScrollPosition = 0.0;
   final GlobalKey _lastAiMessageKey =
       GlobalKey(); // Key para rastrear a última mensagem da IA
@@ -655,6 +659,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     _messageController.dispose();
     _scrollController.dispose();
     _messageInputScrollController.dispose();
+    _headerOffsetNotifier.dispose();
     _inputFocusNode.dispose();
     _animationController.dispose();
     _chatController.dispose();
@@ -844,28 +849,29 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     // Threshold mínimo para evitar mudanças por micro-movimentos
     if (scrollDelta.abs() < 2) return;
 
-    setState(() {
-      // Se estiver no topo, sempre mostrar o header completamente
-      if (currentScrollPosition < 10) {
-        _headerOffset = 0.0;
-      } else {
-        // Atualizar offset gradualmente baseado no movimento do scroll
-        // scrollDelta > 0 = scrollando para baixo = esconder (offset negativo)
-        // scrollDelta < 0 = scrollando para cima = mostrar (offset volta para 0)
-        _headerOffset = (_headerOffset - scrollDelta).clamp(-175.0, 0.0);
-      }
+    final currentHeaderOffset = _headerOffsetNotifier.value;
+    final nextHeaderOffset = currentScrollPosition < 10
+        ? 0.0
+        : (currentHeaderOffset - scrollDelta).clamp(-175.0, 0.0);
 
-      _lastScrollPosition = currentScrollPosition;
-    });
+    if (nextHeaderOffset != currentHeaderOffset) {
+      _headerOffsetNotifier.value = nextHeaderOffset;
+    }
+    _lastScrollPosition = currentScrollPosition;
   }
 
   // Método para mostrar o header programaticamente
   void _showHeader() {
-    if (_headerOffset < 0) {
-      setState(() {
-        _headerOffset = 0.0;
-      });
+    if (_headerOffsetNotifier.value < 0) {
+      _headerOffsetNotifier.value = 0.0;
     }
+  }
+
+  void _setNutritionHeaderCompact(bool isCompact) {
+    setState(() {
+      _isNutritionHeaderCompact = isCompact;
+    });
+    _headerOffsetNotifier.value = 0.0;
   }
 
   // --- Métodos removidos (agora no controller) ---
@@ -938,48 +944,64 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   .bodyLarge
                                   ?.color)),
                       SizedBox(height: 8),
-                      ...availableTtsEngines.map((engine) {
-                        final isSelected =
-                            (currentEngineId ?? 'system_default') == engine.id;
-                        final packageName = engine.packageName;
-                        final subtitle = engine.isAvailable
-                            ? (packageName == null || packageName.isEmpty
-                                ? appLocalizations
-                                    .translate('tts_engine_system_description')
-                                : packageName)
-                            : appLocalizations
-                                .translate('tts_piper_unavailable_description');
+                      RadioGroup<String>(
+                        groupValue: currentEngineId ?? 'system_default',
+                        onChanged: (value) {
+                          if (value == null) return;
+                          unawaited(() async {
+                            await setTtsEngine(value);
+                            setState(() {});
+                            await speak(
+                              appLocalizations.translate('voice_demo_text'),
+                            );
+                          }());
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: availableTtsEngines.map((engine) {
+                            final isSelected =
+                                (currentEngineId ?? 'system_default') ==
+                                    engine.id;
+                            final packageName = engine.packageName;
+                            final engineLabel = engine.isPiper
+                                ? 'Piper TTS'
+                                : (packageName?.toLowerCase() ==
+                                        'com.google.android.tts'
+                                    ? appLocalizations.translate(
+                                        'tts_engine_system_google_label')
+                                    : appLocalizations
+                                        .translate('tts_engine_system_label'));
+                            final subtitle = engine.isAvailable
+                                ? (packageName == null || packageName.isEmpty
+                                    ? appLocalizations.translate(
+                                        'tts_engine_system_description')
+                                    : packageName)
+                                : appLocalizations.translate(
+                                    'tts_piper_unavailable_description');
 
-                        return RadioListTile<String>(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          title: Text(engine.label,
-                              style: TextStyle(
-                                  color: isSelected
-                                      ? Theme.of(context).primaryColor
-                                      : Theme.of(context)
+                            return RadioListTile<String>(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              enabled: engine.isAvailable,
+                              title: Text(engineLabel,
+                                  style: TextStyle(
+                                      color: isSelected
+                                          ? Theme.of(context).primaryColor
+                                          : Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.color)),
+                              subtitle: Text(subtitle,
+                                  style: TextStyle(
+                                      color: Theme.of(context)
                                           .textTheme
-                                          .bodyLarge
+                                          .bodyMedium
                                           ?.color)),
-                          subtitle: Text(subtitle,
-                              style: TextStyle(
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.color)),
-                          value: engine.id,
-                          groupValue: currentEngineId ?? 'system_default',
-                          onChanged: engine.isAvailable
-                              ? (value) async {
-                                  if (value == null) return;
-                                  await setTtsEngine(value);
-                                  setState(() {});
-                                  speak(appLocalizations
-                                      .translate('voice_demo_text'));
-                                }
-                              : null,
-                        );
-                      }).toList(),
+                              value: engine.id,
+                            );
+                          }).toList(),
+                        ),
+                      ),
                       Divider(height: 24),
                     ],
                     Text(appLocalizations.translate('speech_rate_label'),
@@ -1415,6 +1437,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         builder: (context, _) {
           final messages = _chatController.messages;
           final isLoading = _chatController.isLoading;
+          final isLoadingMessages = _chatController.isLoadingMessages;
           // isProcessingMedia no longer used as we removed the condition from TextField enabled property
           final hasSelectedImage = _chatController.hasSelectedImage;
           final selectedImageBytes = _chatController.selectedImageBytes;
@@ -1447,104 +1470,152 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               body: SafeArea(
                 child: Column(
                   children: [
-                    // Header minimalista estilo ChatGPT: ☰  Hoje ▾  🔍
-                    Consumer<DailyMealsProvider>(
-                      builder: (context, mealsProvider, child) {
-                        return _buildMinimalHeader(
-                          context,
-                          isDarkMode: isDarkMode,
-                          selectedDate: mealsProvider.selectedDate,
-                          onDateTap: widget.isFreeChat
-                              ? null
-                              : () => _showDatePickerSheet(context),
-                          onSearchTap: widget.isFreeChat
-                              ? null
-                              : () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const FoodSearchScreen(),
-                                    ),
-                                  );
-                                },
-                        );
-                      },
-                    ),
-
-                    // Calendário semanal + Nutrition card com comportamento de toolbar Android
-                    // Usa Transform.translate para movimento gradual suave
-                    // Não mostrar no modo conversa livre
-                    if (!widget.isFreeChat)
+                    if (widget.isFreeChat)
                       Consumer<DailyMealsProvider>(
                         builder: (context, mealsProvider, child) {
-                          // Calcular altura baseado se tem refeições
-                          final bool hasMeals =
-                              mealsProvider.todayMeals.isNotEmpty;
-                          final double maxHeight = hasMeals ? 108.0 : 0.0;
-                          // Altura visível = maxHeight + offset (offset é negativo)
-                          final double visibleHeight =
-                              (maxHeight + _headerOffset).clamp(0.0, maxHeight);
+                          return _buildMinimalHeader(
+                            context,
+                            isDarkMode: isDarkMode,
+                            selectedDate: mealsProvider.selectedDate,
+                            onDateTap: null,
+                            onSearchTap: null,
+                          );
+                        },
+                      )
+                    else
+                      ValueListenableBuilder<double>(
+                        valueListenable: _headerOffsetNotifier,
+                        builder: (context, headerOffset, _) {
+                          return Consumer<DailyMealsProvider>(
+                            builder: (context, mealsProvider, child) {
+                              const toolbarHeight = 52.0;
+                              final bool hasMeals =
+                                  mealsProvider.todayMeals.isNotEmpty;
+                              final nutritionHeight = hasMeals
+                                  ? (_isNutritionHeaderCompact ? 56.0 : 108.0)
+                                  : 0.0;
+                              final maxHeight = toolbarHeight + nutritionHeight;
+                              final visibleHeight = (maxHeight + headerOffset)
+                                  .clamp(0.0, maxHeight);
 
-                          return SizedBox(
-                            height: visibleHeight,
-                            child: ClipRect(
-                              child: OverflowBox(
-                                maxHeight: maxHeight,
-                                alignment: Alignment.topCenter,
-                                child: Transform.translate(
-                                  offset: Offset(0, _headerOffset),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Nutrition card
-                                      if (hasMeals)
-                                        Consumer2<NutritionGoalsProvider,
-                                            DailyMealsProvider>(
-                                          builder: (context, nutritionProvider,
-                                              mealsProvider, child) {
-                                            return NutritionCard(
-                                              hasConfiguredGoals:
-                                                  nutritionProvider
-                                                      .hasConfiguredGoals,
-                                              onEditGoals:
-                                                  _openGoalWizardFromChat,
-                                              caloriesConsumed:
-                                                  mealsProvider.totalCalories,
-                                              caloriesGoal: nutritionProvider
-                                                  .caloriesGoal,
-                                              proteinConsumed: mealsProvider
-                                                  .totalProtein
-                                                  .toInt(),
-                                              proteinGoal:
-                                                  nutritionProvider.proteinGoal,
-                                              carbsConsumed: mealsProvider
-                                                  .totalCarbs
-                                                  .toInt(),
-                                              carbsGoal:
-                                                  nutritionProvider.carbsGoal,
-                                              fatsConsumed: mealsProvider
-                                                  .totalFat
-                                                  .toInt(),
-                                              fatsGoal:
-                                                  nutritionProvider.fatGoal,
-                                              onTap: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const DailyMealsScreen(),
-                                                  ),
+                              return SizedBox(
+                                height: visibleHeight,
+                                child: ClipRect(
+                                  child: OverflowBox(
+                                    maxHeight: maxHeight,
+                                    alignment: Alignment.topCenter,
+                                    child: Transform.translate(
+                                      offset: Offset(0, headerOffset),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildMinimalHeader(
+                                            context,
+                                            isDarkMode: isDarkMode,
+                                            selectedDate:
+                                                mealsProvider.selectedDate,
+                                            onDateTap: () =>
+                                                _showDatePickerSheet(context),
+                                            onSearchTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const FoodSearchScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          if (hasMeals)
+                                            Consumer2<NutritionGoalsProvider,
+                                                DailyMealsProvider>(
+                                              builder: (context,
+                                                  nutritionProvider,
+                                                  mealsProvider,
+                                                  child) {
+                                                final caloriesConsumed =
+                                                    mealsProvider.totalCalories;
+                                                final proteinConsumed =
+                                                    mealsProvider.totalProtein
+                                                        .toInt();
+                                                final carbsConsumed =
+                                                    mealsProvider.totalCarbs
+                                                        .toInt();
+                                                final fatsConsumed =
+                                                    mealsProvider.totalFat
+                                                        .toInt();
+
+                                                void openDailyMeals() {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          const DailyMealsScreen(),
+                                                    ),
+                                                  );
+                                                }
+
+                                                if (_isNutritionHeaderCompact) {
+                                                  return MiniNutritionCard(
+                                                    caloriesConsumed:
+                                                        caloriesConsumed,
+                                                    caloriesGoal:
+                                                        nutritionProvider
+                                                            .caloriesGoal,
+                                                    proteinConsumed:
+                                                        proteinConsumed,
+                                                    proteinGoal:
+                                                        nutritionProvider
+                                                            .proteinGoal,
+                                                    carbsConsumed:
+                                                        carbsConsumed,
+                                                    carbsGoal: nutritionProvider
+                                                        .carbsGoal,
+                                                    fatsConsumed: fatsConsumed,
+                                                    fatsGoal: nutritionProvider
+                                                        .fatGoal,
+                                                    onTap: openDailyMeals,
+                                                    onExpand: () =>
+                                                        _setNutritionHeaderCompact(
+                                                            false),
+                                                  );
+                                                }
+
+                                                return NutritionCard(
+                                                  hasConfiguredGoals:
+                                                      nutritionProvider
+                                                          .hasConfiguredGoals,
+                                                  onEditGoals:
+                                                      _openGoalWizardFromChat,
+                                                  caloriesConsumed:
+                                                      caloriesConsumed,
+                                                  caloriesGoal:
+                                                      nutritionProvider
+                                                          .caloriesGoal,
+                                                  proteinConsumed:
+                                                      proteinConsumed,
+                                                  proteinGoal: nutritionProvider
+                                                      .proteinGoal,
+                                                  carbsConsumed: carbsConsumed,
+                                                  carbsGoal: nutritionProvider
+                                                      .carbsGoal,
+                                                  fatsConsumed: fatsConsumed,
+                                                  fatsGoal:
+                                                      nutritionProvider.fatGoal,
+                                                  onTap: openDailyMeals,
+                                                  onMinimize: () =>
+                                                      _setNutritionHeaderCompact(
+                                                          true),
                                                 );
                                               },
-                                            );
-                                          },
-                                        ),
-                                    ],
+                                            ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -1675,6 +1746,19 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                               child: Consumer<DailyMealsProvider>(
                                 builder:
                                     (context, reconstructMealsProvider, _) {
+                                  final shouldShowInitialLoader =
+                                      isLoadingMessages ||
+                                          isLoading ||
+                                          !reconstructMealsProvider.isLoaded ||
+                                          reconstructMealsProvider
+                                              .isLoadingFromServer;
+                                  if (shouldShowInitialLoader) {
+                                    return _buildInitialChatLoadingView(
+                                      backgroundColor:
+                                          currentScaffoldBackgroundColor,
+                                    );
+                                  }
+
                                   final reconstructedDayMeals =
                                       reconstructMealsProvider.getMealsForDate(
                                           reconstructMealsProvider
@@ -2755,20 +2839,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                         _showMessageOptions(notifier.message, isUser),
                     bottomSpacing: showsMealCard ? 4 : 8,
                   ),
-                if (showsMealCard)
-                  Consumer<DailyMealsProvider>(
-                    builder: (context, mealsProvider, _) {
-                      return FoodJsonDisplay(
-                        key: ValueKey(foodMessageId),
-                        message: notifier.message,
-                        isDarkMode: isDarkMode,
-                        selectedDate: mealsProvider.selectedDate,
-                        messageId: foodMessageId,
-                        onDeleteMessage: () {
-                          _chatController.deleteMessagePair(index);
-                        },
-                      );
-                    },
+                if (canRenderFoodDiaryCards && !isUser && !notifier.isStreaming)
+                  _buildFoodDiaryCardForMessage(
+                    hasFoodJson: hasJsonInNotifier,
+                    message: notifier.message,
+                    isDarkMode: isDarkMode,
+                    foodMessageId: foodMessageId,
+                    messageIndex: index,
                   ),
                 if (contextualActions != null) contextualActions,
               ],
@@ -2803,26 +2880,66 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               imageBytes: imageBytes,
               bottomSpacing: showsMealCard ? 4 : 8,
             ),
-          if (showsMealCard) ...[
-            Consumer<DailyMealsProvider>(
-              builder: (context, mealsProvider, _) {
-                return FoodJsonDisplay(
-                  key: ValueKey(foodMessageId),
-                  message: message,
-                  isDarkMode: isDarkMode,
-                  selectedDate: mealsProvider.selectedDate,
-                  messageId: foodMessageId,
-                  onDeleteMessage: () {
-                    _chatController.deleteMessagePair(index);
-                  },
-                );
-              },
+          if (canRenderFoodDiaryCards && !isUser && !isStreaming)
+            _buildFoodDiaryCardForMessage(
+              hasFoodJson: hasFoodJson,
+              message: message,
+              isDarkMode: isDarkMode,
+              foodMessageId: foodMessageId,
+              messageIndex: index,
             ),
-          ],
           if (contextualActions != null) contextualActions,
         ],
       );
     }
+  }
+
+  Widget _buildFoodDiaryCardForMessage({
+    required bool hasFoodJson,
+    required String message,
+    required bool isDarkMode,
+    required String foodMessageId,
+    required int messageIndex,
+  }) {
+    return Consumer<DailyMealsProvider>(
+      builder: (context, mealsProvider, _) {
+        if (hasFoodJson) {
+          return FoodJsonDisplay(
+            key: ValueKey(foodMessageId),
+            message: message,
+            isDarkMode: isDarkMode,
+            selectedDate: mealsProvider.selectedDate,
+            messageId: foodMessageId,
+            onDeleteMessage: () {
+              _chatController.deleteMessagePair(messageIndex);
+            },
+          );
+        }
+
+        final cachedMeal = mealsProvider.getMealByMessageId(foodMessageId);
+        if (cachedMeal == null) {
+          return const SizedBox.shrink();
+        }
+
+        return MealCard(
+          key: ValueKey('cached-$foodMessageId-${cachedMeal.id}'),
+          meal: cachedMeal,
+          topContentPadding: 16,
+          onMealUpdated: (updatedMeal) {
+            if (updatedMeal.foods.isEmpty) {
+              mealsProvider.deleteMeal(updatedMeal.id);
+              _chatController.deleteMessagePair(messageIndex);
+            } else {
+              mealsProvider.updateMeal(updatedMeal);
+            }
+          },
+          onDelete: () {
+            mealsProvider.deleteMeal(cachedMeal.id);
+            _chatController.deleteMessagePair(messageIndex);
+          },
+        );
+      },
+    );
   }
 
   /// Reconstrói no chat os cartões de comida a partir das refeições registradas
@@ -2838,6 +2955,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     return Container(
       color: backgroundColor,
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         itemCount: meals.length,
         itemBuilder: (context, index) {
@@ -2860,6 +2978,16 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           );
         },
       ),
+    );
+  }
+
+  Widget _buildInitialChatLoadingView({
+    required Color backgroundColor,
+  }) {
+    return Container(
+      color: backgroundColor,
+      alignment: Alignment.center,
+      child: const CircularProgressIndicator.adaptive(),
     );
   }
 
@@ -3517,6 +3645,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             return MonthCalendarSheet(
               selectedDate: mealsProvider.selectedDate,
               hasMeals: mealsProvider.hasMealsOn,
+              onVisibleMonthChanged: (month) {
+                mealsProvider.ensureMonthSummariesLoaded(month);
+              },
               onDaySelected: (date) async {
                 Navigator.of(sheetContext).pop();
                 _clearSuggestions();

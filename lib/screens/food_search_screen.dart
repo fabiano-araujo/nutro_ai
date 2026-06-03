@@ -1913,12 +1913,12 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   }
 
   Widget _buildBarcodeScanButton() {
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Tooltip(
       message: context.tr.translate('barcode_scanner_title'),
       child: Material(
-        color: primaryColor,
+        color: colorScheme.primary,
         borderRadius: BorderRadius.circular(80),
         child: InkWell(
           borderRadius: BorderRadius.circular(80),
@@ -1928,7 +1928,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
             height: 52,
             child: Icon(
               Icons.qr_code_scanner,
-              color: Colors.white,
+              color: colorScheme.onPrimary,
               size: 24,
             ),
           ),

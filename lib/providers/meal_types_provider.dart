@@ -135,6 +135,7 @@ class MealTypesProvider extends ChangeNotifier {
   bool get isLoaded => _isLoaded;
   bool get hasPendingServerSync => _hasPendingServerSync;
   bool get isSyncingToServer => _isSyncingToServer;
+  bool get hasCustomMealTypes => _hasCustomMealTypes;
 
   MealTypesProvider() {
     _loadMealTypes();
@@ -151,6 +152,8 @@ class MealTypesProvider extends ChangeNotifier {
     String token,
     int userId, {
     List<dynamic> serverMealTypes = const <dynamic>[],
+    bool syncPendingOnAuth = true,
+    bool syncLocalIfServerEmpty = true,
   }) async {
     await ensureLoaded();
     _token = token;
@@ -162,7 +165,8 @@ class MealTypesProvider extends ChangeNotifier {
       return;
     }
 
-    if (_hasPendingServerSync || _hasCustomMealTypes) {
+    if ((syncPendingOnAuth && _hasPendingServerSync) ||
+        (syncLocalIfServerEmpty && _hasCustomMealTypes)) {
       await syncPendingIfNeeded();
     }
   }
@@ -483,5 +487,21 @@ class MealTypesProvider extends ChangeNotifier {
   Future<void> _savePendingSyncFlag() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_pendingSyncKey, _hasPendingServerSync);
+  }
+
+  Future<void> clearAllData() async {
+    _syncDebounce?.cancel();
+    _token = null;
+    _userId = null;
+    _setDefaultMealTypes();
+    _hasPendingServerSync = false;
+    _isSyncingToServer = false;
+    _stateRevision++;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
+    await prefs.remove(_pendingSyncKey);
+    _isLoaded = true;
+    notifyListeners();
   }
 }

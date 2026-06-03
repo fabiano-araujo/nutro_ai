@@ -133,6 +133,8 @@ final Map<String, String> itITTranslations = {
   'voice_settings_no_voices': 'Nessuna voce disponibile al momento.',
   'voice_settings_title': 'Impostazioni voce',
   'tts_engine_label': 'Motore vocale:',
+  'tts_engine_system_label': 'Sistema',
+  'tts_engine_system_google_label': 'Sistema / Google TTS',
   'tts_engine_system_description': 'Motore predefinito del sistema',
   'tts_piper_unavailable_description':
       'Installa un motore Piper/Sherpa TTS su Android per usare questa opzione.',
@@ -464,6 +466,27 @@ final Map<String, String> itITTranslations = {
   'sign_out': 'Disconnetti',
   'logout': 'Disconnetti',
   'logout_confirmation': 'Sei sicuro di voler uscire dal tuo account?',
+  'logout_pending_sync_title': 'Sincronizza prima di uscire',
+  'logout_pending_sync_message':
+      'Alcune modifiche su questo dispositivo non sono ancora state salvate nel tuo account. Connettiti a internet e sincronizza ora per non perdere nulla.',
+  'logout_sync_and_leave': 'Sincronizza ed esci',
+  'logout_pending_sync_failed':
+      'Impossibile sincronizzare. Resti connesso per non perdere dati.',
+  'guest_local_data_title': 'Salvare i dati di questo dispositivo?',
+  'guest_local_data_message':
+      'Abbiamo trovato informazioni create prima dell’accesso. Puoi salvarle in questo account o scartarle da questo dispositivo.',
+  'guest_local_data_save_action': 'Salva nell’account',
+  'guest_local_data_discard_action': 'Non salvare',
+  'guest_local_data_saved': 'Dati locali salvati nel tuo account.',
+  'guest_local_data_save_failed':
+      'Impossibile salvare questi dati ora. Riprova quando sei online.',
+  'guest_local_data_discarded': 'Dati locali scartati da questo dispositivo.',
+  'guest_local_data_discard_failed': 'Impossibile scartare i dati locali ora.',
+  'guest_local_data_summary_goals': 'Obiettivi',
+  'guest_local_data_summary_meals': 'Pasti',
+  'guest_local_data_summary_chats': 'Chat',
+  'guest_local_data_summary_foods': 'Alimenti',
+  'guest_local_data_summary_preferences': 'Preferenze',
   'edit_profile': 'Modifica profilo',
 
   // Schermate di Registrazione

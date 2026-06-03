@@ -40,6 +40,28 @@ final Map<String, String> ptBRTranslations = {
   'sign_out': 'Sair da Conta',
   'logout': 'Sair',
   'logout_confirmation': 'Tem certeza que deseja sair da sua conta?',
+  'logout_pending_sync_title': 'Sincronizar antes de sair',
+  'logout_pending_sync_message':
+      'Há alterações neste aparelho que ainda não foram salvas na sua conta. Para sair sem perder nada, conecte-se à internet e sincronize agora.',
+  'logout_sync_and_leave': 'Sincronizar e sair',
+  'logout_pending_sync_failed':
+      'Não foi possível sincronizar. Você continua logado para não perder dados.',
+  'guest_local_data_title': 'Salvar dados deste aparelho?',
+  'guest_local_data_message':
+      'Encontramos informações criadas antes do login. Você pode salvar isso nesta conta ou descartar deste aparelho.',
+  'guest_local_data_save_action': 'Salvar na conta',
+  'guest_local_data_discard_action': 'Não salvar',
+  'guest_local_data_saved': 'Dados locais salvos na sua conta.',
+  'guest_local_data_save_failed':
+      'Não foi possível salvar esses dados agora. Tente novamente online.',
+  'guest_local_data_discarded': 'Dados locais descartados deste aparelho.',
+  'guest_local_data_discard_failed':
+      'Não foi possível descartar os dados locais agora.',
+  'guest_local_data_summary_goals': 'Metas',
+  'guest_local_data_summary_meals': 'Refeições',
+  'guest_local_data_summary_chats': 'Conversas',
+  'guest_local_data_summary_foods': 'Alimentos',
+  'guest_local_data_summary_preferences': 'Preferências',
   'edit_profile': 'Editar Perfil',
 
   // Telas de Registro
@@ -189,6 +211,8 @@ final Map<String, String> ptBRTranslations = {
   'voice_settings_no_voices': 'Não há vozes disponíveis no momento.',
   'voice_settings_title': 'Configurações de voz',
   'tts_engine_label': 'Mecanismo de voz:',
+  'tts_engine_system_label': 'Sistema',
+  'tts_engine_system_google_label': 'Sistema / Google TTS',
   'tts_engine_system_description': 'Mecanismo padrão do sistema',
   'tts_piper_unavailable_description':
       'Instale um mecanismo Piper/Sherpa TTS no Android para usar esta opção.',
