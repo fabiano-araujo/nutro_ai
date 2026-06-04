@@ -236,14 +236,16 @@ class DailyMealsProvider extends ChangeNotifier {
           fitnessGoal: fitnessGoal,
         ),
       );
-      if (summary != null) {
+
+      if (summary == null) {
+        print('[DailyMealsProvider] Sincronização não concluída');
+      } else {
         _applyServerSummary(summary, includeMeals: summary.meals.isNotEmpty);
         _loadedDetailDateKeys.add(dateKey);
         await _saveToPreferences();
+        synced = true;
+        print('[DailyMealsProvider] Sincronização concluída');
       }
-
-      synced = true;
-      print('[DailyMealsProvider] Sincronização concluída');
     } catch (e) {
       print('[DailyMealsProvider] Erro ao sincronizar: $e');
     } finally {
@@ -768,15 +770,29 @@ class DailyMealsProvider extends ChangeNotifier {
 
   /// Busca uma refeição pelo messageId (ID da mensagem do chat que a gerou)
   Meal? getMealByMessageId(String messageId) {
+    final matches = getMealsByMessageId(messageId);
+    return matches.isEmpty ? null : matches.first;
+  }
+
+  /// Busca todas as refeições vinculadas ao mesmo card/mensagem do chat.
+  /// Mensagens com múltiplas refeições usam IDs sufixados por card.
+  List<Meal> getMealsByMessageId(String messageId) {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
-    if (meals == null) return null;
+    if (meals == null) return const [];
 
-    try {
-      return meals.firstWhere((m) => m.messageId == messageId);
-    } catch (e) {
-      return null;
+    return meals
+        .where((m) => _matchesChatMessageId(m.messageId, messageId))
+        .toList(growable: false);
+  }
+
+  bool _matchesChatMessageId(String? mealMessageId, String messageId) {
+    if (mealMessageId == null || mealMessageId.isEmpty) {
+      return false;
     }
+
+    return mealMessageId == messageId ||
+        mealMessageId.startsWith('$messageId#meal-');
   }
 
   /// Adiciona uma refeição completa ao dia selecionado

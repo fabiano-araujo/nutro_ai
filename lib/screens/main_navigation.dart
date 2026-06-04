@@ -115,6 +115,7 @@ class _MainNavigationState extends State<MainNavigation> {
   bool _authInitialized = false;
   String? _configuredAuthKey;
   String? _initialGoalsPromptAuthKey;
+  bool _isBootstrappingAuthenticatedAppState = false;
   bool _isResolvingGuestLocalData = false;
   _GuestLocalDataSnapshot? _pendingGuestLocalData;
   Map<String, dynamic> _latestAppState = const <String, dynamic>{};
@@ -261,6 +262,7 @@ class _MainNavigationState extends State<MainNavigation> {
           return;
         }
         _configuredAuthKey = authKey;
+        _setAuthenticatedAppStateBootstrap(true);
 
         print('[🔄 AUTH_DATA] ========== LOGIN DETECTADO ==========');
         print('[🔄 AUTH_DATA] UserId: $userId');
@@ -290,6 +292,7 @@ class _MainNavigationState extends State<MainNavigation> {
     } else {
       _configuredAuthKey = null;
       _initialGoalsPromptAuthKey = null;
+      _isBootstrappingAuthenticatedAppState = false;
       _pendingGuestLocalData = null;
       _latestAppState = const <String, dynamic>{};
       print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
@@ -535,10 +538,37 @@ class _MainNavigationState extends State<MainNavigation> {
       _nutritionAssistantKey = UniqueKey();
       _currentMode = 'diary';
       _currentFreeChatId = null;
+      _isBootstrappingAuthenticatedAppState = false;
       _pendingGuestLocalData =
           guestSnapshot != null && guestSnapshot.hasData ? guestSnapshot : null;
     });
     print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
+  }
+
+  void _setAuthenticatedAppStateBootstrap(bool value) {
+    if (!mounted || _isBootstrappingAuthenticatedAppState == value) {
+      return;
+    }
+    setState(() {
+      _isBootstrappingAuthenticatedAppState = value;
+    });
+  }
+
+  bool _isInitialChatBootstrapPending(AuthService authService) {
+    if (authService.isLoading || _isBootstrappingAuthenticatedAppState) {
+      return true;
+    }
+
+    final user = authService.currentUser;
+    final token = authService.token;
+    if (authService.isAuthenticated &&
+        user != null &&
+        token != null &&
+        token.isNotEmpty) {
+      return _configuredAuthKey != '${user.id}:$token';
+    }
+
+    return false;
   }
 
   /// Carrega dados do usuário do servidor em uma única chamada.
@@ -1270,12 +1300,17 @@ class _MainNavigationState extends State<MainNavigation> {
   /// Constrói as 4 abas do app. Em telas largas, [onOpenDrawer] é null para
   /// que as telas escondam o botão de menu hambúrguer.
   List<Widget> _buildScreens({required VoidCallback? onOpenDrawer}) {
+    final authService = context.watch<AuthService>();
+    final isInitialChatBootstrapping =
+        _isInitialChatBootstrapPending(authService);
+
     return [
       // Aba 0: Início / Chat
       NutritionAssistantScreen(
         key: _nutritionAssistantKey,
         isFreeChat: _currentMode == 'free_chat',
         freeChatId: _currentFreeChatId,
+        isBootstrappingInitialChat: isInitialChatBootstrapping,
         onOpenDrawer: onOpenDrawer,
         onOpenMyDiet: () => _onItemTapped(1),
       ),

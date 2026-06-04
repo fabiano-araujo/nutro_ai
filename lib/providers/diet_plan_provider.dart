@@ -759,12 +759,12 @@ class DietPlanProvider extends ChangeNotifier {
       await _resumeActiveDietGenerationJob();
     } catch (e) {
       _isLoading = false;
-      _error = 'Erro ao gerar plano de dieta: $e';
+      _error = _formatDietGenerationError(e);
       _partialDietPlan = null; // Clear partial state on error
       _activeMealTypes = const [];
       notifyListeners();
 
-      print('❌ Erro ao gerar plano de dieta: $e');
+      print('❌ $_error');
     }
   }
 
@@ -1124,18 +1124,67 @@ class DietPlanProvider extends ChangeNotifier {
       notifyListeners();
       print('✅ Serviço de dieta concluiu com sucesso para ${job.dateKey}');
     } catch (e) {
+      final formattedError = _formatDietGenerationError(e);
       if (_activeDietGenerationJob?.taskId == job.taskId) {
         _isLoading = false;
-        _error = 'Erro ao gerar plano de dieta: $e';
+        _error = formattedError;
         _partialDietPlan = null;
         _activeMealTypes = const [];
         await _clearActiveDietGenerationJob(job.taskId);
         notifyListeners();
       }
-      print('❌ Erro ao acompanhar serviço de dieta: $e');
+      print('❌ Erro ao acompanhar serviço de dieta: $formattedError');
     } finally {
       _isPollingDietGenerationJob = false;
     }
+  }
+
+  String _formatDietGenerationError(Object error) {
+    var message = error.toString().trim();
+    var changed = true;
+
+    while (changed) {
+      changed = false;
+      for (final prefix in const [
+        'Erro ao gerar plano de dieta:',
+        'Exception:',
+      ]) {
+        if (message.startsWith(prefix)) {
+          message = message.substring(prefix.length).trim();
+          changed = true;
+        }
+      }
+    }
+
+    return 'Erro ao gerar plano de dieta: $message';
+  }
+
+  Future<void> refreshActiveDietGenerationJob() async {
+    DietGenerationBackgroundTask? latestJob;
+    try {
+      latestJob = await DietGenerationBackgroundService.readActiveTask();
+    } catch (e) {
+      print('⚠️ Erro ao atualizar status da geração de dieta: $e');
+      return;
+    }
+
+    if (latestJob == null) {
+      final hadActiveJob = _activeDietGenerationJob != null;
+      _activeDietGenerationJob = null;
+      if (hadActiveJob && _isLoading) {
+        _isLoading = false;
+        _error = 'Serviço de geração de dieta não encontrado';
+        _partialDietPlan = null;
+        _activeMealTypes = const [];
+        notifyListeners();
+      } else if (hadActiveJob) {
+        notifyListeners();
+      }
+      return;
+    }
+
+    _activeDietGenerationJob = latestJob;
+    await _resumeActiveDietGenerationJob();
   }
 
   Future<void> _clearActiveDietGenerationJob([String? jobId]) async {

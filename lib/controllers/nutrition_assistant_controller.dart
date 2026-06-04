@@ -625,6 +625,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     // Marcar que o usuário enviou mensagem nesta sessão
     _userSentMessage = true;
 
+    // Persistir imediatamente a mensagem do usuário, especialmente fotos.
+    // A resposta da IA será salva novamente quando o stream terminar.
+    unawaited(_saveMessagesForCurrentDate());
+
     // Adiciona a mensagem com o notifier em vez do conteúdo direto
     _messages.add({
       'isUser': false,
@@ -2761,9 +2765,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
         if (msg.containsKey('hasImage') && msg['hasImage'] == true) {
           data['hasImage'] = true;
-          // Converter bytes da imagem para base64 para armazenamento
-          if (msg.containsKey('imageBytes')) {
-            // Armazenar imagens seria muito pesado, então apenas marcamos que tinha uma imagem
+          final imageBytes = msg['imageBytes'];
+          if (imageBytes is Uint8List && imageBytes.isNotEmpty) {
+            data['imageData'] = base64Encode(imageBytes);
+            data['imageMimeType'] = msg['imageMimeType'] ?? 'image/jpeg';
+          } else {
             data['hadImage'] = true;
           }
         }
@@ -2846,8 +2852,28 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           msg['message'] = msgData['message'];
         }
 
-        if (msgData.containsKey('hadImage') && msgData['hadImage'] == true) {
-          msg['hadImage'] = true; // Marcar que tinha uma imagem
+        if (msgData['hasImage'] == true) {
+          msg['hasImage'] = true;
+          final imageData = msgData['imageData'];
+          if (imageData is String && imageData.trim().isNotEmpty) {
+            try {
+              final normalizedImageData = imageData.contains(',')
+                  ? imageData.substring(imageData.indexOf(',') + 1)
+                  : imageData;
+              msg['imageBytes'] = base64Decode(normalizedImageData);
+              if (msgData['imageMimeType'] != null) {
+                msg['imageMimeType'] = msgData['imageMimeType'];
+              }
+            } catch (e) {
+              msg['hadImage'] = true;
+              print(
+                  '⚠️ NutritionAssistantController - Erro ao restaurar imagem do histórico: $e');
+            }
+          } else if (msgData['hadImage'] == true) {
+            msg['hadImage'] = true;
+          }
+        } else if (msgData['hadImage'] == true) {
+          msg['hadImage'] = true; // Histórico antigo sem bytes da imagem
         }
 
         return msg;

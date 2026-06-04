@@ -1517,7 +1517,12 @@ final Map<String, String> ptBRTranslations = {
   'create_weekly_diet': 'Criar Dieta Semanal',
   'generate_diet_ai': 'Criar meu Cardápio',
   'diet_generated_success': 'Dieta gerada com sucesso!',
+  'diet_generation_insufficient_credits_title': 'Créditos insuficientes',
   'diet_generation_error': 'Erro ao gerar a dieta. Tente novamente.',
+  'diet_generation_server_error_message':
+      'Não foi possível gerar sua dieta agora. Tente novamente em instantes.',
+  'diet_generation_timeout_message':
+      'A geração demorou mais que o esperado. Tente novamente em instantes.',
   'diet_outdated_title': 'Atualize sua dieta',
   'diet_outdated_description':
       'Suas metas mudaram desde que este cardápio foi gerado.',

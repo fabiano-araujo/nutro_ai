@@ -4,6 +4,18 @@ import '../models/meal_model.dart';
 import '../models/Nutrient.dart';
 import 'food_emoji_resolver.dart';
 
+class ParsedFoodJsonMeal {
+  final MealType mealType;
+  final List<Food> foods;
+  final String rawJson;
+
+  const ParsedFoodJsonMeal({
+    required this.mealType,
+    required this.foods,
+    required this.rawJson,
+  });
+}
+
 class FoodJsonParser {
   /// Detecta se há um JSON de alimentos na mensagem
   static bool containsFoodJson(String message) {
@@ -12,14 +24,7 @@ class FoodJsonParser {
         return false;
       }
 
-      // Validação rápida: tentar extrair e decodificar
-      final jsonStr = extractFoodJson(message);
-      if (jsonStr == null) return false;
-
-      final decoded = jsonDecode(jsonStr);
-      return decoded is Map &&
-          decoded.containsKey('foods') &&
-          decoded['foods'] is List;
+      return parseMealEntriesFromMessage(message).isNotEmpty;
     } catch (e) {
       return false;
     }
@@ -31,8 +36,9 @@ class FoodJsonParser {
         .replaceAll('\n', '')
         .replaceAll('\r', '');
 
-    return RegExp(r'"foods"\s*:').hasMatch(normalized) ||
-        RegExp(r'"mealType"\s*:').hasMatch(normalized);
+    return RegExp(r'"foods"\s*:', caseSensitive: false).hasMatch(normalized) ||
+        RegExp(r'"mealType"\s*:', caseSensitive: false).hasMatch(normalized) ||
+        RegExp(r'"meals"\s*:', caseSensitive: false).hasMatch(normalized);
   }
 
   /// Detecta o início de um JSON de refeição ainda incompleto no stream.
@@ -56,20 +62,39 @@ class FoodJsonParser {
 
         if (trimmedStart.contains('"mealType"') ||
             trimmedStart.contains('"foods"') ||
+            trimmedStart.contains('"meals"') ||
             trimmedStart.startsWith('{')) {
+          return firstNonWhitespace;
+        }
+      }
+
+      if (firstNonWhitespace != -1 && message[firstNonWhitespace] == '[') {
+        final trimmedStart =
+            _normalizeJsonLikeText(message.substring(firstNonWhitespace));
+
+        if (trimmedStart.contains('"mealType"') ||
+            trimmedStart.contains('"foods"')) {
           return firstNonWhitespace;
         }
       }
 
       final normalized = _normalizeJsonLikeText(message);
 
+      final inlineMealsMatch =
+          RegExp(r'\{\s*"meals"', caseSensitive: false).firstMatch(normalized);
+      if (inlineMealsMatch != null) {
+        return inlineMealsMatch.start;
+      }
+
       final inlineMealTypeMatch =
-          RegExp(r'\{\s*"mealType"').firstMatch(normalized);
+          RegExp(r'\{\s*"mealType"', caseSensitive: false)
+              .firstMatch(normalized);
       if (inlineMealTypeMatch != null) {
         return inlineMealTypeMatch.start;
       }
 
-      final inlineFoodsMatch = RegExp(r'\{\s*"foods"').firstMatch(normalized);
+      final inlineFoodsMatch =
+          RegExp(r'\{\s*"foods"', caseSensitive: false).firstMatch(normalized);
       if (inlineFoodsMatch != null) {
         return inlineFoodsMatch.start;
       }
@@ -107,9 +132,31 @@ class FoodJsonParser {
   static String? extractFoodJson(String message) {
     try {
       final cleanMessage = _normalizeJsonLikeText(message);
+      final firstNonWhitespace = cleanMessage.indexOf(RegExp(r'\S'));
+      if (firstNonWhitespace != -1 && cleanMessage[firstNonWhitespace] == '[') {
+        final arrayJson =
+            _extractBalancedJsonBlock(cleanMessage, firstNonWhitespace);
+        if (arrayJson != null && _hasMealEntries(arrayJson)) {
+          return arrayJson;
+        }
+      }
+
+      final mealsIndex = _findKeyIndex(cleanMessage, 'meals');
+      if (mealsIndex != -1) {
+        final startIndex = _findObjectStart(cleanMessage, mealsIndex);
+        if (startIndex != -1) {
+          final endIndex = _findObjectEnd(cleanMessage, startIndex);
+          if (endIndex != -1) {
+            final candidate = cleanMessage.substring(startIndex, endIndex + 1);
+            if (_hasMealEntries(candidate)) {
+              return candidate;
+            }
+          }
+        }
+      }
 
       // Encontrar a posição inicial do JSON
-      final foodsIndex = _findFoodsKeyIndex(cleanMessage);
+      final foodsIndex = _findKeyIndex(cleanMessage, 'foods');
       if (foodsIndex == -1) return null;
 
       // Procurar para trás para encontrar o '{' inicial
@@ -164,6 +211,21 @@ class FoodJsonParser {
       if (decoded is Map && decoded.containsKey('mealType')) {
         return decoded['mealType'] as String?;
       }
+      if (decoded is Map && decoded['meals'] is List) {
+        final meals = decoded['meals'] as List;
+        for (final meal in meals) {
+          if (meal is Map && meal['mealType'] != null) {
+            return meal['mealType'].toString();
+          }
+        }
+      }
+      if (decoded is List) {
+        for (final meal in decoded) {
+          if (meal is Map && meal['mealType'] != null) {
+            return meal['mealType'].toString();
+          }
+        }
+      }
       return null;
     } catch (e) {
       return null;
@@ -215,7 +277,6 @@ class FoodJsonParser {
   /// Parseia o JSON de alimentos e retorna uma lista de Food
   static List<Food>? parseFoodJson(String jsonStr) {
     try {
-      // Normalizar JSON (remover quebras de linha e espaços extras)
       final normalizedJson = jsonStr
           .replaceAll('\n', '')
           .replaceAll('\r', '')
@@ -223,101 +284,196 @@ class FoodJsonParser {
           .trim();
 
       final decoded = jsonDecode(normalizedJson);
-
-      if (decoded is! Map || !decoded.containsKey('foods')) {
+      final mealMaps = _extractMealMaps(decoded);
+      if (mealMaps.isEmpty) {
         return null;
       }
 
-      final foodsList = decoded['foods'] as List;
-      final foods = <Food>[];
-      final seenFoods = <String>{};
-
-      for (var foodData in foodsList) {
-        if (foodData is! Map) continue;
-
-        final name = foodData['name'] as String?;
-        final portion = foodData['portion'] as String?;
-
-        if (name == null) continue;
-
-        final foodIdentity = _foodIdentity(name);
-        if (!seenFoods.add(foodIdentity)) continue;
-
-        // Tentar extrair macros de diferentes estruturas
-        Map<String, dynamic>? macros;
-        if (foodData.containsKey('macros')) {
-          macros = foodData['macros'] as Map<String, dynamic>?;
-        } else if (foodData.containsKey('nutrients')) {
-          macros = foodData['nutrients'] as Map<String, dynamic>?;
+      final allFoods = <Food>[];
+      for (final mealMap in mealMaps) {
+        final foods = _parseFoodsFromMealMap(mealMap);
+        if (foods != null) {
+          allFoods.addAll(foods);
         }
-
-        if (macros == null) continue;
-
-        // Limpar nomes de campos (remover espaços extras)
-        final cleanMacros = <String, dynamic>{};
-        macros.forEach((key, value) {
-          cleanMacros[key.trim()] = value;
-        });
-        macros = cleanMacros;
-
-        // Extrair valores nutricionais (com fallback para 0)
-        final calories = _parseDouble(macros['calories']) ?? 0.0;
-        final protein = _parseDouble(macros['protein']) ?? 0.0;
-        final carbs =
-            _parseDouble(macros['carbohydrate'] ?? macros['carbs']) ?? 0.0;
-        final fat = _parseDouble(macros['fat']) ?? 0.0;
-
-        // Extrair porção e unidade
-        final parsedServing = parseServingFromPortion(portion);
-        final servingSize = _parseDouble(macros['serving_size']) ??
-            parsedServing?.amount ??
-            100.0;
-        final servingUnit =
-            macros['serving_unit'] as String? ?? parsedServing?.unit ?? 'g';
-
-        // Criar objeto Nutrient com os valores
-        final nutrient = Nutrient(
-          idFood: 0, // Temporário, pois não temos ID do banco ainda
-          servingSize: servingSize,
-          servingUnit: servingUnit,
-          calories: calories,
-          protein: protein,
-          carbohydrate: carbs,
-          fat: fat,
-          saturatedFat:
-              _parseDouble(macros['saturated_fat'] ?? macros['saturatedFat']),
-          transFat: _parseDouble(macros['trans_fat'] ?? macros['transFat']),
-          dietaryFiber:
-              _parseDouble(macros['dietary_fiber'] ?? macros['dietaryFiber']),
-          sugars: _parseDouble(macros['sugars']),
-          cholesterol: _parseDouble(macros['cholesterol']),
-          sodium: _parseDouble(macros['sodium']),
-          potassium: _parseDouble(macros['potassium']),
-          calcium: _parseDouble(macros['calcium']),
-          iron: _parseDouble(macros['iron']),
-          vitaminA: _parseDouble(macros['vitamin_a'] ?? macros['vitaminA']),
-          vitaminC: _parseDouble(macros['vitamin_c'] ?? macros['vitaminC']),
-          vitaminD: _parseDouble(macros['vitamin_d'] ?? macros['vitaminD']),
-          vitaminB6: _parseDouble(macros['vitamin_b6'] ?? macros['vitaminB6']),
-          vitaminB12:
-              _parseDouble(macros['vitamin_b12'] ?? macros['vitaminB12']),
-        );
-
-        // Criar objeto Food
-        final food = Food(
-          name: name,
-          emoji: resolveFoodEmoji(name),
-          amount: portion ?? '${servingSize.toStringAsFixed(0)}$servingUnit',
-          nutrients: [nutrient],
-        );
-
-        foods.add(food);
       }
 
-      return foods.isEmpty ? null : foods;
+      return allFoods.isEmpty ? null : allFoods;
     } catch (e) {
       return null;
     }
+  }
+
+  static List<ParsedFoodJsonMeal> parseMealEntriesFromMessage(
+    String message, {
+    MealType? fallbackMealType,
+  }) {
+    final jsonStr = extractFoodJson(message);
+    if (jsonStr == null) return const [];
+    return parseMealEntries(
+      jsonStr,
+      fallbackMealType: fallbackMealType,
+    );
+  }
+
+  static List<ParsedFoodJsonMeal> parseMealEntries(
+    String jsonStr, {
+    MealType? fallbackMealType,
+  }) {
+    try {
+      final normalizedJson = jsonStr
+          .replaceAll('\n', '')
+          .replaceAll('\r', '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+
+      final decoded = jsonDecode(normalizedJson);
+      final mealMaps = _extractMealMaps(decoded);
+      if (mealMaps.isEmpty) return const [];
+
+      final entries = <ParsedFoodJsonMeal>[];
+      for (final mealMap in mealMaps) {
+        final foods = _parseFoodsFromMealMap(mealMap);
+        if (foods == null || foods.isEmpty) {
+          continue;
+        }
+
+        final mealTypeStr = mealMap['mealType']?.toString();
+        entries.add(
+          ParsedFoodJsonMeal(
+            mealType: mealTypeStr == null || mealTypeStr.isEmpty
+                ? (fallbackMealType ?? MealType.snack)
+                : mealTypeFromString(mealTypeStr),
+            foods: foods,
+            rawJson: jsonEncode(mealMap),
+          ),
+        );
+      }
+
+      return entries;
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  static List<Map<String, dynamic>> _extractMealMaps(dynamic decoded) {
+    if (decoded is Map) {
+      final root = Map<String, dynamic>.from(decoded);
+      if (root['foods'] is List) {
+        return [root];
+      }
+
+      final mealsNode = root['meals'];
+      if (mealsNode is List) {
+        return mealsNode
+            .whereType<Map>()
+            .map((meal) => Map<String, dynamic>.from(meal))
+            .where((meal) => meal['foods'] is List)
+            .toList();
+      }
+    }
+
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((meal) => Map<String, dynamic>.from(meal))
+          .where((meal) => meal['foods'] is List)
+          .toList();
+    }
+
+    return const [];
+  }
+
+  static List<Food>? _parseFoodsFromMealMap(Map<String, dynamic> mealMap) {
+    final foodsList = mealMap['foods'];
+    if (foodsList is! List) {
+      return null;
+    }
+
+    final foods = <Food>[];
+    final seenFoods = <String>{};
+
+    for (var foodData in foodsList) {
+      if (foodData is! Map) continue;
+
+      final name = foodData['name'] as String?;
+      final portion = foodData['portion'] as String?;
+
+      if (name == null) continue;
+
+      final foodIdentity = _foodIdentity(name);
+      if (!seenFoods.add(foodIdentity)) continue;
+
+      // Tentar extrair macros de diferentes estruturas
+      Map<String, dynamic>? macros;
+      if (foodData.containsKey('macros')) {
+        macros = foodData['macros'] as Map<String, dynamic>?;
+      } else if (foodData.containsKey('nutrients')) {
+        macros = foodData['nutrients'] as Map<String, dynamic>?;
+      }
+
+      if (macros == null) continue;
+
+      // Limpar nomes de campos (remover espaços extras)
+      final cleanMacros = <String, dynamic>{};
+      macros.forEach((key, value) {
+        cleanMacros[key.trim()] = value;
+      });
+      macros = cleanMacros;
+
+      // Extrair valores nutricionais (com fallback para 0)
+      final calories = _parseDouble(macros['calories']) ?? 0.0;
+      final protein = _parseDouble(macros['protein']) ?? 0.0;
+      final carbs =
+          _parseDouble(macros['carbohydrate'] ?? macros['carbs']) ?? 0.0;
+      final fat = _parseDouble(macros['fat']) ?? 0.0;
+
+      // Extrair porção e unidade
+      final parsedServing = parseServingFromPortion(portion);
+      final servingSize = _parseDouble(macros['serving_size']) ??
+          parsedServing?.amount ??
+          100.0;
+      final servingUnit =
+          macros['serving_unit'] as String? ?? parsedServing?.unit ?? 'g';
+
+      // Criar objeto Nutrient com os valores
+      final nutrient = Nutrient(
+        idFood: 0, // Temporário, pois não temos ID do banco ainda
+        servingSize: servingSize,
+        servingUnit: servingUnit,
+        calories: calories,
+        protein: protein,
+        carbohydrate: carbs,
+        fat: fat,
+        saturatedFat:
+            _parseDouble(macros['saturated_fat'] ?? macros['saturatedFat']),
+        transFat: _parseDouble(macros['trans_fat'] ?? macros['transFat']),
+        dietaryFiber:
+            _parseDouble(macros['dietary_fiber'] ?? macros['dietaryFiber']),
+        sugars: _parseDouble(macros['sugars']),
+        cholesterol: _parseDouble(macros['cholesterol']),
+        sodium: _parseDouble(macros['sodium']),
+        potassium: _parseDouble(macros['potassium']),
+        calcium: _parseDouble(macros['calcium']),
+        iron: _parseDouble(macros['iron']),
+        vitaminA: _parseDouble(macros['vitamin_a'] ?? macros['vitaminA']),
+        vitaminC: _parseDouble(macros['vitamin_c'] ?? macros['vitaminC']),
+        vitaminD: _parseDouble(macros['vitamin_d'] ?? macros['vitaminD']),
+        vitaminB6: _parseDouble(macros['vitamin_b6'] ?? macros['vitaminB6']),
+        vitaminB12: _parseDouble(macros['vitamin_b12'] ?? macros['vitaminB12']),
+      );
+
+      // Criar objeto Food
+      final food = Food(
+        name: name,
+        emoji: resolveFoodEmoji(name),
+        amount: portion ?? '${servingSize.toStringAsFixed(0)}$servingUnit',
+        nutrients: [nutrient],
+      );
+
+      foods.add(food);
+    }
+
+    return foods.isEmpty ? null : foods;
   }
 
   static String _foodIdentity(String name) {
@@ -444,8 +600,11 @@ class FoodJsonParser {
         .replaceAll('‟', '"');
   }
 
-  static int _findFoodsKeyIndex(String message) {
-    return RegExp(r'"foods"\s*:').firstMatch(message)?.start ?? -1;
+  static int _findKeyIndex(String message, String key) {
+    return RegExp('"$key"\\s*:', caseSensitive: false)
+            .firstMatch(message)
+            ?.start ??
+        -1;
   }
 
   static int _findObjectStart(String message, int fromIndex) {
@@ -456,6 +615,60 @@ class FoodJsonParser {
     }
 
     return -1;
+  }
+
+  static String? _extractBalancedJsonBlock(String content, int startIndex) {
+    if (startIndex < 0 || startIndex >= content.length) {
+      return null;
+    }
+
+    final openingChar = content[startIndex];
+    final closingChar = openingChar == '[' ? ']' : '}';
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+
+    for (var i = startIndex; i < content.length; i++) {
+      final char = content[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char == '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char == '"') {
+        inString = !inString;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (char == openingChar) {
+        depth++;
+      } else if (char == closingChar) {
+        depth--;
+        if (depth == 0) {
+          return content.substring(startIndex, i + 1);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  static bool _hasMealEntries(String jsonStr) {
+    try {
+      final decoded = jsonDecode(jsonStr);
+      return _extractMealMaps(decoded).isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   static int _findObjectEnd(String message, int startIndex) {
@@ -525,20 +738,22 @@ class FoodJsonParser {
     final jsonStr = extractFoodJson(message);
     if (jsonStr == null) return null;
 
-    final foods = parseFoodJson(jsonStr);
-    if (foods == null || foods.isEmpty) return null;
+    final entries = parseMealEntries(jsonStr);
+    if (entries.isEmpty) return null;
 
-    final totalCalories =
-        foods.fold<int>(0, (sum, food) => sum + food.calories);
-    final foodNames = foods.map((f) => f.name).join(', ');
+    final summaries = entries.map((entry) {
+      final totalCalories =
+          entry.foods.fold<int>(0, (sum, food) => sum + food.calories);
+      final foodNames = entry.foods.map((f) => f.name).join(', ');
+      final mealTypeName = mealTypeNameResolver?.call(entry.mealType);
 
-    final mealType = mealTypeFromString(extractMealType(jsonStr));
-    final mealTypeName = mealTypeNameResolver?.call(mealType);
+      final base = '$totalCalories kcal — $foodNames';
+      return mealTypeName == null || mealTypeName.isEmpty
+          ? base
+          : '$base · $mealTypeName';
+    }).toList();
 
-    final base = '$totalCalories kcal — $foodNames';
-    return mealTypeName == null || mealTypeName.isEmpty
-        ? base
-        : '$base · $mealTypeName';
+    return summaries.join('\n');
   }
 
   /// Retorna a mensagem com o JSON substituido por um resumo legivel do

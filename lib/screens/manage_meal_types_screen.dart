@@ -19,6 +19,8 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final borderColor =
+        isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -64,6 +66,19 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                       color: textColor.withValues(alpha: 0.5),
                     ),
                   ),
+                  SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: _showAddDialog,
+                    icon: Icon(Icons.add_rounded),
+                    label: Text(context.tr.translate('add_meal')),
+                    style: FilledButton.styleFrom(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -71,9 +86,34 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
 
           return Column(
             children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _showAddDialog,
+                    icon: Icon(Icons.add_rounded, size: 20),
+                    label: Text(
+                      context.tr.translate('add_meal'),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: textColor,
+                      side: BorderSide(color: borderColor),
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Expanded(
                 child: ReorderableListView.builder(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
                   itemCount: provider.mealTypes.length,
                   onReorder: (oldIndex, newIndex) {
                     provider.reorderMealTypes(oldIndex, newIndex);
@@ -91,40 +131,37 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
                   },
                 ),
               ),
-              // Save changes button
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: SafeArea(
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _saveMealChanges();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onPrimary,
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 1,
+              SafeArea(
+                top: false,
+                minimum: EdgeInsets.fromLTRB(20, 12, 20, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _saveMealChanges();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.save, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            context.tr.translate('save_changes'),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      elevation: 1,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.save_rounded, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          context.tr.translate('save_changes'),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -132,17 +169,6 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
             ],
           );
         },
-      ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: 80), // Space above the save button
-        child: FloatingActionButton(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          onPressed: _showAddDialog,
-          child: Icon(
-            Icons.add,
-            color: Theme.of(context).colorScheme.onPrimary,
-          ),
-        ),
       ),
     );
   }
@@ -596,34 +622,53 @@ class _MealTypeCard extends StatelessWidget {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final mutedColor = textColor.withValues(alpha: 0.62);
+    final actionBackground = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppTheme.surfaceColor;
+    final deleteColor = isDarkMode ? Color(0xFFFFB4AB) : AppTheme.errorColor;
 
     return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      margin: EdgeInsets.only(bottom: 10),
+      elevation: isDarkMode ? 0 : 1,
+      shadowColor: Colors.black.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.04)
+              : AppTheme.dividerColor.withValues(alpha: 0.55),
+        ),
       ),
       color: cardColor,
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
             // Drag handle
-            ReorderableDragStartListener(
-              index: index,
-              child: Icon(
-                Icons.drag_handle,
-                color: textColor.withValues(alpha: 0.4),
+            SizedBox(
+              width: 28,
+              height: 52,
+              child: Center(
+                child: ReorderableDragStartListener(
+                  index: index,
+                  child: Icon(
+                    Icons.drag_handle_rounded,
+                    color: textColor.withValues(alpha: 0.42),
+                  ),
+                ),
               ),
             ),
-            SizedBox(width: 12),
+            SizedBox(width: 10),
 
             // Emoji
             Container(
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
-                color: isDarkMode ? Color(0xFF2E2E2E) : Color(0xFFF3F4F6),
+                color: isDarkMode
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : AppTheme.surfaceColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -633,7 +678,7 @@ class _MealTypeCard extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(width: 12),
+            SizedBox(width: 14),
 
             // Name and reminder time
             Expanded(
@@ -645,8 +690,8 @@ class _MealTypeCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w700,
                       color: textColor,
                     ),
                   ),
@@ -656,15 +701,15 @@ class _MealTypeCard extends StatelessWidget {
                       Icon(
                         Icons.schedule_rounded,
                         size: 14,
-                        color: textColor.withValues(alpha: 0.55),
+                        color: mutedColor,
                       ),
                       SizedBox(width: 4),
                       Text(
                         mealType.reminderTime,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: textColor.withValues(alpha: 0.62),
+                          fontWeight: FontWeight.w700,
+                          color: mutedColor,
                         ),
                       ),
                     ],
@@ -672,16 +717,38 @@ class _MealTypeCard extends StatelessWidget {
                 ],
               ),
             ),
+            SizedBox(width: 8),
 
             // Edit button
             IconButton(
-              icon: Icon(Icons.edit, color: AppTheme.primaryColor),
+              style: IconButton.styleFrom(
+                backgroundColor: actionBackground,
+                foregroundColor: textColor.withValues(alpha: 0.88),
+                fixedSize: Size(40, 40),
+                minimumSize: Size(40, 40),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: Icon(Icons.edit_rounded, size: 20),
               onPressed: onEdit,
             ),
+            SizedBox(width: 4),
 
             // Delete button
             IconButton(
-              icon: Icon(Icons.delete, color: textColor.withValues(alpha: 0.6)),
+              style: IconButton.styleFrom(
+                backgroundColor: deleteColor.withValues(alpha: 0.12),
+                foregroundColor: deleteColor,
+                fixedSize: Size(40, 40),
+                minimumSize: Size(40, 40),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: Icon(Icons.delete_rounded, size: 20),
               onPressed: onDelete,
             ),
           ],

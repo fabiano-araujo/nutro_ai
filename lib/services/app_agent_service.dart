@@ -167,7 +167,7 @@ class AppAgentCommand {
     }
 
     final hasFoodPayloadMarker =
-        RegExp(r'"(?:foods|mealtype)"\s*:').hasMatch(normalized);
+        RegExp(r'"(?:foods|mealtype|meals)"\s*:').hasMatch(normalized);
     if (hasFoodPayloadMarker) {
       return false;
     }
@@ -2309,6 +2309,7 @@ class AppAgentService {
     ]);
     final asksSnackSuggestion = _looksLikeSnackSuggestionRequest(normalized);
     final asksEvaluation = _looksLikeDailyEvaluationRequest(normalized);
+    final asksFoodList = _looksLikeFoodListRequest(normalized);
 
     if (isPortuguese) {
       if (asksEvaluation) {
@@ -2337,6 +2338,13 @@ class AppAgentService {
             '${_formatOneDecimal(fatConsumed)}g de gorduras. '
             'Foi um dia $calorieAssessment e a $proteinAssessment. '
             '${calorieRatio < 0.7 ? 'Pelo registro, parece uma alimentação incompleta.' : 'No geral, o ponto principal é manter proteína e calorias dentro da meta.'}';
+      }
+      if (asksFoodList) {
+        return _formatDailyFoodListMessage(
+          meals: meals,
+          dateLabel: dateLabel,
+          isPortuguese: true,
+        );
       }
       if (asksSnackSuggestion) {
         if (caloriesRemaining < 250) {
@@ -2402,6 +2410,14 @@ class AppAgentService {
           '${_formatOneDecimal(carbsConsumed)}g carbs, and '
           '${_formatOneDecimal(fatConsumed)}g fat. '
           'That was $calorieAssessment, and $proteinAssessment.';
+    }
+
+    if (asksFoodList) {
+      return _formatDailyFoodListMessage(
+        meals: meals,
+        dateLabel: dateLabel,
+        isPortuguese: false,
+      );
     }
 
     if (asksSnackSuggestion) {
@@ -2481,6 +2497,101 @@ class AppAgentService {
           r'\b(com|dentro)\s+(as|das|minhas|os|dos|meus)?\s*(calorias|kcal|macros)\b',
         ).hasMatch(normalizedText);
     return hasSuggestion && hasMeal && hasRemainingBudget;
+  }
+
+  static bool _looksLikeFoodListRequest(String normalizedText) {
+    return RegExp(
+          r'\b(quais|qual|que|listar|lista|liste|mostra|mostrar|ver|what|which|list|show)\b.*\b(alimento|alimentos|comida|comidas|refeicao|refeicoes|food|foods|meal|meals)\b',
+        ).hasMatch(normalizedText) ||
+        RegExp(
+          r'\b(o que|oque|what)\b.*\b(comi|consumi|ingeri|ate|had)\b',
+        ).hasMatch(normalizedText) ||
+        RegExp(
+          r'^\s*(quais\s+)?(alimento|alimentos|comida|comidas|refeicao|refeicoes|foods|meals)\s*\??\s*$',
+        ).hasMatch(normalizedText);
+  }
+
+  static String _formatDailyFoodListMessage({
+    required List<dynamic> meals,
+    required String dateLabel,
+    required bool isPortuguese,
+  }) {
+    final lines = <String>[];
+
+    for (final meal in meals) {
+      if (meal is! Map) continue;
+      final foods = meal['foods'];
+      if (foods is! List || foods.isEmpty) continue;
+
+      final foodTexts = <String>[];
+      for (final food in foods) {
+        if (food is! Map) continue;
+        final name = food['name']?.toString().trim();
+        if (name == null || name.isEmpty) continue;
+        final calories = _tryParseInt(food['calories']);
+        foodTexts.add(
+            calories != null && calories > 0 ? '$name ($calories kcal)' : name);
+      }
+      if (foodTexts.isEmpty) continue;
+
+      final label = _localizedMealTypeLabel(
+        meal['type']?.toString(),
+        isPortuguese: isPortuguese,
+      );
+      lines.add('$label: ${foodTexts.join(', ')}');
+    }
+
+    if (lines.isEmpty) {
+      return isPortuguese
+          ? 'Não encontrei alimentos registrados em ${dateLabel.toLowerCase()}.'
+          : 'I did not find any foods logged for ${dateLabel.toLowerCase()}.';
+    }
+
+    return isPortuguese
+        ? '$dateLabel você registrou:\n${lines.map((line) => '- $line').join('\n')}'
+        : '$dateLabel you logged:\n${lines.map((line) => '- $line').join('\n')}';
+  }
+
+  static String _localizedMealTypeLabel(
+    String? mealType, {
+    required bool isPortuguese,
+  }) {
+    final normalized = _normalizeLooseText(mealType ?? '');
+    if (isPortuguese) {
+      switch (normalized) {
+        case 'breakfast':
+        case 'cafe da manha':
+          return 'Café da manhã';
+        case 'lunch':
+        case 'almoco':
+          return 'Almoço';
+        case 'dinner':
+        case 'jantar':
+          return 'Jantar';
+        case 'snack':
+        case 'lanche':
+          return 'Lanche';
+        default:
+          return 'Refeição';
+      }
+    }
+
+    switch (normalized) {
+      case 'breakfast':
+      case 'cafe da manha':
+        return 'Breakfast';
+      case 'lunch':
+      case 'almoco':
+        return 'Lunch';
+      case 'dinner':
+      case 'jantar':
+        return 'Dinner';
+      case 'snack':
+      case 'lanche':
+        return 'Snack';
+      default:
+        return 'Meal';
+    }
   }
 
   static DateTime? _tryParseDate(dynamic value) {
@@ -4559,6 +4670,9 @@ class AppAgentService {
     if (_looksLikeTotalVsRemainingQuestion(normalizedText) ||
         _looksLikeMacroTargetsStatusRequest(normalizedText)) {
       return false;
+    }
+    if (_looksLikeFoodListRequest(normalizedText)) {
+      return true;
     }
 
     final explicitDateContext = _extractDailyStatusDate(normalizedText) != null;

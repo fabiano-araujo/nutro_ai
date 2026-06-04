@@ -106,6 +106,7 @@ class NutritionAssistantScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
   final VoidCallback? onOpenMyDiet;
   final String? toolType;
+  final bool isBootstrappingInitialChat;
 
   const NutritionAssistantScreen({
     Key? key,
@@ -118,6 +119,7 @@ class NutritionAssistantScreen extends StatefulWidget {
     this.onOpenDrawer,
     this.onOpenMyDiet,
     this.toolType,
+    this.isBootstrappingInitialChat = false,
   }) : super(key: key);
 
   @override
@@ -1443,6 +1445,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           final selectedImageBytes = _chatController.selectedImageBytes;
           final currentlySpeakingMessageIndex =
               _chatController.currentlySpeakingMessageIndex;
+          final shouldBlockChatContent =
+              widget.isBootstrappingInitialChat || isLoadingMessages;
 
           // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
           if (!_hasScrolledToInitialMessages &&
@@ -1625,7 +1629,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                       child: Stack(
                         children: [
                           // ListView (só renderiza quando há mensagens)
-                          if (messages.isNotEmpty)
+                          if (!shouldBlockChatContent && messages.isNotEmpty)
                             ListView.builder(
                               controller: _scrollController,
                               padding: EdgeInsets.all(16),
@@ -1695,7 +1699,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                             ),
 
                           // Sugestões sobreposta (ocupam todo o espaço disponível)
-                          if (messages.isEmpty && _suggestions.isNotEmpty)
+                          if (!shouldBlockChatContent &&
+                              messages.isEmpty &&
+                              _suggestions.isNotEmpty)
                             Positioned.fill(
                               child: Container(
                                 color: currentScaffoldBackgroundColor,
@@ -1741,13 +1747,20 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                             ),
 
                           // Mensagem de boas-vindas sobreposta (só aparece quando não há mensagens e não há sugestões)
-                          if (messages.isEmpty && _suggestions.isEmpty)
+                          if (shouldBlockChatContent)
+                            Positioned.fill(
+                              child: _buildInitialChatLoadingView(
+                                backgroundColor: currentScaffoldBackgroundColor,
+                              ),
+                            )
+                          else if (messages.isEmpty && _suggestions.isEmpty)
                             Positioned.fill(
                               child: Consumer<DailyMealsProvider>(
                                 builder:
                                     (context, reconstructMealsProvider, _) {
                                   final shouldShowInitialLoader =
-                                      isLoadingMessages ||
+                                      widget.isBootstrappingInitialChat ||
+                                          isLoadingMessages ||
                                           isLoading ||
                                           !reconstructMealsProvider.isLoaded ||
                                           reconstructMealsProvider
@@ -2916,27 +2929,41 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           );
         }
 
-        final cachedMeal = mealsProvider.getMealByMessageId(foodMessageId);
-        if (cachedMeal == null) {
+        final cachedMeals = mealsProvider.getMealsByMessageId(foodMessageId);
+        if (cachedMeals.isEmpty) {
           return const SizedBox.shrink();
         }
 
-        return MealCard(
-          key: ValueKey('cached-$foodMessageId-${cachedMeal.id}'),
-          meal: cachedMeal,
-          topContentPadding: 16,
-          onMealUpdated: (updatedMeal) {
-            if (updatedMeal.foods.isEmpty) {
-              mealsProvider.deleteMeal(updatedMeal.id);
-              _chatController.deleteMessagePair(messageIndex);
-            } else {
-              mealsProvider.updateMeal(updatedMeal);
-            }
-          },
-          onDelete: () {
-            mealsProvider.deleteMeal(cachedMeal.id);
-            _chatController.deleteMessagePair(messageIndex);
-          },
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: List.generate(cachedMeals.length, (index) {
+            final meal = cachedMeals[index];
+
+            return Padding(
+              padding: EdgeInsets.only(top: index == 0 ? 0 : 12),
+              child: MealCard(
+                key: ValueKey('cached-$foodMessageId-${meal.id}'),
+                meal: meal,
+                topContentPadding: 16,
+                onMealUpdated: (updatedMeal) {
+                  if (updatedMeal.foods.isEmpty) {
+                    mealsProvider.deleteMeal(updatedMeal.id);
+                    if (cachedMeals.length == 1) {
+                      _chatController.deleteMessagePair(messageIndex);
+                    }
+                  } else {
+                    mealsProvider.updateMeal(updatedMeal);
+                  }
+                },
+                onDelete: () {
+                  mealsProvider.deleteMeal(meal.id);
+                  if (cachedMeals.length == 1) {
+                    _chatController.deleteMessagePair(messageIndex);
+                  }
+                },
+              ),
+            );
+          }),
         );
       },
     );

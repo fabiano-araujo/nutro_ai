@@ -8,7 +8,7 @@ import '../providers/credit_provider.dart';
 import 'package:nutro_ai/i18n/app_localizations_extension.dart';
 
 class RewardAdDialog {
-  static void show(BuildContext context) {
+  static void show(BuildContext context, {VoidCallback? onRewardEarned}) {
     final parentContext = context;
     final theme = Theme.of(parentContext);
 
@@ -27,8 +27,8 @@ class RewardAdDialog {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  theme.colorScheme.primary.withOpacity(0.8),
-                  theme.colorScheme.secondary.withOpacity(0.9),
+                  theme.colorScheme.primary.withValues(alpha: 0.8),
+                  theme.colorScheme.secondary.withValues(alpha: 0.9),
                 ],
               ),
             ),
@@ -39,7 +39,7 @@ class RewardAdDialog {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -67,7 +67,7 @@ class RewardAdDialog {
                   context.tr.translate('watch_ad_earn'),
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -80,7 +80,10 @@ class RewardAdDialog {
                     ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        showRewardedAd(parentContext);
+                        showRewardedAd(
+                          parentContext,
+                          onRewardEarned: onRewardEarned,
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -110,7 +113,7 @@ class RewardAdDialog {
                         Navigator.of(context).pop();
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.white.withOpacity(0.8),
+                        foregroundColor: Colors.white.withValues(alpha: 0.8),
                       ),
                       child: Text(context.tr.translate('cancel')),
                     ),
@@ -294,8 +297,7 @@ class RewardAdDialog {
                       Navigator.of(context).pop();
                       showRewardedAd(context,
                           retryAttempt: 0,
-                          onRewardEarned:
-                              onRewardEarned); // Reiniciar contagem
+                          onRewardEarned: onRewardEarned); // Reiniciar contagem
                     },
                     child: Text(context.tr.translate('retry')),
                   ),

@@ -527,6 +527,19 @@ Resposta da IA:
     expect(AppAgentCommand.tryParseBatch(response), isNull);
   });
 
+  test('does not treat multi-meal food json as an app command', () {
+    const response = '''
+{"meals":[
+  {"mealType":"lunch","foods":[{"name":"arroz","portion":"1 colher","macros":{"calories":164,"protein":3,"carbohydrate":36,"fat":0.3}}]},
+  {"mealType":"dinner","foods":[{"name":"cuscuz","portion":"1 prato","macros":{"calories":180,"protein":5,"carbohydrate":38,"fat":1}}]}
+]}
+''';
+
+    expect(AppAgentCommand.containsCommandCandidate(response), isFalse);
+    expect(AppAgentCommand.tryParse(response), isNull);
+    expect(AppAgentCommand.tryParseBatch(response), isNull);
+  });
+
   test('routes automatic approval back to macro recalculation context', () {
     const context = '''
 User: eu quero ganhar massa agora, recalcule
@@ -665,6 +678,15 @@ Assistant: Quer passar detalhes como restrições, alimentos preferidos ou rotin
     );
     expect(isoDate, isNotNull);
     expect(isoDate!.arguments['date'], '2026-04-20');
+
+    final foodList =
+        AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
+      'Quais alimentos',
+      rawJson: '',
+    );
+    expect(foodList, isNotNull);
+    expect(foodList!.name, AppAgentService.getDailyNutritionStatus);
+    expect(foodList.arguments, isEmpty);
   });
 
   test('routes total daily target questions to macro targets status', () {

@@ -36,7 +36,7 @@ class FoodJsonDisplay extends StatefulWidget {
 
 class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     with AutomaticKeepAliveClientMixin {
-  late Meal _meal;
+  List<Meal> _meals = const [];
   bool _isAdded = false;
 
   @override
@@ -45,7 +45,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   @override
   void initState() {
     super.initState();
-    _parseMeal();
+    _parseMeals();
     // Adicionar automaticamente após o frame atual para garantir acesso ao contexto
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -57,13 +57,13 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
       // Verificar se já existe uma refeição com este messageId no provider
       if (widget.messageId != null) {
-        final existingMeal =
-            mealsProvider.getMealByMessageId(widget.messageId!);
-        if (existingMeal != null) {
+        final existingMeals =
+            mealsProvider.getMealsByMessageId(widget.messageId!);
+        if (existingMeals.isNotEmpty) {
           // Já foi adicionado anteriormente, apenas atualizar o estado local
           setState(() {
             _isAdded = true;
-            _meal = existingMeal;
+            _meals = existingMeals;
           });
           return;
         }
@@ -71,7 +71,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
       // Só adiciona se ainda não foi adicionado
       if (!_isAdded) {
-        _addMealToDay();
+        _addMealsToDay();
       }
     });
   }
@@ -80,57 +80,62 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   void didUpdateWidget(FoodJsonDisplay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.message != widget.message) {
-      _parseMeal();
+      _parseMeals();
       // Não adicionamos automaticamente na atualização para evitar duplicatas em streaming
       // ou atualizações parciais, assumindo que a criação inicial captura a intenção.
       // Se necessário, lógica adicional pode ser implementada aqui.
     }
   }
 
-  void _parseMeal() {
-    final jsonStr = FoodJsonParser.extractFoodJson(widget.message);
-
-    // Extrair tipo de refeição do JSON da IA (ou usar fallback por horário)
-    final mealTypeStr =
-        jsonStr != null ? FoodJsonParser.extractMealType(jsonStr) : null;
-    final mealType = mealTypeStr != null
-        ? FoodJsonParser.mealTypeFromString(mealTypeStr)
-        : AIInteractionHelper.getMealTypeByTime();
-
-    if (jsonStr != null) {
-      final foods = FoodJsonParser.parseFoodJson(jsonStr);
-      if (foods != null && foods.isNotEmpty) {
-        _meal = FoodJsonParser.createMealFromFoods(
-          foods,
-          type: mealType,
-          dateTime: widget.selectedDate,
-        );
-        return;
-      }
-    }
-    // Fallback para meal vazia
-    _meal = Meal(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      type: mealType,
-      foods: [],
-      dateTime: widget.selectedDate,
+  void _parseMeals() {
+    final fallbackMealType = AIInteractionHelper.getMealTypeByTime();
+    final entries = FoodJsonParser.parseMealEntriesFromMessage(
+      widget.message,
+      fallbackMealType: fallbackMealType,
     );
-  }
 
-  void _handleMealTypeChanged(MealType newType) {
-    setState(() {
-      _meal = _meal.copyWith(type: newType);
+    if (entries.isEmpty) {
+      _meals = [
+        Meal(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          type: fallbackMealType,
+          foods: const [],
+          dateTime: widget.selectedDate,
+        ),
+      ];
+      return;
+    }
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    _meals = List.generate(entries.length, (index) {
+      final entry = entries[index];
+      return FoodJsonParser.createMealFromFoods(
+        entry.foods,
+        type: entry.mealType,
+        dateTime: widget.selectedDate,
+      ).copyWith(id: 'parsed-$timestamp-$index');
     });
   }
 
-  void _handleMealUpdated(Meal updatedMeal) {
+  void _handleMealTypeChanged(int index, MealType newType) {
+    if (index < 0 || index >= _meals.length) return;
+
+    setState(() {
+      _meals = List<Meal>.from(_meals)
+        ..[index] = _meals[index].copyWith(type: newType);
+    });
+  }
+
+  void _handleMealUpdated(int index, Meal updatedMeal) {
+    if (index < 0 || index >= _meals.length) return;
+    final shouldDeleteMessage = updatedMeal.foods.isEmpty && _meals.length == 1;
+
     if (_isAdded) {
       final mealsProvider =
           Provider.of<DailyMealsProvider>(context, listen: false);
 
       if (updatedMeal.foods.isEmpty) {
         mealsProvider.deleteMeal(updatedMeal.id);
-        widget.onDeleteMessage?.call();
       } else {
         mealsProvider.updateMeal(updatedMeal);
       }
@@ -139,61 +144,96 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     if (!mounted) return;
 
     setState(() {
-      _meal = updatedMeal;
+      final updatedMeals = List<Meal>.from(_meals);
       if (updatedMeal.foods.isEmpty) {
-        _isAdded = false;
+        updatedMeals.removeAt(index);
+        if (updatedMeals.isEmpty) {
+          _isAdded = false;
+        }
+      } else {
+        updatedMeals[index] = updatedMeal;
       }
+      _meals = updatedMeals;
     });
-  }
 
-  void _handleDelete() {
-    if (!_isAdded) return;
-
-    final mealsProvider =
-        Provider.of<DailyMealsProvider>(context, listen: false);
-
-    mealsProvider.deleteMeal(_meal.id);
-
-    // Chamar callback para excluir a mensagem do chat também
-    widget.onDeleteMessage?.call();
-
-    if (mounted) {
-      setState(() {
-        _isAdded = false;
-        // Limpar a refeição para esconder o card
-        _meal = _meal.copyWith(foods: []);
-      });
+    if (shouldDeleteMessage) {
+      widget.onDeleteMessage?.call();
     }
   }
 
-  void _addMealToDay() {
-    if (_meal.foods.isEmpty || _isAdded) return;
+  void _handleDelete(int index) {
+    if (!_isAdded) return;
+    if (index < 0 || index >= _meals.length) return;
 
     final mealsProvider =
         Provider.of<DailyMealsProvider>(context, listen: false);
+    final meal = _meals[index];
 
-    // Criar cópia da refeição com a data selecionada e messageId
-    final mealToAdd = _meal.copyWith(
-      dateTime: widget.selectedDate,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      messageId: widget.messageId,
-    );
+    mealsProvider.deleteMeal(meal.id);
 
-    mealsProvider.addMeal(mealToAdd);
+    if (mounted) {
+      setState(() {
+        final updatedMeals = List<Meal>.from(_meals)..removeAt(index);
+        _meals = updatedMeals;
+        _isAdded = updatedMeals.isNotEmpty;
+      });
+    }
+
+    if (_meals.isEmpty) {
+      widget.onDeleteMessage?.call();
+    }
+  }
+
+  void _addMealsToDay() {
+    if (_meals.every((meal) => meal.foods.isEmpty) || _isAdded) return;
+
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final addedMeals = <Meal>[];
+
+    for (var i = 0; i < _meals.length; i++) {
+      final meal = _meals[i];
+      if (meal.foods.isEmpty) continue;
+
+      // Criar cópia da refeição com a data selecionada e messageId
+      final mealToAdd = meal.copyWith(
+        dateTime: widget.selectedDate,
+        id: '$timestamp-$i',
+        messageId: _messageIdForMeal(i),
+      );
+
+      mealsProvider.addMeal(mealToAdd);
+      addedMeals.add(mealToAdd);
+
+      // Conta cada refeição registrada, mas o intersticial é tentado uma vez.
+      AdManager.notifyMealRegistered();
+    }
 
     if (mounted) {
       setState(() {
         _isAdded = true;
-        _meal = mealToAdd;
+        _meals = addedMeals;
       });
     }
 
-    // Conta + tenta mostrar intersticial após N refeições
-    AdManager.notifyMealRegistered();
     AdManager.maybeShowMealDoneInterstitial();
 
     // Fire-and-forget: salva nos recentes e aplica macros dos favoritos
-    _processWithFavorites(mealToAdd);
+    for (final meal in addedMeals) {
+      _processWithFavorites(meal);
+    }
+  }
+
+  String? _messageIdForMeal(int index) {
+    final messageId = widget.messageId;
+    if (messageId == null || messageId.isEmpty) {
+      return null;
+    }
+    if (_meals.length == 1) {
+      return messageId;
+    }
+    return '$messageId#meal-$index';
   }
 
   /// Envia os alimentos para o servidor, salva nos recentes e, se houver
@@ -283,7 +323,10 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
       if (mounted) {
         setState(() {
-          _meal = updatedMeal;
+          _meals = _meals
+              .map((current) =>
+                  current.id == updatedMeal.id ? updatedMeal : current)
+              .toList();
         });
       }
     } catch (e) {
@@ -295,21 +338,32 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (_meal.foods.isEmpty) {
+    final visibleMeals = _meals.where((meal) => meal.foods.isNotEmpty).toList();
+    if (visibleMeals.isEmpty) {
       return SizedBox.shrink();
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        MealCard(
-          meal: _meal,
-          onMealTypeChanged: _handleMealTypeChanged,
-          onMealUpdated: _handleMealUpdated,
-          onDelete: _isAdded ? _handleDelete : null,
-          topContentPadding: 16,
-        ),
-      ],
+      children: List.generate(visibleMeals.length, (index) {
+        final meal = visibleMeals[index];
+        final sourceIndex = _meals.indexWhere((item) => item.id == meal.id);
+        final mealIndex = sourceIndex == -1 ? index : sourceIndex;
+
+        return Padding(
+          padding: EdgeInsets.only(top: index == 0 ? 0 : 12),
+          child: MealCard(
+            key: ValueKey('food-json-meal-${meal.id}'),
+            meal: meal,
+            onMealTypeChanged: (newType) =>
+                _handleMealTypeChanged(mealIndex, newType),
+            onMealUpdated: (updatedMeal) =>
+                _handleMealUpdated(mealIndex, updatedMeal),
+            onDelete: _isAdded ? () => _handleDelete(mealIndex) : null,
+            topContentPadding: 16,
+          ),
+        );
+      }),
     );
   }
 }

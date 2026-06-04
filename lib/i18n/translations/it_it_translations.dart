@@ -655,6 +655,11 @@ final Map<String, String> itITTranslations = {
   'yes_generate_new': 'Sì, Genera Nuovo',
   'no_diet_plan_for_day': 'Nessun piano dietetico per questo giorno',
   'generate_diet_plan': 'Genera Piano Dietetico',
+  'diet_generation_insufficient_credits_title': 'Crediti insufficienti',
+  'diet_generation_server_error_message':
+      'Non è stato possibile generare la dieta ora. Riprova tra poco.',
+  'diet_generation_timeout_message':
+      'La generazione ha richiesto più tempo del previsto. Riprova tra poco.',
   'diet_outdated_title': 'Aggiorna la tua dieta',
   'diet_outdated_description':
       'I tuoi obiettivi sono cambiati dopo la generazione di questo menu.',

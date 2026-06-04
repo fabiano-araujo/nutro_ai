@@ -1306,7 +1306,12 @@ final Map<String, String> enUSTranslations = {
   'create_weekly_diet': 'Create Weekly Diet',
   'generate_diet_ai': 'Create my Menu',
   'diet_generated_success': 'Diet generated successfully!',
+  'diet_generation_insufficient_credits_title': 'Not enough credits',
   'diet_generation_error': 'Error generating diet. Please try again.',
+  'diet_generation_server_error_message':
+      'Could not generate your diet right now. Please try again shortly.',
+  'diet_generation_timeout_message':
+      'Generation took longer than expected. Please try again shortly.',
   'diet_outdated_title': 'Update your diet',
   'diet_outdated_description':
       'Your targets changed after this menu was generated.',

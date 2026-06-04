@@ -58,6 +58,75 @@ void main() {
       expect(nutrient?.servingUnit, 'copo');
       expect(foods.single.calories, 500);
     });
+
+    test('parses multiple explicit meals as separate entries', () {
+      const message = '''
+      {
+        "meals": [
+          {
+            "mealType": "lunch",
+            "foods": [
+              {
+                "name": "pao",
+                "portion": "1 unidade",
+                "macros": {
+                  "calories": 90,
+                  "protein": 3,
+                  "carbohydrate": 18,
+                  "fat": 1
+                }
+              },
+              {
+                "name": "feijao",
+                "portion": "1 concha",
+                "macros": {
+                  "calories": 120,
+                  "protein": 8,
+                  "carbohydrate": 20,
+                  "fat": 1
+                }
+              }
+            ]
+          },
+          {
+            "mealType": "dinner",
+            "foods": [
+              {
+                "name": "cuscuz",
+                "portion": "1 prato",
+                "macros": {
+                  "calories": 180,
+                  "protein": 5,
+                  "carbohydrate": 38,
+                  "fat": 1
+                }
+              },
+              {
+                "name": "leite",
+                "portion": "1 copo",
+                "macros": {
+                  "calories": 120,
+                  "protein": 6,
+                  "carbohydrate": 10,
+                  "fat": 6
+                }
+              }
+            ]
+          }
+        ]
+      }
+      ''';
+
+      expect(FoodJsonParser.containsFoodJson(message), isTrue);
+
+      final entries = FoodJsonParser.parseMealEntriesFromMessage(message);
+
+      expect(entries, hasLength(2));
+      expect(entries[0].mealType.name, 'lunch');
+      expect(entries[0].foods.map((food) => food.name), ['pao', 'feijao']);
+      expect(entries[1].mealType.name, 'dinner');
+      expect(entries[1].foods.map((food) => food.name), ['cuscuz', 'leite']);
+    });
   });
 
   group('FoodJsonParser.parseServingFromPortion', () {

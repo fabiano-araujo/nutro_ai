@@ -111,8 +111,7 @@ class DietGenerationBackgroundTask {
     Map<String, dynamic> json,
   ) {
     try {
-      final taskId =
-          (json['taskId'] ?? json['jobId'] ?? '').toString().trim();
+      final taskId = (json['taskId'] ?? json['jobId'] ?? '').toString().trim();
       final prompt = json['prompt']?.toString() ?? '';
       final date = json['date']?.toString() ?? '';
       final dateKey = json['dateKey']?.toString() ?? '';
@@ -144,8 +143,7 @@ class DietGenerationBackgroundTask {
         dateKey: dateKey,
         userId: userId,
         languageCode: json['languageCode']?.toString() ?? 'pt_BR',
-        modelId: json['modelId']?.toString() ??
-            'google/gemini-3-flash-preview',
+        modelId: json['modelId']?.toString() ?? 'google/gemini-3-flash-preview',
         targetNutrition: targetNutrition,
         mealTypes: mealTypes,
         responseText: json['responseText']?.toString(),
@@ -281,6 +279,7 @@ class DietGenerationBackgroundService {
 
   static Future<DietGenerationBackgroundTask?> readActiveTask() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final raw = prefs.getString(activeTaskKey);
     if (raw == null || raw.isEmpty) return null;
 
@@ -390,7 +389,8 @@ void dietGenerationBackgroundServiceOnStart(ServiceInstance service) async {
     unawaited(() async {
       cancelled = true;
       activeClient?.close();
-      final currentTask = await DietGenerationBackgroundService.readActiveTask();
+      final currentTask =
+          await DietGenerationBackgroundService.readActiveTask();
       if (currentTask != null && !currentTask.isTerminal) {
         await DietGenerationBackgroundService.saveActiveTask(
           currentTask.copyWith(
@@ -525,10 +525,9 @@ Future<String> _requestDietGeneration({
   final responseBuffer = StringBuffer();
   var lineBuffer = '';
 
-  await for (final chunk
-      in response.stream.transform(utf8.decoder).timeout(
-            const Duration(minutes: 15),
-          )) {
+  await for (final chunk in response.stream.transform(utf8.decoder).timeout(
+        const Duration(minutes: 15),
+      )) {
     if (isCancelled()) {
       throw Exception('Geração de dieta cancelada');
     }

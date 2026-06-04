@@ -716,6 +716,11 @@ final Map<String, String> deDETranslations = {
   'yes_generate_new': 'Ja, Neu erstellen',
   'no_diet_plan_for_day': 'Kein Diätplan für diesen Tag',
   'generate_diet_plan': 'Diätplan erstellen',
+  'diet_generation_insufficient_credits_title': 'Nicht genug Guthaben',
+  'diet_generation_server_error_message':
+      'Deine Diät konnte gerade nicht erstellt werden. Bitte versuche es gleich erneut.',
+  'diet_generation_timeout_message':
+      'Die Erstellung hat länger als erwartet gedauert. Bitte versuche es gleich erneut.',
   'diet_outdated_title': 'Diät aktualisieren',
   'diet_outdated_description':
       'Deine Ziele haben sich seit der Erstellung dieses Menüs geändert.',

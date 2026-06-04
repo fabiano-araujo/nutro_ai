@@ -716,6 +716,11 @@ final Map<String, String> frFRTranslations = {
   'yes_generate_new': 'Oui, Générer Nouveau',
   'no_diet_plan_for_day': 'Aucun plan de régime pour ce jour',
   'generate_diet_plan': 'Générer un Plan de Régime',
+  'diet_generation_insufficient_credits_title': 'Crédits insuffisants',
+  'diet_generation_server_error_message':
+      'Impossible de générer votre régime pour le moment. Réessayez dans quelques instants.',
+  'diet_generation_timeout_message':
+      'La génération a pris plus de temps que prévu. Réessayez dans quelques instants.',
   'diet_outdated_title': 'Mettez à jour votre régime',
   'diet_outdated_description':
       'Vos objectifs ont changé depuis la génération de ce menu.',

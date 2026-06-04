@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +24,7 @@ import '../i18n/app_localizations.dart';
 import '../widgets/diet_style_message_state.dart';
 import '../widgets/food_icon.dart';
 import '../widgets/header_streak_badge.dart';
+import '../widgets/reward_ad_dialog.dart';
 
 class PersonalizedDietScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
@@ -37,11 +40,13 @@ class PersonalizedDietScreen extends StatefulWidget {
   State<PersonalizedDietScreen> createState() => _PersonalizedDietScreenState();
 }
 
-class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
+class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
+    with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   static const double _scrollVisibilityThreshold = 6.0;
   bool _isHeaderCollapsed = false;
   double _lastScrollOffset = 0;
+  String? _lastRewardAdPromptError;
 
   // Controle de refeições expandidas
   final Set<String> _expandedMeals = {};
@@ -49,14 +54,173 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_handleScrollVisibility);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshDietGenerationJob();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_handleScrollVisibility);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshDietGenerationJob();
+    }
+  }
+
+  void _refreshDietGenerationJob() {
+    if (!mounted) return;
+    unawaited(
+      context.read<DietPlanProvider>().refreshActiveDietGenerationJob(),
+    );
+  }
+
+  bool _isInsufficientCreditsError(String? error) {
+    final normalized = _normalizeErrorForMatching(error);
+
+    return normalized.contains('creditos insuficientes') ||
+        normalized.contains('credito insuficiente') ||
+        normalized.contains('saldo insuficiente') ||
+        normalized.contains('insufficient credits') ||
+        normalized.contains('not enough credits') ||
+        normalized.contains('out of credits') ||
+        normalized.contains('sem creditos') ||
+        normalized.contains('creditos acabaram');
+  }
+
+  bool _isInternalTextGenerationError(String? error) {
+    final normalized = _normalizeErrorForMatching(error);
+    return normalized.contains('erro interno ao gerar texto') ||
+        normalized.contains('internal error') ||
+        normalized.contains('internal server error') ||
+        normalized.contains('erro na api: 500');
+  }
+
+  bool _isTextGenerationTimeoutError(String? error) {
+    final normalized = _normalizeErrorForMatching(error);
+    return normalized.contains('tempo limite excedido ao gerar texto') ||
+        normalized.contains('timeout') ||
+        normalized.contains('timed out');
+  }
+
+  String _normalizeErrorForMatching(String? error) {
+    if (error == null || error.trim().isEmpty) return '';
+    return _extractReadableDietError(error)
+        .toLowerCase()
+        .replaceAll('é', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ì', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ô', 'o')
+        .replaceAll('ã', 'a')
+        .replaceAll('á', 'a')
+        .replaceAll('ú', 'u')
+        .replaceAll('ç', 'c');
+  }
+
+  String _extractReadableDietError(String error) {
+    var message = error.trim();
+    var changed = true;
+
+    while (changed) {
+      changed = false;
+      for (final prefix in const [
+        'Erro ao gerar plano de dieta:',
+        'Exception:',
+      ]) {
+        if (message.startsWith(prefix)) {
+          message = message.substring(prefix.length).trim();
+          changed = true;
+        }
+      }
+    }
+
+    final jsonMessageMatch =
+        RegExp(r'"message"\s*:\s*"([^"]+)"').firstMatch(message);
+    if (jsonMessageMatch != null) {
+      return jsonMessageMatch.group(1)!.trim();
+    }
+
+    final jsonErrorMatch =
+        RegExp(r'"error"\s*:\s*"([^"]+)"').firstMatch(message);
+    if (jsonErrorMatch != null) {
+      return jsonErrorMatch.group(1)!.trim();
+    }
+
+    final apiSeparator = message.indexOf(' - ');
+    if (apiSeparator >= 0 && apiSeparator + 3 < message.length) {
+      return message.substring(apiSeparator + 3).trim();
+    }
+
+    return message;
+  }
+
+  bool _hasDietGenerationError(DietPlanProvider dietProvider) {
+    return dietProvider.error != null &&
+        dietProvider.error != 'daily_diet_premium_required';
+  }
+
+  void _maybePromptRewardAdForDietError(DietPlanProvider dietProvider) {
+    final error = dietProvider.error;
+    if (!_isInsufficientCreditsError(error) ||
+        error == _lastRewardAdPromptError) {
+      return;
+    }
+
+    _lastRewardAdPromptError = error;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || context.read<DietPlanProvider>().error != error) {
+        return;
+      }
+      RewardAdDialog.show(
+        context,
+        onRewardEarned: _generateDietPlan,
+      );
+    });
+  }
+
+  void _showRewardedAdForDietGeneration() {
+    RewardAdDialog.showRewardedAd(
+      context,
+      onRewardEarned: _generateDietPlan,
+    );
+  }
+
+  void _showDietGenerationErrorSnackBar(
+    DietPlanProvider dietProvider,
+    AppLocalizations l10n,
+  ) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '${l10n.translate('diet_generation_error')}\n'
+                '${_buildGenerationErrorMessage(l10n, dietProvider)}',
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   void _handleScrollVisibility() {
@@ -219,6 +383,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         '🍽️ PersonalizedDietScreen: Tipos: ${mealTypes.map((m) => m.name).join(', ')}');
 
     // Generate diet plan
+    _lastRewardAdPromptError = null;
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
       nutritionGoals,
@@ -235,28 +400,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       // Check if error is premium required
       if (dietProvider.error == 'daily_diet_premium_required') {
         _showPremiumRequiredDialog();
+      } else if (_isInsufficientCreditsError(dietProvider.error)) {
+        _maybePromptRewardAdForDietError(dietProvider);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '${l10n.translate('diet_generation_error')}\n${dietProvider.error!}',
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        _showDietGenerationErrorSnackBar(dietProvider, l10n);
       }
     } else if (dietProvider.currentDietPlan != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -823,9 +970,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
 
     if (dietProvider.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(dietProvider.error!)),
-      );
+      if (_isInsufficientCreditsError(dietProvider.error)) {
+        _maybePromptRewardAdForDietError(dietProvider);
+      } else {
+        _showDietGenerationErrorSnackBar(dietProvider, l10n);
+      }
     }
   }
 
@@ -881,9 +1030,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       );
 
       if (dietProvider.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(dietProvider.error!)),
-        );
+        if (_isInsufficientCreditsError(dietProvider.error)) {
+          _maybePromptRewardAdForDietError(dietProvider);
+        } else {
+          _showDietGenerationErrorSnackBar(dietProvider, l10n);
+        }
       }
     }
   }
@@ -923,9 +1074,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
       if (dietProvider.error == 'daily_diet_premium_required') {
         _showPremiumRequiredDialog();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(dietProvider.error!)),
-        );
+        _showDietGenerationErrorSnackBar(dietProvider, l10n);
       }
       return;
     }
@@ -1256,6 +1405,16 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     }
 
     final dietPlan = dietProvider.currentDietPlan;
+    final hasGenerationError = _hasDietGenerationError(dietProvider);
+    if (hasGenerationError) {
+      _maybePromptRewardAdForDietError(dietProvider);
+    } else {
+      _lastRewardAdPromptError = null;
+    }
+
+    if (hasGenerationError && dietPlan == null) {
+      return _buildGenerationErrorState(isDarkMode, l10n, dietProvider);
+    }
 
     // Sem dieta - mostrar estado vazio
     if (dietPlan == null) {
@@ -1349,6 +1508,34 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
     );
   }
 
+  Widget _buildGenerationErrorState(
+    bool isDarkMode,
+    AppLocalizations l10n,
+    DietPlanProvider dietProvider,
+  ) {
+    final isCreditError = _isInsufficientCreditsError(dietProvider.error);
+    return DietStyleMessageState(
+      title: isCreditError
+          ? l10n.translate('diet_generation_insufficient_credits_title')
+          : l10n.translate('diet_generation_error'),
+      message: _buildGenerationErrorMessage(l10n, dietProvider),
+      fallbackIcon:
+          isCreditError ? Icons.stars_rounded : Icons.error_outline_rounded,
+      primaryActionLabel: isCreditError
+          ? l10n.translate('watch_ad_for_credits')
+          : l10n.translate('try_again'),
+      primaryActionIcon:
+          isCreditError ? Icons.play_circle_outline : Icons.refresh_rounded,
+      onPrimaryAction:
+          isCreditError ? _showRewardedAdForDietGeneration : _generateDietPlan,
+      topSpacing: 24,
+      accentColor: isCreditError
+          ? (isDarkMode ? const Color(0xFFFFC46B) : const Color(0xFFC87500))
+          : (isDarkMode ? const Color(0xFFFF8A80) : AppTheme.errorColor),
+      pinActionsToBottom: false,
+    );
+  }
+
   Widget _buildEmptyState(
       bool isDarkMode, AppLocalizations l10n, DietPlanProvider dietProvider) {
     final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
@@ -1396,6 +1583,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Cards de macros nutricionais
+          if (dietProvider.error != null &&
+              dietProvider.error != 'daily_diet_premium_required') ...[
+            _buildDietGenerationErrorNotice(
+              isDarkMode: isDarkMode,
+              l10n: l10n,
+              dietProvider: dietProvider,
+            ),
+            const SizedBox(height: 12),
+          ],
           _buildMacroCards(dietPlan.totalNutrition, isDarkMode),
           const SizedBox(height: 12),
           if (isDietOutdated) ...[
@@ -1475,6 +1671,134 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen> {
                 )),
 
           const SizedBox(height: 80), // Espaço para o FAB
+        ],
+      ),
+    );
+  }
+
+  String _buildGenerationErrorMessage(
+    AppLocalizations l10n,
+    DietPlanProvider dietProvider,
+  ) {
+    final rawError = dietProvider.error?.trim();
+    if (_isInsufficientCreditsError(rawError)) {
+      return l10n.translate('chat_credit_exhausted_inline');
+    }
+    if (_isTextGenerationTimeoutError(rawError)) {
+      return l10n.translate('diet_generation_timeout_message');
+    }
+    if (_isInternalTextGenerationError(rawError)) {
+      return l10n.translate('diet_generation_server_error_message');
+    }
+    if (rawError == null ||
+        rawError.isEmpty ||
+        rawError == l10n.translate('diet_generation_error')) {
+      return l10n.translate('try_again_or_check_connection');
+    }
+    return _extractReadableDietError(rawError);
+  }
+
+  Widget _buildDietGenerationErrorNotice({
+    required bool isDarkMode,
+    required AppLocalizations l10n,
+    required DietPlanProvider dietProvider,
+  }) {
+    final isCreditError = _isInsufficientCreditsError(dietProvider.error);
+    final accentColor = isCreditError
+        ? (isDarkMode ? const Color(0xFFFFC46B) : const Color(0xFFC87500))
+        : (isDarkMode ? const Color(0xFFFF8A80) : AppTheme.errorColor);
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final borderColor = accentColor.withValues(alpha: 0.32);
+    final titleColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final bodyColor =
+        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isCreditError
+                      ? Icons.stars_rounded
+                      : Icons.error_outline_rounded,
+                  color: accentColor,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isCreditError
+                          ? l10n.translate(
+                              'diet_generation_insufficient_credits_title')
+                          : l10n.translate('diet_generation_error'),
+                      style: GoogleFonts.inter(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _buildGenerationErrorMessage(l10n, dietProvider),
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        height: 1.3,
+                        color: bodyColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 38,
+            child: OutlinedButton.icon(
+              onPressed: isCreditError
+                  ? _showRewardedAdForDietGeneration
+                  : _replaceAllMeals,
+              icon: Icon(
+                isCreditError ? Icons.play_circle_outline : Icons.refresh,
+                size: 18,
+              ),
+              label: Text(
+                isCreditError
+                    ? l10n.translate('watch_ad_for_credits')
+                    : l10n.translate('try_again'),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: accentColor,
+                visualDensity: VisualDensity.compact,
+                side: BorderSide(color: accentColor.withValues(alpha: 0.45)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
