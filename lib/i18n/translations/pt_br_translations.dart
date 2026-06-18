@@ -63,6 +63,92 @@ final Map<String, String> ptBRTranslations = {
   'guest_local_data_summary_foods': 'Alimentos',
   'guest_local_data_summary_preferences': 'Preferências',
   'edit_profile': 'Editar Perfil',
+  'profile_shape_preview_title': 'Eu no shape',
+  'profile_shape_hero_title_1': 'Seu Shape,',
+  'profile_shape_hero_title_2': 'sua melhor versão',
+  'profile_shape_hero_subtitle':
+      'Veja como seu corpo pode evoluir com consistência no treino e na alimentação.',
+  'profile_shape_help': 'Como funciona?',
+  'profile_shape_help_message':
+      'Sua foto é enviada ao servidor para simular, com IA, como seu corpo poderia evoluir com dieta e treino. É uma projeção visual e pode não ser 100% precisa.',
+  'profile_shape_before': 'ANTES',
+  'profile_shape_after': 'DEPOIS',
+  'profile_shape_projection_label':
+      'Projeção gerada por Inteligência Artificial',
+  'profile_shape_privacy_title': 'Privado e seguro',
+  'profile_shape_privacy_body': 'Sua foto não é compartilhada.',
+  'profile_shape_detail_title': 'Resultado detalhado',
+  'profile_shape_detail_body': 'Análise completa do seu corpo.',
+  'profile_shape_science_title': 'Baseado em ciência',
+  'profile_shape_science_body': 'Projeções inteligentes e personalizadas.',
+  'profile_shape_send_current_title': 'Envie sua foto atual',
+  'profile_shape_tips_intro': 'Para melhores resultados, siga estas dicas:',
+  'profile_shape_tip_full_body': 'Corpo inteiro em pé',
+  'profile_shape_tip_light': 'Boa iluminação e foco',
+  'profile_shape_tip_clothes': 'Sem camisa, roupa íntima',
+  'profile_shape_tip_background': 'Fundo neutro e organizado',
+  'profile_shape_selected_title': 'Foto carregada',
+  'profile_shape_selected_body': 'Confira a foto e gere sua projeção.',
+  'profile_shape_change_photo': 'Trocar foto',
+  'profile_shape_analysis_time': '60s',
+  'profile_shape_analysis_title': 'Análise completa e precisa',
+  'profile_shape_analysis_body':
+      'Nosso algoritmo precisa de até 60 segundos para gerar sua transformação com o máximo de detalhes.',
+  'profile_shape_generation_status_title': 'Gerando sua prévia',
+  'profile_shape_generation_status_body':
+      'Pode levar até 60 segundos. Você pode continuar usando o app enquanto finalizamos.',
+  'profile_shape_secure_footer':
+      'Seus dados estão protegidos e nunca serão compartilhados.',
+  'profile_plan_free': 'Plano Gratuito',
+  'profile_plan_premium': 'Plano Premium',
+  'profile_nutrition_goals_subtitle': 'Defina suas metas e acompanhe',
+  'profile_tracking_apps_subtitle': 'Conecte seus dispositivos e apps',
+  'profile_edit_profile_subtitle': 'Atualize seus dados pessoais',
+  'profile_shape_preview_subtitle':
+      'Envie uma foto sua e veja uma prévia de como seu shape pode evoluir.',
+  'profile_shape_entry_title': 'Como você pode ficar com o Nutro AI',
+  'profile_shape_entry_subtitle':
+      'Envie uma foto atual e gere uma prévia realista do seu corpo com mais definição, mantendo suas características.',
+  'profile_shape_safety_note':
+      'Use uma foto de adulto, bem iluminada, com roupa de treino ou bermuda. A imagem é uma simulação visual, não uma promessa de resultado.',
+  'profile_shape_empty_title': 'Comece com uma foto atual',
+  'profile_shape_empty_body':
+      'Uma foto frontal simples ajuda a IA a preservar seu rosto, pose e proporções.',
+  'profile_shape_take_photo': 'Tirar Foto',
+  'profile_shape_choose_gallery': 'Escolher da Galeria',
+  'profile_shape_pick_photo': 'Enviar foto',
+  'profile_shape_source_title': 'Escolha a foto',
+  'profile_shape_original_label': 'Foto original',
+  'profile_shape_result_label': 'Prévia gerada',
+  'profile_shape_generate': 'Gerar meu shape',
+  'profile_shape_generating': 'Gerando...',
+  'profile_shape_apply_profile': 'Usar como foto de perfil',
+  'profile_shape_applying': 'Aplicando...',
+  'profile_shape_share_social': 'Postar na Social',
+  'profile_shape_posting_social': 'Postando...',
+  'profile_shape_share_title': 'Postar na Social',
+  'profile_shape_share_body':
+      'Escolha se quer publicar a comparação lado a lado ou somente a imagem do depois.',
+  'profile_shape_share_comparison': 'Antes e depois lado a lado',
+  'profile_shape_share_after_only': 'Só imagem do depois',
+  'profile_shape_share_comparison_unavailable':
+      'Disponível apenas logo após gerar com a foto original carregada.',
+  'profile_shape_share_success': 'Publicado na aba Social.',
+  'profile_shape_share_error': 'Não foi possível publicar na Social.',
+  'profile_shape_no_image_selected': 'Escolha uma foto antes de gerar.',
+  'profile_shape_select_image_error': 'Não foi possível carregar a foto.',
+  'profile_shape_generation_error': 'Não foi possível gerar sua prévia agora.',
+  'profile_shape_timeout_error':
+      'A geração demorou mais que o esperado. Tente novamente em instantes.',
+  'profile_shape_generate_success': 'Prévia gerada com sucesso.',
+  'profile_shape_apply_success': 'Foto de perfil atualizada.',
+  'profile_shape_apply_error': 'Não foi possível atualizar sua foto.',
+  'global_generation_diet_title': 'Gerando dieta',
+  'global_generation_diet_body':
+      'Pode navegar pelo app. A geração continua em segundo plano.',
+  'global_generation_shape_title': 'Gerando seu shape',
+  'global_generation_shape_body':
+      'Pode navegar pelo app. A imagem continua em segundo plano.',
 
   // Telas de Registro
   'register_title': 'Criar Conta',
@@ -1072,6 +1158,7 @@ final Map<String, String> ptBRTranslations = {
   'sugars': 'Açúcares',
   'total_fat': 'Gordura Total',
   'saturated_fat': 'Gordura Saturada',
+  'trans_fat': 'Gordura Trans',
   'cholesterol': 'Colesterol',
   'sodium': 'Sódio',
   'potassium': 'Potássio',
@@ -1426,9 +1513,14 @@ final Map<String, String> ptBRTranslations = {
   'free_chat': 'Conversa Livre',
 
   // Edição de alimentos
+  'edit_foods': 'Editar alimentos',
   'edit_food': 'Editar Alimento',
   'food_name': 'Nome do Alimento',
   'amount': 'Quantidade',
+  'unit': 'Unidade',
+  'add_to_meal': 'Adicionar à refeição',
+  'no_alternative_portions':
+      'Porções alternativas não disponíveis para este alimento',
   'edit_amount_helper':
       'Alterar a quantidade recalcula os macros automaticamente',
   'edit_food_info': 'Alterar o nome busca novos valores nutricionais via IA',
@@ -1479,6 +1571,21 @@ final Map<String, String> ptBRTranslations = {
       'Deseja gerar um novo plano de dieta semanal?',
   'replace_all_meals_daily_confirm':
       'Deseja gerar um novo plano de dieta para este dia?',
+  'replace_all_meals_weekly_notes_description':
+      'Deseja gerar um novo plano semanal? Se quiser, conte o que gostou, não gostou ou alguma restrição.',
+  'replace_all_meals_daily_notes_description':
+      'Deseja gerar um novo plano para este dia? Se quiser, conte o que gostou, não gostou ou alguma restrição.',
+  'replace_all_meals_notes_hint':
+      'Ex: não gostei de peixe, evitar leite, quero incluir arroz e frango',
+  'replace_meal_notes_title': 'Substituir {meal}',
+  'replace_meal_notes_description':
+      'Descreva o que quer mudar nessa refeição. Pode citar alimentos que não gostou ou o que quer incluir.',
+  'replace_meal_notes_hint':
+      'Ex: trocar ovo por frango, sem banana, quero algo mais leve',
+  'replace_meal_confirm': 'Substituir refeição',
+  'replacement_notes_field_label': 'Observações (opcional)',
+  'replacement_notes_optional_help':
+      'Você pode deixar em branco para a IA decidir sozinha.',
   'yes_generate_new': 'Sim, Gerar Novo',
   'no_diet_plan_for_day': 'Nenhum plano de dieta para este dia',
   'generate_diet_plan': 'Gerar Plano de Dieta',
@@ -1526,6 +1633,8 @@ final Map<String, String> ptBRTranslations = {
   'diet_outdated_title': 'Atualize sua dieta',
   'diet_outdated_description':
       'Suas metas mudaram desde que este cardápio foi gerado.',
+  'diet_outdated_meal_types_description':
+      'Suas refeições configuradas mudaram. Gere novamente para atualizar o cardápio.',
   'diet_outdated_generated_targets': 'Meta usada nessa dieta',
   'diet_outdated_current_targets': 'Meta atual',
   'diet_outdated_generate_new': 'Gerar nova dieta',
@@ -1740,9 +1849,25 @@ final Map<String, String> ptBRTranslations = {
   'challenge_progress_pending_today': 'Registre algo hoje para atualizar',
   'diet_ai_model': 'Modelo de IA da dieta',
   'share_diet': 'Compartilhar dieta',
+  'share_diet_pdf': 'Compartilhar PDF',
   'professional_weekly_diet_plan': 'Plano alimentar semanal',
   'professional_daily_diet_plan': 'Plano alimentar diário',
   'daily_macros': 'Macros do dia',
+  'diet_pdf_generated_by': 'Gerado pelo Nutro AI em',
+  'diet_pdf_share_text': 'Minha dieta gerada no Nutro AI.',
+  'diet_pdf_plan_for': 'Plano para',
+  'diet_pdf_diet_style': 'Estilo da dieta',
+  'diet_pdf_target_macros': 'Meta nutricional',
+  'diet_pdf_food': 'Alimento',
+  'diet_pdf_portion': 'Porção',
+  'diet_pdf_nutrition': 'Nutrição',
+  'diet_pdf_page': 'Página',
+  'diet_pdf_share_error': 'Não foi possível gerar o PDF da dieta.',
+  'diet_pdf_tagline': 'Plano nutricional personalizado',
+  'diet_pdf_nutrition_summary': 'Resumo nutricional',
+  'diet_pdf_macro_distribution': 'Distribuição calórica',
+  'diet_pdf_per_day': 'por dia',
+  'diet_pdf_total_plan': 'Total do plano',
   'custom_openrouter_model': 'Modelo personalizado',
   'openrouter_model_id_hint': 'ex: openai/gpt-4.1-mini',
   'openrouter_model_id_helper':

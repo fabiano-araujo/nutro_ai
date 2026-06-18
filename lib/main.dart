@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,6 +14,7 @@ import 'services/diet_generation_background_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation.dart';
+import 'screens/profile_shape_preview_screen.dart';
 import 'screens/subscription_screen.dart';
 import 'screens/essay_history_screen.dart';
 import 'screens/new_essay_screen.dart';
@@ -30,11 +33,13 @@ import 'providers/nutrition_goals_provider.dart';
 import 'providers/food_history_provider.dart';
 import 'providers/diet_plan_provider.dart';
 import 'providers/free_chat_provider.dart';
+import 'providers/profile_shape_preview_provider.dart';
 import 'providers/streak_provider.dart';
 import 'providers/friends_provider.dart';
 import 'providers/challenges_provider.dart';
 import 'providers/feed_provider.dart';
 import 'providers/activity_tracking_provider.dart';
+import 'widgets/global_generation_floating_overlay.dart';
 
 // Chave global para acessar o navigator de qualquer lugar do app
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -267,6 +272,9 @@ class _MyAppState extends State<MyApp> {
           create: (_) => DietPlanProvider(),
         ),
         ChangeNotifierProvider(
+          create: (_) => ProfileShapePreviewProvider(),
+        ),
+        ChangeNotifierProvider(
           create: (_) => FreeChatProvider(),
         ),
         ChangeNotifierProvider(
@@ -289,13 +297,19 @@ class _MyAppState extends State<MyApp> {
             navigatorKey: navigatorKey,
             theme: AppTheme.lightTheme.copyWith(
               navigationBarTheme: NavigationBarThemeData(
-                indicatorColor: const Color(0xFF66BB9A).withValues(alpha: 0.2),
+                indicatorColor: AppTheme.primaryColor.withValues(alpha: 0.16),
+                iconTheme: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const IconThemeData(color: AppTheme.primaryColor);
+                  }
+                  return null;
+                }),
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF66BB9A),
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryColor,
                     );
                   }
                   return null;
@@ -304,15 +318,26 @@ class _MyAppState extends State<MyApp> {
             ),
             darkTheme: AppTheme.darkTheme.copyWith(
               scaffoldBackgroundColor: AppTheme.darkBackgroundColor,
-              cardColor: const Color(0xFF1E1D23),
+              cardColor: AppTheme.darkCardColor,
               navigationBarTheme: NavigationBarThemeData(
-                indicatorColor: const Color(0xFF66BB9A).withValues(alpha: 0.2),
+                indicatorColor:
+                    AppTheme.primaryColorDarkMode.withValues(alpha: 0.18),
+                iconTheme: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const IconThemeData(
+                      color: AppTheme.primaryColorDarkMode,
+                    );
+                  }
+                  return const IconThemeData(
+                    color: AppTheme.darkDisabledTextColor,
+                  );
+                }),
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF66BB9A),
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryColorDarkMode,
                     );
                   }
                   return null;
@@ -329,6 +354,33 @@ class _MyAppState extends State<MyApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            builder: (context, child) {
+              return GlobalGenerationFloatingOverlay(
+                child: child ?? const SizedBox.shrink(),
+                onOpenDietGeneration: () {
+                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
+                  navigationController.changeTab(1);
+                  unawaited(
+                    context
+                        .read<DietPlanProvider>()
+                        .refreshActiveDietGenerationJob(),
+                  );
+                },
+                onOpenProfileShapeGeneration: () {
+                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
+                  unawaited(
+                    context
+                        .read<ProfileShapePreviewProvider>()
+                        .refreshActiveProfileShapeGenerationJob(),
+                  );
+                  navigatorKey.currentState?.push(
+                    MaterialPageRoute(
+                      builder: (_) => const ProfileShapePreviewScreen(),
+                    ),
+                  );
+                },
+              );
+            },
             routes: {
               '/subscription': (context) => const SubscriptionScreen(),
               '/essay_history': (context) => const EssayHistoryScreen(),

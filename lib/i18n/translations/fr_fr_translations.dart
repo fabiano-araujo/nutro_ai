@@ -493,6 +493,95 @@ final Map<String, String> frFRTranslations = {
   'guest_local_data_summary_foods': 'Aliments',
   'guest_local_data_summary_preferences': 'Préférences',
   'edit_profile': 'Modifier le profil',
+  'profile_shape_preview_title': 'Moi en forme',
+  'profile_shape_hero_title_1': 'Votre forme,',
+  'profile_shape_hero_title_2': 'votre meilleure version',
+  'profile_shape_hero_subtitle':
+      'Voyez comment votre corps peut évoluer avec de la constance dans l’entraînement et l’alimentation.',
+  'profile_shape_help': 'Comment ça marche ?',
+  'profile_shape_help_message':
+      'Votre photo est envoyée au serveur afin que l’IA simule comment votre corps pourrait évoluer avec une alimentation et un entraînement. C’est une projection visuelle et elle peut ne pas être précise à 100%.',
+  'profile_shape_before': 'AVANT',
+  'profile_shape_after': 'APRÈS',
+  'profile_shape_projection_label':
+      'Projection générée par Intelligence Artificielle',
+  'profile_shape_privacy_title': 'Privé et sécurisé',
+  'profile_shape_privacy_body': 'Votre photo n’est pas partagée.',
+  'profile_shape_detail_title': 'Résultat détaillé',
+  'profile_shape_detail_body': 'Analyse complète de votre corps.',
+  'profile_shape_science_title': 'Basé sur la science',
+  'profile_shape_science_body': 'Projections intelligentes et personnalisées.',
+  'profile_shape_send_current_title': 'Ajoutez votre photo actuelle',
+  'profile_shape_tips_intro':
+      'Pour de meilleurs résultats, suivez ces conseils :',
+  'profile_shape_tip_full_body': 'Corps entier debout',
+  'profile_shape_tip_light': 'Bon éclairage et mise au point',
+  'profile_shape_tip_clothes': 'Sans chemise, sous-vêtements',
+  'profile_shape_tip_background': 'Fond neutre et organisé',
+  'profile_shape_selected_title': 'Photo chargée',
+  'profile_shape_selected_body':
+      'Vérifiez la photo et générez votre projection.',
+  'profile_shape_change_photo': 'Changer la photo',
+  'profile_shape_analysis_time': '60s',
+  'profile_shape_analysis_title': 'Analyse complète et précise',
+  'profile_shape_analysis_body':
+      'Notre algorithme a besoin de jusqu’à 60 secondes pour générer votre transformation avec un maximum de détails.',
+  'profile_shape_generation_status_title': 'Génération de votre aperçu',
+  'profile_shape_generation_status_body':
+      'Cela peut prendre jusqu’à 60 secondes. Vous pouvez continuer à utiliser l’app pendant la finalisation.',
+  'profile_shape_secure_footer':
+      'Vos données sont protégées et ne seront jamais partagées.',
+  'profile_plan_free': 'Plan gratuit',
+  'profile_plan_premium': 'Plan Premium',
+  'profile_nutrition_goals_subtitle': 'Définissez vos objectifs et suivez-les',
+  'profile_tracking_apps_subtitle': 'Connectez vos appareils et apps',
+  'profile_edit_profile_subtitle': 'Mettez à jour vos données personnelles',
+  'profile_shape_preview_subtitle':
+      'Ajoutez votre photo et voyez un aperçu de l’évolution possible de votre silhouette.',
+  'profile_shape_entry_title': 'À quoi vous pourriez ressembler avec Nutro AI',
+  'profile_shape_entry_subtitle':
+      'Ajoutez une photo actuelle et générez une version réaliste plus définie, tout en conservant vos traits.',
+  'profile_shape_safety_note':
+      'Utilisez une photo adulte bien éclairée, avec une tenue de sport ou un short. C’est une simulation visuelle, pas une promesse de résultat.',
+  'profile_shape_empty_title': 'Commencez avec une photo actuelle',
+  'profile_shape_empty_body':
+      'Une simple photo de face aide l’IA à préserver votre visage, votre pose et vos proportions.',
+  'profile_shape_take_photo': 'Prendre une photo',
+  'profile_shape_choose_gallery': 'Choisir dans la galerie',
+  'profile_shape_pick_photo': 'Ajouter une photo',
+  'profile_shape_source_title': 'Choisir la photo',
+  'profile_shape_original_label': 'Photo originale',
+  'profile_shape_result_label': 'Aperçu généré',
+  'profile_shape_generate': 'Générer mon aperçu',
+  'profile_shape_generating': 'Génération...',
+  'profile_shape_apply_profile': 'Utiliser comme photo de profil',
+  'profile_shape_applying': 'Application...',
+  'profile_shape_share_social': 'Publier dans Social',
+  'profile_shape_posting_social': 'Publication...',
+  'profile_shape_share_title': 'Publier dans Social',
+  'profile_shape_share_body':
+      'Choisissez si vous voulez publier la comparaison côte à côte ou seulement l’image après.',
+  'profile_shape_share_comparison': 'Avant et après côte à côte',
+  'profile_shape_share_after_only': 'Image après seulement',
+  'profile_shape_share_comparison_unavailable':
+      'Disponible seulement juste après la génération avec la photo originale chargée.',
+  'profile_shape_share_success': 'Publié dans Social.',
+  'profile_shape_share_error': 'Impossible de publier dans Social.',
+  'profile_shape_no_image_selected': 'Choisissez une photo avant de générer.',
+  'profile_shape_select_image_error': 'Impossible de charger la photo.',
+  'profile_shape_generation_error':
+      'Impossible de générer votre aperçu maintenant.',
+  'profile_shape_timeout_error':
+      'La génération a pris plus de temps que prévu. Réessayez dans un instant.',
+  'profile_shape_generate_success': 'Aperçu généré avec succès.',
+  'profile_shape_apply_success': 'Photo de profil mise à jour.',
+  'profile_shape_apply_error': 'Impossible de mettre à jour votre photo.',
+  'global_generation_diet_title': 'Génération du régime',
+  'global_generation_diet_body':
+      'Vous pouvez continuer à utiliser l’app. La génération se poursuit en arrière-plan.',
+  'global_generation_shape_title': 'Génération de votre silhouette',
+  'global_generation_shape_body':
+      'Vous pouvez continuer à utiliser l’app. L’image se poursuit en arrière-plan.',
 
   // Écrans d'inscription
   'register_title': 'Créer un Compte',
@@ -574,6 +663,25 @@ final Map<String, String> frFRTranslations = {
   'meals': 'Repas',
   'protein_full': 'Protéine',
   'fat': 'Lipides',
+  'carbohydrate': 'Glucides',
+  'macronutrients': 'Macronutriments',
+  'micronutrients': 'Micronutriments',
+  'total_carbohydrates': 'Glucides totaux',
+  'dietary_fiber': 'Fibres alimentaires',
+  'sugars': 'Sucres',
+  'total_fat': 'Lipides totaux',
+  'saturated_fat': 'Graisses saturées',
+  'trans_fat': 'Graisses trans',
+  'cholesterol': 'Cholestérol',
+  'sodium': 'Sodium',
+  'potassium': 'Potassium',
+  'calcium': 'Calcium',
+  'iron': 'Fer',
+  'vitamin_d': 'Vitamine D',
+  'vitamin_a': 'Vitamine A',
+  'vitamin_c': 'Vitamine C',
+  'vitamin_b6': 'Vitamine B6',
+  'vitamin_b12': 'Vitamine B12',
   'quick_add_food': 'Ajout rapide',
   'values_per_serving': 'Valeurs nutritionnelles par portion',
   'serving': 'Portion',
@@ -611,9 +719,14 @@ final Map<String, String> frFRTranslations = {
   'free_chat': 'Chat Libre',
 
   // Édition des aliments
+  'edit_foods': 'Modifier les aliments',
   'edit_food': 'Modifier l\'Aliment',
   'food_name': 'Nom de l\'Aliment',
   'amount': 'Quantité',
+  'unit': 'Unité',
+  'add_to_meal': 'Ajouter au repas',
+  'no_alternative_portions':
+      'Aucune portion alternative disponible pour cet aliment',
   'edit_amount_helper':
       'Modifier la quantité recalcule les macros automatiquement',
   'edit_food_info':
@@ -713,6 +826,21 @@ final Map<String, String> frFRTranslations = {
       'Voulez-vous générer un nouveau plan de régime hebdomadaire?',
   'replace_all_meals_daily_confirm':
       'Voulez-vous générer un nouveau plan de régime pour ce jour?',
+  'replace_all_meals_weekly_notes_description':
+      'Voulez-vous générer un nouveau plan hebdomadaire ? Vous pouvez indiquer ce que vous avez aimé, moins aimé ou une restriction.',
+  'replace_all_meals_daily_notes_description':
+      'Voulez-vous générer un nouveau plan pour ce jour ? Vous pouvez indiquer ce que vous avez aimé, moins aimé ou une restriction.',
+  'replace_all_meals_notes_hint':
+      'Ex : je n’ai pas aimé le poisson, éviter le lait, inclure du riz et du poulet',
+  'replace_meal_notes_title': 'Remplacer {meal}',
+  'replace_meal_notes_description':
+      'Décrivez ce que vous voulez changer dans ce repas. Vous pouvez citer les aliments que vous n’avez pas aimés ou ceux à inclure.',
+  'replace_meal_notes_hint':
+      'Ex : remplacer les oeufs par du poulet, sans banane, plus léger',
+  'replace_meal_confirm': 'Remplacer le repas',
+  'replacement_notes_field_label': 'Notes (facultatif)',
+  'replacement_notes_optional_help':
+      'Vous pouvez laisser ce champ vide et laisser l’IA décider.',
   'yes_generate_new': 'Oui, Générer Nouveau',
   'no_diet_plan_for_day': 'Aucun plan de régime pour ce jour',
   'generate_diet_plan': 'Générer un Plan de Régime',
@@ -724,6 +852,8 @@ final Map<String, String> frFRTranslations = {
   'diet_outdated_title': 'Mettez à jour votre régime',
   'diet_outdated_description':
       'Vos objectifs ont changé depuis la génération de ce menu.',
+  'diet_outdated_meal_types_description':
+      'Vos repas configurés ont changé. Générez à nouveau pour mettre à jour le menu.',
   'diet_outdated_generated_targets': 'Objectif utilisé pour ce régime',
   'diet_outdated_current_targets': 'Objectif actuel',
   'diet_outdated_generate_new': 'Générer un nouveau régime',
@@ -873,9 +1003,25 @@ final Map<String, String> frFRTranslations = {
       'Configurez vos informations pour voir vos calories et macronutriments quotidiens.',
   'diet_ai_model': 'Modèle IA du régime',
   'share_diet': 'Partager le régime',
+  'share_diet_pdf': 'Partager le PDF',
   'professional_weekly_diet_plan': 'Plan alimentaire hebdomadaire',
   'professional_daily_diet_plan': 'Plan alimentaire quotidien',
   'daily_macros': 'Macros du jour',
+  'diet_pdf_generated_by': 'Généré par Nutro AI le',
+  'diet_pdf_share_text': 'Mon régime généré dans Nutro AI.',
+  'diet_pdf_plan_for': 'Plan pour',
+  'diet_pdf_diet_style': 'Style alimentaire',
+  'diet_pdf_target_macros': 'Objectif nutritionnel',
+  'diet_pdf_food': 'Aliment',
+  'diet_pdf_portion': 'Portion',
+  'diet_pdf_nutrition': 'Nutrition',
+  'diet_pdf_page': 'Page',
+  'diet_pdf_share_error': 'Impossible de générer le PDF du régime.',
+  'diet_pdf_tagline': 'Plan nutritionnel personnalisé',
+  'diet_pdf_nutrition_summary': 'Résumé nutritionnel',
+  'diet_pdf_macro_distribution': 'Répartition calorique',
+  'diet_pdf_per_day': 'par jour',
+  'diet_pdf_total_plan': 'Total du plan',
   'custom_openrouter_model': 'Modèle personnalisé',
   'openrouter_model_id_hint': 'ex: openai/gpt-4.1-mini',
   'openrouter_model_id_helper':

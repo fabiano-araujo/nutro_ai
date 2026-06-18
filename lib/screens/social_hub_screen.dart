@@ -36,13 +36,14 @@ class SocialTabController {
 final socialTabController = SocialTabController();
 
 Color _socialSurfaceColor(bool isDarkMode) =>
-    isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+    AppTheme.profileCardColor(isDarkMode);
 
 Color _socialInputFillColor(bool isDarkMode) =>
     isDarkMode ? const Color(0xFF1F1F1F) : AppTheme.backgroundColor;
 
-Color _socialBorderColor(bool isDarkMode) =>
-    isDarkMode ? Colors.white12 : Colors.black12;
+Color _socialBorderColor(bool isDarkMode) => isDarkMode
+    ? Colors.white.withValues(alpha: 0.08)
+    : Colors.black.withValues(alpha: 0.05);
 
 Color _socialMutedTextColor(bool isDarkMode) =>
     isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
@@ -500,9 +501,8 @@ class _SocialModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
-    final selectedTextColor = AppTheme.onColor(selectedColor);
+    final selectedColor = AppTheme.selectedPillBackgroundColor(isDarkMode);
+    final selectedTextColor = AppTheme.selectedPillTextColor(isDarkMode);
     final unselectedBorderColor =
         isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
@@ -520,10 +520,7 @@ class _SocialModeChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? selectedColor : cardColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? selectedColor : unselectedBorderColor,
-            width: 1,
-          ),
+          border: selected ? null : Border.all(color: unselectedBorderColor),
         ),
         child: Text(
           label,
@@ -685,11 +682,7 @@ class _EmptyFriendsCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
-      decoration: BoxDecoration(
-        color: _socialSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _socialBorderColor(isDarkMode)),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Column(
         children: [
           Icon(
@@ -765,11 +758,7 @@ class _InfoCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _socialSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _socialBorderColor(isDarkMode)),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Row(
         children: [
           Icon(icon, size: 24, color: _socialMutedTextColor(isDarkMode)),
@@ -801,17 +790,15 @@ class _ActivityCard extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final typeInfo = _typeInfo;
     final mediaUrl = _mediaUrl;
+    final profileShapeAfterImageUrl = _profileShapeAfterImageUrl;
+    final profileShapeBeforeImageUrl = _profileShapeBeforeImageUrl;
     final challengeName = _challengeName;
     final stats = _stats;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _socialSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _socialBorderColor(isDarkMode)),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -894,7 +881,13 @@ class _ActivityCard extends StatelessWidget {
               color: _socialMutedTextColor(isDarkMode),
             ),
           ],
-          if (mediaUrl != null) ...[
+          if (profileShapeAfterImageUrl != null) ...[
+            const SizedBox(height: 14),
+            _ProfileShapeActivityPreview(
+              beforeImageUrl: profileShapeBeforeImageUrl,
+              afterImageUrl: profileShapeAfterImageUrl,
+            ),
+          ] else if (mediaUrl != null) ...[
             const SizedBox(height: 14),
             _ActivityMediaPreview(imageUrl: mediaUrl),
           ] else if (stats.isNotEmpty || _isNutritionActivity) ...[
@@ -930,6 +923,8 @@ class _ActivityCard extends StatelessWidget {
         return _TypeInfo(Icons.favorite_rounded, const Color(0xFFE91E63));
       case 'CHALLENGE_JOIN':
         return _TypeInfo(Icons.emoji_events_rounded, const Color(0xFFFFC107));
+      case 'PROFILE_SHAPE_PREVIEW':
+        return _TypeInfo(Icons.auto_awesome_rounded, const Color(0xFF27BDB4));
       default:
         return _TypeInfo(Icons.check_circle_rounded, const Color(0xFF2196F3));
     }
@@ -956,6 +951,8 @@ class _ActivityCard extends StatelessWidget {
       case 'CHALLENGE_JOIN':
         final challengeName = activity.data?['challengeName'] ?? 'desafio';
         return 'Entrou no desafio "$challengeName"';
+      case 'PROFILE_SHAPE_PREVIEW':
+        return 'Compartilhou uma prévia do shape';
       default:
         return 'Atividade no app';
     }
@@ -1016,6 +1013,8 @@ class _ActivityCard extends StatelessWidget {
         return 'Atividade em dupla';
       case 'CHALLENGE_JOIN':
         return 'Novo desafio';
+      case 'PROFILE_SHAPE_PREVIEW':
+        return 'Evolução visual';
       default:
         return 'Atividade';
     }
@@ -1047,6 +1046,7 @@ class _ActivityCard extends StatelessWidget {
     if (data == null) return null;
 
     final direct = _readString(data, [
+      'afterImageUrl',
       'imageUrl',
       'image',
       'photo',
@@ -1073,6 +1073,16 @@ class _ActivityCard extends StatelessWidget {
       }
     }
     return null;
+  }
+
+  String? get _profileShapeAfterImageUrl {
+    if (activity.type.toUpperCase() != 'PROFILE_SHAPE_PREVIEW') return null;
+    return _readString(activity.data, ['afterImageUrl', 'imageUrl']);
+  }
+
+  String? get _profileShapeBeforeImageUrl {
+    if (activity.type.toUpperCase() != 'PROFILE_SHAPE_PREVIEW') return null;
+    return _readString(activity.data, ['beforeImageUrl']);
   }
 
   List<_ActivityStat> get _stats {
@@ -1319,6 +1329,107 @@ class _ActivityMediaPreview extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ProfileShapeActivityPreview extends StatelessWidget {
+  final String? beforeImageUrl;
+  final String afterImageUrl;
+
+  const _ProfileShapeActivityPreview({
+    required this.beforeImageUrl,
+    required this.afterImageUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final showComparison =
+        beforeImageUrl != null && beforeImageUrl!.trim().isNotEmpty;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: AspectRatio(
+        aspectRatio: showComparison ? 1.15 : 16 / 9,
+        child: ColoredBox(
+          color: _socialInputFillColor(isDarkMode),
+          child: showComparison
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: _ShapeFeedImagePanel(
+                        imageUrl: beforeImageUrl!,
+                        label: 'ANTES',
+                        labelColor: Colors.black.withValues(alpha: 0.72),
+                      ),
+                    ),
+                    Container(
+                      width: 2,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                    Expanded(
+                      child: _ShapeFeedImagePanel(
+                        imageUrl: afterImageUrl,
+                        label: 'DEPOIS',
+                        labelColor: _socialPrimaryColor(isDarkMode),
+                      ),
+                    ),
+                  ],
+                )
+              : _ShapeFeedImagePanel(
+                  imageUrl: afterImageUrl,
+                  label: 'DEPOIS',
+                  labelColor: _socialPrimaryColor(isDarkMode),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShapeFeedImagePanel extends StatelessWidget {
+  final String imageUrl;
+  final String label;
+  final Color labelColor;
+
+  const _ShapeFeedImagePanel({
+    required this.imageUrl,
+    required this.label,
+    required this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const _ActivityMediaPlaceholder(),
+        ),
+        Positioned(
+          left: 10,
+          bottom: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: labelColor,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1726,11 +1837,7 @@ class _EmptyChallengesCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
-      decoration: BoxDecoration(
-        color: _socialSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _socialBorderColor(isDarkMode)),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Column(
         children: [
           Icon(
@@ -1829,11 +1936,7 @@ class _ChallengeCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: _socialSurfaceColor(isDark),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _socialBorderColor(isDark)),
-        ),
+        decoration: AppTheme.profileCardDecoration(isDark),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

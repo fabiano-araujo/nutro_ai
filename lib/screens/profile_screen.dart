@@ -1,7 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../services/auth_service.dart';
 import '../services/purchase_service.dart';
@@ -17,15 +17,13 @@ import '../providers/free_chat_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../services/daily_chat_sync_service.dart';
 import '../theme/app_theme.dart';
-import '../theme/macro_theme.dart';
 import 'login_screen.dart';
-import 'settings_screen.dart';
-import 'statistics_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'nutrition_goals_screen.dart';
 import 'activity_tracking_apps_screen.dart';
+import 'profile_shape_preview_screen.dart';
+import 'settings_screen.dart';
 import '../i18n/app_localizations_extension.dart';
-import '../widgets/header_streak_badge.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
@@ -43,11 +41,50 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoggingOut = false;
+  static const double _listItemTitleFontSize = 14;
+  static const double _listItemSubtitleFontSize = 12;
+  static const List<Shadow> _bannerTextShadow = [
+    Shadow(
+      color: Color(0x40000000),
+      blurRadius: 4,
+      offset: Offset(0, 1),
+    ),
+  ];
+  static const List<Shadow> _bannerImageTextShadow = [
+    Shadow(
+      color: Color(0x99000000),
+      blurRadius: 10,
+      offset: Offset(0, 3),
+    ),
+    Shadow(
+      color: Color(0x66000000),
+      blurRadius: 3,
+      offset: Offset(0, 1),
+    ),
+  ];
 
   void _navigateToLogin() {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const LoginScreen(popOnSuccess: true),
+      ),
+    );
+  }
+
+  void _openShapePreview() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ProfileShapePreviewScreen(
+          onOpenSocialHub: widget.onOpenSocialHub,
+        ),
+      ),
+    );
+  }
+
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }
@@ -226,28 +263,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(
           context.tr.translate('profile'),
           style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+            fontWeight: FontWeight.w800,
           ),
         ),
         actions: isAuthenticated
             ? [
-                const HeaderStreakBadge(
-                  margin: EdgeInsets.only(right: 4),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.settings_outlined,
-                    color:
-                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.settings_rounded,
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                    ),
+                    onPressed: _openSettings,
+                    tooltip: context.tr.translate('settings_title'),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const SettingsScreen(),
-                      ),
-                    );
-                  },
-                  tooltip: context.tr.translate('settings'),
                 ),
               ]
             : null,
@@ -273,11 +305,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
         // Profile Header (includes subscription + BMI chips)
         _buildProfileHeader(user, theme, colorScheme, isDarkMode),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
         // Goals section — show CTA when not configured, otherwise show goal cards
         Consumer<NutritionGoalsProvider>(
@@ -285,13 +317,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (!nutritionProvider.hasConfiguredGoals) {
               return _buildCompleteGoalsCard(theme, colorScheme, isDarkMode);
             }
-            return Column(
-              children: [
-                _buildGoalCard(theme, colorScheme, isDarkMode),
-                const SizedBox(height: 12),
-                _buildMacroGoalsCard(theme, colorScheme, isDarkMode),
-              ],
-            );
+            return _buildGoalCard(theme, colorScheme, isDarkMode);
           },
         ),
         const SizedBox(height: 16),
@@ -317,86 +343,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return Column(
           children: [
-            // Avatar
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: colorScheme.primary.withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
-              child: ClipOval(
-                child: user.photo != null
-                    ? CachedNetworkImage(
-                        imageUrl: user.photo!,
-                        width: 96,
-                        height: 96,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
+            Semantics(
+              button: true,
+              label: context.tr.translate('profile_shape_preview_title'),
+              child: GestureDetector(
+                onTap: _openShapePreview,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color:
+                            isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black
+                                .withValues(alpha: isDarkMode ? 0.34 : 0.12),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Container(
                           width: 96,
                           height: 96,
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.person_rounded,
-                            size: 48,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          width: 96,
-                          height: 96,
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.person_rounded,
-                            size: 48,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      )
-                    : Container(
-                        width: 96,
-                        height: 96,
-                        color: colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 48,
-                          color: colorScheme.onSurfaceVariant,
+                          color: colorScheme.primary,
+                          child: _buildProfileAvatar(user, colorScheme),
                         ),
                       ),
+                    ),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color:
+                            isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDarkMode
+                              ? AppTheme.darkBackgroundColor
+                              : AppTheme.backgroundColor,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.edit_rounded,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Name + subscription chip side by side
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: Text(
-                    user.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildSubscriptionChip(user, theme, colorScheme, isDarkMode),
-              ],
+            const SizedBox(height: 10),
+            Text(
+              user.name,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                height: 1.12,
+              ),
             ),
-
-            // BMI chip (only when goals are configured)
+            const SizedBox(height: 8),
+            _buildSubscriptionChip(user, theme, colorScheme, isDarkMode),
             if (nutritionProvider.hasConfiguredGoals) ...[
-              const SizedBox(height: 10),
-              _buildBmiChip(bmi, bmiCategory, theme, colorScheme),
+              const SizedBox(height: 8),
+              _buildBmiChip(bmi, bmiCategory, theme, colorScheme, isDarkMode),
             ],
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDefaultAvatarIcon() {
+    return Icon(
+      Icons.link_rounded,
+      size: 50,
+      color: Colors.white,
+    );
+  }
+
+  Widget _buildProfileAvatar(User user, ColorScheme colorScheme) {
+    final photoUrl = user.photo?.trim();
+    if (photoUrl == null || photoUrl.isEmpty) {
+      return _buildDefaultAvatarIcon();
+    }
+
+    return CachedNetworkImage(
+      imageUrl: photoUrl,
+      width: 96,
+      height: 96,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.4,
+            color: colorScheme.onPrimary,
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) => _buildDefaultAvatarIcon(),
     );
   }
 
@@ -409,38 +473,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final accentColor =
             isPremium ? const Color(0xFF22C55E) : colorScheme.primary;
         final label = isPremium
-            ? context.tr.translate('premium')
-            : context.tr.translate('free');
-        final icon = isPremium
-            ? Icons.workspace_premium_rounded
-            : Icons.lock_open_rounded;
+            ? context.tr.translate('profile_plan_premium')
+            : context.tr.translate('profile_plan_free');
 
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             onTap: () => Navigator.of(context).pushNamed('/subscription'),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color:
-                      accentColor.withValues(alpha: isDarkMode ? 0.45 : 0.32),
-                  width: 1,
-                ),
+                color: accentColor.withValues(alpha: isDarkMode ? 0.18 : 0.1),
+                borderRadius: BorderRadius.circular(22),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 14, color: accentColor),
-                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.workspace_premium_rounded,
+                    size: 13,
+                    color: accentColor,
+                  ),
+                  const SizedBox(width: 7),
                   Text(
                     label,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: accentColor,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -453,18 +514,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildBmiChip(double bmi, String bmiCategory, ThemeData theme,
-      ColorScheme colorScheme) {
+      ColorScheme colorScheme, bool isDarkMode) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.26 : 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Text(
-        'IMC ${bmi.toStringAsFixed(1)} · $bmiCategory',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
+      child: RichText(
+        text: TextSpan(
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          children: [
+            TextSpan(text: 'IMC ${bmi.toStringAsFixed(1)}'),
+            TextSpan(
+              text: '  ·  ',
+              style: TextStyle(color: colorScheme.primary),
+            ),
+            TextSpan(
+              text: bmiCategory,
+              style: TextStyle(color: colorScheme.primary),
+            ),
+          ],
         ),
       ),
     );
@@ -472,111 +553,144 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildGoalCard(
       ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
     return Consumer<NutritionGoalsProvider>(
       builder: (context, nutritionProvider, child) {
         return Container(
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDarkMode
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.05),
-            ),
-          ),
-          child: Row(
-            children: [
-              // Goal
-              Expanded(
-                child: _buildGoalItem(
-                  icon: _getGoalIcon(nutritionProvider.fitnessGoal),
-                  label: context.tr.translate('profile_goal'),
-                  value: _getGoalText(nutritionProvider.fitnessGoal, context),
-                  theme: theme,
-                  colorScheme: colorScheme,
-                  iconColor: const Color(0xFF42A5F5),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NutritionGoalsWizardScreen(
-                          startStep: 2,
-                          fromProfile: true,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 50,
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-              // Daily Calories
-              Expanded(
-                child: _buildGoalItem(
-                  icon: MacroTheme.caloriesIcon,
-                  label: context.tr.translate('profile_daily_target'),
-                  value: '${nutritionProvider.caloriesGoal} kcal',
-                  theme: theme,
-                  colorScheme: colorScheme,
-                  iconColor: MacroTheme.caloriesColor,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NutritionGoalsScreen(),
-                      ),
-                    );
-                  },
-                ),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary
+                    .withValues(alpha: isDarkMode ? 0.18 : 0.11),
+                blurRadius: 14,
+                offset: const Offset(0, 7),
               ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: AspectRatio(
+              aspectRatio: 2.22,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/profile_goal_banner.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildGoalBannerItem(
+                        icon: _getGoalIcon(nutritionProvider.fitnessGoal),
+                        label: context.tr.translate('profile_goal'),
+                        value: _getGoalText(
+                            nutritionProvider.fitnessGoal, context),
+                        theme: theme,
+                        colorScheme: colorScheme,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const NutritionGoalsWizardScreen(
+                                startStep: 2,
+                                fromProfile: true,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 104,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                    Expanded(
+                      child: _buildGoalBannerItem(
+                        icon: Icons.local_fire_department_rounded,
+                        label: context.tr.translate('profile_daily_target'),
+                        value: '${nutritionProvider.caloriesGoal} kcal',
+                        theme: theme,
+                        colorScheme: colorScheme,
+                        textShadows: _bannerImageTextShadow,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const NutritionGoalsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildGoalItem({
+  Widget _buildGoalBannerItem({
     required IconData icon,
     required String label,
     required String value,
     required ThemeData theme,
     required ColorScheme colorScheme,
     required VoidCallback onTap,
-    Color? iconColor,
+    List<Shadow> textShadows = _bannerTextShadow,
   }) {
-    final isDarkMode = theme.brightness == Brightness.dark;
-    final adaptiveTextColor =
-        isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: iconColor ?? colorScheme.primary,
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(
+                icon,
+                size: 25,
+                color: colorScheme.primary,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 9),
             Text(
               label,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: adaptiveTextColor,
+                color: Colors.white.withValues(alpha: 0.92),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                shadows: textShadows,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Text(
               value,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: adaptiveTextColor,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                height: 1.05,
+                shadows: textShadows,
               ),
               textAlign: TextAlign.center,
             ),
@@ -586,194 +700,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMacroGoalsCard(
-      ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
-    return Consumer<NutritionGoalsProvider>(
-      builder: (context, nutritionProvider, child) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDarkMode
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.05),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildGoalItem(
-                  icon: MacroTheme.proteinIcon,
-                  label: context.tr.translate('protein'),
-                  value: '${nutritionProvider.proteinGoal} g',
-                  theme: theme,
-                  colorScheme: colorScheme,
-                  iconColor: MacroTheme.proteinColor,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NutritionGoalsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 50,
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-              Expanded(
-                child: _buildGoalItem(
-                  icon: MacroTheme.carbsIcon,
-                  label: context.tr.translate('carbs'),
-                  value: '${nutritionProvider.carbsGoal} g',
-                  theme: theme,
-                  colorScheme: colorScheme,
-                  iconColor: MacroTheme.carbsColor,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NutritionGoalsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 50,
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-              Expanded(
-                child: _buildGoalItem(
-                  icon: MacroTheme.fatIcon,
-                  label: context.tr.translate('fats'),
-                  value: '${nutritionProvider.fatGoal} g',
-                  theme: theme,
-                  colorScheme: colorScheme,
-                  iconColor: MacroTheme.fatColor,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NutritionGoalsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildCompleteGoalsCard(
       ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.35),
-          width: 1.2,
-        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color:
+                colorScheme.primary.withValues(alpha: isDarkMode ? 0.18 : 0.11),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const NutritionGoalsWizardScreen(
-                  startStep: 0,
-                  fromProfile: true,
-                ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: AspectRatio(
+          aspectRatio: 2.22,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/profile_goal_banner.png'),
+                fit: BoxFit.cover,
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.flag_rounded,
-                        size: 22,
-                        color: colorScheme.primary,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const NutritionGoalsWizardScreen(
+                        startStep: 0,
+                        fromProfile: true,
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        context.tr.translate('profile_complete_goals_title'),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w700,
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.flag_rounded,
+                          size: 25,
+                          color: colorScheme.primary,
                         ),
                       ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 22,
-                      color:
-                          colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  context.tr.translate('profile_complete_goals_description'),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.tune_rounded,
-                        size: 16,
-                        color: colorScheme.onPrimary,
-                      ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 9),
                       Text(
-                        context.tr.translate('configure_goals'),
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onPrimary,
-                          fontWeight: FontWeight.w700,
+                        context.tr.translate('profile_complete_goals_title'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          shadows: _bannerTextShadow,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        context.tr
+                            .translate('profile_complete_goals_description'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          height: 1.25,
+                          shadows: _bannerTextShadow,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -783,24 +794,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSettingsSection(
       ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-
     return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Column(
         children: [
           const SizedBox(height: 6),
           _buildSettingsItem(
             icon: Icons.restaurant_menu_rounded,
             title: context.tr.translate('nutrition_goals'),
+            subtitle: context.tr.translate('profile_nutrition_goals_subtitle'),
             theme: theme,
             colorScheme: colorScheme,
             onTap: () {
@@ -815,6 +817,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildSettingsItem(
             icon: Icons.sync_rounded,
             title: context.tr.translate('automatic_tracking_apps_title'),
+            subtitle: context.tr.translate('profile_tracking_apps_subtitle'),
             theme: theme,
             colorScheme: colorScheme,
             onTap: () {
@@ -829,6 +832,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildSettingsItem(
             icon: Icons.person_outline_rounded,
             title: context.tr.translate('edit_profile'),
+            subtitle: context.tr.translate('profile_edit_profile_subtitle'),
             theme: theme,
             colorScheme: colorScheme,
             onTap: () {
@@ -844,31 +848,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           _buildDivider(colorScheme),
           _buildSettingsItem(
-            icon: Icons.bar_chart_rounded,
-            title: context.tr.translate('statistics'),
+            icon: Icons.auto_awesome_rounded,
+            title: context.tr.translate('profile_shape_preview_title'),
+            subtitle: context.tr.translate('profile_shape_preview_subtitle'),
             theme: theme,
             colorScheme: colorScheme,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const StatisticsScreen(),
-                ),
-              );
-            },
-          ),
-          _buildDivider(colorScheme),
-          _buildSettingsItem(
-            icon: Icons.settings_outlined,
-            title: context.tr.translate('settings_title'),
-            theme: theme,
-            colorScheme: colorScheme,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
-                ),
-              );
-            },
+            onTap: _openShapePreview,
           ),
           const SizedBox(height: 6),
         ],
@@ -879,6 +864,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSettingsItem({
     required IconData icon,
     required String title,
+    required String subtitle,
     required ThemeData theme,
     required ColorScheme colorScheme,
     required VoidCallback onTap,
@@ -886,44 +872,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     final isDarkMode = theme.brightness == Brightness.dark;
     final adaptiveColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final effectiveIconColor = iconColor ?? adaptiveColor;
+    final effectiveIconColor = iconColor ?? colorScheme.primary;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: effectiveIconColor.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  color: effectiveIconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
                   icon,
-                  size: 18,
+                  size: 23,
                   color: effectiveIconColor,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: adaptiveColor,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: adaptiveColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: _listItemTitleFontSize,
+                        height: 1.18,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isDarkMode
+                            ? AppTheme.darkMutedTextColor
+                            : AppTheme.textSecondaryColor,
+                        fontSize: _listItemSubtitleFontSize,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
               Icon(
                 Icons.chevron_right_rounded,
-                size: 20,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                size: 26,
+                color: isDarkMode
+                    ? AppTheme.darkMutedTextColor
+                    : AppTheme.textSecondaryColor,
               ),
             ],
           ),
@@ -934,10 +946,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildDivider(ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.only(left: 68, right: 20),
+      padding: const EdgeInsets.only(left: 20, right: 28),
       child: Divider(
         height: 1,
-        color: colorScheme.outlineVariant.withValues(alpha: 0.25),
+        color: colorScheme.outlineVariant.withValues(alpha: 0.18),
       ),
     );
   }

@@ -3,31 +3,33 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Primary Colors
-  static const Color primaryColor = Color(0xFF111111);
-  static const Color primaryLightColor = Color(0xFF2B2B2B);
-  static const Color primaryDarkColor = Color(0xFF4A4A4A);
-  static const Color primaryColorDarkMode = Color(0xFFF5F5F5);
+  static const Color primaryColor = Color(0xFF26B5AD);
+  static const Color primaryLightColor = Color(0xFF7ADDD6);
+  static const Color primaryDarkColor = Color(0xFF168B82);
+  static const Color primaryColorDarkMode = Color(0xFF66DED6);
 
   // Secondary Colors
-  static const Color secondaryColor = Color(0xFF2A2A2A);
-  static const Color secondaryLightColor = Color(0xFF5A5A5A);
-  static const Color secondaryDarkColor = Color(0xFFE6E6E6);
+  static const Color secondaryColor = Color(0xFF0F766E);
+  static const Color secondaryLightColor = Color(0xFF4DD4CB);
+  static const Color secondaryDarkColor = Color(0xFFBDEFEA);
 
   // Neutral Colors
-  static const Color backgroundColor = Color(0xFFF7F9FC);
+  static const Color backgroundColor = Color(0xFFF7F8FA);
   static const Color cardColor = Colors.white;
-  static const Color dividerColor = Color(0xFFE1E6F0);
+  static const Color dividerColor = Color(0xFFE4EBEF);
   static const Color surfaceColor =
-      Color(0xFFF0F2F5); // Surface color for light theme
+      Color(0xFFF0F5F6); // Surface color for light theme
 
   // Text Colors
-  static const Color textPrimaryColor = Color(0xFF424242);
-  static const Color textSecondaryColor = Color(0xFF757575);
-  static const Color textLightColor = Color(0xFF8D96AD);
+  static const Color textPrimaryColor = Color(0xFF172033);
+  static const Color textSecondaryColor = Color(0xFF737B8C);
+  static const Color textLightColor = Color(0xFF9AA3B2);
 
   // Soft Text Colors (with alpha 0.85 for gentle appearance)
-  static final Color textPrimaryColorSoft = Color(0xFF424242).withValues(alpha: 0.85);
-  static final Color textSecondaryColorSoft = Color(0xFF757575).withValues(alpha: 0.85);
+  static final Color textPrimaryColorSoft =
+      Color(0xFF172033).withValues(alpha: 0.85);
+  static final Color textSecondaryColorSoft =
+      Color(0xFF737B8C).withValues(alpha: 0.85);
 
   // Status Colors
   static const Color successColor = Color(0xFF8FE3B0);
@@ -36,18 +38,106 @@ class AppTheme {
   static const Color infoColor = Color(0xFF7EC8E3);
 
   // Dark Theme Colors
-  static const Color darkBackgroundColor = Color.fromARGB(255, 24, 25, 26);
-  static const Color darkCardColor = Color(0xFF242526);
-  static const Color darkComponentColor = Color(0xFF252525);
-  static const Color darkTextColor = Color(0xFFE4E6EB);
-  static const Color darkBorderColor = Color(0xFF333333);
+  static const Color darkAccentColor = primaryColorDarkMode;
+  static const Color darkBackgroundColor = Color(0xFF09090A);
+  static const Color darkCardColor = Color(0xFF1B1B1B);
+  static const Color darkComponentColor = Color(0xFF242424);
+  static const Color darkChatInputColor = Color(0xFF1D1D1D);
+  static const Color darkUserMessageColor = Color(0xFF34383F);
+  static const Color darkTextColor = Color(0xFFF8F8F8);
+  static const Color darkMutedTextColor = Color(0xFF9B9B9F);
+  static const Color darkDisabledTextColor = Color(0xFF68686D);
+  static const Color darkBorderColor = Color(0xFF383838);
 
   // Dark Theme Soft Text Colors (with alpha 0.85 for gentle appearance)
-  static final Color darkTextColorSoft = Color(0xFFE4E6EB).withValues(alpha: 0.85);
+  static final Color darkTextColorSoft = darkTextColor.withValues(alpha: 0.85);
 
   // Helper method to get soft text color based on theme
   static Color getSoftTextColor(bool isDarkMode) {
     return isDarkMode ? darkTextColorSoft : textPrimaryColorSoft;
+  }
+
+  static Color selectedPillBackgroundColor(bool isDarkMode) {
+    return (isDarkMode ? primaryColorDarkMode : primaryColor)
+        .withValues(alpha: isDarkMode ? 0.20 : 0.22);
+  }
+
+  static Color selectedPillTextColor(bool isDarkMode) {
+    return isDarkMode ? primaryColorDarkMode : textPrimaryColor;
+  }
+
+  static Border standardCardBorder(bool isDarkMode) {
+    return Border.all(
+      color: isDarkMode
+          ? darkBorderColor.withValues(alpha: 0.46)
+          : dividerColor.withValues(alpha: 0.75),
+      width: 1,
+    );
+  }
+
+  static ShapeBorder standardCardShape(bool isDarkMode, {double radius = 16}) {
+    return RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(radius),
+      side: BorderSide(
+        color: isDarkMode
+            ? darkBorderColor.withValues(alpha: 0.46)
+            : dividerColor.withValues(alpha: 0.75),
+        width: 1,
+      ),
+    );
+  }
+
+  static List<BoxShadow> standardCardShadow(bool isDarkMode) {
+    return [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDarkMode ? 0.34 : 0.08),
+        blurRadius: isDarkMode ? 16 : 8,
+        offset: const Offset(0, 5),
+      ),
+    ];
+  }
+
+  static double standardCardElevation(bool isDarkMode) {
+    return 6;
+  }
+
+  static Color standardCardShadowColor(bool isDarkMode) {
+    return Colors.black.withValues(alpha: isDarkMode ? 0.40 : 0.08);
+  }
+
+  static Color profileCardColor(bool isDarkMode) {
+    return isDarkMode ? darkCardColor : Colors.white;
+  }
+
+  static Border profileCardBorder(bool isDarkMode) {
+    return Border.all(
+      color: isDarkMode
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.05),
+    );
+  }
+
+  static List<BoxShadow> profileCardShadow(bool isDarkMode) {
+    return [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDarkMode ? 0.22 : 0.045),
+        blurRadius: 14,
+        offset: const Offset(0, 5),
+      ),
+    ];
+  }
+
+  static BoxDecoration profileCardDecoration(
+    bool isDarkMode, {
+    double radius = 24,
+    Color? color,
+  }) {
+    return BoxDecoration(
+      color: color ?? profileCardColor(isDarkMode),
+      borderRadius: BorderRadius.circular(radius),
+      border: profileCardBorder(isDarkMode),
+      boxShadow: profileCardShadow(isDarkMode),
+    );
   }
 
   static Color onPrimaryFor(bool isDarkMode) {
@@ -152,7 +242,6 @@ class AppTheme {
       primary: primaryColor,
       secondary: secondaryColor,
       error: errorColor,
-      background: backgroundColor,
       surface: surfaceColor,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
@@ -196,22 +285,23 @@ class AppTheme {
     ),
     cardTheme: CardThemeData(
       color: cardColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      elevation: 6,
+      shadowColor: Colors.black.withValues(alpha: 0.08),
+      surfaceTintColor: surfaceColor,
+      shape: standardCardShape(false),
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.white,
-      foregroundColor: Colors.black,
+      foregroundColor: textPrimaryColor,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: headingSmall.copyWith(color: Colors.black),
+      titleTextStyle: headingSmall.copyWith(color: textPrimaryColor),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: Colors.white,
-      selectedItemColor: Colors.black,
+      selectedItemColor: primaryColor,
       unselectedItemColor: textSecondaryColor,
       type: BottomNavigationBarType.fixed,
       elevation: 1,
@@ -250,7 +340,7 @@ class AppTheme {
     primaryColor: primaryColorDarkMode,
     scaffoldBackgroundColor: darkBackgroundColor,
     cardColor: darkCardColor,
-    dividerColor: Color(0xFF2D2D2D),
+    dividerColor: darkBorderColor,
     textTheme: TextTheme(
       displayLarge: headingLarge.copyWith(color: Colors.white),
       displayMedium: headingMedium.copyWith(color: Colors.white),
@@ -259,16 +349,18 @@ class AppTheme {
       bodyMedium: bodyMedium.copyWith(color: darkTextColor),
       bodySmall: bodySmall.copyWith(color: darkTextColor),
       labelLarge: buttonText.copyWith(color: Colors.black),
-      labelSmall: captionText.copyWith(color: Color(0xFFAEB7CE)),
+      labelSmall: captionText.copyWith(color: darkMutedTextColor),
     ),
     colorScheme: ColorScheme.dark(
       primary: primaryColorDarkMode,
       secondary: secondaryDarkColor,
+      tertiary: darkAccentColor,
       error: errorColor,
-      background: darkBackgroundColor,
       surface: darkComponentColor,
       onPrimary: Colors.black,
       onSecondary: Colors.black,
+      onSurface: darkTextColor,
+      outline: darkBorderColor,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -309,11 +401,12 @@ class AppTheme {
     ),
     cardTheme: CardThemeData(
       color: darkCardColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      elevation: 6,
+      shadowColor: Colors.black.withValues(alpha: 0.40),
+      surfaceTintColor: darkComponentColor,
+      shape: standardCardShape(true),
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: darkBackgroundColor,
@@ -324,8 +417,8 @@ class AppTheme {
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: darkBackgroundColor,
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Color(0xFFAEB7CE),
+      selectedItemColor: primaryColorDarkMode,
+      unselectedItemColor: darkDisabledTextColor,
       type: BottomNavigationBarType.fixed,
       elevation: 1,
       selectedLabelStyle: TextStyle(overflow: TextOverflow.visible),
@@ -351,8 +444,8 @@ class AppTheme {
         borderSide: BorderSide(color: errorColor, width: 1),
       ),
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      hintStyle: bodyMedium.copyWith(color: Color(0xFF8D96AD)),
-      labelStyle: bodyMedium.copyWith(color: Color(0xFFAEB7CE)),
+      hintStyle: bodyMedium.copyWith(color: darkMutedTextColor),
+      labelStyle: bodyMedium.copyWith(color: darkMutedTextColor),
     ),
   );
 }

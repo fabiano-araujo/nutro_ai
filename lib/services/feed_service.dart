@@ -32,7 +32,8 @@ class FeedActivity {
       type: json['type'] ?? '',
       data: json['data'],
       isPrivate: json['isPrivate'] ?? false,
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt:
+          DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
       reactionCounts: Map<String, int>.from(json['reactionCounts'] ?? {}),
       userReacted: Map<String, bool>.from(json['userReacted'] ?? {}),
     );
@@ -59,6 +60,8 @@ class FeedActivity {
         return 'Entrou em um desafio! 🏆';
       case 'CHALLENGE_WIN':
         return 'Ganhou um desafio! 🥇';
+      case 'PROFILE_SHAPE_PREVIEW':
+        return 'Compartilhou uma prévia do shape ✨';
       default:
         return 'Atividade';
     }
@@ -81,6 +84,8 @@ class FeedActivity {
         return '🏆';
       case 'CHALLENGE_WIN':
         return '🥇';
+      case 'PROFILE_SHAPE_PREVIEW':
+        return '✨';
       default:
         return '📋';
     }
@@ -107,7 +112,14 @@ class FeedService {
   static const String baseUrl = AppConstants.API_BASE_URL;
 
   /// Emojis de reação disponíveis
-  static const List<String> availableEmojis = ['👏', '🔥', '💪', '😅', '❤️', '🎉'];
+  static const List<String> availableEmojis = [
+    '👏',
+    '🔥',
+    '💪',
+    '😅',
+    '❤️',
+    '🎉'
+  ];
 
   /// Buscar feed
   static Future<List<FeedActivity>> getFeed({
@@ -180,6 +192,43 @@ class FeedService {
     } catch (e) {
       print('[FeedService] Erro ao remover reação: $e');
       return false;
+    }
+  }
+
+  static Future<FeedActivity?> publishProfileShapePreview({
+    required String token,
+    required String afterImageUrl,
+    String? beforeImageBase64,
+    required String mode,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/feed/profile-shape-preview'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'afterImageUrl': afterImageUrl,
+          'beforeImageBase64': beforeImageBase64,
+          'mode': mode,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] is Map) {
+          return FeedActivity.fromJson(
+            Map<String, dynamic>.from(data['data'] as Map),
+          );
+        }
+      }
+
+      print('[FeedService] Erro ao publicar prévia: ${response.body}');
+      return null;
+    } catch (e) {
+      print('[FeedService] Erro ao publicar prévia: $e');
+      return null;
     }
   }
 }

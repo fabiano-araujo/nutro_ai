@@ -99,7 +99,8 @@ class FeedProvider extends ChangeNotifier {
       final index = _activities.indexWhere((a) => a.id == activityId);
       if (index != -1) {
         final activity = _activities[index];
-        final newReactionCounts = Map<String, int>.from(activity.reactionCounts);
+        final newReactionCounts =
+            Map<String, int>.from(activity.reactionCounts);
         final newUserReacted = Map<String, bool>.from(activity.userReacted);
 
         // Remover reação anterior se existir
@@ -146,7 +147,8 @@ class FeedProvider extends ChangeNotifier {
       final index = _activities.indexWhere((a) => a.id == activityId);
       if (index != -1) {
         final activity = _activities[index];
-        final newReactionCounts = Map<String, int>.from(activity.reactionCounts);
+        final newReactionCounts =
+            Map<String, int>.from(activity.reactionCounts);
         final newUserReacted = Map<String, bool>.from(activity.userReacted);
 
         // Remover todas as reações do usuário
@@ -187,6 +189,32 @@ class FeedProvider extends ChangeNotifier {
     } else {
       await addReaction(activityId, emoji);
     }
+  }
+
+  Future<bool> publishProfileShapePreview({
+    required String afterImageUrl,
+    String? beforeImageBase64,
+    required String mode,
+  }) async {
+    if (_token == null) return false;
+
+    final activity = await FeedService.publishProfileShapePreview(
+      token: _token!,
+      afterImageUrl: afterImageUrl,
+      beforeImageBase64: beforeImageBase64,
+      mode: mode,
+    );
+
+    if (activity == null) {
+      _error = 'Erro ao publicar prévia no feed';
+      notifyListeners();
+      return false;
+    }
+
+    _activities.insert(0, activity);
+    _error = null;
+    notifyListeners();
+    return true;
   }
 
   /// Refresh

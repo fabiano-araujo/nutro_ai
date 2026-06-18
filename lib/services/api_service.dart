@@ -1,12 +1,52 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/subscription_model.dart';
+import 'app_integrity_service.dart';
 import '../util/app_constants.dart';
 
 class ApiService {
   static const String baseUrl = AppConstants.API_BASE_URL;
   static const String subscriptionBaseUrl = baseUrl;
+
+  static Map<String, dynamic> _decodeResponseMap(http.Response response) {
+    final body = response.body.trim();
+    if (body.isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {
+      // Some gateways return plain text for timeout/proxy failures.
+    }
+
+    return <String, dynamic>{
+      'message': _fallbackErrorMessage(response.statusCode, body),
+    };
+  }
+
+  static String _fallbackErrorMessage(int statusCode, String body) {
+    final normalizedBody = body.toLowerCase();
+
+    if (statusCode == 504 || normalizedBody.contains('error code: 504')) {
+      return 'A geração demorou mais que o esperado. Tente novamente em instantes.';
+    }
+
+    if (statusCode == 502 || statusCode == 503) {
+      return 'O servidor está temporariamente indisponível. Tente novamente em instantes.';
+    }
+
+    if (body.isNotEmpty && body.length <= 160) {
+      return body;
+    }
+
+    return 'Falha na comunicação com o servidor ($statusCode).';
+  }
 
   // Método para autenticar com Google
   static Future<Map<String, dynamic>> authenticateWithGoogle({
@@ -292,6 +332,108 @@ class ApiService {
     }
 
     return responseData['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getUserCredits({
+    required String token,
+    required int userId,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/credits/$userId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final responseData = response.body.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        responseData['success'] != true ||
+        responseData['data'] is! Map<String, dynamic>) {
+      throw Exception(
+        responseData['message'] ??
+            responseData['error'] ??
+            'Falha ao consultar créditos',
+      );
+    }
+
+    return responseData['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> generateProfileShapePreview({
+    required String token,
+    required Uint8List imageBytes,
+    String language = 'pt-BR',
+  }) async {
+    final headers = <String, String>{
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    headers.addAll(await AppIntegrityService.appCheckHeaders());
+
+    final response = await http
+        .post(
+          Uri.parse(
+              '${AppConstants.DIET_API_BASE_URL}/ai/profile-shape-preview'),
+          headers: headers,
+          body: jsonEncode({
+            'imageBase64': 'data:image/jpeg;base64,${base64Encode(imageBytes)}',
+            'language': language,
+          }),
+        )
+        .timeout(const Duration(minutes: 5));
+
+    final responseData = _decodeResponseMap(response);
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        responseData['success'] != true ||
+        responseData['data'] is! Map<String, dynamic>) {
+      throw Exception(
+        responseData['message'] ??
+            responseData['error'] ??
+            'Falha ao gerar prévia no shape',
+      );
+    }
+
+    return responseData['data'] as Map<String, dynamic>;
+  }
+
+  static Future<User> updateOwnProfilePhoto({
+    required String token,
+    required String photo,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/user/profile/photo'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'photo': photo}),
+    );
+
+    final responseData = response.body.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(response.body) as Map<String, dynamic>;
+
+    final data = responseData['data'];
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        responseData['success'] != true ||
+        data is! Map ||
+        data['user'] is! Map) {
+      throw Exception(
+        responseData['message'] ??
+            responseData['error'] ??
+            'Falha ao atualizar foto de perfil',
+      );
+    }
+
+    return User.fromJson(Map<String, dynamic>.from(data['user'] as Map));
   }
 
   // Criar pagamento de assinatura
