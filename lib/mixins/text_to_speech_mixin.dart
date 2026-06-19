@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -43,6 +44,8 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
   double _volume = 1.0;
   List<Map<String, String>> _availableVoices = [];
   List<TtsEngineOption> _availableTtsEngines = [];
+  Timer? _ttsInitTimer;
+  Future<void>? _ttsInitFuture;
 
   // Getters para o estado de fala
   bool get isSpeaking => _isSpeaking;
@@ -57,11 +60,12 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
   @override
   void initState() {
     super.initState();
-    _initTts();
+    _scheduleDeferredTtsInit();
   }
 
   @override
   void dispose() {
+    _ttsInitTimer?.cancel();
     if (_isInitialized) {
       try {
         stopSpeech();
@@ -71,6 +75,36 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
       }
     }
     super.dispose();
+  }
+
+  void _scheduleDeferredTtsInit() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isInitialized || _ttsInitFuture != null) return;
+      _ttsInitTimer = Timer(const Duration(milliseconds: 9000), () {
+        if (!mounted || _isInitialized) return;
+        unawaited(_startTtsInitNow('deferred_after_first_frame'));
+      });
+    });
+  }
+
+  Future<void> _startTtsInitNow(String reason) {
+    if (_isInitialized) {
+      return Future<void>.value();
+    }
+    _ttsInitTimer?.cancel();
+    final existing = _ttsInitFuture;
+    if (existing != null) {
+      return existing;
+    }
+
+    final stopwatch = Stopwatch()..start();
+    print('[TTS_PERF] init_start reason=$reason');
+    final future = _initTts().whenComplete(() {
+      print(
+          '[TTS_PERF] init_done reason=$reason elapsedMs=${stopwatch.elapsedMilliseconds} initialized=$_isInitialized voices=${_availableVoices.length} engines=${_availableTtsEngines.length}');
+    });
+    _ttsInitFuture = future;
+    return future;
   }
 
   // Verifica se a plataforma atual é suportada
@@ -633,8 +667,15 @@ mixin TextToSpeechMixin<T extends StatefulWidget> on State<T> {
     if (text.isEmpty) return;
 
     if (!_isInitialized || !_isPlatformSupported()) {
-      print('TTS não está inicializado ou não é suportado');
-      return;
+      if (!_isPlatformSupported()) {
+        print('TTS não está inicializado ou não é suportado');
+        return;
+      }
+      await _startTtsInitNow('speak_requested');
+      if (!_isInitialized) {
+        print('TTS não está inicializado ou não é suportado');
+        return;
+      }
     }
 
     // Para a fala atual se estiver falando

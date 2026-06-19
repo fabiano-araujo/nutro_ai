@@ -78,13 +78,23 @@ void main() {
     const examples = {
       'Peito de frango desfiado': '🍗',
       'Pasta de amendoim': '🥜',
+      'Banana prata': '🍌',
+      'Pão de queijo': '🧀',
+      'Arroz integral cozido': '🍚',
+      'Feijão preto': '🫘',
       'Brócolis cozido': '🥦',
+      'Couve-flor cozida': '🥦',
+      'Abóbora assada': '🎃',
       'Batata doce assada': '🍠',
+      'Cuscuz de milho': '🌽',
       'Iogurte grego': '🥣',
       'Camarão grelhado': '🍤',
       'Quinoa cozida': '🌾',
+      'Farinha de mandioca': '🌾',
       'Tofu grelhado': '🫘',
       'Azeite de oliva': '🫒',
+      'Óleo de soja': '🫒',
+      'Chia': '🌱',
       'Bolacha integral': '🍪',
     };
 

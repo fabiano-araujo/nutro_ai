@@ -395,6 +395,25 @@ final Map<String, String> frFRTranslations = {
   'unlock_potential':
       'Débloquez tout le potentiel de Nutro AI avec nos plans premium',
   'subscription_headline': 'Atteignez vos objectifs {highlight} plus vite',
+  'subscription_hero_title_prefix': 'Votre meilleur\nrésultat commence\n',
+  'subscription_hero_title_highlight': 'maintenant.',
+  'subscription_hero_subtitle':
+      'Atteignez vos objectifs jusqu\'à 4.2x plus vite avec Nutro AI Premium.',
+  'subscription_result_prefix': 'Résultat détaillé\nen moins de ',
+  'subscription_result_time': '60 secondes',
+  'subscription_choose_plan': 'Choisissez votre plan',
+  'subscription_most_chosen': 'LE PLUS CHOISI',
+  'subscription_annual_card_description':
+      'Résultat maximal avec le meilleur rapport qualité-prix',
+  'subscription_monthly_card_description':
+      'Flexibilité pour progresser à votre rythme',
+  'subscription_charged_annually': 'Facturé {price} / an',
+  'subscription_economize_percentage': 'ÉCONOMISEZ {percentage}%',
+  'subscription_annual_savings_amount': 'R\$ 100,00 d\'économie',
+  'subscription_annual_savings_compare': 'par rapport au plan mensuel',
+  'subscription_guarantee_title': '7 jours de garantie',
+  'subscription_guarantee_subtitle':
+      'Pas satisfait ? Nous remboursons 100% de votre argent.',
   'show_more_plans': 'Afficher plus de plans',
   'hide_other_plans': 'Afficher moins de plans',
   'secure_google_play':
@@ -660,6 +679,7 @@ final Map<String, String> frFRTranslations = {
   'allergen_shellfish': 'Fruits de mer',
   'allergen_soy': 'Soja',
   'add': 'Ajouter',
+  'remove': 'Retirer',
   'meals': 'Repas',
   'protein_full': 'Protéine',
   'fat': 'Lipides',
@@ -722,6 +742,7 @@ final Map<String, String> frFRTranslations = {
   'edit_foods': 'Modifier les aliments',
   'edit_food': 'Modifier l\'Aliment',
   'food_name': 'Nom de l\'Aliment',
+  'food_and_amount': 'Aliment et quantité',
   'amount': 'Quantité',
   'unit': 'Unité',
   'add_to_meal': 'Ajouter au repas',
@@ -765,6 +786,8 @@ final Map<String, String> frFRTranslations = {
   // Suivi des activités
   'automatic_tracking_apps_title': 'Apps de suivi automatique',
   'tracking_activities_title': 'Activités',
+  'water': 'Eau',
+  'water_glasses': 'verres',
   'tracking_activity_kcal_spent': '0 kcal  Dépensées',
   'tracking_kcal_spent_suffix': 'kcal  Dépensées',
   'tracking_activity_card_message':
@@ -821,27 +844,31 @@ final Map<String, String> frFRTranslations = {
   // Diet Mode Selector
   'weekly_diet': 'Régime Hebdomadaire',
   'daily_diet': 'Régime Quotidien',
-  'replace_all_meals': 'Remplacer Tous les Repas',
+  'replace_all_meals': 'Remplacer les repas',
   'replace_all_meals_weekly_confirm':
       'Voulez-vous générer un nouveau plan de régime hebdomadaire?',
   'replace_all_meals_daily_confirm':
       'Voulez-vous générer un nouveau plan de régime pour ce jour?',
   'replace_all_meals_weekly_notes_description':
-      'Voulez-vous générer un nouveau plan hebdomadaire ? Vous pouvez indiquer ce que vous avez aimé, moins aimé ou une restriction.',
+      'Choisissez des ajustements rapides ou générez directement.',
   'replace_all_meals_daily_notes_description':
-      'Voulez-vous générer un nouveau plan pour ce jour ? Vous pouvez indiquer ce que vous avez aimé, moins aimé ou une restriction.',
-  'replace_all_meals_notes_hint':
-      'Ex : je n’ai pas aimé le poisson, éviter le lait, inclure du riz et du poulet',
+      'Choisissez des ajustements rapides ou générez directement.',
+  'replace_all_meals_notes_hint': 'Ex : garder riz et poulet',
   'replace_meal_notes_title': 'Remplacer {meal}',
   'replace_meal_notes_description':
-      'Décrivez ce que vous voulez changer dans ce repas. Vous pouvez citer les aliments que vous n’avez pas aimés ou ceux à inclure.',
-  'replace_meal_notes_hint':
-      'Ex : remplacer les oeufs par du poulet, sans banane, plus léger',
-  'replace_meal_confirm': 'Remplacer le repas',
-  'replacement_notes_field_label': 'Notes (facultatif)',
-  'replacement_notes_optional_help':
-      'Vous pouvez laisser ce champ vide et laisser l’IA décider.',
-  'yes_generate_new': 'Oui, Générer Nouveau',
+      'Choisissez un ajustement ou ajoutez un détail.',
+  'replace_meal_notes_hint': 'Ex : sans banane',
+  'replace_meal_confirm': 'Remplacer',
+  'replacement_quick_adjustments': 'Ajustements rapides',
+  'replacement_chip_lighter': 'Plus léger',
+  'replacement_chip_lactose_free': 'Sans lactose',
+  'replacement_chip_gluten_free': 'Sans gluten',
+  'replacement_chip_vegetarian': 'Végétarien',
+  'replacement_chip_vegan': 'Végane',
+  'replacement_chip_budget': 'Plus économique',
+  'replacement_notes_field_label': 'Autre détail',
+  'replacement_notes_optional_help': 'Facultatif.',
+  'yes_generate_new': 'Générer',
   'no_diet_plan_for_day': 'Aucun plan de régime pour ce jour',
   'generate_diet_plan': 'Générer un Plan de Régime',
   'diet_generation_insufficient_credits_title': 'Crédits insuffisants',

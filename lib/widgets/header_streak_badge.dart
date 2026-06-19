@@ -34,8 +34,7 @@ class HeaderStreakBadge extends StatelessWidget {
       context.watch<DailyMealsProvider>(),
     );
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final surfaceColor = isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;
-    final borderColor = isDarkMode ? Colors.white12 : Colors.black12;
+    final splashColor = MacroTheme.caloriesColor.withValues(alpha: 0.14);
 
     return Tooltip(
       message: context.tr.translate('streak_hero_title'),
@@ -49,33 +48,49 @@ class HeaderStreakBadge extends StatelessWidget {
                 builder: (_) => const StreakScreen(),
               ),
             ),
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: borderColor),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.local_fire_department_rounded,
-                    size: 18,
-                    color: MacroTheme.caloriesColor,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$streak',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: textColor,
+            borderRadius: BorderRadius.circular(20),
+            splashColor: splashColor,
+            highlightColor: splashColor.withValues(alpha: 0.55),
+            child: SizedBox(
+              height: 40,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 21,
+                      color: MacroTheme.caloriesColor,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 3),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: Tween<double>(
+                              begin: 0.92,
+                              end: 1,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Text(
+                        '$streak',
+                        key: ValueKey<int>(streak),
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1,
+                          fontWeight: FontWeight.w800,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

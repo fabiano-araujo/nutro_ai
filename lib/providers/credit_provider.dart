@@ -116,6 +116,35 @@ class CreditProvider extends ChangeNotifier {
     await _saveCredits();
   }
 
+  Future<void> refreshCreditsFromServer({
+    required String token,
+    required int userId,
+  }) async {
+    final creditData = await ApiService.getUserCredits(
+      token: token,
+      userId: userId,
+    );
+    _applyServerCreditData(creditData);
+    await _saveCredits();
+    notifyListeners();
+  }
+
+  Future<void> markCreditsExhausted() async {
+    if (_creditModel.creditsRemaining == 0) {
+      return;
+    }
+
+    _creditModel = _creditModel.copyWith(creditsRemaining: 0);
+    await _saveCredits();
+    notifyListeners();
+  }
+
+  Future<void> applyServerCredits(Map<String, dynamic> creditData) async {
+    _applyServerCreditData(creditData);
+    await _saveCredits();
+    notifyListeners();
+  }
+
   /// Atualiza os créditos com base nos dados recebidos do servidor
   Future<void> updateCreditsFromServer(Map<String, dynamic> userData) async {
     try {
@@ -131,7 +160,6 @@ class CreditProvider extends ChangeNotifier {
           print(
               'Atualizando créditos do usuário: $availableCredits (último reset: $lastReset)');
 
-          // Criar um novo modelo de crédito com os dados do servidor
           _creditModel = CreditModel(
             creditsRemaining: availableCredits,
             lastResetDate: lastReset,
@@ -163,5 +191,21 @@ class CreditProvider extends ChangeNotifier {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  void _applyServerCreditData(Map<String, dynamic> creditData) {
+    final availableCredits = _readInt(
+      creditData['availableCredits'] ?? creditData['available'],
+    );
+    final lastResetStr = creditData['lastReset']?.toString();
+
+    if (availableCredits == null || lastResetStr == null) {
+      throw Exception('Resposta inválida ao consultar créditos');
+    }
+
+    _creditModel = CreditModel(
+      creditsRemaining: availableCredits,
+      lastResetDate: DateTime.parse(lastResetStr),
+    );
   }
 }

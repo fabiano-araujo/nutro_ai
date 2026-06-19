@@ -1,6 +1,7 @@
 import 'dart:io' as io;
 
 const _defaultDevice = '100.72.202.76:5555';
+const _adbTcpPort = 5555;
 const _packageName = 'br.com.snapdark.apps.nutreai';
 const _activityName = 'br.com.snapdark.apps.nutreai/.MainActivity';
 const _debugApkPath = 'build/app/outputs/flutter-apk/app-debug.apk';
@@ -43,6 +44,11 @@ Future<void> main(List<String> args) async {
       case 'connect':
         await _connect(options);
         return;
+      case 'setup-wireless':
+      case 'wireless':
+      case 'authorize':
+        await _setupWireless(options);
+        return;
       default:
         throw _ToolException('Comando desconhecido: ${options.command}');
     }
@@ -56,10 +62,10 @@ Future<void> _quickRun(_Options options) async {
   final adb = options.adbPath ?? _defaultAdbPath();
   final flutter = options.flutterPath ?? _defaultFlutterPath();
   final apk = io.File(_debugApkPath);
+  final resolved = await _resolveDevice(options.copyWith(adbPath: adb));
+  final device = resolved.serial;
 
-  await _connect(options.copyWith(adbPath: adb));
-
-  final installed = await _isPackageInstalled(adb, options.device);
+  final installed = await _isPackageInstalled(adb, device);
   var apkExists = apk.existsSync();
   var sourcesChanged = false;
 
@@ -111,24 +117,23 @@ Future<void> _quickRun(_Options options) async {
             ? '--force-install informado'
             : 'APK foi recompilado';
     _log('Instalacao necessaria: $reason.');
-    await _runChecked(adb, ['-s', options.device, 'install', '-r', apk.path]);
+    await _runChecked(adb, ['-s', device, 'install', '-r', apk.path]);
   } else {
     _log('Instalacao ignorada: app instalado e APK nao mudou nesta execucao.');
   }
 
-  await _startInstalledApp(adb, options.device);
+  await _startInstalledApp(adb, device);
 }
 
 Future<void> _hotRun(_Options options) async {
   final adb = options.adbPath ?? _defaultAdbPath();
   final flutter = options.flutterPath ?? _defaultFlutterPath();
-
-  await _connect(options.copyWith(adbPath: adb));
+  final resolved = await _resolveDevice(options.copyWith(adbPath: adb));
 
   final flutterArgs = <String>[
     'run',
     '-d',
-    options.device,
+    resolved.serial,
     ...options.passThroughArgs,
   ];
 
@@ -149,8 +154,171 @@ Future<void> _hotRun(_Options options) async {
 
 Future<void> _connect(_Options options) async {
   final adb = options.adbPath ?? _defaultAdbPath();
-  _log('Conectando no device ${options.device}...');
-  await _runChecked(adb, ['connect', options.device]);
+  final connected = await _tryConnectRemote(adb, options.device);
+  if (!connected) {
+    throw _ToolException(
+      'Nao foi possivel conectar no device remoto ${options.device}.',
+    );
+  }
+}
+
+Future<void> _setupWireless(_Options options) async {
+  final adb = options.adbPath ?? _defaultAdbPath();
+  final usbDevice = await _selectUsbDevice(
+    adb,
+    requestedSerial: options.usbDevice,
+  );
+
+  _log(
+    'Habilitando ADB TCP/IP na porta $_adbTcpPort pelo USB '
+    '(${usbDevice.serial})...',
+  );
+  await _runChecked(adb, ['-s', usbDevice.serial, 'tcpip', '$_adbTcpPort']);
+
+  _log('Tentando conectar no device remoto ${options.device}...');
+  await Future<void>.delayed(const Duration(seconds: 2));
+  final connected = await _tryConnectRemote(adb, options.device);
+
+  if (connected) {
+    _log(
+      'Wireless pronto. Proximas execucoes de quick/hot tentarao '
+      '${options.device} automaticamente.',
+    );
+  } else {
+    _log(
+      'TCP/IP foi habilitado no USB, mas ${options.device} ainda nao respondeu. '
+      'Confira se o IP esta correto ou rode com --device <ip>:$_adbTcpPort. '
+      'Enquanto isso, quick/hot usam USB automaticamente quando disponivel.',
+    );
+  }
+}
+
+Future<_ResolvedDevice> _resolveDevice(_Options options) async {
+  final adb = options.adbPath ?? _defaultAdbPath();
+
+  final requestedIsRemote = options.device.contains(':');
+  if (requestedIsRemote) {
+    final connected = await _tryConnectRemote(adb, options.device);
+    if (connected) {
+      return _ResolvedDevice(options.device, _DeviceRoute.remote);
+    }
+
+    _log(
+      'Device remoto indisponivel. Procurando device USB autorizado '
+      'para continuar sem interromper...',
+    );
+  } else if (await _isDeviceOnline(adb, options.device)) {
+    _log('Usando device informado: ${options.device}.');
+    return _ResolvedDevice(options.device, _DeviceRoute.explicit);
+  }
+
+  final usbDevice = await _selectUsbDevice(
+    adb,
+    requestedSerial: options.usbDevice,
+  );
+  _log('Usando device USB autorizado: ${usbDevice.serial}.');
+  return _ResolvedDevice(usbDevice.serial, _DeviceRoute.usb);
+}
+
+Future<bool> _tryConnectRemote(String adb, String device) async {
+  _log('Conectando no device $device...');
+  await _run(adb, ['connect', device], allowFailure: true);
+  final online = await _isDeviceOnline(adb, device);
+  if (!online) {
+    _log('Device remoto $device nao esta online no ADB.');
+  }
+  return online;
+}
+
+Future<bool> _isDeviceOnline(String adb, String serial) async {
+  final result = await _run(
+    adb,
+    ['-s', serial, 'get-state'],
+    allowFailure: true,
+  );
+  return result.exitCode == 0 && result.stdout.trim() == 'device';
+}
+
+Future<_AdbDevice> _selectUsbDevice(
+  String adb, {
+  String? requestedSerial,
+}) async {
+  final devices = await _listAdbDevices(adb);
+  final unauthorizedUsb = devices
+      .where((device) => device.isUsb && device.state == 'unauthorized')
+      .toList();
+
+  if (unauthorizedUsb.isNotEmpty) {
+    throw _ToolException(
+      'Device USB aguardando autorizacao: '
+      '${unauthorizedUsb.map((d) => d.serial).join(', ')}. '
+      'Desbloqueie o celular e aceite "Sempre permitir deste computador"; '
+      'depois rode o comando novamente.',
+    );
+  }
+
+  final onlineUsb = devices
+      .where((device) => device.isUsb && device.state == 'device')
+      .toList();
+
+  if (requestedSerial != null) {
+    for (final device in onlineUsb) {
+      if (device.serial == requestedSerial) {
+        return device;
+      }
+    }
+    throw _ToolException(
+      'Device USB $requestedSerial nao esta disponivel/autorizado. '
+      'Devices USB online: '
+      '${onlineUsb.map((d) => d.serial).join(', ')}',
+    );
+  }
+
+  if (onlineUsb.length == 1) {
+    return onlineUsb.single;
+  }
+
+  if (onlineUsb.length > 1) {
+    throw _ToolException(
+      'Mais de um device USB autorizado encontrado: '
+      '${onlineUsb.map((d) => d.serial).join(', ')}. '
+      'Informe --usb-device <serial>.',
+    );
+  }
+
+  throw const _ToolException(
+    'Nenhum device USB autorizado encontrado. Conecte o cabo, desbloqueie o '
+    'celular e aceite "Sempre permitir deste computador".',
+  );
+}
+
+Future<List<_AdbDevice>> _listAdbDevices(String adb) async {
+  final result = await _run(adb, ['devices', '-l'], allowFailure: true);
+  final devices = <_AdbDevice>[];
+
+  for (final rawLine in result.stdout.split(RegExp(r'\r?\n'))) {
+    final line = rawLine.trim();
+    if (line.isEmpty || line.startsWith('List of devices')) {
+      continue;
+    }
+    final parts = line.split(RegExp(r'\s+'));
+    if (parts.length < 2) {
+      continue;
+    }
+    final state = parts[1];
+    if (state != 'device' && state != 'offline' && state != 'unauthorized') {
+      continue;
+    }
+    devices.add(
+      _AdbDevice(
+        serial: parts[0],
+        state: state,
+        details: parts.skip(2).join(' '),
+      ),
+    );
+  }
+
+  return devices;
 }
 
 Future<bool> _isPackageInstalled(String adb, String device) async {
@@ -358,14 +526,21 @@ Uso:
   dart run tool/remote_android_runner.dart quick [opcoes]
   dart run tool/remote_android_runner.dart hot [opcoes] [-- argumentos_do_flutter_run]
   dart run tool/remote_android_runner.dart connect [opcoes]
+  dart run tool/remote_android_runner.dart setup-wireless [opcoes]
 
 Comandos:
   quick    Conecta no device, recompila se necessario, instala se necessario e abre o app.
+           Se o remoto falhar, usa automaticamente um device USB autorizado.
   hot      Conecta no device e inicia flutter run persistente para hot reload.
+           Se o remoto falhar, usa automaticamente um device USB autorizado.
   connect  Apenas executa adb connect.
+  setup-wireless
+           Com o celular conectado por cabo e autorizado, executa adb tcpip 5555
+           e tenta conectar no --device remoto.
 
 Opcoes:
   --device <id>       Device ADB. Padrao: $_defaultDevice
+  --usb-device <id>   Serial USB para fallback/setup quando houver mais de um device.
   --adb <path>        Caminho do adb. Padrao: Android SDK local ou PATH.
   --flutter <path>    Caminho do flutter. Padrao: FLUTTER_ROOT, C:\\flutter ou PATH.
   --force-build       Recompila o APK debug mesmo sem mudancas detectadas.
@@ -376,6 +551,7 @@ Opcoes:
 Exemplos:
   dart run tool/remote_android_runner.dart quick
   dart run tool/remote_android_runner.dart hot
+  dart run tool/remote_android_runner.dart setup-wireless
   dart run tool/remote_android_runner.dart hot -- --dart-define=FOO=bar
 ''');
 }
@@ -409,6 +585,7 @@ class _Options {
     required this.passThroughArgs,
     this.adbPath,
     this.flutterPath,
+    this.usbDevice,
     this.forceBuild = false,
     this.forceInstall = false,
     this.noBuild = false,
@@ -419,6 +596,7 @@ class _Options {
   final String device;
   final String? adbPath;
   final String? flutterPath;
+  final String? usbDevice;
   final bool forceBuild;
   final bool forceInstall;
   final bool noBuild;
@@ -434,6 +612,7 @@ class _Options {
       device: device,
       adbPath: adbPath ?? this.adbPath,
       flutterPath: flutterPath ?? this.flutterPath,
+      usbDevice: usbDevice,
       forceBuild: forceBuild,
       forceInstall: forceInstall,
       noBuild: noBuild,
@@ -447,6 +626,7 @@ class _Options {
     var device = _defaultDevice;
     String? adbPath;
     String? flutterPath;
+    String? usbDevice;
     var forceBuild = false;
     var forceInstall = false;
     var noBuild = false;
@@ -473,6 +653,10 @@ class _Options {
         device = arg.substring('--device='.length);
       } else if (arg == '--device') {
         device = _readOptionValue(args, ++i, '--device');
+      } else if (arg.startsWith('--usb-device=')) {
+        usbDevice = arg.substring('--usb-device='.length);
+      } else if (arg == '--usb-device') {
+        usbDevice = _readOptionValue(args, ++i, '--usb-device');
       } else if (arg.startsWith('--adb=')) {
         adbPath = arg.substring('--adb='.length);
       } else if (arg == '--adb') {
@@ -493,6 +677,7 @@ class _Options {
       device: device,
       adbPath: adbPath,
       flutterPath: flutterPath,
+      usbDevice: usbDevice,
       forceBuild: forceBuild,
       forceInstall: forceInstall,
       noBuild: noBuild,
@@ -522,6 +707,29 @@ class _CommandResult {
   final int exitCode;
   final String stdout;
   final String stderr;
+}
+
+enum _DeviceRoute { remote, usb, explicit }
+
+class _ResolvedDevice {
+  const _ResolvedDevice(this.serial, this.route);
+
+  final String serial;
+  final _DeviceRoute route;
+}
+
+class _AdbDevice {
+  const _AdbDevice({
+    required this.serial,
+    required this.state,
+    required this.details,
+  });
+
+  final String serial;
+  final String state;
+  final String details;
+
+  bool get isUsb => !serial.contains(':');
 }
 
 class _ToolException implements Exception {

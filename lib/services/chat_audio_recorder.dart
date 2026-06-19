@@ -37,9 +37,14 @@ class ChatAudioRecorder {
   String? _recordedFilePath;
   String _mimeType = 'audio/wav';
   String _fileExtension = 'wav';
+  Directory? _temporaryDirectory;
+  Future<Directory>? _temporaryDirectoryFuture;
 
   Future<void> init() async {
     _ensureRecorder();
+    if (!kIsWeb) {
+      await _getTemporaryDirectory();
+    }
   }
 
   Future<bool> hasPermission({bool request = true}) async {
@@ -61,13 +66,14 @@ class ChatAudioRecorder {
     });
   }
 
-  Future<void> startRecording() async {
-    await _disposeRecorder();
+  Future<void> startRecording({bool verifyPermission = true}) async {
     final recorder = _ensureRecorder();
 
-    final hasPermission = await recorder.hasPermission();
-    if (!hasPermission) {
-      throw Exception('Microphone permission not granted');
+    if (verifyPermission) {
+      final hasPermission = await recorder.hasPermission();
+      if (!hasPermission) {
+        throw Exception('Microphone permission not granted');
+      }
     }
 
     _fileExtension = 'wav';
@@ -75,7 +81,7 @@ class ChatAudioRecorder {
     if (kIsWeb) {
       _recordedFilePath = null;
     } else {
-      final dir = await getTemporaryDirectory();
+      final dir = await _getTemporaryDirectory();
       _recordedFilePath =
           '${dir.path}/chat_audio_${DateTime.now().millisecondsSinceEpoch}.$_fileExtension';
     }
@@ -156,6 +162,26 @@ class ChatAudioRecorder {
 
   record.AudioRecorder _ensureRecorder() {
     return _audioRecorder ??= record.AudioRecorder();
+  }
+
+  Future<Directory> _getTemporaryDirectory() async {
+    final cachedDirectory = _temporaryDirectory;
+    if (cachedDirectory != null) {
+      return cachedDirectory;
+    }
+
+    final directoryFuture =
+        _temporaryDirectoryFuture ??= getTemporaryDirectory();
+    try {
+      final directory = await directoryFuture;
+      _temporaryDirectory = directory;
+      return directory;
+    } catch (_) {
+      if (identical(_temporaryDirectoryFuture, directoryFuture)) {
+        _temporaryDirectoryFuture = null;
+      }
+      rethrow;
+    }
   }
 
   Future<void> _disposeRecorder() async {

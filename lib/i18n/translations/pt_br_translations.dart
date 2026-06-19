@@ -977,6 +977,25 @@ final Map<String, String> ptBRTranslations = {
   'unlock_potential':
       'Desbloqueie todo o potencial do Nutro AI com nossos planos premium',
   'subscription_headline': 'Alcance seus objetivos {highlight} mais rápido',
+  'subscription_hero_title_prefix': 'Seu melhor\nresultado começa\n',
+  'subscription_hero_title_highlight': 'agora.',
+  'subscription_hero_subtitle':
+      'Alcance seus objetivos até 4.2x mais rápido com o Nutro AI Premium.',
+  'subscription_result_prefix': 'Resultado detalhado\nem até ',
+  'subscription_result_time': '60 segundos',
+  'subscription_choose_plan': 'Escolha seu plano',
+  'subscription_most_chosen': 'MAIS ESCOLHIDO',
+  'subscription_annual_card_description':
+      'Máximo resultado com o melhor custo-benefício',
+  'subscription_monthly_card_description':
+      'Flexibilidade para evoluir no seu ritmo',
+  'subscription_charged_annually': 'Cobrado {price} / ano',
+  'subscription_economize_percentage': 'ECONOMIZE {percentage}%',
+  'subscription_annual_savings_amount': 'R\$ 100,00 de economia',
+  'subscription_annual_savings_compare': 'em comparação ao plano mensal',
+  'subscription_guarantee_title': '7 dias de garantia',
+  'subscription_guarantee_subtitle':
+      'Não gostou? Devolvemos 100% do seu dinheiro.',
   'show_more_plans': 'Mostrar mais planos',
   'hide_other_plans': 'Mostrar menos planos',
   'secure_google_play': 'Seguro com Google Play. Cancele quando quiser.',
@@ -1516,6 +1535,7 @@ final Map<String, String> ptBRTranslations = {
   'edit_foods': 'Editar alimentos',
   'edit_food': 'Editar Alimento',
   'food_name': 'Nome do Alimento',
+  'food_and_amount': 'Alimento e quantidade',
   'amount': 'Quantidade',
   'unit': 'Unidade',
   'add_to_meal': 'Adicionar à refeição',
@@ -1566,27 +1586,30 @@ final Map<String, String> ptBRTranslations = {
   // Diet Mode Selector
   'weekly_diet': 'Dieta Semanal',
   'daily_diet': 'Dieta Diária',
-  'replace_all_meals': 'Substituir Todas as Refeições',
+  'replace_all_meals': 'Substituir refeições',
   'replace_all_meals_weekly_confirm':
       'Deseja gerar um novo plano de dieta semanal?',
   'replace_all_meals_daily_confirm':
       'Deseja gerar um novo plano de dieta para este dia?',
   'replace_all_meals_weekly_notes_description':
-      'Deseja gerar um novo plano semanal? Se quiser, conte o que gostou, não gostou ou alguma restrição.',
+      'Escolha ajustes rápidos ou gere direto.',
   'replace_all_meals_daily_notes_description':
-      'Deseja gerar um novo plano para este dia? Se quiser, conte o que gostou, não gostou ou alguma restrição.',
-  'replace_all_meals_notes_hint':
-      'Ex: não gostei de peixe, evitar leite, quero incluir arroz e frango',
+      'Escolha ajustes rápidos ou gere direto.',
+  'replace_all_meals_notes_hint': 'Ex: manter arroz e frango',
   'replace_meal_notes_title': 'Substituir {meal}',
-  'replace_meal_notes_description':
-      'Descreva o que quer mudar nessa refeição. Pode citar alimentos que não gostou ou o que quer incluir.',
-  'replace_meal_notes_hint':
-      'Ex: trocar ovo por frango, sem banana, quero algo mais leve',
-  'replace_meal_confirm': 'Substituir refeição',
-  'replacement_notes_field_label': 'Observações (opcional)',
-  'replacement_notes_optional_help':
-      'Você pode deixar em branco para a IA decidir sozinha.',
-  'yes_generate_new': 'Sim, Gerar Novo',
+  'replace_meal_notes_description': 'Escolha um ajuste ou escreva um detalhe.',
+  'replace_meal_notes_hint': 'Ex: sem banana',
+  'replace_meal_confirm': 'Substituir',
+  'replacement_quick_adjustments': 'Ajustes rápidos',
+  'replacement_chip_lighter': 'Mais leve',
+  'replacement_chip_lactose_free': 'Sem lactose',
+  'replacement_chip_gluten_free': 'Sem glúten',
+  'replacement_chip_vegetarian': 'Vegetariano',
+  'replacement_chip_vegan': 'Vegano',
+  'replacement_chip_budget': 'Mais barato',
+  'replacement_notes_field_label': 'Outro detalhe',
+  'replacement_notes_optional_help': 'Opcional.',
+  'yes_generate_new': 'Gerar novo',
   'no_diet_plan_for_day': 'Nenhum plano de dieta para este dia',
   'generate_diet_plan': 'Gerar Plano de Dieta',
   'choose_diet_type': 'Escolha o Tipo de Dieta',
@@ -1654,6 +1677,8 @@ final Map<String, String> ptBRTranslations = {
   // Rastreamento de atividades
   'automatic_tracking_apps_title': 'Apps de rastreamento automático',
   'tracking_activities_title': 'Atividades',
+  'water': 'Água',
+  'water_glasses': 'copos',
   'tracking_activity_kcal_spent': '0 kcal  Gastos',
   'tracking_kcal_spent_suffix': 'kcal  Gastos',
   'tracking_activity_card_message':

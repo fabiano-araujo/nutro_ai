@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<map>
+  <string name="flutter.countryCode">US</string>
+  <long name="flutter.app_session_count" value="3" />
+  <long name="flutter.nutrition_age" value="28" />
+  <string name="flutter.nutrition_height">VGhpcyBpcyB0aGUgcHJlZml4IGZvciBEb3VibGUu181.0</string>
+  <long name="flutter.nutrition_proteinPercentage" value="18" />
+  <boolean name="flutter.nutrition_hasExplicitFitnessGoal" value="true" />
+  <long name="flutter.nutrition_carbsPercentage" value="58" />
+  <boolean name="flutter.nutrition_hasExplicitActivityLevel" value="true" />
+  <string name="flutter.nutrition_weight">VGhpcyBpcyB0aGUgcHJlZml4IGZvciBEb3VibGUu86.0</string>
+  <long name="flutter.nutrition_manualCalories" value="3165" />
+  <long name="flutter.nutrition_manualCarbs" value="458" />
+  <boolean name="flutter.nutrition_hasExplicitWeight" value="true" />
+  <boolean name="flutter.nutrition_hasConfiguredGoals" value="true" />
+  <long name="flutter.nutrition_fitnessGoal" value="3" />
+  <long name="flutter.nutrition_formula" value="0" />
+  <string name="flutter.diet_plans">{"weekly":{"date":"weekly","totalNutrition":{"calories":3175,"protein":145.34,"carbs":460.55,"fat":84.3},"meals":[{"type":"breakfast","time":"08:00","name":"Café da Manhã","foods":[{"name":"Ovo","emoji":"🍳","amount":3.0,"unit":"unidade","calories":216,"protein":18.0,"carbs":1.5,"fat":15.0},{"name":"Pão francês","emoji":"🥖","amount":3.0,"unit":"unidade","calories":390,"protein":12.0,"carbs":75.0,"fat":3.0},{"name":"Banana","emoji":"🍌","amount":100.0,"unit":"g","calories":89,"protein":1.0,"carbs":23.0,"fat":0.3}],"mealTotals":{"calories":695,"protein":31.0,"carbs":99.5,"fat":18.3}},{"type":"lunch","time":"12:00","name":"Almoço","foods":[{"name":"Arroz cozido","emoji":"🍚","amount":300.0,"unit":"g","calories":390,"protein":8.1,"carbs":84.0,"fat":0.9},{"name":"Feijão cozido","emoji":"🫘","amount":200.0,"unit":"g","calories":260,"protein":16.0,"carbs":46.0,"fat":1.0},{"name":"Peito de frango grelhado","emoji":"🍗","amount":100.0,"unit":"g","calories":165,"protein":31.0,"carbs":0.0,"fat":3.6},{"name":"Farofa de mandioca","emoji":"🥔","amount":30.0,"unit":"g","calories":105,"protein":0.9,"carbs":24.0,"fat":1.5},{"name":"Abacate","emoji":"🥑","amount":50.0,"unit":"g","calories":80,"protein":1.0,"carbs":4.25,"fat":7.35},{"name":"Azeite de oliva","emoji":"🫒","amount":15.0,"unit":"g","calories":135,"protein":0.0,"carbs":0.0,"fat":15.0}],"mealTotals":{"calories":1135,"protein":57.0,"carbs":158.25,"fat":29.35}},{"type":"afternoon_snack","time":"16:00","name":"Lanche da Tarde","foods":[{"name":"Tapioca","emoji":"🫓","amount":40.0,"unit":"g","calories":140,"protein":0.4,"carbs":34.0,"fat":0.2},{"name":"Banana","emoji":"🍌","amount":100.0,"unit":"g","calories":89,"protein":1.0,"carbs":23.0,"fat":0.3},{"name":"Pasta de amendoim","emoji":"🥜","amount":15.0,"unit":"g","calories":90,"protein":3.75,"carbs":3.0,"fat":7.5}],"mealTotals":{"calories":319,"protein":5.15,"carbs":60.0,"fat":8.0}},{"type":"dinner","time":"20:00","name":"Jantar","foods":[{"name":"Batata-doce cozida","emoji":"🍠","amount":350.0,"unit":"g","calories":301,"protein":4.55,"carbs":70.0,"fat":0.35},{"name":"Peito de frango grelhado","emoji":"🍗","amount":100.0,"unit":"g","calories":165,"protein":31.0,"carbs":0.0,"fat":3.6},{"name":"Brócolis cozido","emoji":"🥦","amount":100.0,"unit":"g","calories":35,"protein":2.4,"carbs":7.0,"fat":0.4},{"name":"Azeite de oliva","emoji":"🫒","amount":10.0,"unit":"g","calories":90,"protein":0.0,"carbs":0.0,"fat":10.0}],"mealTotals":{"calories":591,"protein":37.95,"carbs":77.0,"fat":14.35}},{"type":"1780601204534","time":"22:00","name":"ceia","foods":[{"name":"Aveia em flocos","emoji":"🥣","amount":60.0,"unit":"g","calories":233,"protein":8.04,"carbs":39.6,"fat":4.2},{"name":"Banana","emoji":"🍌","amount":100.0,"unit":"g","calories":89,"protein":1.0,"carbs":23.0,"fat":0.3},{"name":"Amendoim","emoji":"🥜","amount":20.0,"unit":"g","calories":113,"protein":5.2,"carbs":3.2,"fat":9.8}],"mealTotals":{"calories":435,"protein":14.24,"carbs":65.8,"fat":14.3}}]}}</string>
+  <long name="flutter.meals_calories_goal" value="2000" />
+  <string name="flutter.diet_preferences">{"mealsPerDay":4,"hungriestMealTime":"lunch","foodRestrictions":["sem lactose"],"favoriteFoods":["frango"],"avoidedFoods":["leite","queijo","iogurte","cottage","ricota","laticinios"],"routineConsiderations":[],"hasReviewedRestrictions":true,"hasReviewedFoodPreferences":true,"hasReviewedRoutineNeeds":true,"dietMode":"weekly"}</string>
+  <long name="flutter.nutrition_heightUnit" value="0" />
+  <boolean name="flutter.nutrition_hasExplicitAge" value="true" />
+  <long name="flutter.meals_carbs_goal" value="250" />
+  <long name="flutter.meals_protein_goal" value="150" />
+  <boolean name="flutter.nutrition_hasExplicitSex" value="true" />
+  <long name="flutter.water_goal" value="8" />
+  <long name="flutter.nutrition_manualFat" value="85" />
+  <string name="flutter.user_credit_data">{"creditsRemaining":19,"lastResetDate":"2026-06-19T19:34:45.558653"}</string>
+  <long name="flutter.nutrition_dietType" value="5" />
+  <string name="flutter.nutrition_sex">male</string>
+  <string name="flutter.daily_meals">{"2026-06-19":[{"id":"codex-emulator-lunch-1","dateTime":"2026-06-19T12:00:00.000","type":"lunch","foods":[{"nutrient":[{"serving_unit":"g","id_food":0,"carbohydrate":96.0,"fat":2.0,"protein":34.8,"serving_size":400.0,"calories":520.0}],"source":"ai","amount":"400g","name":"feijao cozido","emoji":"🫘"}],"messageId":"codex-emulator-flow"}],"2026-03-28":[{"id":"1774723837108","type":"lunch","foods":[{"name":"beans","amount":"1 cup","emoji":"🍽️","nutrient":[{"id_food":0,"serving_size":100.0,"serving_unit":"g","calories":227.0,"carbohydrate":41.0,"protein":15.0,"fat":1.0}]}],"dateTime":"2026-03-28T18:47:19.834768","messageId":"1"}]}</string>
+  <long name="flutter.meals_fats_goal" value="67" />
+  <boolean name="flutter.nutrition_useCalculated" value="false" />
+  <long name="flutter.nutrition_manualProtein" value="142" />
+  <long name="flutter.nutrition_activityLevel" value="2" />
+  <string name="flutter.study_history">VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu!["{\"id\":\"393de8e5-eb00-45aa-83f7-034863783e1f\",\"title\":\"AI Chat\",\"content\":\"###USER_MESSAGE###400g feijao cozido\",\"response\":\"###AI_RESPONSE###Você está sem créditos para continuar agora. Ganhe mais créditos no app e tente novamente.\",\"type\":\"tutor\",\"timestamp\":\"2026-06-19T19:39:57.470240\"}","{\"id\":\"e419799e-19ef-4f1b-bb3f-56fb89542c58\",\"title\":\"AI Chat\",\"content\":\"###USER_MESSAGE###feijao\",\"response\":\"###AI_RESPONSE###{\\\"mealType\\\":\\\"lunch\\\",\\\"foods\\\":[{\\\"name\\\":\\\"beans\\\",\\\"portion\\\":\\\"1 cup\\\",\\\"macros\\\":{\\\"calories\\\":227,\\\"protein\\\":15,\\\"carbohydrate\\\":41,\\\"fat\\\":1}}]}\",\"type\":\"tutor\",\"timestamp\":\"2026-03-28T18:50:36.013190\"}"]</string>
+  <string name="flutter.languageCode">en</string>
+  <long name="flutter.app_open_count" value="3" />
+  <boolean name="flutter.nutrition_hasExplicitHeight" value="true" />
+  <long name="flutter.nutrition_fatPercentage" value="24" />
+  <long name="flutter.nutrition_weightUnit" value="0" />
+  <string name="flutter.nutrition_chat_user_1_2026-06-19">{"messages":[{"isUser":true,"timestamp":"2026-06-19 19:39:57.469921","message":"400g feijao cozido"},{"isUser":false,"timestamp":"2026-06-19 19:39:57.470240","message":"Você está sem créditos para continuar agora. Ganhe mais créditos no app e tente novamente."}]}</string>
+  <string name="flutter.daily_meals_pending_sync_dates">["2026-06-19"]</string>
+</map>

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -206,7 +207,15 @@ Regras:
       backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: backgroundColor,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
+        ),
         iconTheme: IconThemeData(color: textColor),
         title: Text(
           meal.resolveTitle(l10n),
@@ -276,72 +285,68 @@ Regras:
     final l10n = AppLocalizations.of(context);
     final meal = widget.meal;
     final qualityColor = _analysis.quality.color;
-    final borderColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.08);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1),
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Row(
         children: [
-          Text(
-            meal.emoji,
-            style: const TextStyle(fontSize: 32),
+          Container(
+            width: 82,
+            height: 82,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? AppTheme.darkComponentColor
+                  : AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDarkMode
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+              ),
+            ),
+            child: Text(
+              meal.emoji,
+              style: const TextStyle(fontSize: 38),
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   meal.resolveTitle(l10n),
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
                     color: textColor,
+                    height: 1.16,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  meal.subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: secondaryTextColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: qualityColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  _analysis.score.round().toString(),
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: qualityColor,
-                  ),
-                ),
-                Text(
-                  '/100',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: secondaryTextColor,
-                  ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildHeaderChip(
+                      label: meal.subtitle,
+                      color: qualityColor,
+                      textColor: secondaryTextColor,
+                      isDarkMode: isDarkMode,
+                    ),
+                    _buildHeaderChip(
+                      label: '${_analysis.score.round()}/100',
+                      color: qualityColor,
+                      textColor: qualityColor,
+                      isDarkMode: isDarkMode,
+                      emphasize: true,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -351,21 +356,41 @@ Regras:
     );
   }
 
+  Widget _buildHeaderChip({
+    required String label,
+    required Color color,
+    required Color textColor,
+    required bool isDarkMode,
+    bool emphasize = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDarkMode ? 0.18 : 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: emphasize ? FontWeight.w800 : FontWeight.w700,
+          color: textColor,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
   Widget _buildMacroCards(bool isDarkMode) {
-    final borderColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.08);
+    final l10n = AppLocalizations.of(context);
     final secondaryColor =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final meal = widget.meal;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: IntrinsicHeight(
         child: Row(
           children: [
@@ -383,7 +408,7 @@ Regras:
               child: _buildMacroStat(
                 MacroTheme.proteinIcon,
                 '${meal.protein.toStringAsFixed(0)}g',
-                'Proteína',
+                l10n.translate('protein_full'),
                 MacroTheme.proteinColor,
                 secondaryColor,
               ),
@@ -393,7 +418,7 @@ Regras:
               child: _buildMacroStat(
                 MacroTheme.carbsIcon,
                 '${meal.carbs.toStringAsFixed(0)}g',
-                'Carboidrato',
+                l10n.translate('carbohydrate'),
                 MacroTheme.carbsColor,
                 secondaryColor,
               ),
@@ -403,7 +428,7 @@ Regras:
               child: _buildMacroStat(
                 MacroTheme.fatIcon,
                 '${meal.fat.toStringAsFixed(0)}g',
-                'Gordura',
+                l10n.translate('fat'),
                 MacroTheme.fatColor,
                 secondaryColor,
               ),
@@ -419,7 +444,13 @@ Regras:
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 18),
+        MacroTheme.iconBadge(
+          icon: icon,
+          color: color,
+          isDarkMode: Theme.of(context).brightness == Brightness.dark,
+          size: 26,
+          iconSize: 15,
+        ),
         const SizedBox(height: 4),
         Text(
           value,
@@ -431,6 +462,8 @@ Regras:
         ),
         Text(
           unit,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.inter(
             fontSize: 10,
             color: secondaryColor,
@@ -458,18 +491,11 @@ Regras:
     required Color secondaryTextColor,
   }) {
     final l10n = AppLocalizations.of(context);
-    final borderColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.08);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1),
-      ),
+      padding: const EdgeInsets.all(20),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -504,7 +530,7 @@ Regras:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: _analysis.quality.color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   '${_analysis.score.round()}/100',
@@ -550,18 +576,10 @@ Regras:
     required Color textColor,
     required Color secondaryTextColor,
   }) {
-    final borderColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.08);
-
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Column(
         children: [
           for (var i = 0; i < widget.meal.foods.length; i++) ...[
@@ -607,16 +625,22 @@ Regras:
             ),
           );
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 alignment: Alignment.center,
-                child: FoodIcon(name: food.name, emoji: food.emoji, size: 27),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.darkComponentColor
+                      : AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: FoodIcon(name: food.name, emoji: food.emoji, size: 30),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -627,8 +651,8 @@ Regras:
                       food.name,
                       style: GoogleFonts.inter(
                         fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: textColor.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -647,8 +671,8 @@ Regras:
                 '${food.calories.toStringAsFixed(0)} kcal',
                 style: GoogleFonts.inter(
                   fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: textColor.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w700,
+                  color: textColor.withValues(alpha: 0.74),
                 ),
               ),
             ],
@@ -664,18 +688,11 @@ Regras:
     required Color secondaryTextColor,
   }) {
     final l10n = AppLocalizations.of(context);
-    final borderColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.08);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1),
-      ),
+      padding: const EdgeInsets.all(20),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -771,9 +788,11 @@ Regras:
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),

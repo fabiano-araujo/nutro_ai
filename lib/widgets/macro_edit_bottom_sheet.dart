@@ -337,6 +337,9 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final keyboardInset = mediaQuery.viewInsets.bottom;
+    final bottomSafePadding = mediaQuery.padding.bottom;
     final previewGrams = _previewGrams();
     final previewCalories = _previewCalories();
     final targetCalories = widget.provider.caloriesGoal.toDouble();
@@ -348,185 +351,205 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     final accentForegroundColor = AppTheme.onColor(accentColor);
     final dividerColor = _borderColor();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: widget.cardColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(28),
-          topRight: Radius.circular(28),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: keyboardInset),
+      child: Container(
+        decoration: BoxDecoration(
+          color: widget.cardColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
+          ),
         ),
-      ),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.55,
-        maxChildSize: 0.96,
-        expand: false,
-        builder: (context, scrollController) {
-          return Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 10),
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: widget.textColor.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(999),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          minChildSize: 0.55,
+          maxChildSize: 0.96,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 10),
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: widget.textColor.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 18, 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.tr.translate('edit_macronutrients'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: widget.theme.textTheme.titleLarge?.copyWith(
-                              color: widget.textColor,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            context.tr.translate('macro_editor_subtitle'),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: widget.theme.textTheme.bodyMedium?.copyWith(
-                              color: widget.textColor.withValues(alpha: 0.68),
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Tooltip(
-                      message: context.tr.translate('cancel'),
-                      child: IconButton.filledTonal(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(
-                          Icons.close_rounded,
-                          color: widget.textColor,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor:
-                              widget.textColor.withValues(alpha: 0.08),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(
-                height: 1,
-                color: dividerColor,
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 18, 16),
+                  child: Row(
                     children: [
-                      _buildTargetCard(
-                        accentColor: accentColor,
-                        previewCalories: previewCalories,
-                        targetCalories: targetCalories,
-                        difference: difference,
-                      ),
-                      const SizedBox(height: 18),
-                      _buildModeSelector(accentColor),
-                      const SizedBox(height: 18),
-                      if (isPercentageMode) ...[
-                        _buildPresetSection(accentColor),
-                        const SizedBox(height: 18),
-                      ],
-                      ..._buildMacroFields(previewGrams),
-                      const SizedBox(height: 18),
-                      if (!isPercentageMode) ...[
-                        _buildManualModeNotice(accentColor),
-                        const SizedBox(height: 12),
-                      ],
-                      if (!isPercentageMode &&
-                          difference.abs() > 1 &&
-                          widget.provider.caloriesGoal > 0) ...[
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: _fillRemainingCaloriesWithCarbs,
-                            icon: const Icon(Icons.auto_fix_high_rounded,
-                                size: 18),
-                            label: Text(
-                              context.tr.translate(
-                                'macro_editor_fill_remaining_carbs',
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.tr.translate('edit_macronutrients'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  widget.theme.textTheme.titleLarge?.copyWith(
+                                color: widget.textColor,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
+                            const SizedBox(height: 6),
+                            Text(
+                              context.tr.translate('macro_editor_subtitle'),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  widget.theme.textTheme.bodyMedium?.copyWith(
+                                color: widget.textColor.withValues(alpha: 0.68),
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Tooltip(
+                        message: context.tr.translate('cancel'),
+                        child: IconButton.filledTonal(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: widget.textColor,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                widget.textColor.withValues(alpha: 0.08),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                      ],
-                      if (_errorMessage != null) _buildErrorBox(_errorMessage!),
+                      ),
                     ],
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                decoration: BoxDecoration(
-                  color: widget.cardColor,
-                  border: Border(
-                    top: BorderSide(
-                      color: dividerColor,
+                Divider(
+                  height: 1,
+                  color: dividerColor,
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTargetCard(
+                          accentColor: accentColor,
+                          previewCalories: previewCalories,
+                          targetCalories: targetCalories,
+                          difference: difference,
+                        ),
+                        const SizedBox(height: 18),
+                        _buildModeSelector(accentColor),
+                        const SizedBox(height: 18),
+                        if (isPercentageMode) ...[
+                          _buildPresetSection(accentColor),
+                          const SizedBox(height: 18),
+                        ],
+                        ..._buildMacroFields(previewGrams),
+                        const SizedBox(height: 18),
+                        if (!isPercentageMode) ...[
+                          _buildManualModeNotice(accentColor),
+                          const SizedBox(height: 12),
+                        ],
+                        if (!isPercentageMode &&
+                            difference.abs() > 1 &&
+                            widget.provider.caloriesGoal > 0) ...[
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _fillRemainingCaloriesWithCarbs,
+                              icon: const Icon(Icons.auto_fix_high_rounded,
+                                  size: 18),
+                              label: Text(
+                                context.tr.translate(
+                                  'macro_editor_fill_remaining_carbs',
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                        ],
+                        if (_errorMessage != null)
+                          _buildErrorBox(_errorMessage!),
+                      ],
                     ),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: BorderSide(
-                            color: widget.textColor.withValues(alpha: 0.2),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: Text(context.tr.translate('cancel')),
+                Container(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    14,
+                    16,
+                    16 + bottomSafePadding,
+                  ),
+                  decoration: BoxDecoration(
+                    color: widget.cardColor,
+                    border: Border(
+                      top: BorderSide(
+                        color: dividerColor,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton(
-                        onPressed: _canSave() ? _saveChanges : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: accentColor,
-                          foregroundColor: accentForegroundColor,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            side: BorderSide(
+                              color: widget.textColor.withValues(alpha: 0.2),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(context.tr.translate('cancel')),
                           ),
                         ),
-                        child: Text(
-                          context.tr.translate('save_changes'),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: FilledButton(
+                          onPressed: _canSave() ? _saveChanges : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: accentColor,
+                            foregroundColor: accentForegroundColor,
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              context.tr.translate('save_changes'),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -551,11 +574,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _panelColor(),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor()),
-      ),
+      decoration: _cardDecoration(radius: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -723,12 +742,8 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: _panelColor(),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _borderColor()),
-          ),
+          padding: const EdgeInsets.all(5),
+          decoration: _cardDecoration(radius: 20),
           child: Row(
             children: [
               Expanded(
@@ -795,8 +810,11 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     required Color accentColor,
   }) {
     final isSelected = _selectedMode == mode;
-    final foregroundColor =
-        isSelected ? AppTheme.onColor(accentColor) : widget.textColor;
+    final foregroundColor = isSelected
+        ? AppTheme.selectedPillTextColor(widget.isDarkMode)
+        : widget.textColor.withValues(alpha: 0.74);
+    final selectedBackground =
+        AppTheme.selectedPillBackgroundColor(widget.isDarkMode);
 
     return InkWell(
       onTap: () {
@@ -808,33 +826,37 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        height: 76,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        constraints: const BoxConstraints(minHeight: 82),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor : Colors.transparent,
+          color: isSelected ? selectedBackground : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? accentColor
-                : widget.textColor.withValues(alpha: 0.04),
+                ? accentColor.withValues(alpha: widget.isDarkMode ? 0.5 : 0.32)
+                : Colors.transparent,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              color: foregroundColor.withValues(alpha: isSelected ? 0.92 : 0.7),
+              color: isSelected
+                  ? accentColor
+                  : foregroundColor.withValues(alpha: 0.74),
               size: 18,
             ),
             const SizedBox(height: 6),
             Text(
               title,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: widget.theme.textTheme.bodySmall?.copyWith(
                 color: foregroundColor,
+                height: 1.08,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -845,8 +867,7 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: widget.theme.textTheme.labelSmall?.copyWith(
-                color:
-                    foregroundColor.withValues(alpha: isSelected ? 0.78 : 0.5),
+                color: foregroundColor.withValues(alpha: 0.62),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1103,95 +1124,123 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
     required String helper,
     required ValueChanged<double> onChanged,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _panelColor(),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor()),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color:
-                  accentColor.withValues(alpha: widget.isDarkMode ? 0.2 : 0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: accentColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: widget.theme.textTheme.titleSmall?.copyWith(
-                    color: widget.textColor,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  helper,
-                  style: widget.theme.textTheme.bodySmall?.copyWith(
-                    color: widget.textColor.withValues(alpha: 0.62),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 102,
-            child: TextField(
-              controller: controller,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              textAlign: TextAlign.center,
-              style: widget.theme.textTheme.titleMedium?.copyWith(
-                color: widget.textColor,
-                fontWeight: FontWeight.w700,
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                suffixText: suffix,
-                suffixStyle: widget.theme.textTheme.titleSmall?.copyWith(
-                  color: widget.textColor.withValues(alpha: 0.58),
+    final labelContent = Row(
+      children: [
+        MacroTheme.iconBadge(
+          icon: icon,
+          color: accentColor,
+          isDarkMode: widget.isDarkMode,
+          size: 44,
+          iconSize: 22,
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: widget.theme.textTheme.titleSmall?.copyWith(
+                  color: widget.textColor,
                   fontWeight: FontWeight.w800,
                 ),
-                filled: true,
-                fillColor: widget.isDarkMode
-                    ? Colors.black.withValues(alpha: 0.12)
-                    : Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: widget.textColor.withValues(alpha: 0.1),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: accentColor, width: 1.4),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                helper,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: widget.theme.textTheme.bodySmall?.copyWith(
+                  color: widget.textColor.withValues(alpha: 0.62),
                 ),
               ),
-              onChanged: (value) {
-                final parsed = _tryParseDouble(value);
-                if (parsed != null) {
-                  onChanged(parsed);
-                }
-              },
-            ),
+            ],
           ),
-        ],
+        ),
+      ],
+    );
+
+    final inputField = _buildMacroInputField(
+      controller: controller,
+      suffix: suffix,
+      accentColor: accentColor,
+      onChanged: onChanged,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final useStackedLayout = constraints.maxWidth < 300 || textScale > 1.2;
+
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: _cardDecoration(radius: 20),
+          child: useStackedLayout
+              ? Column(
+                  children: [
+                    labelContent,
+                    const SizedBox(height: 12),
+                    SizedBox(width: double.infinity, child: inputField),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: labelContent),
+                    const SizedBox(width: 12),
+                    SizedBox(width: 104, child: inputField),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMacroInputField({
+    required TextEditingController controller,
+    required String suffix,
+    required Color accentColor,
+    required ValueChanged<double> onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textAlign: TextAlign.center,
+      style: widget.theme.textTheme.titleMedium?.copyWith(
+        color: widget.textColor,
+        fontWeight: FontWeight.w700,
       ),
+      decoration: InputDecoration(
+        isDense: true,
+        suffixText: suffix,
+        suffixStyle: widget.theme.textTheme.titleSmall?.copyWith(
+          color: widget.textColor.withValues(alpha: 0.58),
+          fontWeight: FontWeight.w800,
+        ),
+        filled: true,
+        fillColor: widget.isDarkMode
+            ? Colors.black.withValues(alpha: 0.12)
+            : AppTheme.surfaceColor.withValues(alpha: 0.55),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: widget.textColor.withValues(alpha: 0.1),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: accentColor, width: 1.4),
+        ),
+      ),
+      onChanged: (value) {
+        final parsed = _tryParseDouble(value);
+        if (parsed != null) {
+          onChanged(parsed);
+        }
+      },
     );
   }
 
@@ -1236,34 +1285,45 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
             ),
           ),
           const SizedBox(width: 14),
-          Text(
-            '${total.round()}%',
-            style: widget.theme.textTheme.titleLarge?.copyWith(
-              color: toneColor,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(width: 8),
-          if (!isValid)
-            TextButton(
-              onPressed: () {
-                final totalValue = _percentageTotal();
-                if (totalValue <= 0) {
-                  return;
-                }
-
-                setState(() {
-                  _carbsPercentage = (_carbsPercentage / totalValue) * 100;
-                  _proteinPercentage = (_proteinPercentage / totalValue) * 100;
-                  _fatPercentage = 100 - _carbsPercentage - _proteinPercentage;
-                  _errorMessage = null;
-                  _syncAllControllers();
-                });
-              },
-              child: Text(
-                context.tr.translate('macro_editor_fix_total'),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${total.round()}%',
+                style: widget.theme.textTheme.titleLarge?.copyWith(
+                  color: toneColor,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
+              if (!isValid)
+                TextButton(
+                  onPressed: () {
+                    final totalValue = _percentageTotal();
+                    if (totalValue <= 0) {
+                      return;
+                    }
+
+                    setState(() {
+                      _carbsPercentage = (_carbsPercentage / totalValue) * 100;
+                      _proteinPercentage =
+                          (_proteinPercentage / totalValue) * 100;
+                      _fatPercentage =
+                          100 - _carbsPercentage - _proteinPercentage;
+                      _errorMessage = null;
+                      _syncAllControllers();
+                    });
+                  },
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.only(top: 2),
+                  ),
+                  child: Text(
+                    context.tr.translate('macro_editor_fix_total'),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -1328,12 +1388,19 @@ class _MacroEditBottomSheetState extends State<MacroEditBottomSheet> {
   }
 
   Color _panelColor() {
-    return widget.isDarkMode
-        ? Colors.white.withValues(alpha: 0.045)
-        : Colors.black.withValues(alpha: 0.025);
+    return widget.isDarkMode ? AppTheme.darkComponentColor : AppTheme.cardColor;
   }
 
   Color _borderColor() {
     return widget.textColor.withValues(alpha: widget.isDarkMode ? 0.1 : 0.08);
+  }
+
+  BoxDecoration _cardDecoration({double radius = 20}) {
+    return BoxDecoration(
+      color: _panelColor(),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: _borderColor()),
+      boxShadow: AppTheme.profileCardShadow(widget.isDarkMode),
+    );
   }
 }

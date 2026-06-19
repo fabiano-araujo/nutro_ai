@@ -186,7 +186,7 @@ class MessageUIHelper {
                   ? null
                   : BoxDecoration(
                       color: isDarkMode
-                          ? AppTheme.darkCardColor
+                          ? AppTheme.darkUserMessageColor
                           : const Color(0xFFEFEFEF),
                       borderRadius: BorderRadius.circular(18),
                     ),

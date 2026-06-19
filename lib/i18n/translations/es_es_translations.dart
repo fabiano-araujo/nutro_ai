@@ -687,6 +687,25 @@ final Map<String, String> esESTranslations = {
   'unlock_potential':
       'Desbloquea todo el potencial de Nutro AI con nuestros planes premium',
   'subscription_headline': 'Alcanza tus objetivos {highlight} más rápido',
+  'subscription_hero_title_prefix': 'Tu mejor\nresultado empieza\n',
+  'subscription_hero_title_highlight': 'ahora.',
+  'subscription_hero_subtitle':
+      'Alcanza tus objetivos hasta 4.2x más rápido con Nutro AI Premium.',
+  'subscription_result_prefix': 'Resultado detallado\nen hasta ',
+  'subscription_result_time': '60 segundos',
+  'subscription_choose_plan': 'Elige tu plan',
+  'subscription_most_chosen': 'MÁS ELEGIDO',
+  'subscription_annual_card_description':
+      'Máximo resultado con el mejor costo-beneficio',
+  'subscription_monthly_card_description':
+      'Flexibilidad para evolucionar a tu ritmo',
+  'subscription_charged_annually': 'Cobrado {price} / año',
+  'subscription_economize_percentage': 'AHORRA {percentage}%',
+  'subscription_annual_savings_amount': 'R\$ 100,00 de ahorro',
+  'subscription_annual_savings_compare': 'en comparación con el plan mensual',
+  'subscription_guarantee_title': '7 días de garantía',
+  'subscription_guarantee_subtitle':
+      '¿No te gustó? Te devolvemos el 100% de tu dinero.',
   'show_more_plans': 'Mostrar más planes',
   'hide_other_plans': 'Mostrar menos planes',
   'secure_google_play': 'Seguro con Google Play. Cancela cuando quieras.',
@@ -797,6 +816,7 @@ final Map<String, String> esESTranslations = {
   'no_recent_searches': 'No hay búsquedas recientes',
   'no_favorite_foods': 'No hay alimentos favoritos',
   'add': 'Agregar',
+  'remove': 'Quitar',
   'meals': 'Comidas',
   'fat': 'Grasa',
   'carbohydrate': 'Carbohidrato',
@@ -863,6 +883,8 @@ final Map<String, String> esESTranslations = {
   // Seguimiento de actividades
   'automatic_tracking_apps_title': 'Apps de seguimiento automático',
   'tracking_activities_title': 'Actividades',
+  'water': 'Agua',
+  'water_glasses': 'vasos',
   'tracking_activity_kcal_spent': '0 kcal  Gastadas',
   'tracking_kcal_spent_suffix': 'kcal  Gastadas',
   'tracking_activity_card_message':
@@ -949,6 +971,7 @@ final Map<String, String> esESTranslations = {
   'edit_foods': 'Editar alimentos',
   'edit_food': 'Editar Alimento',
   'food_name': 'Nombre del Alimento',
+  'food_and_amount': 'Alimento y cantidad',
   'amount': 'Cantidad',
   'unit': 'Unidad',
   'add_to_meal': 'Agregar a comida',
@@ -969,27 +992,30 @@ final Map<String, String> esESTranslations = {
   // Diet Mode Selector
   'weekly_diet': 'Dieta Semanal',
   'daily_diet': 'Dieta Diaria',
-  'replace_all_meals': 'Reemplazar Todas las Comidas',
+  'replace_all_meals': 'Reemplazar comidas',
   'replace_all_meals_weekly_confirm':
       '¿Deseas generar un nuevo plan de dieta semanal?',
   'replace_all_meals_daily_confirm':
       '¿Deseas generar un nuevo plan de dieta para este día?',
   'replace_all_meals_weekly_notes_description':
-      '¿Deseas generar un nuevo plan semanal? Si quieres, indica qué te gustó, qué no te gustó o alguna restricción.',
+      'Elige ajustes rápidos o genera directo.',
   'replace_all_meals_daily_notes_description':
-      '¿Deseas generar un nuevo plan para este día? Si quieres, indica qué te gustó, qué no te gustó o alguna restricción.',
-  'replace_all_meals_notes_hint':
-      'Ej: no me gustó el pescado, evitar leche, incluir arroz y pollo',
+      'Elige ajustes rápidos o genera directo.',
+  'replace_all_meals_notes_hint': 'Ej: mantener arroz y pollo',
   'replace_meal_notes_title': 'Reemplazar {meal}',
-  'replace_meal_notes_description':
-      'Describe qué quieres cambiar en esta comida. Puedes mencionar alimentos que no te gustaron o que quieres incluir.',
-  'replace_meal_notes_hint':
-      'Ej: cambiar huevo por pollo, sin banana, algo más ligero',
-  'replace_meal_confirm': 'Reemplazar comida',
-  'replacement_notes_field_label': 'Observaciones (opcional)',
-  'replacement_notes_optional_help':
-      'Puedes dejarlo en blanco para que la IA decida.',
-  'yes_generate_new': 'Sí, Generar Nuevo',
+  'replace_meal_notes_description': 'Elige un ajuste o escribe un detalle.',
+  'replace_meal_notes_hint': 'Ej: sin banana',
+  'replace_meal_confirm': 'Reemplazar',
+  'replacement_quick_adjustments': 'Ajustes rápidos',
+  'replacement_chip_lighter': 'Más ligero',
+  'replacement_chip_lactose_free': 'Sin lactosa',
+  'replacement_chip_gluten_free': 'Sin gluten',
+  'replacement_chip_vegetarian': 'Vegetariano',
+  'replacement_chip_vegan': 'Vegano',
+  'replacement_chip_budget': 'Más económico',
+  'replacement_notes_field_label': 'Otro detalle',
+  'replacement_notes_optional_help': 'Opcional.',
+  'yes_generate_new': 'Generar nuevo',
   'no_diet_plan_for_day': 'No hay plan de dieta para este día',
   'generate_diet_plan': 'Generar Plan de Dieta',
   'diet_generation_insufficient_credits_title': 'Créditos insuficientes',

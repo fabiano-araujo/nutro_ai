@@ -795,6 +795,23 @@ final Map<String, String> enUSTranslations = {
   'unlock_potential':
       'Unlock the full potential of Nutro AI with our premium plans',
   'subscription_headline': 'Reach your goals {highlight} faster',
+  'subscription_hero_title_prefix': 'Your best\nresult starts\n',
+  'subscription_hero_title_highlight': 'now.',
+  'subscription_hero_subtitle':
+      'Reach your goals up to 4.2x faster with Nutro AI Premium.',
+  'subscription_result_prefix': 'Detailed result\nin up to ',
+  'subscription_result_time': '60 seconds',
+  'subscription_choose_plan': 'Choose your plan',
+  'subscription_most_chosen': 'MOST CHOSEN',
+  'subscription_annual_card_description': 'Maximum results with the best value',
+  'subscription_monthly_card_description': 'Flexibility to evolve at your pace',
+  'subscription_charged_annually': 'Billed {price} / year',
+  'subscription_economize_percentage': 'SAVE {percentage}%',
+  'subscription_annual_savings_amount': 'R\$ 100.00 savings',
+  'subscription_annual_savings_compare': 'compared to the monthly plan',
+  'subscription_guarantee_title': '7-day guarantee',
+  'subscription_guarantee_subtitle':
+      'Not satisfied? We refund 100% of your money.',
   'show_more_plans': 'Show more plans',
   'hide_other_plans': 'Show fewer plans',
   'secure_google_play': 'Secure with Google Play. Cancel anytime.',
@@ -1312,6 +1329,7 @@ final Map<String, String> enUSTranslations = {
   'edit_foods': 'Edit foods',
   'edit_food': 'Edit Food',
   'food_name': 'Food Name',
+  'food_and_amount': 'Food and amount',
   'amount': 'Amount',
   'unit': 'Unit',
   'add_to_meal': 'Add to meal',
@@ -1359,27 +1377,30 @@ final Map<String, String> enUSTranslations = {
   // Diet Mode Selector
   'weekly_diet': 'Weekly Diet',
   'daily_diet': 'Daily Diet',
-  'replace_all_meals': 'Replace All Meals',
+  'replace_all_meals': 'Replace meals',
   'replace_all_meals_weekly_confirm':
       'Do you want to generate a new weekly diet plan?',
   'replace_all_meals_daily_confirm':
       'Do you want to generate a new diet plan for this day?',
   'replace_all_meals_weekly_notes_description':
-      'Do you want to generate a new weekly plan? If you want, mention what you liked, disliked, or any restriction.',
+      'Choose quick tweaks or generate now.',
   'replace_all_meals_daily_notes_description':
-      'Do you want to generate a new plan for this day? If you want, mention what you liked, disliked, or any restriction.',
-  'replace_all_meals_notes_hint':
-      'Ex: I did not like fish, avoid milk, include rice and chicken',
+      'Choose quick tweaks or generate now.',
+  'replace_all_meals_notes_hint': 'Ex: keep rice and chicken',
   'replace_meal_notes_title': 'Replace {meal}',
-  'replace_meal_notes_description':
-      'Describe what you want to change in this meal. You can mention foods you disliked or want included.',
-  'replace_meal_notes_hint':
-      'Ex: swap eggs for chicken, no banana, make it lighter',
-  'replace_meal_confirm': 'Replace meal',
-  'replacement_notes_field_label': 'Notes (optional)',
-  'replacement_notes_optional_help':
-      'You can leave this blank and let the AI decide.',
-  'yes_generate_new': 'Yes, Generate New',
+  'replace_meal_notes_description': 'Choose a tweak or add a detail.',
+  'replace_meal_notes_hint': 'Ex: no banana',
+  'replace_meal_confirm': 'Replace',
+  'replacement_quick_adjustments': 'Quick tweaks',
+  'replacement_chip_lighter': 'Lighter',
+  'replacement_chip_lactose_free': 'Lactose-free',
+  'replacement_chip_gluten_free': 'Gluten-free',
+  'replacement_chip_vegetarian': 'Vegetarian',
+  'replacement_chip_vegan': 'Vegan',
+  'replacement_chip_budget': 'Budget-friendly',
+  'replacement_notes_field_label': 'Other detail',
+  'replacement_notes_optional_help': 'Optional.',
+  'yes_generate_new': 'Generate new',
   'no_diet_plan_for_day': 'No diet plan for this day',
   'generate_diet_plan': 'Generate Diet Plan',
   'choose_diet_type': 'Choose Diet Type',
@@ -1444,6 +1465,8 @@ final Map<String, String> enUSTranslations = {
   // Activity tracking
   'automatic_tracking_apps_title': 'Automatic tracking apps',
   'tracking_activities_title': 'Activities',
+  'water': 'Water',
+  'water_glasses': 'glasses',
   'tracking_activity_kcal_spent': '0 kcal  Spent',
   'tracking_kcal_spent_suffix': 'kcal  Spent',
   'tracking_activity_card_message':

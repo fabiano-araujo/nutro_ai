@@ -38,7 +38,7 @@ This file guides coding agents working in this repository.
   - Requires auth token, credits the authenticated user with the server-side rewarded ad amount, and returns the updated credit balance.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
   - Diet generation model: `google/gemini-3-flash-preview` for My Diet generation and the backend `diet` alias.
-  - DeepSeek models (`deepseek/...`) are forced through OpenRouter provider slug `alibaba` in `dieta_api/src/services/openrouter.service.ts`, with provider fallbacks disabled.
+  - DeepSeek models (`deepseek/...`) use OpenRouter's default provider routing unless a provider is explicitly supplied by the caller.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.
 - Prisma access: `dieta_api/src/services/prisma.ts`, schema at `dieta_api/prisma/schema.prisma`.
@@ -84,13 +84,17 @@ dart run tool/remote_android_runner.dart hot
   `dart run tool/remote_android_runner.dart quick`
 - This runner is the preferred path over `flutter devices` / plain `flutter run` for normal device checks because it:
   - connects to the default remote device `100.72.202.76:5555`
+  - falls back automatically to one authorized USB device when the remote device is unavailable
   - detects whether the local debug APK is stale
   - rebuilds only when needed
   - installs only when needed
   - force-stops and opens `br.com.snapdark.apps.nutreai/.MainActivity`
+- To authorize/setup wireless once after connecting the phone by USB, use:
+  `dart run tool/remote_android_runner.dart setup-wireless`
+  The phone must be unlocked and the RSA prompt should be accepted with "Always allow from this computer".
 - If any code or asset was changed before the Android run, ensure the APK is rebuilt before opening the app. Prefer letting `quick` detect stale sources automatically; if there is any doubt, run `dart run tool/remote_android_runner.dart quick --force-build`.
 - Use `dart run tool/remote_android_runner.dart hot` only when the user explicitly needs a persistent hot-reload session.
-- After running, report whether the APK was rebuilt/installed and whether the app was opened. If useful, confirm with:
+- After running, report whether the APK was rebuilt/installed, which device was used, and whether the app was opened. If useful, confirm with the resolved device serial, for example:
   `adb -s 100.72.202.76:5555 shell pidof br.com.snapdark.apps.nutreai`
 
 ### Backend (`dieta_api/`)

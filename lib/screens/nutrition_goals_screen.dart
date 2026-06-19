@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
@@ -47,73 +48,57 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Consumer<NutritionGoalsProvider>(
-          builder: (context, provider, child) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(textColor),
-                  const SizedBox(height: 8),
-                  _buildSyncStatusBanner(
-                      provider, theme, isDarkMode, textColor),
-                  if (provider.hasPendingServerSync ||
-                      provider.isSyncingWithServer)
-                    const SizedBox(height: 14),
-                  _buildGoalsHeroCard(provider, isDarkMode, textColor),
-                  const SizedBox(height: 14),
-                  _buildAiAdjustmentButton(isDarkMode),
-                  const SizedBox(height: 24),
-                  _buildConfigurationSection(
-                    context,
-                    provider,
-                    isDarkMode,
-                    textColor,
-                  ),
-                ],
-              ),
-            );
-          },
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
         ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          tooltip: AppLocalizations.of(context).translate('back'),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+        title: Text(
+          AppLocalizations.of(context).translate('nutrition_goals'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        centerTitle: true,
+        scrolledUnderElevation: 0,
+        elevation: 0,
       ),
-    );
-  }
-
-  Widget _buildHeader(Color textColor) {
-    const sideWidth = 56.0;
-
-    return SizedBox(
-      height: 64,
-      child: Row(
-        children: [
-          SizedBox(
-            width: sideWidth,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back_rounded, color: textColor),
-                tooltip: AppLocalizations.of(context).translate('back'),
-                onPressed: () => Navigator.maybePop(context),
-              ),
+      body: Consumer<NutritionGoalsProvider>(
+        builder: (context, provider, child) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSyncStatusBanner(provider, theme, isDarkMode, textColor),
+                if (provider.hasPendingServerSync ||
+                    provider.isSyncingWithServer)
+                  const SizedBox(height: 14),
+                _buildGoalsHeroCard(provider, isDarkMode, textColor),
+                const SizedBox(height: 14),
+                _buildAiAdjustmentButton(isDarkMode),
+                const SizedBox(height: 22),
+                _buildConfigurationSection(
+                  context,
+                  provider,
+                  isDarkMode,
+                  textColor,
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: Text(
-              AppLocalizations.of(context).translate('nutrition_goals'),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                height: 1.05,
-              ).copyWith(color: textColor),
-            ),
-          ),
-          const SizedBox(width: sideWidth),
-        ],
+          );
+        },
       ),
     );
   }
@@ -137,11 +122,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _cardSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _borderColor(isDarkMode)),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 18),
       child: Row(
         children: [
           Icon(
@@ -177,11 +158,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      decoration: BoxDecoration(
-        color: _cardSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor(isDarkMode)),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -251,7 +228,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                     height: 40,
                     decoration: BoxDecoration(
                       color: _secondarySurfaceColor(isDarkMode),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(13),
                       border: Border.all(color: _borderColor(isDarkMode)),
                     ),
                     child: Icon(
@@ -338,46 +315,52 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   }
 
   Widget _buildAiAdjustmentButton(bool isDarkMode) {
-    final accentColor =
-        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final backgroundColor = isDarkMode ? Colors.white : AppTheme.primaryColor;
+    final foregroundColor = isDarkMode ? Colors.black : Colors.white;
 
-    return InkWell(
-      onTap: _openMacroGoalsAssistant,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: accentColor,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.auto_awesome_rounded,
-              size: 18,
-              color: AppTheme.onColor(accentColor),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                AppLocalizations.of(context)
-                    .translate('chat_action_continue_macros_chat'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppTheme.onColor(accentColor),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: AppTheme.profileCardShadow(isDarkMode),
+      ),
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _openMacroGoalsAssistant,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 20,
+                  color: foregroundColor,
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context)
+                        .translate('chat_action_continue_macros_chat'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: foregroundColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 20,
+                  color: foregroundColor,
+                ),
+              ],
             ),
-            Icon(
-              Icons.arrow_forward_rounded,
-              size: 18,
-              color: AppTheme.onColor(accentColor),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -535,29 +518,34 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     required bool isDarkMode,
     required Color textColor,
   }) {
+    const radius = 24.0;
+
     return Container(
-      decoration: BoxDecoration(
-        color: _cardSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor(isDarkMode)),
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < rows.length; index++) ...[
-            _buildCalculationDataRow(
-              rows[index],
-              isDarkMode: isDarkMode,
-              textColor: textColor,
-            ),
-            if (index < rows.length - 1)
-              Divider(
-                height: 1,
-                thickness: 1,
-                indent: 68,
-                color: _borderColor(isDarkMode),
-              ),
-          ],
-        ],
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: radius),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            children: [
+              for (var index = 0; index < rows.length; index++) ...[
+                _buildCalculationDataRow(
+                  rows[index],
+                  isDarkMode: isDarkMode,
+                  textColor: textColor,
+                ),
+                if (index < rows.length - 1)
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    indent: 72,
+                    endIndent: 28,
+                    color: _borderColor(isDarkMode),
+                  ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -569,21 +557,20 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   }) {
     return InkWell(
       onTap: data.onTap,
-      borderRadius: BorderRadius.circular(20),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color:
-                    data.iconColor.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-                shape: BoxShape.circle,
+                    data.iconColor.withValues(alpha: isDarkMode ? 0.18 : 0.1),
+                borderRadius: BorderRadius.circular(13),
               ),
-              child: Icon(data.icon, color: data.iconColor, size: 20),
+              child: Icon(data.icon, color: data.iconColor, size: 23),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -594,6 +581,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                     data.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: TextStyle(
                       color: _mutedTextColor(isDarkMode),
                       fontSize: 12,
@@ -605,22 +593,24 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                     data.value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: TextStyle(
                       color: textColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      height: 1.2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.18,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     data.details,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: TextStyle(
                       color: _mutedTextColor(isDarkMode),
-                      fontSize: 13,
-                      height: 1.3,
+                      fontSize: 12,
+                      height: 1.2,
                     ),
                   ),
                 ],
@@ -629,8 +619,8 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             const SizedBox(width: 8),
             Icon(
               Icons.chevron_right_rounded,
-              size: 22,
-              color: textColor.withValues(alpha: 0.42),
+              size: 26,
+              color: _mutedTextColor(isDarkMode),
             ),
           ],
         ),
@@ -674,20 +664,20 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     );
   }
 
-  Color _cardSurfaceColor(bool isDarkMode) {
-    return isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
-  }
-
   Color _secondarySurfaceColor(bool isDarkMode) {
-    return isDarkMode ? const Color(0xFF2A2A2A) : AppTheme.surfaceColor;
+    return isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor;
   }
 
   Color _borderColor(bool isDarkMode) {
-    return isDarkMode ? Colors.white12 : Colors.black12;
+    return isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
   }
 
   Color _mutedTextColor(bool isDarkMode) {
-    return isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    return isDarkMode
+        ? AppTheme.darkMutedTextColor
+        : AppTheme.textSecondaryColor;
   }
 
   String _getGoalDetail(FitnessGoal goal, BuildContext context) {

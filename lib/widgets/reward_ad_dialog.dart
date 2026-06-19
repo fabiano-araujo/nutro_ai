@@ -10,70 +10,86 @@ import 'package:nutro_ai/i18n/app_localizations_extension.dart';
 class RewardAdDialog {
   static void show(BuildContext context, {VoidCallback? onRewardEarned}) {
     final parentContext = context;
-    final theme = Theme.of(parentContext);
+    const rewardAccentColor = Color(0xFFF6A11A);
 
     showDialog(
       context: parentContext,
       builder: (BuildContext context) {
         return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0),
+            borderRadius: BorderRadius.circular(24.0),
           ),
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 22),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+              gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  theme.colorScheme.primary.withValues(alpha: 0.8),
-                  theme.colorScheme.secondary.withValues(alpha: 0.9),
+                  Color(0xFFF0524D),
+                  Color(0xFFF7A82E),
                 ],
               ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Ícone animado
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: 86,
+                  height: 86,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: Colors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    Icons.card_giftcard,
-                    size: 50,
-                    color: Colors.white,
+                  child: Center(
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.stars_rounded,
+                        size: 34,
+                        color: Color(0xFFE65A51),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Título
+                const SizedBox(height: 24),
                 Text(
                   context.tr.translate('earn_free_credits'),
-                  style: TextStyle(
-                    fontSize: 20,
+                  style: const TextStyle(
+                    fontSize: 21,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
-
-                // Descrição
+                const SizedBox(height: 14),
                 Text(
                   context.tr.translate('watch_ad_earn'),
                   style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 17,
+                    height: 1.45,
+                    color: Colors.white.withValues(alpha: 0.92),
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
-
-                // Botões
+                const SizedBox(height: 28),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -87,9 +103,9 @@ class RewardAdDialog {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: theme.colorScheme.primary,
+                        foregroundColor: rewardAccentColor,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
@@ -98,16 +114,19 @@ class RewardAdDialog {
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.play_arrow, size: 18),
-                          SizedBox(width: 4),
+                          const Icon(Icons.play_arrow, size: 18),
+                          const SizedBox(width: 5),
                           Text(
                             context.tr.translate('watch_now'),
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).pop();
@@ -115,7 +134,33 @@ class RewardAdDialog {
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white.withValues(alpha: 0.8),
                       ),
-                      child: Text(context.tr.translate('cancel')),
+                      child: Text(
+                        context.tr.translate('cancel'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(parentContext).pushNamed('/subscription');
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: Text(
+                        context.tr.translate('subscribe_premium'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.white,
+                        ),
+                      ),
                     ),
                   ],
                 ),

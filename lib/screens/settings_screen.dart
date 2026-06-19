@@ -28,6 +28,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const double _listItemTitleFontSize = 14;
+  static const double _listItemSubtitleFontSize = 12;
+
   final StorageService _storageService = StorageService();
   String _selectedLanguage = 'en';
   ThemeMode _themeMode = ThemeMode.light;
@@ -35,17 +38,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       NotificationPreferences.defaults;
   String _appVersion = '--';
 
-  Color _surfaceColor(bool isDarkMode) =>
-      isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF3F3F3);
-
-  Color _inputFillColor(bool isDarkMode) =>
-      isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;
-
-  Color _subtleBorderColor(bool isDarkMode) =>
-      isDarkMode ? Colors.white12 : Colors.black12;
+  Color _primaryTextColor(bool isDarkMode) =>
+      isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
 
   Color _mutedTextColor(bool isDarkMode) =>
       isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+
+  Color _controlFillColor(bool isDarkMode) =>
+      isDarkMode ? AppTheme.darkComponentColor : AppTheme.backgroundColor;
+
+  Color _controlBorderColor(ColorScheme colorScheme) =>
+      colorScheme.outlineVariant.withValues(alpha: 0.18);
 
   @override
   void initState() {
@@ -576,219 +579,191 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final dietProvider = Provider.of<DietPlanProvider>(context);
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final textColor = _primaryTextColor(isDarkMode);
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness:
               isDarkMode ? Brightness.light : Brightness.dark,
           statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
         ),
-        child: SafeArea(
-          child: Column(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          tooltip: context.tr.translate('back'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          context.tr.translate('settings_title'),
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        centerTitle: true,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             children: [
-              _buildMinimalHeader(textColor),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 560),
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 36),
-                      children: [
-                        _buildSectionCard(
-                          theme: theme,
-                          colorScheme: colorScheme,
-                          title: context.tr.translate('account'),
-                          children: [
-                            _buildAccountRow(
-                              context.tr.translate('name'),
-                              authService.isAuthenticated
-                                  ? authService.currentUser?.name ??
-                                      context.tr.translate('user')
-                                  : context.tr.translate('not_logged_in'),
-                              Icons.person_outline,
-                              theme,
-                              onTap: authService.isAuthenticated
-                                  ? () => _showEditNameDialog(
-                                      authService.currentUser?.name ?? '')
-                                  : null,
-                            ),
-                            _buildAccountRow(
-                              context.tr.translate('age'),
-                              '${nutritionProvider.age}${context.tr.translate('years_suffix')}',
-                              Icons.cake_outlined,
-                              theme,
-                              onTap: () =>
-                                  _showEditAgeDialog(nutritionProvider.age),
-                            ),
-                            _buildAccountRow(
-                              context.tr.translate('gender'),
-                              nutritionProvider.sex == 'male'
-                                  ? context.tr.translate('male')
-                                  : context.tr.translate('female'),
-                              Icons.wc_outlined,
-                              theme,
-                              onTap: () =>
-                                  _showEditGenderDialog(nutritionProvider.sex),
-                            ),
-                            _buildAccountRow(
-                              context.tr.translate('height'),
-                              nutritionProvider.getFormattedHeight(),
-                              Icons.height,
-                              theme,
-                              onTap: () =>
-                                  _showEditHeightDialog(nutritionProvider),
-                            ),
-                            _buildAccountRow(
-                              context.tr.translate('weight'),
-                              nutritionProvider.getFormattedWeight(),
-                              Icons.monitor_weight_outlined,
-                              theme,
-                              onTap: () =>
-                                  _showEditWeightDialog(nutritionProvider),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
-                        _buildSectionCard(
-                          theme: theme,
-                          colorScheme: colorScheme,
-                          title: context.tr.translate('diet'),
-                          children: [
-                            _buildAccountRow(
-                              context.tr.translate('goal'),
-                              nutritionProvider.getFitnessGoalName(
-                                  nutritionProvider.fitnessGoal, context),
-                              Icons.track_changes,
-                              theme,
-                              onTap: () =>
-                                  _showEditGoalDialog(theme, nutritionProvider),
-                            ),
-                            _buildAccountRow(
-                              context.tr.translate('activity_level'),
-                              nutritionProvider.getActivityLevelName(
-                                  nutritionProvider.activityLevel, context),
-                              Icons.directions_run,
-                              theme,
-                              onTap: () => _showEditActivityLevelDialog(
-                                  theme, nutritionProvider),
-                            ),
-                            _buildAccountRow(
-                              context.tr.translate('diet'),
-                              nutritionProvider.getDietTypeName(
-                                  nutritionProvider.dietType, context),
-                              Icons.restaurant_menu,
-                              theme,
-                              onTap: () => _showEditDietTypeDialog(
-                                  theme, nutritionProvider),
-                            ),
-                            _buildDietAiModelRow(theme, dietProvider),
-                            _buildFormulaRow(theme),
-                            if (nutritionProvider.formula ==
-                                CalculationFormula.katchMcArdle)
-                              _buildAccountRow(
-                                context.tr.translate('body_fat_percentage'),
-                                nutritionProvider.bodyFat != null
-                                    ? '${nutritionProvider.bodyFat!.toStringAsFixed(1)}%'
-                                    : context.tr.translate('not_informed'),
-                                Icons.fitness_center,
-                                theme,
-                                onTap: () => _showBodyFatDialog(
-                                    theme, nutritionProvider),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
-                        _buildSectionCard(
-                          theme: theme,
-                          colorScheme: colorScheme,
-                          title: context.tr.translate('preferences'),
-                          children: [
-                            _buildThemeRow(theme, colorScheme),
-                            _buildLanguageRow(theme),
-                            _buildNotificationRow(theme, colorScheme),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
-                        _buildSectionCard(
-                          theme: theme,
-                          colorScheme: colorScheme,
-                          title: context.tr.translate('about'),
-                          children: [
-                            _buildNavigationRow(
-                              context.tr.translate('app_version'),
-                              _appVersion,
-                              Icons.info_outline,
-                              theme,
-                              onTap: null,
-                            ),
-                            _buildNavigationRow(
-                              context.tr.translate('privacy_policy'),
-                              '',
-                              Icons.privacy_tip_outlined,
-                              theme,
-                              onTap: () {},
-                            ),
-                            _buildNavigationRow(
-                              context.tr.translate('rate_app'),
-                              '',
-                              Icons.star_outline,
-                              theme,
-                              onTap: () {
-                                RateAppBottomSheet.show(context);
-                              },
-                            ),
-                            _buildNavigationRow(
-                              context.tr.translate('share_app'),
-                              '',
-                              Icons.share_outlined,
-                              theme,
-                              onTap: () async {
-                                await _shareApp();
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+              _buildSectionCard(
+                theme: theme,
+                colorScheme: colorScheme,
+                title: context.tr.translate('account'),
+                children: [
+                  _buildAccountRow(
+                    context.tr.translate('name'),
+                    authService.isAuthenticated
+                        ? authService.currentUser?.name ??
+                            context.tr.translate('user')
+                        : context.tr.translate('not_logged_in'),
+                    Icons.person_outline,
+                    theme,
+                    onTap: authService.isAuthenticated
+                        ? () => _showEditNameDialog(
+                            authService.currentUser?.name ?? '')
+                        : null,
                   ),
-                ),
+                  _buildAccountRow(
+                    context.tr.translate('age'),
+                    '${nutritionProvider.age}${context.tr.translate('years_suffix')}',
+                    Icons.cake_outlined,
+                    theme,
+                    onTap: () => _showEditAgeDialog(nutritionProvider.age),
+                  ),
+                  _buildAccountRow(
+                    context.tr.translate('gender'),
+                    nutritionProvider.sex == 'male'
+                        ? context.tr.translate('male')
+                        : context.tr.translate('female'),
+                    Icons.wc_outlined,
+                    theme,
+                    onTap: () => _showEditGenderDialog(nutritionProvider.sex),
+                  ),
+                  _buildAccountRow(
+                    context.tr.translate('height'),
+                    nutritionProvider.getFormattedHeight(),
+                    Icons.height,
+                    theme,
+                    onTap: () => _showEditHeightDialog(nutritionProvider),
+                  ),
+                  _buildAccountRow(
+                    context.tr.translate('weight'),
+                    nutritionProvider.getFormattedWeight(),
+                    Icons.monitor_weight_outlined,
+                    theme,
+                    onTap: () => _showEditWeightDialog(nutritionProvider),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              _buildSectionCard(
+                theme: theme,
+                colorScheme: colorScheme,
+                title: context.tr.translate('diet'),
+                children: [
+                  _buildAccountRow(
+                    context.tr.translate('goal'),
+                    nutritionProvider.getFitnessGoalName(
+                        nutritionProvider.fitnessGoal, context),
+                    Icons.track_changes,
+                    theme,
+                    onTap: () => _showEditGoalDialog(theme, nutritionProvider),
+                  ),
+                  _buildAccountRow(
+                    context.tr.translate('activity_level'),
+                    nutritionProvider.getActivityLevelName(
+                        nutritionProvider.activityLevel, context),
+                    Icons.directions_run,
+                    theme,
+                    onTap: () =>
+                        _showEditActivityLevelDialog(theme, nutritionProvider),
+                  ),
+                  _buildAccountRow(
+                    context.tr.translate('diet'),
+                    nutritionProvider.getDietTypeName(
+                        nutritionProvider.dietType, context),
+                    Icons.restaurant_menu,
+                    theme,
+                    onTap: () =>
+                        _showEditDietTypeDialog(theme, nutritionProvider),
+                  ),
+                  _buildDietAiModelRow(theme, dietProvider),
+                  _buildFormulaRow(theme),
+                  if (nutritionProvider.formula ==
+                      CalculationFormula.katchMcArdle)
+                    _buildAccountRow(
+                      context.tr.translate('body_fat_percentage'),
+                      nutritionProvider.bodyFat != null
+                          ? '${nutritionProvider.bodyFat!.toStringAsFixed(1)}%'
+                          : context.tr.translate('not_informed'),
+                      Icons.fitness_center,
+                      theme,
+                      onTap: () => _showBodyFatDialog(theme, nutritionProvider),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              _buildSectionCard(
+                theme: theme,
+                colorScheme: colorScheme,
+                title: context.tr.translate('preferences'),
+                children: [
+                  _buildThemeRow(theme, colorScheme),
+                  _buildLanguageRow(theme),
+                  _buildNotificationRow(theme, colorScheme),
+                ],
+              ),
+              const SizedBox(height: 22),
+              _buildSectionCard(
+                theme: theme,
+                colorScheme: colorScheme,
+                title: context.tr.translate('about'),
+                children: [
+                  _buildNavigationRow(
+                    context.tr.translate('app_version'),
+                    _appVersion,
+                    Icons.info_outline,
+                    theme,
+                    onTap: null,
+                  ),
+                  _buildNavigationRow(
+                    context.tr.translate('privacy_policy'),
+                    '',
+                    Icons.privacy_tip_outlined,
+                    theme,
+                    onTap: () {},
+                  ),
+                  _buildNavigationRow(
+                    context.tr.translate('rate_app'),
+                    '',
+                    Icons.star_outline,
+                    theme,
+                    onTap: () {
+                      RateAppBottomSheet.show(context);
+                    },
+                  ),
+                  _buildNavigationRow(
+                    context.tr.translate('share_app'),
+                    '',
+                    Icons.share_outlined,
+                    theme,
+                    onTap: () async {
+                      await _shareApp();
+                    },
+                  ),
+                ],
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildMinimalHeader(Color textColor) {
-    return SizedBox(
-      height: 52,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: textColor),
-              tooltip: context.tr.translate('back'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          Text(
-            context.tr.translate('settings_title'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -799,20 +774,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required List<Widget> children,
   }) {
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 10),
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
           child: Text(
             title,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w700,
-              color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.88),
+              color: _primaryTextColor(isDarkMode).withValues(alpha: 0.88),
             ),
           ),
         ),
-        ..._buildSectionChildren(children, colorScheme),
+        Container(
+          decoration: AppTheme.profileCardDecoration(isDarkMode),
+          child: Column(
+            children: [
+              const SizedBox(height: 6),
+              ..._buildSectionChildren(children, colorScheme),
+              const SizedBox(height: 6),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -824,29 +810,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     for (int i = 0; i < children.length; i++) {
       items.add(children[i]);
       if (i != children.length - 1) {
-        items.add(const SizedBox(height: 10));
+        items.add(_buildDivider(colorScheme));
       }
     }
 
     return items;
   }
 
+  Widget _buildDivider(ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 28),
+      child: Divider(
+        height: 1,
+        color: _controlBorderColor(colorScheme),
+      ),
+    );
+  }
+
   Widget _buildThemeRow(ThemeData theme, ColorScheme colorScheme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final textColor = _primaryTextColor(isDarkMode);
+    final mutedColor = _mutedTextColor(isDarkMode);
     final themeOptions = {
       ThemeMode.light: context.tr.translate('light_theme'),
       ThemeMode.dark: context.tr.translate('dark_theme'),
       ThemeMode.system: context.tr.translate('system_theme'),
     };
+    final currentTheme = themeOptions[_themeMode] ?? '';
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _inputFillColor(isDarkMode),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -855,13 +848,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildLeadingIcon(Icons.palette_outlined, theme),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  context.tr.translate('theme'),
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr.translate('theme'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: _listItemTitleFontSize,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                        height: 1.18,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      currentTheme,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: _listItemSubtitleFontSize,
+                        color: mutedColor,
+                        fontWeight: FontWeight.w500,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -880,29 +895,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       });
                       _saveSettings();
                     },
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(100),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      constraints: const BoxConstraints(minHeight: 34),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color:
-                            isSelected ? textColor : _surfaceColor(isDarkMode),
+                        color: isSelected
+                            ? colorScheme.primary
+                            : _controlFillColor(isDarkMode),
                         borderRadius: BorderRadius.circular(100),
                         border: Border.all(
                           color: isSelected
-                              ? textColor
-                              : _subtleBorderColor(isDarkMode),
+                              ? colorScheme.primary
+                              : _controlBorderColor(colorScheme),
                         ),
                       ),
-                      child: Text(
-                        entry.value,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isSelected
-                              ? AppTheme.onColor(textColor)
-                              : textColor.withValues(alpha: 0.76),
-                          fontWeight: FontWeight.w600,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          entry.value,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected
+                                ? AppTheme.onColor(colorScheme.primary)
+                                : textColor.withValues(alpha: 0.78),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -917,21 +941,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLeadingIcon(IconData icon, ThemeData theme) {
-    final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final iconColor = theme.colorScheme.primary;
 
     return Container(
-      width: 34,
-      height: 34,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: _surfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        color: iconColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(13),
       ),
       child: Icon(
         icon,
-        size: 18,
-        color: textColor,
+        size: 23,
+        color: iconColor,
       ),
     );
   }
@@ -1207,57 +1229,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isAction = false,
   }) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final textColor = _primaryTextColor(isDarkMode);
     final mutedColor = _mutedTextColor(isDarkMode);
+    final valueColor = isAction ? theme.colorScheme.primary : mutedColor;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: _inputFillColor(isDarkMode),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: value.isNotEmpty ? 9 : 12,
           ),
           child: Row(
             children: [
               _buildLeadingIcon(icon, theme),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: _listItemTitleFontSize,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                        height: 1.18,
+                      ),
+                    ),
+                    if (value.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        style: TextStyle(
+                          fontSize: _listItemSubtitleFontSize,
+                          color: valueColor,
+                          fontWeight:
+                              isAction ? FontWeight.w600 : FontWeight.w500,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (value.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8, right: 4),
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isAction ? textColor : mutedColor,
-                      fontWeight: isAction ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
-                ),
+              const SizedBox(width: 8),
               if (onTap != null)
                 Icon(
                   Icons.chevron_right_rounded,
-                  size: 20,
-                  color: mutedColor.withValues(alpha: 0.55),
+                  size: 26,
+                  color: mutedColor,
                 ),
             ],
           ),

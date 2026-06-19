@@ -392,6 +392,25 @@ final Map<String, String> itITTranslations = {
       'Sblocca tutto il potenziale di Nutro AI con i nostri piani premium',
   'subscription_headline':
       'Raggiungi i tuoi obiettivi {highlight} più velocemente',
+  'subscription_hero_title_prefix': 'Il tuo miglior\nrisultato inizia\n',
+  'subscription_hero_title_highlight': 'ora.',
+  'subscription_hero_subtitle':
+      'Raggiungi i tuoi obiettivi fino a 4.2x più velocemente con Nutro AI Premium.',
+  'subscription_result_prefix': 'Risultato dettagliato\nin massimo ',
+  'subscription_result_time': '60 secondi',
+  'subscription_choose_plan': 'Scegli il tuo piano',
+  'subscription_most_chosen': 'PIÙ SCELTO',
+  'subscription_annual_card_description':
+      'Massimo risultato con il miglior rapporto qualità-prezzo',
+  'subscription_monthly_card_description':
+      'Flessibilità per evolvere al tuo ritmo',
+  'subscription_charged_annually': 'Addebitato {price} / anno',
+  'subscription_economize_percentage': 'RISPARMIA {percentage}%',
+  'subscription_annual_savings_amount': 'R\$ 100,00 di risparmio',
+  'subscription_annual_savings_compare': 'rispetto al piano mensile',
+  'subscription_guarantee_title': '7 giorni di garanzia',
+  'subscription_guarantee_subtitle':
+      'Non soddisfatto? Rimborsiamo il 100% del tuo denaro.',
   'show_more_plans': 'Mostra più piani',
   'hide_other_plans': 'Mostra meno piani',
   'secure_google_play':
@@ -652,6 +671,7 @@ final Map<String, String> itITTranslations = {
   'allergen_shellfish': 'Crostacei',
   'allergen_soy': 'Soia',
   'add': 'Aggiungi',
+  'remove': 'Rimuovi',
   'meals': 'Pasti',
   'protein_full': 'Proteina',
   'fat': 'Grassi',
@@ -715,6 +735,7 @@ final Map<String, String> itITTranslations = {
   'edit_foods': 'Modifica alimenti',
   'edit_food': 'Modifica Alimento',
   'food_name': 'Nome Alimento',
+  'food_and_amount': 'Alimento e quantità',
   'amount': 'Quantità',
   'unit': 'Unità',
   'add_to_meal': 'Aggiungi al pasto',
@@ -757,27 +778,31 @@ final Map<String, String> itITTranslations = {
   // Diet Mode Selector
   'weekly_diet': 'Dieta Settimanale',
   'daily_diet': 'Dieta Giornaliera',
-  'replace_all_meals': 'Sostituisci Tutti i Pasti',
+  'replace_all_meals': 'Sostituisci pasti',
   'replace_all_meals_weekly_confirm':
       'Vuoi generare un nuovo piano dietetico settimanale?',
   'replace_all_meals_daily_confirm':
       'Vuoi generare un nuovo piano dietetico per questo giorno?',
   'replace_all_meals_weekly_notes_description':
-      'Vuoi generare un nuovo piano settimanale? Se vuoi, indica cosa ti è piaciuto, cosa no o eventuali restrizioni.',
+      'Scegli modifiche rapide o genera subito.',
   'replace_all_meals_daily_notes_description':
-      'Vuoi generare un nuovo piano per questo giorno? Se vuoi, indica cosa ti è piaciuto, cosa no o eventuali restrizioni.',
-  'replace_all_meals_notes_hint':
-      'Es: non mi è piaciuto il pesce, evitare latte, includere riso e pollo',
+      'Scegli modifiche rapide o genera subito.',
+  'replace_all_meals_notes_hint': 'Es: mantenere riso e pollo',
   'replace_meal_notes_title': 'Sostituisci {meal}',
   'replace_meal_notes_description':
-      'Descrivi cosa vuoi cambiare in questo pasto. Puoi citare alimenti che non ti sono piaciuti o che vuoi includere.',
-  'replace_meal_notes_hint':
-      'Es: sostituire uova con pollo, senza banana, qualcosa di più leggero',
-  'replace_meal_confirm': 'Sostituisci pasto',
-  'replacement_notes_field_label': 'Note (opzionale)',
-  'replacement_notes_optional_help':
-      'Puoi lasciarlo vuoto e lasciare decidere all’IA.',
-  'yes_generate_new': 'Sì, Genera Nuovo',
+      'Scegli una modifica o aggiungi un dettaglio.',
+  'replace_meal_notes_hint': 'Es: senza banana',
+  'replace_meal_confirm': 'Sostituisci',
+  'replacement_quick_adjustments': 'Modifiche rapide',
+  'replacement_chip_lighter': 'Più leggero',
+  'replacement_chip_lactose_free': 'Senza lattosio',
+  'replacement_chip_gluten_free': 'Senza glutine',
+  'replacement_chip_vegetarian': 'Vegetariano',
+  'replacement_chip_vegan': 'Vegano',
+  'replacement_chip_budget': 'Più economico',
+  'replacement_notes_field_label': 'Altro dettaglio',
+  'replacement_notes_optional_help': 'Opzionale.',
+  'yes_generate_new': 'Genera nuovo',
   'no_diet_plan_for_day': 'Nessun piano dietetico per questo giorno',
   'generate_diet_plan': 'Genera Piano Dietetico',
   'diet_generation_insufficient_credits_title': 'Crediti insufficienti',
@@ -797,6 +822,8 @@ final Map<String, String> itITTranslations = {
   // Tracciamento attività
   'automatic_tracking_apps_title': 'App di tracciamento automatico',
   'tracking_activities_title': 'Attività',
+  'water': 'Acqua',
+  'water_glasses': 'bicchieri',
   'tracking_activity_kcal_spent': '0 kcal  Spese',
   'tracking_kcal_spent_suffix': 'kcal  Spese',
   'tracking_activity_card_message':

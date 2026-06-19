@@ -48,7 +48,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLastGeneratedImage();
+    _loadLastGeneratedPreview();
   }
 
   @override
@@ -80,6 +80,10 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
 
     final nextImageUrl = provider.generatedImageUrl ?? _generatedImageUrl;
     final nextIsGenerating = provider.isGenerating;
+    if (nextImageUrl != null && _sourceImageBytes == null) {
+      unawaited(_loadStoredSourceImage());
+    }
+
     if (_generatedImageUrl == nextImageUrl &&
         _isGenerating == nextIsGenerating) {
       return;
@@ -91,7 +95,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     });
   }
 
-  Future<void> _loadLastGeneratedImage() async {
+  Future<void> _loadLastGeneratedPreview() async {
     final userId = context.read<AuthService>().currentUser?.id;
     if (userId == null) return;
 
@@ -100,10 +104,34 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
         context.read<ProfileShapePreviewProvider>().generatedImageUrl;
     final lastUrl = providerUrl ??
         prefs.getString(ProfileShapePreviewProvider.storageKey(userId));
-    if (!mounted || lastUrl == null || lastUrl.trim().isEmpty) return;
+    final sourceBytes = _decodeStoredSourceImage(
+      prefs.getString(_sourceImageStorageKey(userId)),
+    );
+    if (!mounted) return;
+
+    final hasGeneratedUrl = lastUrl != null && lastUrl.trim().isNotEmpty;
+    if (!hasGeneratedUrl && sourceBytes == null) return;
 
     setState(() {
-      _generatedImageUrl = lastUrl;
+      if (hasGeneratedUrl) {
+        _generatedImageUrl = lastUrl;
+      }
+      _sourceImageBytes ??= sourceBytes;
+    });
+  }
+
+  Future<void> _loadStoredSourceImage() async {
+    final userId = context.read<AuthService>().currentUser?.id;
+    if (userId == null || _sourceImageBytes != null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final sourceBytes = _decodeStoredSourceImage(
+      prefs.getString(_sourceImageStorageKey(userId)),
+    );
+    if (!mounted || sourceBytes == null || _sourceImageBytes != null) return;
+
+    setState(() {
+      _sourceImageBytes = sourceBytes;
     });
   }
 
@@ -128,7 +156,9 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
 
       setState(() {
         _sourceImageBytes = bytes;
+        _generatedImageUrl = null;
       });
+      await _persistSourceImage(bytes, clearGeneratedPreview: true);
     } catch (e) {
       _showSnackBar(context.tr.translate('profile_shape_select_image_error'));
     } finally {
@@ -159,6 +189,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     });
 
     try {
+      await _persistSourceImage(imageBytes);
       final data =
           await context.read<ProfileShapePreviewProvider>().startGeneration(
                 userId: userId,
@@ -180,6 +211,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
       if (!mounted) return;
 
       setState(() {
+        _sourceImageBytes = imageBytes;
         _generatedImageUrl = imageUrl;
       });
       _showSnackBar(context.tr.translate('profile_shape_generate_success'));
@@ -429,6 +461,46 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     );
   }
 
+  static String _sourceImageStorageKey(int userId) =>
+      'profile_shape_source_image_user_$userId';
+
+  Future<void> _persistSourceImage(
+    Uint8List bytes, {
+    bool clearGeneratedPreview = false,
+  }) async {
+    final authService = context.read<AuthService>();
+    final shapeProvider = clearGeneratedPreview
+        ? context.read<ProfileShapePreviewProvider>()
+        : null;
+    final userId = authService.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          _sourceImageStorageKey(userId), base64Encode(bytes));
+      if (clearGeneratedPreview) {
+        await prefs.remove(ProfileShapePreviewProvider.storageKey(userId));
+        await shapeProvider?.clearGeneratedPreview(userId: userId);
+      }
+    } catch (e) {
+      debugPrint('Erro ao salvar foto original do shape: $e');
+    }
+  }
+
+  Uint8List? _decodeStoredSourceImage(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+
+    try {
+      final commaIndex = raw.indexOf(',');
+      final payload = commaIndex >= 0 ? raw.substring(commaIndex + 1) : raw;
+      return base64Decode(payload);
+    } catch (e) {
+      debugPrint('Erro ao carregar foto original do shape: $e');
+      return null;
+    }
+  }
+
   void _toggleHowItWorks() {
     setState(() {
       _showInfoChip = !_showInfoChip;
@@ -575,9 +647,9 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
           const SizedBox(height: 16),
           _buildTransformationPreviewCard(primary, isDarkMode),
           const SizedBox(height: 20),
-          _buildUploadCard(theme, primary, cardColor, isDarkMode),
-          if (_sourceImageBytes != null) ...[
-            const SizedBox(height: 16),
+          if (_sourceImageBytes == null)
+            _buildUploadCard(theme, primary, cardColor, isDarkMode)
+          else ...[
             _buildSelectedPhotoCard(
               theme,
               colorScheme,

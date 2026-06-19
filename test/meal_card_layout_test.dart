@@ -67,6 +67,71 @@ void main() {
     expect(find.text('23.0'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('editing all foods applies typed food name immediately',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Meal? updatedMeal;
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => MealTypesProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+          ),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: 360,
+                child: MealCard(
+                  meal: _overflowRegressionMeal(),
+                  onMealUpdated: (meal) => updatedMeal = meal,
+                  onDelete: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Editar alimentos'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byType(TextField).first, '200 g arroz integral');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Salvar'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(updatedMeal, isNotNull);
+    expect(updatedMeal!.foods.first.name, 'arroz integral');
+    expect(updatedMeal!.foods.first.amount, '200 g');
+  });
 }
 
 Meal _overflowRegressionMeal() {

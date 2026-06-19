@@ -195,6 +195,29 @@ class FeedService {
     }
   }
 
+  static Future<bool> deleteActivity({
+    required String token,
+    required int activityId,
+  }) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/feed/$activityId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) return true;
+
+      print('[FeedService] Erro ao excluir publicação: ${response.body}');
+      return false;
+    } catch (e) {
+      print('[FeedService] Erro ao excluir publicação: $e');
+      return false;
+    }
+  }
+
   static Future<FeedActivity?> publishProfileShapePreview({
     required String token,
     required String afterImageUrl,

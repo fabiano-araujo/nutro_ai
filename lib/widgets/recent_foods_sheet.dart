@@ -220,8 +220,7 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
     final messenger = ScaffoldMessenger.maybeOf(context);
     messenger?.showSnackBar(
       SnackBar(
-        content:
-            Text(ok ? _tr('meal_deleted') : _tr('something_went_wrong')),
+        content: Text(ok ? _tr('meal_deleted') : _tr('something_went_wrong')),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -645,98 +644,98 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
         },
         onLongPress: () => _showFoodOptions(food, isRecent: isRecent),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _EmojiBadge(
-                emoji: food.emoji ?? '🍽️',
-                isDarkMode: isDarkMode,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      food.name,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      food.usageCount != null && food.usageCount! > 1
-                          ? _tr('used_times',
-                              {'count': food.usageCount.toString()})
-                          : _tr('ready_to_add'),
-                      style: TextStyle(
-                        color: subtitleColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _EmojiBadge(
+                  emoji: food.emoji ?? '🍽️',
+                  isDarkMode: isDarkMode,
                 ),
-              ),
-              const SizedBox(width: 8),
-              _CompactActionButton(
-                label: _tr('add'),
-                icon: Icons.add_rounded,
-                isDarkMode: isDarkMode,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _NutritionInfoChip(
-                label: _tr('serving'),
-                value: _formatServing(food.baseAmount, food.baseUnit),
-                icon: Icons.scale_rounded,
-                color: isDarkMode
-                    ? const Color(0xFFAEB7CE)
-                    : AppTheme.textSecondaryColor,
-                isDarkMode: isDarkMode,
-              ),
-              _NutritionInfoChip(
-                label: _tr('calories'),
-                value: '${food.calories} kcal',
-                icon: MacroTheme.caloriesIcon,
-                color: MacroTheme.caloriesColor,
-                isDarkMode: isDarkMode,
-              ),
-              _NutritionInfoChip(
-                label: _tr('protein_full'),
-                value: '${_formatNumber(food.protein)} g',
-                icon: MacroTheme.proteinIcon,
-                color: MacroTheme.proteinColor,
-                isDarkMode: isDarkMode,
-              ),
-              _NutritionInfoChip(
-                label: _tr('carbs'),
-                value: '${_formatNumber(food.carbs)} g',
-                icon: MacroTheme.carbsIcon,
-                color: MacroTheme.carbsColor,
-                isDarkMode: isDarkMode,
-              ),
-              _NutritionInfoChip(
-                label: _tr('fat'),
-                value: '${_formatNumber(food.fat)} g',
-                icon: MacroTheme.fatIcon,
-                color: MacroTheme.fatColor,
-                isDarkMode: isDarkMode,
-              ),
-            ],
-          ),
-        ],
-      ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        food.name,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        food.usageCount != null && food.usageCount! > 1
+                            ? _tr('used_times',
+                                {'count': food.usageCount.toString()})
+                            : _tr('ready_to_add'),
+                        style: TextStyle(
+                          color: subtitleColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _CompactActionButton(
+                  label: _tr('add'),
+                  icon: Icons.add_rounded,
+                  isDarkMode: isDarkMode,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _NutritionInfoChip(
+                  label: _tr('serving'),
+                  value: _formatServing(food.baseAmount, food.baseUnit),
+                  icon: Icons.scale_rounded,
+                  color: isDarkMode
+                      ? const Color(0xFFAEB7CE)
+                      : AppTheme.textSecondaryColor,
+                  isDarkMode: isDarkMode,
+                ),
+                _NutritionInfoChip(
+                  label: _tr('calories'),
+                  value: '${food.calories} kcal',
+                  icon: MacroTheme.caloriesIcon,
+                  color: MacroTheme.caloriesColor,
+                  isDarkMode: isDarkMode,
+                ),
+                _NutritionInfoChip(
+                  label: _tr('protein_full'),
+                  value: '${_formatNumber(food.protein)} g',
+                  icon: MacroTheme.proteinIcon,
+                  color: MacroTheme.proteinColor,
+                  isDarkMode: isDarkMode,
+                ),
+                _NutritionInfoChip(
+                  label: _tr('carbs'),
+                  value: '${_formatNumber(food.carbs)} g',
+                  icon: MacroTheme.carbsIcon,
+                  color: MacroTheme.carbsColor,
+                  isDarkMode: isDarkMode,
+                ),
+                _NutritionInfoChip(
+                  label: _tr('fat'),
+                  value: '${_formatNumber(food.fat)} g',
+                  icon: MacroTheme.fatIcon,
+                  color: MacroTheme.fatColor,
+                  isDarkMode: isDarkMode,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -855,99 +854,99 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
         },
         onLongPress: () => _showMealOptions(meal),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _EmojiBadge(
-                emoji: meal.typeEmoji,
-                isDarkMode: isDarkMode,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      foodNames,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: subtitleColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _CompactActionButton(
-                label: _tr('repeat'),
-                icon: Icons.replay_rounded,
-                isDarkMode: isDarkMode,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _NutritionInfoChip(
-                label: _tr('calories'),
-                value: '${meal.calories} kcal',
-                icon: MacroTheme.caloriesIcon,
-                color: MacroTheme.caloriesColor,
-                isDarkMode: isDarkMode,
-              ),
-              _NutritionInfoChip(
-                label: _tr('protein_full'),
-                value: '${_formatNumber(meal.protein)} g',
-                icon: MacroTheme.proteinIcon,
-                color: MacroTheme.proteinColor,
-                isDarkMode: isDarkMode,
-              ),
-              _NutritionInfoChip(
-                label: _tr('carbs'),
-                value: '${_formatNumber(meal.carbs)} g',
-                icon: MacroTheme.carbsIcon,
-                color: MacroTheme.carbsColor,
-                isDarkMode: isDarkMode,
-              ),
-              _NutritionInfoChip(
-                label: _tr('fat'),
-                value: '${_formatNumber(meal.fat)} g',
-                icon: MacroTheme.fatIcon,
-                color: MacroTheme.fatColor,
-                isDarkMode: isDarkMode,
-              ),
-              if (dateStr.isNotEmpty)
-                _NutritionInfoChip(
-                  label: _tr('date'),
-                  value: dateStr,
-                  icon: Icons.event_rounded,
-                  color: isDarkMode
-                      ? const Color(0xFFAEB7CE)
-                      : AppTheme.textSecondaryColor,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _EmojiBadge(
+                  emoji: meal.typeEmoji,
                   isDarkMode: isDarkMode,
                 ),
-            ],
-          ),
-        ],
-      ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        foodNames,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: subtitleColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _CompactActionButton(
+                  label: _tr('repeat'),
+                  icon: Icons.replay_rounded,
+                  isDarkMode: isDarkMode,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _NutritionInfoChip(
+                  label: _tr('calories'),
+                  value: '${meal.calories} kcal',
+                  icon: MacroTheme.caloriesIcon,
+                  color: MacroTheme.caloriesColor,
+                  isDarkMode: isDarkMode,
+                ),
+                _NutritionInfoChip(
+                  label: _tr('protein_full'),
+                  value: '${_formatNumber(meal.protein)} g',
+                  icon: MacroTheme.proteinIcon,
+                  color: MacroTheme.proteinColor,
+                  isDarkMode: isDarkMode,
+                ),
+                _NutritionInfoChip(
+                  label: _tr('carbs'),
+                  value: '${_formatNumber(meal.carbs)} g',
+                  icon: MacroTheme.carbsIcon,
+                  color: MacroTheme.carbsColor,
+                  isDarkMode: isDarkMode,
+                ),
+                _NutritionInfoChip(
+                  label: _tr('fat'),
+                  value: '${_formatNumber(meal.fat)} g',
+                  icon: MacroTheme.fatIcon,
+                  color: MacroTheme.fatColor,
+                  isDarkMode: isDarkMode,
+                ),
+                if (dateStr.isNotEmpty)
+                  _NutritionInfoChip(
+                    label: _tr('date'),
+                    value: dateStr,
+                    icon: Icons.event_rounded,
+                    color: isDarkMode
+                        ? const Color(0xFFAEB7CE)
+                        : AppTheme.textSecondaryColor,
+                    isDarkMode: isDarkMode,
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1154,7 +1153,13 @@ class _NutritionInfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 16),
+          MacroTheme.iconBadge(
+            icon: icon,
+            color: color,
+            isDarkMode: isDarkMode,
+            size: 24,
+            iconSize: 13,
+          ),
           const SizedBox(width: 6),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

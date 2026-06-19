@@ -9,6 +9,7 @@ class FeedProvider extends ChangeNotifier {
   String? _error;
 
   List<FeedActivity> _activities = [];
+  final Set<int> _hiddenActivityIds = {};
   int _currentPage = 1;
   bool _hasMore = true;
 
@@ -30,6 +31,7 @@ class FeedProvider extends ChangeNotifier {
   void clearAuth() {
     _token = null;
     _activities = [];
+    _hiddenActivityIds.clear();
     _currentPage = 1;
     _hasMore = true;
     notifyListeners();
@@ -44,8 +46,14 @@ class FeedProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _activities = await FeedService.getFeed(token: _token!, page: 1);
-      _hasMore = _activities.length >= 20;
+      final loadedActivities = await FeedService.getFeed(
+        token: _token!,
+        page: 1,
+      );
+      _activities = loadedActivities
+          .where((activity) => !_hiddenActivityIds.contains(activity.id))
+          .toList();
+      _hasMore = loadedActivities.length >= 20;
       _error = null;
     } catch (e) {
       _error = 'Erro ao carregar feed: $e';
@@ -69,8 +77,12 @@ class FeedProvider extends ChangeNotifier {
         page: nextPage,
       );
 
+      final visibleActivities = newActivities
+          .where((activity) => !_hiddenActivityIds.contains(activity.id))
+          .toList();
+
       if (newActivities.isNotEmpty) {
-        _activities.addAll(newActivities);
+        _activities.addAll(visibleActivities);
         _currentPage = nextPage;
         _hasMore = newActivities.length >= 20;
       } else {
@@ -189,6 +201,38 @@ class FeedProvider extends ChangeNotifier {
     } else {
       await addReaction(activityId, emoji);
     }
+  }
+
+  void hideActivity(int activityId) {
+    _hiddenActivityIds.add(activityId);
+    _activities.removeWhere((activity) => activity.id == activityId);
+    notifyListeners();
+  }
+
+  void removeActivitiesByUser(int userId) {
+    _activities.removeWhere((activity) => activity.user.id == userId);
+    notifyListeners();
+  }
+
+  Future<bool> deleteActivity(int activityId) async {
+    if (_token == null) return false;
+
+    final success = await FeedService.deleteActivity(
+      token: _token!,
+      activityId: activityId,
+    );
+
+    if (success) {
+      _activities.removeWhere((activity) => activity.id == activityId);
+      _hiddenActivityIds.remove(activityId);
+      _error = null;
+      notifyListeners();
+      return true;
+    }
+
+    _error = 'Erro ao excluir publicação';
+    notifyListeners();
+    return false;
   }
 
   Future<bool> publishProfileShapePreview({

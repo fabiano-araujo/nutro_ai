@@ -263,7 +263,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       // Carregar mensagens da data inicial (se houver)
       print(
           '📅 NutritionAssistantController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
-      _loadMessagesForDate(_selectedDate);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_disposed) return;
+        print(
+            '[CHAT_LOAD_PERF] initial_load_after_first_frame date=${_formatDateKey(_selectedDate)}');
+        unawaited(_loadMessagesForDate(_selectedDate));
+      });
       // notifyListeners será chamado por _loadMessagesForDate após o carregamento
     }
   }
@@ -2732,9 +2737,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
     // Atualizar a data selecionada
     _selectedDate = DateTime(newDate.year, newDate.month, newDate.day);
+    _messages = [];
+    _isLoadingMessages = true;
+    notifyListeners();
 
     // Carregar mensagens da nova data
-    await _loadMessagesForDate(_selectedDate);
+    await _loadMessagesForDate(_selectedDate, showLoading: true);
 
     notifyListeners();
   }
@@ -2798,17 +2806,26 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
   }
 
   /// Carrega as mensagens de uma data específica
-  Future<void> _loadMessagesForDate(DateTime date) async {
-    _isLoadingMessages = true;
-    if (!_disposed) {
-      notifyListeners();
+  Future<void> _loadMessagesForDate(
+    DateTime date, {
+    bool showLoading = false,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    if (showLoading) {
+      _isLoadingMessages = true;
+      if (!_disposed) {
+        notifyListeners();
+      }
     }
-
     try {
       final dateKey = _formatDateKey(date);
       final storageKey = _buildStorageKey(dateKey);
+      print(
+          '[CHAT_LOAD_PERF] load_messages_start date=$dateKey scope=$storageScope showLoading=$showLoading');
 
       var data = await _storageService.getData(storageKey);
+      print(
+          '[CHAT_LOAD_PERF] primary_cache_read elapsedMs=${stopwatch.elapsedMilliseconds} hasMessages=${_hasMessages(data)}');
 
       // Fallback de "scope": a conversa pode ter sido salva sob outro escopo
       // de armazenamento (ex.: 'guest', gravado antes de o login terminar de
@@ -2825,6 +2842,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       }
 
       if (!_hasMessages(data)) {
+        if (!_isLoadingMessages) {
+          _isLoadingMessages = true;
+          if (!_disposed) {
+            notifyListeners();
+          }
+        }
         final restored = await DailyChatSyncService.instance
             .restoreDateFromServer(dateKey, scope: storageScope);
         if (restored) {
@@ -2836,6 +2859,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         print(
             '📭 NutritionAssistantController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
+        print(
+            '[CHAT_LOAD_PERF] load_messages_empty elapsedMs=${stopwatch.elapsedMilliseconds} date=$dateKey');
         return;
       }
 
@@ -2881,6 +2906,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
       print(
           '✅ NutritionAssistantController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
+      print(
+          '[CHAT_LOAD_PERF] load_messages_done elapsedMs=${stopwatch.elapsedMilliseconds} date=$dateKey count=${_messages.length}');
     } catch (e) {
       print(
           '❌ NutritionAssistantController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');

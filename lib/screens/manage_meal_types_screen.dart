@@ -623,9 +623,6 @@ class _MealTypeCard extends StatelessWidget {
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final mutedColor = textColor.withValues(alpha: 0.62);
-    final actionBackground = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : AppTheme.surfaceColor;
     final deleteColor = isDarkMode ? Color(0xFFFFB4AB) : AppTheme.errorColor;
 
     return Card(
@@ -722,31 +719,22 @@ class _MealTypeCard extends StatelessWidget {
             // Edit button
             IconButton(
               style: IconButton.styleFrom(
-                backgroundColor: actionBackground,
                 foregroundColor: textColor.withValues(alpha: 0.88),
-                fixedSize: Size(40, 40),
-                minimumSize: Size(40, 40),
+                fixedSize: Size(36, 40),
+                minimumSize: Size(36, 40),
                 padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
               ),
               icon: Icon(Icons.edit_rounded, size: 20),
               onPressed: onEdit,
             ),
-            SizedBox(width: 4),
 
             // Delete button
             IconButton(
               style: IconButton.styleFrom(
-                backgroundColor: deleteColor.withValues(alpha: 0.12),
                 foregroundColor: deleteColor,
-                fixedSize: Size(40, 40),
-                minimumSize: Size(40, 40),
+                fixedSize: Size(36, 40),
+                minimumSize: Size(36, 40),
                 padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
               ),
               icon: Icon(Icons.delete_rounded, size: 20),
               onPressed: onDelete,

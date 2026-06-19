@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 ThemeData get lightTheme => ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.light(
-        primary: const Color(0xFF66BB9A),
-        secondary: const Color(0xFF39D2C0),
+        primary: const Color(0xFF26B5AD),
+        secondary: const Color(0xFF4DD4CB),
         tertiary: const Color(0xFFEE8B60),
         surface: const Color(0xFFF1F4F8),
         error: const Color(0xFFFF5963),
@@ -18,10 +18,10 @@ ThemeData get lightTheme => ThemeData(
       ),
       brightness: Brightness.light,
       navigationBarTheme: NavigationBarThemeData(
-        indicatorColor: const Color(0xFF66BB9A).withOpacity(0.2),
+        indicatorColor: const Color(0xFF26B5AD).withOpacity(0.16),
         iconTheme: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return const IconThemeData(color: Color(0xFF66BB9A));
+            return const IconThemeData(color: Color(0xFF26B5AD));
           }
           return null;
         }),
@@ -29,8 +29,8 @@ ThemeData get lightTheme => ThemeData(
           if (states.contains(MaterialState.selected)) {
             return GoogleFonts.inter(
               fontSize: 12.0,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF66BB9A),
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF26B5AD),
             );
           }
           return GoogleFonts.inter(
@@ -106,8 +106,8 @@ ThemeData get lightTheme => ThemeData(
 ThemeData get darkTheme => ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.dark(
-        primary: const Color(0xFF66BB9A),
-        secondary: const Color(0xFF39D2C0),
+        primary: const Color(0xFF66DED6),
+        secondary: const Color(0xFFBDEFEA),
         tertiary: const Color(0xFFEE8B60),
         surface: const Color(0xFF1E1D23),
         background: const Color(0xFF15141A),
@@ -121,10 +121,10 @@ ThemeData get darkTheme => ThemeData(
       ),
       brightness: Brightness.dark,
       navigationBarTheme: NavigationBarThemeData(
-        indicatorColor: const Color(0xFF66BB9A).withOpacity(0.2),
+        indicatorColor: const Color(0xFF66DED6).withOpacity(0.18),
         iconTheme: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return const IconThemeData(color: Color(0xFF66BB9A));
+            return const IconThemeData(color: Color(0xFF66DED6));
           }
           return null;
         }),
@@ -132,8 +132,8 @@ ThemeData get darkTheme => ThemeData(
           if (states.contains(MaterialState.selected)) {
             return GoogleFonts.inter(
               fontSize: 12.0,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF66BB9A),
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF66DED6),
             );
           }
           return GoogleFonts.inter(

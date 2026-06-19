@@ -31,6 +31,7 @@ import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/food_history_provider.dart';
+import '../providers/profile_shape_preview_provider.dart';
 import '../models/user_model.dart';
 import '../theme/app_theme.dart';
 import '../utils/fabiano_access.dart';
@@ -108,7 +109,7 @@ class _MainNavigationState extends State<MainNavigation> {
   // ID da conversa livre atual (null = nova conversa)
   String? _currentFreeChatId;
 
-  // Índice da aba selecionada no BottomNavigationBar
+  // Índice da aba selecionada na NavigationBar
   int _selectedIndex = 0;
 
   // Controle para evitar chamadas duplicadas de auth
@@ -120,6 +121,7 @@ class _MainNavigationState extends State<MainNavigation> {
   _GuestLocalDataSnapshot? _pendingGuestLocalData;
   Map<String, dynamic> _latestAppState = const <String, dynamic>{};
   final UserAppStateService _appStateService = UserAppStateService();
+  Stopwatch? _authBootstrapStopwatch;
 
   @override
   void initState() {
@@ -141,6 +143,14 @@ class _MainNavigationState extends State<MainNavigation> {
       // Em modo desenvolvedor, oferecer login automático na conta de testes.
       _maybeOfferDevAutoLogin();
     });
+  }
+
+  void _logChatBootPerf(String event, [Map<String, Object?> data = const {}]) {
+    final elapsedMs = _authBootstrapStopwatch?.elapsedMilliseconds ?? 0;
+    final payload = data.isEmpty
+        ? ''
+        : ' ${data.entries.map((entry) => '${entry.key}=${entry.value}').join(' ')}';
+    debugPrint('[CHAT_BOOT_PERF] main +${elapsedMs}ms $event$payload');
   }
 
   /// Em builds de debug (kDebugMode), pergunta se o desenvolvedor quer entrar
@@ -262,6 +272,11 @@ class _MainNavigationState extends State<MainNavigation> {
           return;
         }
         _configuredAuthKey = authKey;
+        _authBootstrapStopwatch = Stopwatch()..start();
+        _logChatBootPerf('auth_bootstrap_start', {
+          'userId': userId,
+          'restoredSession': authService.authenticatedFromStoredSession,
+        });
         _setAuthenticatedAppStateBootstrap(true);
 
         print('[🔄 AUTH_DATA] ========== LOGIN DETECTADO ==========');
@@ -293,6 +308,7 @@ class _MainNavigationState extends State<MainNavigation> {
       _configuredAuthKey = null;
       _initialGoalsPromptAuthKey = null;
       _isBootstrappingAuthenticatedAppState = false;
+      _authBootstrapStopwatch = null;
       _pendingGuestLocalData = null;
       _latestAppState = const <String, dynamic>{};
       print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
@@ -316,6 +332,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
       dietPlanProvider.clearAuth();
       print('[🔄 AUTH_DATA] ✅ DietPlanProvider limpo');
+
+      unawaited(context.read<ProfileShapePreviewProvider>().clearAll());
+      print('[🔄 AUTH_DATA] ✅ ProfileShapePreviewProvider limpo');
 
       nutritionGoalsProvider.clearAuth();
       nutritionGoalsProvider.clearAllData();
@@ -359,6 +378,10 @@ class _MainNavigationState extends State<MainNavigation> {
     required FoodHistoryProvider foodHistoryProvider,
   }) async {
     final shouldOfferGuestDataPrompt = !restoredSession;
+    _logChatBootPerf('configure_authenticated_providers_start', {
+      'restoredSession': restoredSession,
+      'offerGuestPrompt': shouldOfferGuestDataPrompt,
+    });
     _GuestLocalDataSnapshot? guestSnapshot;
     if (shouldOfferGuestDataPrompt) {
       try {
@@ -384,6 +407,10 @@ class _MainNavigationState extends State<MainNavigation> {
     }
 
     final allowLocalAutoSync = !shouldOfferGuestDataPrompt;
+    _logChatBootPerf('configure_authenticated_providers_ready', {
+      'allowLocalAutoSync': allowLocalAutoSync,
+      'hasGuestSnapshot': guestSnapshot?.hasData ?? false,
+    });
     final mealsAuthFuture =
         dailyMealsProvider.setAuth(userId.toString(), token);
     print('[🔄 AUTH_DATA] ✅ DailyMealsProvider configurado');
@@ -499,6 +526,7 @@ class _MainNavigationState extends State<MainNavigation> {
     required MealTypesProvider mealTypesProvider,
     required FoodHistoryProvider foodHistoryProvider,
   }) async {
+    _logChatBootPerf('finish_authenticated_setup_wait_start');
     await Future.wait([
       mealsAuthFuture,
       dietPlanAuthFuture,
@@ -515,6 +543,7 @@ class _MainNavigationState extends State<MainNavigation> {
         foodHistoryProvider,
       ),
     ]);
+    _logChatBootPerf('finish_authenticated_setup_wait_done');
 
     if (!mounted ||
         _configuredAuthKey != authKey ||
@@ -534,6 +563,9 @@ class _MainNavigationState extends State<MainNavigation> {
     // Forçar recriação do NutritionAssistantScreen para carregar dados do usuário.
     print(
         '[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen após app-state...');
+    _logChatBootPerf('chat_screen_recreate_start', {
+      'hasGuestPrompt': guestSnapshot != null && guestSnapshot.hasData,
+    });
     setState(() {
       _nutritionAssistantKey = UniqueKey();
       _currentMode = 'diary';
@@ -542,6 +574,7 @@ class _MainNavigationState extends State<MainNavigation> {
       _pendingGuestLocalData =
           guestSnapshot != null && guestSnapshot.hasData ? guestSnapshot : null;
     });
+    _logChatBootPerf('chat_screen_recreate_set_state_done');
     print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
   }
 
@@ -551,6 +584,9 @@ class _MainNavigationState extends State<MainNavigation> {
     }
     setState(() {
       _isBootstrappingAuthenticatedAppState = value;
+    });
+    _logChatBootPerf('set_initial_chat_bootstrap', {
+      'value': value,
     });
   }
 
@@ -584,13 +620,24 @@ class _MainNavigationState extends State<MainNavigation> {
     MealTypesProvider mealTypesProvider,
     FoodHistoryProvider foodHistoryProvider,
   ) async {
+    final appStateStopwatch = Stopwatch()..start();
     try {
       print('[MainNavigation] Carregando app-state do usuário do servidor...');
       final selectedDate = context.read<DailyMealsProvider>().selectedDate;
+      _logChatBootPerf('app_state_fetch_start', {
+        'date': UserAppStateService.formatDateKey(selectedDate),
+      });
       final appState = await _appStateService.fetchAppState(
         token: token,
         nutritionChatDateKey: UserAppStateService.formatDateKey(selectedDate),
       );
+      _logChatBootPerf('app_state_fetch_done', {
+        'elapsedMs': appStateStopwatch.elapsedMilliseconds,
+        'freeChatCount':
+            ((appState['freeChatConversations'] as List<dynamic>?) ?? const [])
+                .length,
+        'hasNutritionChat': appState['nutritionChatByDate'] is Map,
+      });
       _latestAppState = appState;
 
       final userData = (appState['user'] as Map?)?.cast<String, dynamic>();
@@ -611,6 +658,9 @@ class _MainNavigationState extends State<MainNavigation> {
         syncPendingOnAuth: allowLocalAutoSync,
         syncLocalIfServerEmpty: allowLocalAutoSync,
       );
+      _logChatBootPerf('nutrition_goals_auth_done', {
+        'elapsedMs': appStateStopwatch.elapsedMilliseconds,
+      });
 
       await freeChatProvider.setAuth(
         token,
@@ -621,6 +671,9 @@ class _MainNavigationState extends State<MainNavigation> {
         syncPendingOnAuth: allowLocalAutoSync,
         syncLocalIfServerEmpty: allowLocalAutoSync,
       );
+      _logChatBootPerf('free_chat_auth_done', {
+        'elapsedMs': appStateStopwatch.elapsedMilliseconds,
+      });
 
       final dietPreferences = (appState['dietGenerationPreferences'] as Map?)
           ?.cast<String, dynamic>();
@@ -637,6 +690,9 @@ class _MainNavigationState extends State<MainNavigation> {
         syncPendingOnAuth: allowLocalAutoSync,
         syncLocalIfServerEmpty: allowLocalAutoSync,
       );
+      _logChatBootPerf('meal_types_auth_done', {
+        'elapsedMs': appStateStopwatch.elapsedMilliseconds,
+      });
 
       await foodHistoryProvider.setAuth(
         token,
@@ -646,6 +702,9 @@ class _MainNavigationState extends State<MainNavigation> {
         syncPendingOnAuth: allowLocalAutoSync,
         syncLocalIfServerEmpty: allowLocalAutoSync,
       );
+      _logChatBootPerf('food_history_auth_done', {
+        'elapsedMs': appStateStopwatch.elapsedMilliseconds,
+      });
 
       // Restaura o chat diário do AI Tutor vindo do servidor (sobrevive a
       // limpeza de dados/reinstalação/troca de aparelho) e habilita o upload.
@@ -654,8 +713,15 @@ class _MainNavigationState extends State<MainNavigation> {
         scope: 'user_$userId',
       );
       DailyChatSyncService.instance.setAuth(token, userId);
+      _logChatBootPerf('app_state_apply_done', {
+        'elapsedMs': appStateStopwatch.elapsedMilliseconds,
+      });
     } catch (e) {
       print('[MainNavigation] Erro ao carregar app-state do servidor: $e');
+      _logChatBootPerf('app_state_error', {
+        'elapsedMs': appStateStopwatch.elapsedMilliseconds,
+        'error': e.toString(),
+      });
       _latestAppState = const <String, dynamic>{};
       await nutritionGoalsProvider.setAuth(
         token,
@@ -1000,6 +1066,10 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   void _onItemTapped(int index) {
+    if (_selectedIndex == index) {
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
@@ -1110,7 +1180,7 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  /// Layout original para celulares: Drawer + BottomNavigationBar.
+  /// Layout para celulares: Drawer + NavigationBar Material 3.
   Widget _buildNarrowLayout(bool isDarkMode) {
     return Scaffold(
       key: _scaffoldKey,
@@ -1118,15 +1188,12 @@ class _MainNavigationState extends State<MainNavigation> {
       body: Stack(
         children: [
           AppDebugLogOverlay(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: _buildScreens(onOpenDrawer: _openDrawer),
-            ),
+            child: _buildTabStack(onOpenDrawer: _openDrawer),
           ),
           _buildGuestLocalDataPrompt(isWide: false),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(isDarkMode),
+      bottomNavigationBar: _buildNavigationBar(isDarkMode),
     );
   }
 
@@ -1259,7 +1326,7 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   /// Layout para tablets/desktop: painel lateral fixo (sem Drawer) e sem
-  /// BottomNavigationBar — os itens de navegação ficam no rodapé do painel.
+  /// NavigationBar — os itens de navegação ficam no rodapé do painel.
   Widget _buildWideLayout(bool isDarkMode) {
     return Scaffold(
       key: _scaffoldKey,
@@ -1283,10 +1350,7 @@ class _MainNavigationState extends State<MainNavigation> {
             child: Stack(
               children: [
                 AppDebugLogOverlay(
-                  child: IndexedStack(
-                    index: _selectedIndex,
-                    children: _buildScreens(onOpenDrawer: null),
-                  ),
+                  child: _buildTabStack(onOpenDrawer: null),
                 ),
                 _buildGuestLocalDataPrompt(isWide: true),
               ],
@@ -1297,80 +1361,124 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  /// Constrói as 4 abas do app. Em telas largas, [onOpenDrawer] é null para
-  /// que as telas escondam o botão de menu hambúrguer.
-  List<Widget> _buildScreens({required VoidCallback? onOpenDrawer}) {
+  /// Constrói as abas sob demanda e mantém as telas já abertas vivas.
+  /// Isso evita que uma troca na NavigationBar reconstrua chat, dieta,
+  /// social e perfil no mesmo frame.
+  Widget _buildTabStack({required VoidCallback? onOpenDrawer}) {
     final authService = context.watch<AuthService>();
     final isInitialChatBootstrapping =
         _isInitialChatBootstrapPending(authService);
+    final usesDrawer = onOpenDrawer != null;
 
-    return [
-      // Aba 0: Início / Chat
-      NutritionAssistantScreen(
-        key: _nutritionAssistantKey,
-        isFreeChat: _currentMode == 'free_chat',
-        freeChatId: _currentFreeChatId,
-        isBootstrappingInitialChat: isInitialChatBootstrapping,
-        onOpenDrawer: onOpenDrawer,
-        onOpenMyDiet: () => _onItemTapped(1),
-      ),
-
-      // Aba 1: Minha Dieta
-      PersonalizedDietScreen(
-        onOpenDrawer: onOpenDrawer,
-        onSearchPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const FoodSearchScreen(),
-            ),
-          );
-        },
-      ),
-
-      // Aba 2: Social
-      SocialHubScreen(onOpenDrawer: onOpenDrawer),
-
-      // Aba 3: Perfil
-      ProfileTabWrapper(
-        onOpenDrawer: onOpenDrawer,
-        onOpenSocialHub: _openSocialOverview,
-      ),
-    ];
+    return IndexedStack(
+      index: _selectedIndex,
+      children: List.generate(4, (index) {
+        return _LazyNavigationTab(
+          key: ValueKey('main_navigation_tab_$index'),
+          isSelected: _selectedIndex == index,
+          cacheKey: _tabCacheKey(
+            index: index,
+            usesDrawer: usesDrawer,
+            isInitialChatBootstrapping: isInitialChatBootstrapping,
+          ),
+          builder: (context) => _buildTabScreen(
+            index: index,
+            onOpenDrawer: onOpenDrawer,
+            isInitialChatBootstrapping: isInitialChatBootstrapping,
+          ),
+        );
+      }),
+    );
   }
 
-  Widget _buildBottomNavigationBar(bool isDarkMode) {
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
+  String _tabCacheKey({
+    required int index,
+    required bool usesDrawer,
+    required bool isInitialChatBootstrapping,
+  }) {
+    if (index == 0) {
+      return [
+        'home',
+        usesDrawer ? 'drawer' : 'wide',
+        identityHashCode(_nutritionAssistantKey),
+        _currentMode,
+        _currentFreeChatId ?? '',
+        isInitialChatBootstrapping,
+      ].join('|');
+    }
+
+    return '$index|${usesDrawer ? 'drawer' : 'wide'}';
+  }
+
+  /// Em telas largas, [onOpenDrawer] é null para que as telas escondam o
+  /// botão de menu hambúrguer.
+  Widget _buildTabScreen({
+    required int index,
+    required VoidCallback? onOpenDrawer,
+    required bool isInitialChatBootstrapping,
+  }) {
+    switch (index) {
+      case 0:
+        return NutritionAssistantScreen(
+          key: _nutritionAssistantKey,
+          isFreeChat: _currentMode == 'free_chat',
+          freeChatId: _currentFreeChatId,
+          isBootstrappingInitialChat: isInitialChatBootstrapping,
+          onOpenDrawer: onOpenDrawer,
+          onOpenMyDiet: () => _onItemTapped(1),
+        );
+      case 1:
+        return PersonalizedDietScreen(
+          onOpenDrawer: onOpenDrawer,
+          onSearchPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const FoodSearchScreen(),
+              ),
+            );
+          },
+        );
+      case 2:
+        return SocialHubScreen(onOpenDrawer: onOpenDrawer);
+      case 3:
+        return ProfileTabWrapper(
+          onOpenDrawer: onOpenDrawer,
+          onOpenSocialHub: _openSocialOverview,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildNavigationBar(bool isDarkMode) {
+    return NavigationBar(
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: _onItemTapped,
       backgroundColor: isDarkMode
           ? AppTheme.darkBackgroundColor
           : Theme.of(context).scaffoldBackgroundColor,
       elevation: 0,
-      type: BottomNavigationBarType.fixed,
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      selectedItemColor: isDarkMode ? Colors.white : Colors.black,
-      unselectedItemColor: isDarkMode ? Colors.grey[600] : Colors.grey[700],
-      items: [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble_outline),
-          activeIcon: Icon(Icons.chat_bubble),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      destinations: [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
           label: context.tr.translate('home'),
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.restaurant_menu_outlined),
-          activeIcon: Icon(Icons.restaurant_menu),
+        NavigationDestination(
+          icon: Icon(Icons.ramen_dining_outlined),
+          selectedIcon: Icon(Icons.ramen_dining),
           label: context.tr.translate('my_diet'),
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.people_outline),
-          activeIcon: Icon(Icons.people),
+        NavigationDestination(
+          icon: Icon(Icons.group_outlined),
+          selectedIcon: Icon(Icons.group),
           label: 'Social',
         ),
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
+          selectedIcon: Icon(Icons.person),
           label: context.tr.translate('profile'),
         ),
       ],
@@ -1408,14 +1516,16 @@ class _MainNavigationState extends State<MainNavigation> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
-                        color: isDarkMode ? Colors.white : Colors.black87,
+                        color: isDarkMode
+                            ? AppTheme.darkTextColor
+                            : Colors.black87,
                       ),
                     ),
                     const Spacer(),
                     Container(
                       decoration: BoxDecoration(
                         color: isDarkMode
-                            ? const Color(0xFF2A2A2A)
+                            ? AppTheme.darkComponentColor
                             : const Color(0xFFEFEFEF),
                         shape: BoxShape.circle,
                       ),
@@ -1423,7 +1533,9 @@ class _MainNavigationState extends State<MainNavigation> {
                         icon: Icon(
                           Icons.search,
                           size: 20,
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                          color: isDarkMode
+                              ? AppTheme.darkTextColor.withValues(alpha: 0.72)
+                              : Colors.black54,
                         ),
                         onPressed: () {
                           _closeDrawerIfOpen();
@@ -1491,7 +1603,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 Divider(
                   height: 1,
                   thickness: 1,
-                  color: isDarkMode ? Colors.white12 : Colors.black12,
+                  color: isDarkMode ? AppTheme.darkBorderColor : Colors.black12,
                 ),
               ],
 
@@ -1503,7 +1615,9 @@ class _MainNavigationState extends State<MainNavigation> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isDarkMode ? Colors.white54 : Colors.black54,
+                    color: isDarkMode
+                        ? AppTheme.darkMutedTextColor
+                        : Colors.black54,
                   ),
                 ),
               ),
@@ -1521,7 +1635,9 @@ class _MainNavigationState extends State<MainNavigation> {
                         child: Text(
                           context.tr.translate('no_conversations'),
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white38 : Colors.grey,
+                            color: isDarkMode
+                                ? AppTheme.darkDisabledTextColor
+                                : Colors.grey,
                             fontSize: 13,
                           ),
                         ),
@@ -1555,8 +1671,9 @@ class _MainNavigationState extends State<MainNavigation> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 14,
-                                color:
-                                    isDarkMode ? Colors.white : Colors.black87,
+                                color: isDarkMode
+                                    ? AppTheme.darkTextColor
+                                    : Colors.black87,
                                 fontWeight: isSelected
                                     ? FontWeight.w600
                                     : FontWeight.normal,
@@ -1591,10 +1708,10 @@ class _MainNavigationState extends State<MainNavigation> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF212121) : const Color(0xFFF5F5F5),
+          color: isDarkMode ? AppTheme.darkCardColor : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDarkMode ? Colors.white12 : Colors.black12,
+            color: isDarkMode ? AppTheme.darkBorderColor : Colors.black12,
           ),
         ),
         child: Row(
@@ -1602,7 +1719,7 @@ class _MainNavigationState extends State<MainNavigation> {
             Icon(
               Icons.science_outlined,
               size: 20,
-              color: isDarkMode ? Colors.white : Colors.black87,
+              color: isDarkMode ? AppTheme.darkTextColor : Colors.black87,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1613,14 +1730,14 @@ class _MainNavigationState extends State<MainNavigation> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: isDarkMode ? Colors.white : Colors.black87,
+                  color: isDarkMode ? AppTheme.darkTextColor : Colors.black87,
                 ),
               ),
             ),
             Icon(
               Icons.chevron_right,
               size: 18,
-              color: isDarkMode ? Colors.white54 : Colors.black45,
+              color: isDarkMode ? AppTheme.darkMutedTextColor : Colors.black45,
             ),
           ],
         ),
@@ -1632,7 +1749,7 @@ class _MainNavigationState extends State<MainNavigation> {
     return Material(
       elevation: 4,
       borderRadius: BorderRadius.circular(100),
-      color: isDarkMode ? Colors.white : Colors.black,
+      color: isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor,
       child: InkWell(
         onTap: _startNewFreeChat,
         borderRadius: BorderRadius.circular(100),
@@ -1644,7 +1761,11 @@ class _MainNavigationState extends State<MainNavigation> {
               Icon(
                 Icons.edit_outlined,
                 size: 18,
-                color: isDarkMode ? Colors.black : Colors.white,
+                color: AppTheme.onColor(
+                  isDarkMode
+                      ? AppTheme.primaryColorDarkMode
+                      : AppTheme.primaryColor,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
@@ -1652,7 +1773,11 @@ class _MainNavigationState extends State<MainNavigation> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.black : Colors.white,
+                  color: AppTheme.onColor(
+                    isDarkMode
+                        ? AppTheme.primaryColorDarkMode
+                        : AppTheme.primaryColor,
+                  ),
                 ),
               ),
             ],
@@ -1667,18 +1792,18 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget _buildSidePanelNavItems(bool isDarkMode) {
     final items = <_SidePanelNavItem>[
       _SidePanelNavItem(
-        icon: Icons.chat_bubble_outline,
-        activeIcon: Icons.chat_bubble,
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home,
         label: context.tr.translate('home'),
       ),
       _SidePanelNavItem(
-        icon: Icons.restaurant_menu_outlined,
-        activeIcon: Icons.restaurant_menu,
+        icon: Icons.ramen_dining_outlined,
+        activeIcon: Icons.ramen_dining,
         label: context.tr.translate('my_diet'),
       ),
       _SidePanelNavItem(
-        icon: Icons.people_outline,
-        activeIcon: Icons.people,
+        icon: Icons.group_outlined,
+        activeIcon: Icons.group,
         label: 'Social',
       ),
       _SidePanelNavItem(
@@ -1698,6 +1823,9 @@ class _MainNavigationState extends State<MainNavigation> {
           final selectedBg = isDarkMode
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.06);
+          final itemColor = isDarkMode
+              ? (selected ? Colors.white : AppTheme.darkTextColor)
+              : Colors.black87;
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1716,7 +1844,7 @@ class _MainNavigationState extends State<MainNavigation> {
                     Icon(
                       selected ? item.activeIcon : item.icon,
                       size: 20,
-                      color: isDarkMode ? Colors.white : Colors.black87,
+                      color: itemColor,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1728,7 +1856,7 @@ class _MainNavigationState extends State<MainNavigation> {
                           fontSize: 14,
                           fontWeight:
                               selected ? FontWeight.w600 : FontWeight.w500,
-                          color: isDarkMode ? Colors.white : Colors.black87,
+                          color: itemColor,
                         ),
                       ),
                     ),
@@ -1755,7 +1883,7 @@ class _MainNavigationState extends State<MainNavigation> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF212121) : const Color(0xFFF5F5F5),
+          color: isDarkMode ? AppTheme.darkCardColor : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(16),
           border: isSelected
               ? Border.all(color: Theme.of(context).primaryColor, width: 1.5)
@@ -1768,14 +1896,18 @@ class _MainNavigationState extends State<MainNavigation> {
               height: 44,
               decoration: BoxDecoration(
                 color: isDarkMode
-                    ? const Color(0xFF2A2A2A)
+                    ? AppTheme.darkComponentColor
                     : const Color(0xFFE0E0E0),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 20,
-                color: isDarkMode ? Colors.white : Colors.black87,
+                color: isSelected
+                    ? (isDarkMode
+                        ? AppTheme.primaryColorDarkMode
+                        : AppTheme.primaryColor)
+                    : (isDarkMode ? AppTheme.darkTextColor : Colors.black87),
               ),
             ),
             const SizedBox(height: 8),
@@ -1784,7 +1916,11 @@ class _MainNavigationState extends State<MainNavigation> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.white : Colors.black87,
+                color: isSelected
+                    ? (isDarkMode
+                        ? AppTheme.primaryColorDarkMode
+                        : AppTheme.primaryColor)
+                    : (isDarkMode ? AppTheme.darkTextColor : Colors.black87),
               ),
             ),
           ],
@@ -1893,4 +2029,38 @@ class _SidePanelNavItem {
     required this.activeIcon,
     required this.label,
   });
+}
+
+typedef _NavigationTabBuilder = Widget Function(BuildContext context);
+
+class _LazyNavigationTab extends StatefulWidget {
+  final bool isSelected;
+  final String cacheKey;
+  final _NavigationTabBuilder builder;
+
+  const _LazyNavigationTab({
+    super.key,
+    required this.isSelected,
+    required this.cacheKey,
+    required this.builder,
+  });
+
+  @override
+  State<_LazyNavigationTab> createState() => _LazyNavigationTabState();
+}
+
+class _LazyNavigationTabState extends State<_LazyNavigationTab> {
+  Widget? _child;
+  String? _activeCacheKey;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isSelected &&
+        (_child == null || _activeCacheKey != widget.cacheKey)) {
+      _child = widget.builder(context);
+      _activeCacheKey = widget.cacheKey;
+    }
+
+    return _child ?? const SizedBox.shrink();
+  }
 }

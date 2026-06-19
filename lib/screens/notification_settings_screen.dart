@@ -108,7 +108,7 @@ class _NotificationSettingsScreenState
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(24, 34, 24, 32),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                       child: Consumer<MealTypesProvider>(
                         builder: (context, mealTypesProvider, child) {
                           return Column(
@@ -173,33 +173,38 @@ class _NotificationSettingsScreenState
   }
 
   Widget _buildHeader(Color textColor) {
+    const sideWidth = 56.0;
+
     return SizedBox(
-      height: 70,
-      child: Stack(
-        alignment: Alignment.center,
+      height: 64,
+      child: Row(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: textColor, size: 30),
-              tooltip: context.tr.translate('back'),
-              onPressed: () => Navigator.of(context).pop(),
+          SizedBox(
+            width: sideWidth,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: textColor),
+                tooltip: context.tr.translate('back'),
+                onPressed: () => Navigator.maybePop(context),
+              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 64),
+          Expanded(
             child: Text(
               context.tr.translate('notification_settings_title'),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: textColor,
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                height: 1.05,
               ),
             ),
           ),
+          const SizedBox(width: sideWidth),
         ],
       ),
     );
@@ -216,34 +221,33 @@ class _NotificationSettingsScreenState
     final isDarkMode = theme.brightness == Brightness.dark;
     final enabled = _preferences.isEnabled(type);
     final isSaving = _savingTypes.contains(type);
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF4A566C);
-    final subtitleColor =
-        isDarkMode ? const Color(0xFFADB5C5) : const Color(0xFF8B95A8);
-    final tileColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final textColor = _textColor(isDarkMode);
+    final subtitleColor = _mutedTextColor(isDarkMode);
+    final radius = BorderRadius.circular(20);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isSaving ? null : () => _setPreference(type, !enabled),
-        borderRadius: BorderRadius.circular(24),
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(20, 18, 16, 18),
-          decoration: BoxDecoration(
-            color: tileColor,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isDarkMode ? Colors.white10 : Colors.white,
-            ),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 68),
+    return Container(
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 20),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: isSaving ? null : () => _setPreference(type, !enabled),
+          borderRadius: radius,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
             child: Row(
               children: [
-                SizedBox(
-                  width: 48,
-                  child: Icon(icon, color: iconColor, size: 42),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: isDarkMode ? 0.18 : 0.1),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 23),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -255,39 +259,43 @@ class _NotificationSettingsScreenState
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: textColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          height: 1.16,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         subtitle,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: subtitleColor,
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w500,
+                          height: 1.2,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 SizedBox(
-                  width: 62,
+                  width: 50,
                   child: Center(
                     child: isSaving
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2.4),
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
                           )
                         : Transform.scale(
-                            scale: 0.9,
+                            scale: 0.82,
                             child: Switch(
                               value: enabled,
                               activeThumbColor: theme.colorScheme.primary,
+                              activeTrackColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.34),
                               onChanged: (value) => _setPreference(type, value),
                             ),
                           ),
@@ -306,19 +314,14 @@ class _NotificationSettingsScreenState
     MealTypesProvider mealTypesProvider,
   ) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final panelColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF4A566C);
-    final mutedColor =
-        isDarkMode ? const Color(0xFFADB5C5) : const Color(0xFF8B95A8);
+    final textColor = _textColor(isDarkMode);
+    final mutedColor = _mutedTextColor(isDarkMode);
+    final mealTypes = mealTypesProvider.mealTypes;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      decoration: BoxDecoration(
-        color: panelColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isDarkMode ? Colors.white10 : Colors.white),
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -333,7 +336,8 @@ class _NotificationSettingsScreenState
                       style: TextStyle(
                         color: textColor,
                         fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
+                        height: 1.18,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -343,6 +347,7 @@ class _NotificationSettingsScreenState
                         color: mutedColor,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
+                        height: 1.25,
                       ),
                     ),
                   ],
@@ -365,9 +370,16 @@ class _NotificationSettingsScreenState
               ),
             )
           else
-            ...mealTypesProvider.mealTypes.map(
-              (mealType) => _buildMealTimeRow(theme, mealType),
-            ),
+            for (var index = 0; index < mealTypes.length; index++) ...[
+              _buildMealTimeRow(theme, mealTypes[index]),
+              if (index < mealTypes.length - 1)
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: 50,
+                  color: _dividerColor(isDarkMode),
+                ),
+            ],
         ],
       ),
     );
@@ -375,25 +387,28 @@ class _NotificationSettingsScreenState
 
   Widget _buildMealTimeRow(ThemeData theme, MealTypeConfig mealType) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF4A566C);
-    final mutedColor =
-        isDarkMode ? const Color(0xFFADB5C5) : const Color(0xFF8B95A8);
+    final textColor = _textColor(isDarkMode);
+    final mutedColor = _mutedTextColor(isDarkMode);
 
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          SizedBox(
-            width: 34,
-            height: 34,
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: _secondarySurfaceColor(isDarkMode),
+              borderRadius: BorderRadius.circular(13),
+            ),
             child: Center(
               child: Text(
                 mealType.emoji,
-                style: const TextStyle(fontSize: 22),
+                style: const TextStyle(fontSize: 21),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               mealType.name,
@@ -402,18 +417,32 @@ class _NotificationSettingsScreenState
               style: TextStyle(
                 color: textColor,
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          TextButton.icon(
-            onPressed: () => _pickMealTime(mealType),
-            icon: Icon(Icons.schedule_rounded, size: 17, color: mutedColor),
-            label: Text(
-              mealType.reminderTime,
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w700,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _pickMealTime(mealType),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 17, color: mutedColor),
+                    const SizedBox(width: 7),
+                    Text(
+                      mealType.reminderTime,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -424,69 +453,86 @@ class _NotificationSettingsScreenState
 
   Widget _buildWeightReminderSettingsPanel(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final panelColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF4A566C);
-    final mutedColor =
-        isDarkMode ? const Color(0xFFADB5C5) : const Color(0xFF8B95A8);
+    final textColor = _textColor(isDarkMode);
+    final mutedColor = _mutedTextColor(isDarkMode);
+    final primaryColor = theme.colorScheme.primary;
     final isSaving =
         _savingTypes.contains(NotificationPreferenceType.weightReminders);
+    final radius = BorderRadius.circular(20);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isSaving ? null : _openWeightReminderSettings,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          decoration: BoxDecoration(
-            color: panelColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDarkMode ? Colors.white10 : Colors.white,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.event_repeat_rounded, size: 22, color: mutedColor),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr.translate('weight_reminder_config_title'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
+    return Container(
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 20),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: isSaving ? null : _openWeightReminderSettings,
+          borderRadius: radius,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(
+                      alpha: isDarkMode ? 0.18 : 0.1,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _weightSettingsSubtitle(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: mutedColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(
+                    Icons.event_repeat_rounded,
+                    size: 22,
+                    color: primaryColor,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
-                    )
-                  : Icon(Icons.edit_calendar_rounded,
-                      size: 22, color: textColor),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.tr.translate('weight_reminder_config_title'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          height: 1.18,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _weightSettingsSubtitle(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: mutedColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.2),
+                      )
+                    : Icon(
+                        Icons.chevron_right_rounded,
+                        size: 24,
+                        color: mutedColor,
+                      ),
+              ],
+            ),
           ),
         ),
       ),
@@ -500,62 +546,94 @@ class _NotificationSettingsScreenState
     required NotificationPreferenceType type,
   }) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final panelColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF4A566C);
-    final mutedColor =
-        isDarkMode ? const Color(0xFFADB5C5) : const Color(0xFF8B95A8);
+    final textColor = _textColor(isDarkMode);
+    final primaryColor = theme.colorScheme.primary;
     final isSaving = _savingTypes.contains(type);
+    final radius = BorderRadius.circular(20);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isSaving ? null : () => _pickPreferenceTime(type, time),
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          decoration: BoxDecoration(
-            color: panelColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDarkMode ? Colors.white10 : Colors.white,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.schedule_rounded, size: 22, color: mutedColor),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+    return Container(
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 20),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: isSaving ? null : () => _pickPreferenceTime(type, time),
+          borderRadius: radius,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(
+                      alpha: isDarkMode ? 0.18 : 0.1,
+                    ),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(
+                    Icons.schedule_rounded,
+                    size: 22,
+                    color: primaryColor,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
-                    )
-                  : Text(
-                      time,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      height: 1.18,
                     ),
-            ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.2),
+                      )
+                    : Text(
+                        time,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Color _textColor(bool isDarkMode) {
+    return isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+  }
+
+  Color _mutedTextColor(bool isDarkMode) {
+    return isDarkMode
+        ? AppTheme.darkMutedTextColor
+        : AppTheme.textSecondaryColor;
+  }
+
+  Color _secondarySurfaceColor(bool isDarkMode) {
+    return isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor;
+  }
+
+  Color _dividerColor(bool isDarkMode) {
+    return isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.05);
   }
 
   Future<void> _pickMealTime(MealTypeConfig mealType) async {

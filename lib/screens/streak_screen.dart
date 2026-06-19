@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -11,21 +12,21 @@ import '../providers/nutrition_goals_provider.dart';
 import '../providers/streak_provider.dart';
 import '../services/social_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import '../utils/streak_helper.dart';
 import '../widgets/diet_style_message_state.dart';
 import 'friends_screen.dart';
 
-Color _streakSurfaceColor(bool isDarkMode) =>
-    isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+Color _streakInputFillColor(bool isDarkMode) => isDarkMode
+    ? AppTheme.darkComponentColor
+    : AppTheme.surfaceColor.withValues(alpha: 0.62);
 
-Color _streakInputFillColor(bool isDarkMode) =>
-    isDarkMode ? const Color(0xFF1F1F1F) : AppTheme.backgroundColor;
-
-Color _streakBorderColor(bool isDarkMode) =>
-    isDarkMode ? Colors.white12 : Colors.black12;
+Color _streakBorderColor(bool isDarkMode) => isDarkMode
+    ? AppTheme.darkBorderColor.withValues(alpha: 0.46)
+    : AppTheme.dividerColor.withValues(alpha: 0.75);
 
 Color _streakMutedTextColor(bool isDarkMode) =>
-    isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
 
 Color _streakPrimaryColor(bool isDarkMode) =>
     isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
@@ -35,11 +36,11 @@ enum _StreakCalendarMode { registration, protein, calories }
 Color _calendarMarkColor(_StreakCalendarMode mode) {
   switch (mode) {
     case _StreakCalendarMode.registration:
-      return const Color(0xFFFF6B35);
+      return MacroTheme.caloriesColor;
     case _StreakCalendarMode.protein:
-      return const Color(0xFF35A853);
+      return MacroTheme.proteinColor;
     case _StreakCalendarMode.calories:
-      return const Color(0xFF4E8CFF);
+      return MacroTheme.caloriesColor;
   }
 }
 
@@ -215,91 +216,75 @@ class _StreakScreenState extends State<StreakScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
 
     return Scaffold(
       backgroundColor:
           isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _StreakHeader(onShare: _shareStreak),
-            _StreakModeTabs(
-              selectedIndex: _selectedTab,
-              onChanged: (index) => setState(() => _selectedTab = index),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refreshData,
-                color: _streakPrimaryColor(isDarkMode),
-                child: _selectedTab == 0
-                    ? _PersonalStreakTab(
-                        key: const ValueKey('personal-streak-tab'),
-                        visibleMonth: _visibleMonth,
-                        calendarMode: _calendarMode,
-                        onPreviousMonth: _previousMonth,
-                        onNextMonth: _nextMonth,
-                        onCalendarModeChanged: _setCalendarMode,
-                      )
-                    : _FriendsStreakTab(
-                        key: const ValueKey('friends-streak-tab'),
-                        onInviteFriends: _openFriends,
-                      ),
-              ),
-            ),
-          ],
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
         ),
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: Icon(Icons.close_rounded, color: textColor, size: 28),
+          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: Text(
+          context.tr.translate('streak_screen_title'),
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: IconButton(
+              icon: Icon(Icons.ios_share_rounded, color: textColor, size: 24),
+              tooltip: context.tr.translate('streak_share_tooltip'),
+              onPressed: _shareStreak,
+            ),
+          ),
+        ],
+        centerTitle: true,
+        scrolledUnderElevation: 0,
+        elevation: 0,
       ),
-    );
-  }
-}
-
-class _StreakHeader extends StatelessWidget {
-  final VoidCallback onShare;
-
-  const _StreakHeader({required this.onShare});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-
-    return SizedBox(
-      height: 56,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 56,
-              child: IconButton(
-                icon: Icon(Icons.close_rounded, color: textColor, size: 28),
-                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                onPressed: () => Navigator.of(context).maybePop(),
-              ),
+      body: Column(
+        children: [
+          _StreakModeTabs(
+            selectedIndex: _selectedTab,
+            onChanged: (index) => setState(() => _selectedTab = index),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refreshData,
+              color: _streakPrimaryColor(isDarkMode),
+              child: _selectedTab == 0
+                  ? _PersonalStreakTab(
+                      key: const ValueKey('personal-streak-tab'),
+                      visibleMonth: _visibleMonth,
+                      calendarMode: _calendarMode,
+                      onPreviousMonth: _previousMonth,
+                      onNextMonth: _nextMonth,
+                      onCalendarModeChanged: _setCalendarMode,
+                    )
+                  : _FriendsStreakTab(
+                      key: const ValueKey('friends-streak-tab'),
+                      onInviteFriends: _openFriends,
+                    ),
             ),
-            Expanded(
-              child: Text(
-                context.tr.translate('streak_screen_title'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  height: 1.05,
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 56,
-              child: IconButton(
-                icon: Icon(Icons.ios_share_rounded, color: textColor, size: 24),
-                tooltip: context.tr.translate('streak_share_tooltip'),
-                onPressed: onShare,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -318,10 +303,8 @@ class _StreakModeTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      color:
-          isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 14),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -359,41 +342,52 @@ class _StreakModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedBackground =
-        isDarkMode ? Colors.white : AppTheme.primaryColor;
-    final selectedForeground =
-        isDarkMode ? Colors.black : AppTheme.onColor(selectedBackground);
+    final selectedBackground = AppTheme.selectedPillBackgroundColor(isDarkMode);
+    final selectedForeground = AppTheme.selectedPillTextColor(isDarkMode);
     final unselectedBackground =
         isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final unselectedBorderColor =
         isDarkMode ? AppTheme.darkBorderColor : AppTheme.dividerColor;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 124,
-        height: 42,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? selectedBackground : unselectedBackground,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppTheme.profileCardShadow(isDarkMode),
+      ),
+      child: ChoiceChip(
+        label: SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+          ),
+        ),
+        selected: selected,
+        onSelected: (_) => onTap(),
+        selectedColor: selectedBackground,
+        backgroundColor: unselectedBackground,
+        labelStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: selected
+              ? selectedForeground
+              : (isDarkMode ? Colors.grey[400] : Colors.grey[700]),
+        ),
+        showCheckmark: false,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? selectedBackground : unselectedBorderColor,
-          ),
+          side: selected
+              ? BorderSide.none
+              : BorderSide(color: unselectedBorderColor),
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: selected
-                ? selectedForeground
-                : _streakMutedTextColor(isDarkMode),
-          ),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        pressElevation: 0,
+        elevation: 0,
+        disabledColor: unselectedBackground,
+        surfaceTintColor:
+            isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor,
       ),
     );
   }
@@ -442,7 +436,7 @@ class _PersonalStreakTab extends StatelessWidget {
 
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 2, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
           children: [
             if (isLoading)
               const SizedBox(
@@ -564,16 +558,19 @@ class _PersonalHeroCard extends StatelessWidget {
           Container(
             width: 96,
             height: 96,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFFF6B35).withValues(alpha: 0.12),
+              color: MacroTheme.caloriesColor.withValues(
+                alpha: isDarkMode ? 0.18 : 0.12,
+              ),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.local_fire_department_rounded,
+              MacroTheme.caloriesIcon,
               color: mainStreak > 0
-                  ? const Color(0xFFFF6B35)
+                  ? MacroTheme.caloriesColor
                   : _streakMutedTextColor(isDarkMode).withValues(alpha: 0.5),
-              size: 62,
+              size: 54,
             ),
           ),
         ],
@@ -609,12 +606,12 @@ class _FreezeStatusCard extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.lightBlueAccent.withValues(alpha: 0.16),
+              color: primary.withValues(alpha: isDarkMode ? 0.18 : 0.12),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Icon(
               Icons.shield_rounded,
-              color: Colors.lightBlueAccent.shade700,
+              color: primary,
               size: 30,
             ),
           ),
@@ -706,8 +703,8 @@ class _StreakStatsGrid extends StatelessWidget {
       children: [
         Expanded(
           child: _MiniStatCard(
-            icon: Icons.fitness_center_rounded,
-            color: const Color(0xFF35A853),
+            icon: MacroTheme.proteinIcon,
+            color: MacroTheme.proteinColor,
             value: '$proteinStreak',
             label: context.tr.translate('streak_secondary_protein'),
             selected: selectedMode == _StreakCalendarMode.protein,
@@ -717,8 +714,8 @@ class _StreakStatsGrid extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _MiniStatCard(
-            icon: Icons.flag_rounded,
-            color: const Color(0xFF4E8CFF),
+            icon: MacroTheme.caloriesIcon,
+            color: MacroTheme.caloriesColor,
             value: '$calorieStreak',
             label: context.tr.translate('streak_secondary_goal'),
             selected: selectedMode == _StreakCalendarMode.calories,
@@ -750,55 +747,73 @@ class _MiniStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = selected
+        ? color.withValues(alpha: isDarkMode ? 0.18 : 0.11)
+        : AppTheme.profileCardColor(isDarkMode);
+    final borderColor = selected
+        ? color.withValues(alpha: isDarkMode ? 0.62 : 0.48)
+        : _streakBorderColor(isDarkMode);
 
     return Semantics(
       button: true,
       selected: selected,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          constraints: const BoxConstraints(minHeight: 112),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: isDarkMode ? 0.18 : 0.11)
-                : _streakSurfaceColor(isDarkMode),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: selected ? color : _streakBorderColor(isDarkMode),
-              width: selected ? 1.6 : 1,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            constraints: const BoxConstraints(minHeight: 112),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: borderColor,
+                width: selected ? 1.3 : 1,
+              ),
+              boxShadow: AppTheme.profileCardShadow(isDarkMode),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(height: 18),
-              Text(
-                value,
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  height: 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MacroTheme.iconBadge(
+                  icon: icon,
+                  color: color,
+                  isDarkMode: isDarkMode,
+                  size: 28,
+                  iconSize: 16,
                 ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected
-                      ? (isDarkMode ? Colors.white : AppTheme.textPrimaryColor)
-                      : _streakMutedTextColor(isDarkMode),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
+                const SizedBox(height: 18),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color:
+                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected
+                        ? (isDarkMode
+                            ? Colors.white
+                            : AppTheme.textPrimaryColor)
+                        : _streakMutedTextColor(isDarkMode),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -888,7 +903,7 @@ class _StreakCalendarCard extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: _streakInputFillColor(isDarkMode),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _streakBorderColor(isDarkMode)),
             ),
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 14),
@@ -1260,7 +1275,7 @@ class _FriendsStreakTab extends StatelessWidget {
 
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 2, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
           children: [
             _FriendsOverviewCard(
               friendCount: friendsProvider.friendCount,
@@ -1409,7 +1424,8 @@ class _DuoStreakTile extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final currentStreak = duoStreak.friendStreak?.currentStreak ?? 0;
     final bestStreak = duoStreak.friendStreak?.bestStreak ?? 0;
-    const streakColor = Color(0xFFFF6B35);
+    final primary = _streakPrimaryColor(isDarkMode);
+    const streakColor = MacroTheme.caloriesColor;
 
     return _SocialStyleCard(
       padding: const EdgeInsets.all(14),
@@ -1461,7 +1477,7 @@ class _DuoStreakTile extends StatelessWidget {
                       label: context.tr
                           .translate('streak_friend_best')
                           .replaceAll('{count}', bestStreak.toString()),
-                      color: const Color(0xFFF4B400),
+                      color: primary,
                     ),
                   ],
                 ),
@@ -1491,8 +1507,8 @@ class _DuoStreakTile extends StatelessWidget {
                 FilledButton(
                   onPressed: onCheckIn,
                   style: FilledButton.styleFrom(
-                    backgroundColor: streakColor,
-                    foregroundColor: Colors.white,
+                    backgroundColor: primary,
+                    foregroundColor: AppTheme.onColor(primary),
                     minimumSize: const Size(0, 32),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     shape: RoundedRectangleBorder(
@@ -1527,7 +1543,10 @@ class _CheckInDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = checked ? const Color(0xFF4CAF50) : Colors.grey;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final color = checked
+        ? _streakPrimaryColor(isDarkMode)
+        : _streakMutedTextColor(isDarkMode);
 
     return Column(
       children: [
@@ -1543,8 +1562,7 @@ class _CheckInDot extends StatelessWidget {
             ),
           ),
           child: checked
-              ? const Icon(Icons.check_rounded,
-                  color: Color(0xFF4CAF50), size: 14)
+              ? Icon(Icons.check_rounded, color: color, size: 14)
               : null,
         ),
         const SizedBox(height: 3),
@@ -1634,18 +1652,7 @@ class _SocialStyleCard extends StatelessWidget {
 
     return Container(
       padding: padding,
-      decoration: BoxDecoration(
-        color: _streakSurfaceColor(isDarkMode),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _streakBorderColor(isDarkMode)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.18 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: child,
     );
   }

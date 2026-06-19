@@ -189,6 +189,7 @@ class MealsSyncService {
     required int waterGlasses,
     required MealGoals goals,
   }) async {
+    final stopwatch = Stopwatch()..start();
     try {
       print('[MealsSyncService] Sincronizando dia: ${_formatDate(date)}');
       print('[MealsSyncService] Refeições: ${meals.length}');
@@ -226,7 +227,13 @@ class MealsSyncService {
         'goals': goals.toJson(),
       };
 
-      print('[MealsSyncService] Enviando: ${jsonEncode(body)}');
+      final requestBody = jsonEncode(body);
+      final foodCount = meals.fold<int>(
+        0,
+        (count, meal) => count + meal.foods.length,
+      );
+      print(
+          '[MEALS_SYNC_PERF] request_prepared elapsedMs=${stopwatch.elapsedMilliseconds} date=${_formatDate(date)} meals=${meals.length} foods=$foodCount bytes=${requestBody.length} preview=${_preview(requestBody)}');
 
       final response = await http.post(
         Uri.parse('$baseUrl/meals/sync'),
@@ -234,10 +241,11 @@ class MealsSyncService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(body),
+        body: requestBody,
       );
 
-      print('[MealsSyncService] Resposta: ${response.statusCode}');
+      print(
+          '[MEALS_SYNC_PERF] response_received elapsedMs=${stopwatch.elapsedMilliseconds} status=${response.statusCode} bytes=${response.body.length}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -252,6 +260,9 @@ class MealsSyncService {
     } catch (e) {
       print('[MealsSyncService] Erro ao sincronizar: $e');
       return null;
+    } finally {
+      print(
+          '[MEALS_SYNC_PERF] sync_day_done elapsedMs=${stopwatch.elapsedMilliseconds} date=${_formatDate(date)}');
     }
   }
 
@@ -412,6 +423,14 @@ class MealsSyncService {
   /// Formatar data para a API (YYYY-MM-DD)
   static String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  static String _preview(String value, {int maxChars = 240}) {
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= maxChars) {
+      return normalized;
+    }
+    return '${normalized.substring(0, maxChars)}...';
   }
 }
 

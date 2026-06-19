@@ -87,9 +87,11 @@ class FreeChatProvider extends ChangeNotifier {
 
   /// Carrega conversas do armazenamento local
   Future<void> _loadConversations() async {
+    final stopwatch = Stopwatch()..start();
     print(
         '[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - Iniciando carregamento...');
     try {
+      var shouldNotify = false;
       final prefs = await SharedPreferences.getInstance();
       final String? data = prefs.getString(_storageKey);
 
@@ -98,12 +100,17 @@ class FreeChatProvider extends ChangeNotifier {
 
       if (data != null && data.isNotEmpty) {
         final List<dynamic> jsonList = jsonDecode(data);
-        _conversations = jsonList
+        final loadedConversations = jsonList
             .map((json) => FreeChatConversation.fromJson(json))
             .toList();
 
         // Ordenar por última atualização (mais recente primeiro)
-        _conversations.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+        loadedConversations
+            .sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+
+        final didChange =
+            !_conversationListsEqual(_conversations, loadedConversations);
+        _conversations = loadedConversations;
 
         print(
             '[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - ✅ Carregadas ${_conversations.length} conversas');
@@ -111,17 +118,38 @@ class FreeChatProvider extends ChangeNotifier {
           print(
               '[🔄 AUTH_DATA]   - "${conv.title}" (${conv.messages.length} msgs, ${conv.lastUpdated})');
         }
-        notifyListeners();
+        if (didChange) {
+          shouldNotify = true;
+        }
       } else {
         print(
             '[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - Nenhuma conversa encontrada no storage');
-        _conversations = [];
+        if (_conversations.isNotEmpty) {
+          _conversations = [];
+          shouldNotify = true;
+        }
       }
-      _hasPendingServerSync = prefs.getBool(_pendingSyncKey) ?? false;
-      _lastServerSyncError = prefs.getString(_syncErrorKey);
+      final pendingSync = prefs.getBool(_pendingSyncKey) ?? false;
+      final syncError = prefs.getString(_syncErrorKey);
+      if (_hasPendingServerSync != pendingSync ||
+          _lastServerSyncError != syncError) {
+        _hasPendingServerSync = pendingSync;
+        _lastServerSyncError = syncError;
+        shouldNotify = true;
+      } else {
+        _hasPendingServerSync = pendingSync;
+        _lastServerSyncError = syncError;
+      }
+      if (shouldNotify) {
+        notifyListeners();
+      }
     } catch (e) {
       print(
           '[🔄 AUTH_DATA] FreeChatProvider._loadConversations() - ❌ ERRO: $e');
+    } finally {
+      debugPrint(
+        '[FREE_CHAT_PERF] load_conversations_done elapsedMs=${stopwatch.elapsedMilliseconds} count=${_conversations.length} pending=$_hasPendingServerSync',
+      );
     }
   }
 
@@ -132,12 +160,19 @@ class FreeChatProvider extends ChangeNotifier {
     bool syncPendingOnAuth = true,
     bool syncLocalIfServerEmpty = true,
   }) async {
+    final stopwatch = Stopwatch()..start();
+    debugPrint(
+      '[FREE_CHAT_PERF] set_auth_start serverCount=${serverConversations?.length ?? -1} pending=$_hasPendingServerSync syncPending=$syncPendingOnAuth syncLocalIfServerEmpty=$syncLocalIfServerEmpty',
+    );
     _authToken = token;
     _authUserId = userId;
-    await _loadConversations();
+    await ensureLoaded();
 
     if (_hasPendingServerSync && syncPendingOnAuth) {
       await syncPendingIfNeeded();
+      debugPrint(
+        '[FREE_CHAT_PERF] set_auth_done path=pending_sync elapsedMs=${stopwatch.elapsedMilliseconds} count=${_conversations.length} pending=$_hasPendingServerSync',
+      );
       return;
     }
 
@@ -148,11 +183,17 @@ class FreeChatProvider extends ChangeNotifier {
         _hasPendingServerSync = true;
         await _saveConversations(markPendingSync: false);
         await syncPendingIfNeeded();
+        debugPrint(
+          '[FREE_CHAT_PERF] set_auth_done path=local_to_empty_server elapsedMs=${stopwatch.elapsedMilliseconds} count=${_conversations.length} pending=$_hasPendingServerSync',
+        );
         return;
       }
 
       await applyServerConversations(serverConversations);
     }
+    debugPrint(
+      '[FREE_CHAT_PERF] set_auth_done path=server_apply elapsedMs=${stopwatch.elapsedMilliseconds} count=${_conversations.length} pending=$_hasPendingServerSync',
+    );
   }
 
   void clearAuth() {
@@ -163,6 +204,7 @@ class FreeChatProvider extends ChangeNotifier {
   }
 
   Future<void> applyServerConversations(List<dynamic> conversations) async {
+    final stopwatch = Stopwatch()..start();
     final parsed = conversations
         .whereType<Map>()
         .map((json) =>
@@ -170,11 +212,23 @@ class FreeChatProvider extends ChangeNotifier {
         .toList();
 
     parsed.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+    if (_conversationListsEqual(_conversations, parsed) &&
+        !_hasPendingServerSync &&
+        _lastServerSyncError == null) {
+      debugPrint(
+        '[FREE_CHAT_PERF] apply_server_conversations_skip elapsedMs=${stopwatch.elapsedMilliseconds} count=${parsed.length}',
+      );
+      return;
+    }
+
     _conversations = parsed;
     _hasPendingServerSync = false;
     _lastServerSyncError = null;
     await _saveConversations(markPendingSync: false);
     notifyListeners();
+    debugPrint(
+      '[FREE_CHAT_PERF] apply_server_conversations_done elapsedMs=${stopwatch.elapsedMilliseconds} count=${parsed.length}',
+    );
   }
 
   /// Recarrega conversas do storage (usado após login)
@@ -246,9 +300,13 @@ class FreeChatProvider extends ChangeNotifier {
       return;
     }
 
+    final stopwatch = Stopwatch()..start();
     final syncRevision = _stateRevision;
     _isSyncingWithServer = true;
     notifyListeners();
+    debugPrint(
+      '[FREE_CHAT_PERF] sync_to_server_start revision=$syncRevision count=${_conversations.length}',
+    );
 
     try {
       await _appStateService.syncAppState(
@@ -268,10 +326,59 @@ class FreeChatProvider extends ChangeNotifier {
     } finally {
       _isSyncingWithServer = false;
       notifyListeners();
+      debugPrint(
+        '[FREE_CHAT_PERF] sync_to_server_done elapsedMs=${stopwatch.elapsedMilliseconds} pending=$_hasPendingServerSync',
+      );
       if (_hasPendingServerSync && _stateRevision != syncRevision) {
         _scheduleSync();
       }
     }
+  }
+
+  bool _conversationListsEqual(
+    List<FreeChatConversation> a,
+    List<FreeChatConversation> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final left = a[i];
+      final right = b[i];
+      if (left.id != right.id ||
+          left.title != right.title ||
+          left.createdAt != right.createdAt ||
+          left.lastUpdated != right.lastUpdated ||
+          !_jsonLikeEquals(left.messages, right.messages)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _jsonLikeEquals(dynamic a, dynamic b) {
+    if (a is DateTime) {
+      a = a.toIso8601String();
+    }
+    if (b is DateTime) {
+      b = b.toIso8601String();
+    }
+    if (a is List && b is List) {
+      if (a.length != b.length) return false;
+      for (var i = 0; i < a.length; i++) {
+        if (!_jsonLikeEquals(a[i], b[i])) return false;
+      }
+      return true;
+    }
+    if (a is Map && b is Map) {
+      if (a.length != b.length) return false;
+      for (final key in a.keys) {
+        if (!b.containsKey(key) || !_jsonLikeEquals(a[key], b[key])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return a == b;
   }
 
   /// Cria uma nova conversa e retorna o ID.

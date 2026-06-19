@@ -1,5 +1,18 @@
 enum LocalFoodIconKind {
+  avocado,
+  banana,
+  beans,
+  bread,
+  broccoli,
   chickenBreast,
+  egg,
+  honey,
+  oil,
+  peanut,
+  rice,
+  sweetPotato,
+  tapioca,
+  tomato,
 }
 
 String _normalizeFoodName(String value) {
@@ -56,11 +69,47 @@ LocalFoodIconKind? resolveLocalFoodIconKind(String name) {
   if (normalized.isEmpty) return null;
 
   const matchers = <MapEntry<LocalFoodIconKind, List<String>>>[
+    MapEntry(LocalFoodIconKind.egg, [
+      'ovo',
+      'ovos',
+      'ovo de galinha',
+      'omelete',
+      'mexido',
+      'clara',
+      'egg',
+      'eggs',
+      'omelet',
+    ]),
     MapEntry(LocalFoodIconKind.chickenBreast, [
       'peito de frango',
       'file de frango',
       'filé de frango',
       'chicken breast',
+    ]),
+    MapEntry(LocalFoodIconKind.tapioca, [
+      'farinha de tapioca',
+      'tapioca',
+      'crepioca',
+      'wrap',
+      'tortilla',
+      'flatbread',
+    ]),
+    MapEntry(LocalFoodIconKind.oil, [
+      'oleo de soja',
+      'óleo de soja',
+      'oleo vegetal',
+      'óleo vegetal',
+      'oleo de canola',
+      'óleo de canola',
+      'oleo de girassol',
+      'óleo de girassol',
+      'oleo de coco',
+      'óleo de coco',
+      'soybean oil',
+      'vegetable oil',
+      'canola oil',
+      'sunflower oil',
+      'coconut oil',
     ]),
   ];
 

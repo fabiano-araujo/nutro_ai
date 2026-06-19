@@ -152,6 +152,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   final ScrollController _scrollController = ScrollController();
   final ScrollController _messageInputScrollController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
+  final ValueNotifier<bool> _hasInputTextNotifier = ValueNotifier<bool>(false);
 
   // Para animação do ícone pulsante
   late AnimationController _animationController;
@@ -166,6 +167,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       GlobalKey(); // Key para rastrear a última mensagem da IA
   bool _isScrollingProgrammatically =
       false; // Flag para ignorar scroll automático no _handleScroll
+  bool _isHeaderVisibilityCheckScheduled = false;
 
   // Contador de mensagens do usuário
   int _userMessageCount = 0;
@@ -194,9 +196,207 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   // Banner de login (só aparece após enviar mensagem; dispensável)
   bool _loginBannerDismissed = false;
 
-  // Contador anterior de refeições, para detectar quando uma nova foi adicionada
-  int _lastMealCount = -1;
+  // Evento explícito do provider para detectar adições reais de refeição.
+  int? _lastObservedMealAdditionVersion;
   bool _showMealAddedToast = false;
+  String? _mealAddedToastDateKey;
+  int _mealAddedToastToken = 0;
+  String? _suppressedMealToastDateKey;
+  Timer? _mealToastSuppressionTimer;
+  final Stopwatch _chatBootStopwatch = Stopwatch();
+  bool _hasScheduledFirstFramePerfLog = false;
+  int _chatBuildCount = 0;
+  int _lastChatBuildPerfLogMs = -1;
+  bool? _lastLoggedShouldBlockChatContent;
+  int? _lastLoggedMessageCount;
+  bool? _lastLoggedIsLoading;
+  bool? _lastLoggedIsLoadingMessages;
+
+  String _formatMealToastDateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  void _logChatBootPerf(String event, [Map<String, Object?> data = const {}]) {
+    final elapsedMs = _chatBootStopwatch.isRunning
+        ? _chatBootStopwatch.elapsedMilliseconds
+        : 0;
+    final payload = data.isEmpty ? '' : ' ${jsonEncode(data)}';
+    debugPrint('[CHAT_BOOT_PERF] +${elapsedMs}ms $event$payload');
+  }
+
+  void _scheduleFirstFramePerfLog() {
+    if (_hasScheduledFirstFramePerfLog) {
+      return;
+    }
+    _hasScheduledFirstFramePerfLog = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _logChatBootPerf('first_frame', {
+        'messageCount': _chatController.messages.length,
+        'isLoading': _chatController.isLoading,
+        'isLoadingMessages': _chatController.isLoadingMessages,
+        'isFreeChat': widget.isFreeChat,
+      });
+    });
+  }
+
+  void _scheduleDeferredChatStartupWork() {
+    _scheduleFirstFramePerfLog();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      final speechDelay = !kIsWeb && Platform.isAndroid
+          ? const Duration(milliseconds: 7000)
+          : const Duration(milliseconds: 500);
+      Future.delayed(speechDelay, () {
+        if (!mounted) {
+          return;
+        }
+        _logChatBootPerf('speech_init_start');
+        initSpeechRecognition();
+      });
+
+      if (!kIsWeb) {
+        Future.delayed(const Duration(milliseconds: 11000), () {
+          if (!mounted) {
+            return;
+          }
+          _logChatBootPerf('interstitial_preload_start');
+          _carregarAnuncioIntersticial();
+        });
+      }
+    });
+  }
+
+  void _logChatBuildPerf({
+    required int messageCount,
+    required bool isLoading,
+    required bool isLoadingMessages,
+    required bool shouldBlockChatContent,
+  }) {
+    _chatBuildCount++;
+    final elapsedMs = _chatBootStopwatch.elapsedMilliseconds;
+    final stateChanged =
+        _lastLoggedShouldBlockChatContent != shouldBlockChatContent ||
+            _lastLoggedMessageCount != messageCount ||
+            _lastLoggedIsLoading != isLoading ||
+            _lastLoggedIsLoadingMessages != isLoadingMessages;
+    final shouldThrottleLog = _lastChatBuildPerfLogMs < 0 ||
+        elapsedMs - _lastChatBuildPerfLogMs > 800;
+    if (_chatBuildCount <= 4 || stateChanged && shouldThrottleLog) {
+      _lastLoggedShouldBlockChatContent = shouldBlockChatContent;
+      _lastLoggedMessageCount = messageCount;
+      _lastLoggedIsLoading = isLoading;
+      _lastLoggedIsLoadingMessages = isLoadingMessages;
+      _lastChatBuildPerfLogMs = elapsedMs;
+      _logChatBootPerf('build_state', {
+        'build': _chatBuildCount,
+        'messages': messageCount,
+        'loading': isLoading,
+        'loadingMessages': isLoadingMessages,
+        'blocked': shouldBlockChatContent,
+        'bootstrapping': widget.isBootstrappingInitialChat,
+        'isFreeChat': widget.isFreeChat,
+      });
+    }
+  }
+
+  String _mealAddedToastMessage(DateTime date) {
+    final now = DateTime.now();
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
+    final yesterday = now.subtract(const Duration(days: 1));
+    final isYesterday = date.year == yesterday.year &&
+        date.month == yesterday.month &&
+        date.day == yesterday.day;
+
+    if (isToday) {
+      return 'Adicionado ao diário de hoje';
+    }
+    if (isYesterday) {
+      return 'Adicionado ao diário de ontem';
+    }
+    return 'Adicionado ao diário de ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+  }
+
+  void _maybeShowMealAddedToast(DailyMealsProvider mealsProvider) {
+    final currentVersion = mealsProvider.mealAdditionVersion;
+    final lastObservedVersion = _lastObservedMealAdditionVersion;
+    if (lastObservedVersion == null) {
+      _lastObservedMealAdditionVersion = currentVersion;
+      return;
+    }
+    if (currentVersion <= lastObservedVersion) {
+      return;
+    }
+
+    _lastObservedMealAdditionVersion = currentVersion;
+    final addedDate = mealsProvider.lastMealAdditionDate;
+    if (addedDate == null) {
+      return;
+    }
+
+    final addedDateKey = _formatMealToastDateKey(addedDate);
+    final selectedDateKey = _formatMealToastDateKey(mealsProvider.selectedDate);
+    if (addedDateKey != selectedDateKey) {
+      return;
+    }
+    if (addedDateKey == _suppressedMealToastDateKey) {
+      return;
+    }
+
+    final toastToken = ++_mealAddedToastToken;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _showMealAddedToast = true;
+        _mealAddedToastDateKey = addedDateKey;
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted || toastToken != _mealAddedToastToken) return;
+        setState(() {
+          _showMealAddedToast = false;
+          _mealAddedToastDateKey = null;
+        });
+      });
+    });
+  }
+
+  void _dismissMealAddedToast() {
+    _mealAddedToastToken++;
+    if (!_showMealAddedToast && _mealAddedToastDateKey == null) return;
+    setState(() {
+      _showMealAddedToast = false;
+      _mealAddedToastDateKey = null;
+    });
+  }
+
+  void _beginMealToastSuppressionForDate(
+    DateTime date,
+    DailyMealsProvider mealsProvider,
+  ) {
+    final dateKey = _formatMealToastDateKey(date);
+    _suppressedMealToastDateKey = dateKey;
+    _lastObservedMealAdditionVersion = mealsProvider.mealAdditionVersion;
+    _mealToastSuppressionTimer?.cancel();
+    _mealToastSuppressionTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      if (_suppressedMealToastDateKey == dateKey) {
+        _suppressedMealToastDateKey = null;
+      }
+      _mealToastSuppressionTimer = null;
+    });
+  }
+
+  void _endMealToastSuppression() {
+    _mealToastSuppressionTimer?.cancel();
+    _mealToastSuppressionTimer = null;
+    _suppressedMealToastDateKey = null;
+  }
 
   // Método para mostrar sugestões baseado na ação
   void _showSuggestionsForAction(String actionType) {
@@ -249,6 +449,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
   }
 
+  void _handleMessageTextChanged() {
+    final hasInputText = _messageController.text.trim().isNotEmpty;
+    if (_hasInputTextNotifier.value != hasInputText) {
+      _hasInputTextNotifier.value = hasInputText;
+    }
+  }
+
   // Implementação dos getters e métodos requeridos pelo NutritionAssistantSpeechMixin
   @override
   TextEditingController get messageController => _messageController;
@@ -276,6 +483,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   @override
   void initState() {
     super.initState();
+    _chatBootStopwatch.start();
+    _logChatBootPerf('init_state_start', {
+      'isFreeChat': widget.isFreeChat,
+      'freeChatId': widget.freeChatId,
+      'conversationId': widget.conversationId,
+      'bootstrapping': widget.isBootstrappingInitialChat,
+    });
     print('🚀 NutritionAssistantScreen - initState chamado');
     print('   - conversationId: ${widget.conversationId}');
     print('   - isFreeChat: ${widget.isFreeChat}');
@@ -293,6 +507,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
     // Adicionar listener para controlar a visibilidade do header
     _scrollController.addListener(_handleScroll);
+    _messageController.addListener(_handleMessageTextChanged);
 
     // Registrar observer para detectar mudanças no teclado
     WidgetsBinding.instance.addObserver(this);
@@ -491,14 +706,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       });
     }
 
-    if (!kIsWeb && Platform.isAndroid) {
-      Future.delayed(Duration(milliseconds: 1000), () {
-        initSpeechRecognition();
-      });
-    } else {
-      initSpeechRecognition();
-    }
-    _carregarAnuncioIntersticial();
+    _scheduleDeferredChatStartupWork();
   }
 
   /// Sincroniza mensagens do _chatController para o FreeChatProvider (persistência)
@@ -534,6 +742,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   /// Inicializa o modo de conversa livre
   void _initFreeChatMode() {
+    _logChatBootPerf('free_chat_init_start', {
+      'freeChatId': widget.freeChatId,
+      'forceNew': widget.forceNewFreeChat,
+      'hasInitialPrompt': (widget.initialPrompt?.trim().isNotEmpty ?? false),
+    });
     // Determinar o toolType baseado no parâmetro widget.toolType
     final effectiveToolType = widget.toolType ?? 'free_chat';
     final initialPrompt = widget.initialPrompt?.trim() ?? '';
@@ -554,6 +767,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     if (widget.freeChatId != null) {
       _currentFreeChatId = widget.freeChatId;
       initialMessages = freeChatProvider.getMessages(widget.freeChatId!);
+      _logChatBootPerf('free_chat_messages_loaded', {
+        'freeChatId': widget.freeChatId,
+        'messageCount': initialMessages.length,
+      });
       print(
           '📂 NutritionAssistantScreen: Carregando conversa livre existente: ${widget.freeChatId}');
     } else {
@@ -562,6 +779,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         reuseEmpty: !widget.forceNewFreeChat,
       );
       initialMessages = <Map<String, dynamic>>[];
+      _logChatBootPerf('free_chat_created', {
+        'freeChatId': _currentFreeChatId,
+      });
       print(
           '📝 NutritionAssistantScreen: Nova conversa livre criada: $_currentFreeChatId');
     }
@@ -577,6 +797,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       showWelcomeMessage: loadedInitialMessages.isEmpty && !hasInitialPrompt,
       initialMessages: loadedInitialMessages,
     );
+    _logChatBootPerf('free_chat_controller_ready', {
+      'freeChatId': _currentFreeChatId,
+      'initialMessageCount': loadedInitialMessages.length,
+      'showWelcome': loadedInitialMessages.isEmpty && !hasInitialPrompt,
+      'toolType': effectiveToolType,
+    });
 
     // Sincronizar mensagens com FreeChatProvider para persistir
     _chatController.addListener(_syncFreeChatMessages);
@@ -591,14 +817,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       });
     }
 
-    if (!kIsWeb && Platform.isAndroid) {
-      Future.delayed(Duration(milliseconds: 1000), () {
-        initSpeechRecognition();
-      });
-    } else {
-      initSpeechRecognition();
-    }
-    _carregarAnuncioIntersticial();
+    _scheduleDeferredChatStartupWork();
   }
 
   @override
@@ -657,7 +876,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
     // Remover listener do scroll
     _scrollController.removeListener(_handleScroll);
+    _messageController.removeListener(_handleMessageTextChanged);
 
+    _mealToastSuppressionTimer?.cancel();
+    _hasInputTextNotifier.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     _messageInputScrollController.dispose();
@@ -845,11 +1067,22 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       return;
     }
 
-    final currentScrollPosition = _scrollController.offset;
+    final position = _scrollController.position;
+    if (!position.hasContentDimensions ||
+        position.maxScrollExtent <= 1.0 ||
+        position.pixels <= position.minScrollExtent + 1.0) {
+      _showHeader();
+      _lastScrollPosition = position.pixels;
+      return;
+    }
+
+    final currentScrollPosition = position.pixels;
     final scrollDelta = currentScrollPosition - _lastScrollPosition;
 
     // Threshold mínimo para evitar mudanças por micro-movimentos
     if (scrollDelta.abs() < 2) return;
+
+    _collapseNutritionHeaderFromUserScroll();
 
     final currentHeaderOffset = _headerOffsetNotifier.value;
     final nextHeaderOffset = currentScrollPosition < 10
@@ -862,11 +1095,47 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     _lastScrollPosition = currentScrollPosition;
   }
 
+  void _collapseNutritionHeaderFromUserScroll() {
+    if (widget.isFreeChat || _isNutritionHeaderCompact || !mounted) return;
+
+    setState(() {
+      _isNutritionHeaderCompact = true;
+    });
+  }
+
   // Método para mostrar o header programaticamente
   void _showHeader() {
     if (_headerOffsetNotifier.value < 0) {
       _headerOffsetNotifier.value = 0.0;
     }
+  }
+
+  void _showHeaderWhenContentCannotScroll() {
+    if (widget.isFreeChat || !mounted) return;
+
+    if (!_scrollController.hasClients) {
+      _showHeader();
+      _lastScrollPosition = 0.0;
+      return;
+    }
+
+    final position = _scrollController.position;
+    if (!position.hasContentDimensions ||
+        position.maxScrollExtent <= 1.0 ||
+        position.pixels <= position.minScrollExtent + 1.0) {
+      _showHeader();
+      _lastScrollPosition = position.pixels;
+    }
+  }
+
+  void _scheduleHeaderVisibilityCheck() {
+    if (widget.isFreeChat || _isHeaderVisibilityCheckScheduled) return;
+
+    _isHeaderVisibilityCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _isHeaderVisibilityCheckScheduled = false;
+      _showHeaderWhenContentCannotScroll();
+    });
   }
 
   void _setNutritionHeaderCompact(bool isCompact) {
@@ -1142,6 +1411,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   // Método para lidar com o envio de mensagem (botão Enviar ou Enter)
   Future<void> _handleSendMessage() async {
+    _endMealToastSuppression();
     final message = _messageController.text.trim();
     final shouldScrollAfterSend =
         message.isNotEmpty || _chatController.hasSelectedImage;
@@ -1445,8 +1715,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           final selectedImageBytes = _chatController.selectedImageBytes;
           final currentlySpeakingMessageIndex =
               _chatController.currentlySpeakingMessageIndex;
+          final hasCachedMessages = messages.isNotEmpty;
           final shouldBlockChatContent =
-              widget.isBootstrappingInitialChat || isLoadingMessages;
+              !hasCachedMessages && isLoadingMessages;
+          _logChatBuildPerf(
+            messageCount: messages.length,
+            isLoading: isLoading,
+            isLoadingMessages: isLoadingMessages,
+            shouldBlockChatContent: shouldBlockChatContent,
+          );
 
           // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
           if (!_hasScrolledToInitialMessages &&
@@ -1460,6 +1737,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             });
           }
           _handleChatAutoScroll(messages, isLoading);
+          _scheduleHeaderVisibilityCheck();
 
           return PopScope(
             canPop: _suggestions.isEmpty,
@@ -1759,12 +2037,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                 builder:
                                     (context, reconstructMealsProvider, _) {
                                   final shouldShowInitialLoader =
-                                      widget.isBootstrappingInitialChat ||
-                                          isLoadingMessages ||
-                                          isLoading ||
-                                          !reconstructMealsProvider.isLoaded ||
-                                          reconstructMealsProvider
-                                              .isLoadingFromServer;
+                                      isLoadingMessages || isLoading;
                                   if (shouldShowInitialLoader) {
                                     return _buildInitialChatLoadingView(
                                       backgroundColor:
@@ -1939,27 +2212,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                           if (!widget.isFreeChat)
                             Consumer<DailyMealsProvider>(
                               builder: (context, mealsProvider, _) {
-                                // Conta total de itens (foods) em todas as refeições do dia
-                                final count = mealsProvider.todayMeals
-                                    .fold<int>(0, (s, m) => s + m.foods.length);
-                                if (_lastMealCount == -1) {
-                                  _lastMealCount = count;
-                                } else if (count > _lastMealCount) {
-                                  _lastMealCount = count;
-                                  WidgetsBinding.instance
-                                      .addPostFrameCallback((_) {
-                                    if (!mounted) return;
-                                    setState(() => _showMealAddedToast = true);
-                                    Future.delayed(const Duration(seconds: 3),
-                                        () {
-                                      if (!mounted) return;
-                                      setState(
-                                          () => _showMealAddedToast = false);
-                                    });
-                                  });
-                                } else if (count < _lastMealCount) {
-                                  _lastMealCount = count;
-                                }
+                                _maybeShowMealAddedToast(mealsProvider);
+                                final selectedDateKey = _formatMealToastDateKey(
+                                    mealsProvider.selectedDate);
+                                final shouldShowMealAddedToast =
+                                    _showMealAddedToast &&
+                                        _mealAddedToastDateKey ==
+                                            selectedDateKey;
                                 return AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 250),
                                   transitionBuilder: (child, anim) =>
@@ -1968,7 +2227,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                     child: FadeTransition(
                                         opacity: anim, child: child),
                                   ),
-                                  child: _showMealAddedToast
+                                  child: shouldShowMealAddedToast
                                       ? Padding(
                                           key: const ValueKey('meal-toast'),
                                           padding:
@@ -1993,32 +2252,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                 const SizedBox(width: 8),
                                                 Expanded(
                                                   child: Text(
-                                                    () {
-                                                      final d = mealsProvider
-                                                          .selectedDate;
-                                                      final now =
-                                                          DateTime.now();
-                                                      final isToday =
-                                                          d.year == now.year &&
-                                                              d.month ==
-                                                                  now.month &&
-                                                              d.day == now.day;
-                                                      final yest = now.subtract(
-                                                          const Duration(
-                                                              days: 1));
-                                                      final isYest =
-                                                          d.year == yest.year &&
-                                                              d.month ==
-                                                                  yest.month &&
-                                                              d.day == yest.day;
-                                                      if (isToday) {
-                                                        return 'Adicionado ao diário de hoje';
-                                                      }
-                                                      if (isYest) {
-                                                        return 'Adicionado ao diário de ontem';
-                                                      }
-                                                      return 'Adicionado ao diário de ${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
-                                                    }(),
+                                                    _mealAddedToastMessage(
+                                                        mealsProvider
+                                                            .selectedDate),
                                                     style: TextStyle(
                                                       fontSize: 13,
                                                       color: isDarkMode
@@ -2272,204 +2508,270 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                 ),
                               ),
                             ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: isDarkMode
-                                  ? Color(0xFF303030)
-                                  : AppTheme.surfaceColor,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 2),
-                            child: isListening
-                                ? _buildRecordingComposer(isDarkMode)
-                                : Row(
-                                    children: [
-                                      // Botão "+" — Galeria, Câmera, Recentes e favoritos
-                                      IconButton(
-                                        icon: Icon(Icons.add,
-                                            color: isDarkMode
-                                                ? Colors.grey[400]
-                                                : AppTheme.textSecondaryColor),
-                                        onPressed: () {
-                                          showModalBottomSheet(
-                                            context: context,
-                                            backgroundColor: Theme.of(context)
-                                                .scaffoldBackgroundColor,
-                                            shape: const RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.vertical(
-                                                      top: Radius.circular(20)),
-                                            ),
-                                            builder: (context) => SafeArea(
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  ListTile(
-                                                    leading: Icon(
-                                                        Icons.photo_library,
-                                                        color: isDarkMode
-                                                            ? Colors.white70
-                                                            : AppTheme
-                                                                .textSecondaryColor),
-                                                    title: Text('Galeria',
-                                                        style: TextStyle(
-                                                            color: isDarkMode
-                                                                ? Colors.white
-                                                                : AppTheme
-                                                                    .textPrimaryColor)),
-                                                    onTap: () {
-                                                      Navigator.pop(context);
-                                                      _handleImageSelection(
-                                                          ImageSource.gallery);
-                                                    },
-                                                  ),
-                                                  ListTile(
-                                                    leading: Icon(
-                                                        Icons.camera_alt,
-                                                        color: isDarkMode
-                                                            ? Colors.white70
-                                                            : AppTheme
-                                                                .textSecondaryColor),
-                                                    title: Text('Câmera',
-                                                        style: TextStyle(
-                                                            color: isDarkMode
-                                                                ? Colors.white
-                                                                : AppTheme
-                                                                    .textPrimaryColor)),
-                                                    onTap: () {
-                                                      Navigator.pop(context);
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (context) =>
-                                                              CameraScanScreen(),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  ListTile(
-                                                    leading: Icon(Icons.history,
-                                                        color: isDarkMode
-                                                            ? Colors.white70
-                                                            : AppTheme
-                                                                .textSecondaryColor),
-                                                    title: Text(
-                                                        'Recentes e favoritos',
-                                                        style: TextStyle(
-                                                            color: isDarkMode
-                                                                ? Colors.white
-                                                                : AppTheme
-                                                                    .textPrimaryColor)),
-                                                    onTap: () {
-                                                      Navigator.pop(context);
-                                                      _openRecentFoodsSheet();
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        splashRadius: 20,
-                                        tooltip: 'Adicionar',
-                                      ),
+                          ValueListenableBuilder<AudioCaptureUiState>(
+                            valueListenable: audioCaptureUiStateListenable,
+                            builder: (context, audioState, _) {
+                              final isListening = audioState.isListening;
+                              final isTranscribingAudio =
+                                  audioState.isTranscribingAudio;
 
-                                      // Campo de texto
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _messageController,
-                                          scrollController:
-                                              _messageInputScrollController,
-                                          focusNode: _inputFocusNode,
-                                          scrollPhysics:
-                                              const ClampingScrollPhysics(),
-                                          keyboardType: TextInputType.multiline,
-                                          decoration: InputDecoration(
-                                            hintText: context.tr
-                                                .translate('what_did_you_eat'),
-                                            hintStyle: TextStyle(
-                                              fontSize: 15,
-                                              color: isTranscribingAudio
-                                                  ? Colors.orange
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? AppTheme.darkChatInputColor
+                                      : const Color(0xFFE5EEF0),
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 2),
+                                child: Row(
+                                  children: [
+                                    // Botão "+" — Galeria, Câmera, Recentes e favoritos
+                                    IconButton(
+                                      icon: Icon(Icons.add,
+                                          color: isDarkMode
+                                              ? Colors.grey[400]
+                                              : AppTheme.textSecondaryColor),
+                                      onPressed: isListening
+                                          ? null
+                                          : () {
+                                              showModalBottomSheet(
+                                                context: context,
+                                                backgroundColor: Theme.of(
+                                                        context)
+                                                    .scaffoldBackgroundColor,
+                                                shape:
+                                                    const RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.vertical(
+                                                          top: Radius.circular(
+                                                              20)),
+                                                ),
+                                                builder: (context) => SafeArea(
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      ListTile(
+                                                        leading: Icon(
+                                                            Icons.photo_library,
+                                                            color: isDarkMode
+                                                                ? Colors.white70
+                                                                : AppTheme
+                                                                    .textSecondaryColor),
+                                                        title: Text('Galeria',
+                                                            style: TextStyle(
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white
+                                                                    : AppTheme
+                                                                        .textPrimaryColor)),
+                                                        onTap: () {
+                                                          Navigator.pop(
+                                                              context);
+                                                          _handleImageSelection(
+                                                              ImageSource
+                                                                  .gallery);
+                                                        },
+                                                      ),
+                                                      ListTile(
+                                                        leading: Icon(
+                                                            Icons.camera_alt,
+                                                            color: isDarkMode
+                                                                ? Colors.white70
+                                                                : AppTheme
+                                                                    .textSecondaryColor),
+                                                        title: Text('Câmera',
+                                                            style: TextStyle(
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white
+                                                                    : AppTheme
+                                                                        .textPrimaryColor)),
+                                                        onTap: () {
+                                                          Navigator.pop(
+                                                              context);
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (context) =>
+                                                                  CameraScanScreen(),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                      ListTile(
+                                                        leading: Icon(
+                                                            Icons.history,
+                                                            color: isDarkMode
+                                                                ? Colors.white70
+                                                                : AppTheme
+                                                                    .textSecondaryColor),
+                                                        title: Text(
+                                                            'Recentes e favoritos',
+                                                            style: TextStyle(
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white
+                                                                    : AppTheme
+                                                                        .textPrimaryColor)),
+                                                        onTap: () {
+                                                          Navigator.pop(
+                                                              context);
+                                                          _openRecentFoodsSheet();
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                      splashRadius: 20,
+                                      tooltip: 'Adicionar',
+                                    ),
+
+                                    // Campo de texto / visualizador de áudio
+                                    Expanded(
+                                      child: isListening
+                                          ? _buildInlineRecordingVisualizer(
+                                              isDarkMode)
+                                          : TextField(
+                                              controller: _messageController,
+                                              scrollController:
+                                                  _messageInputScrollController,
+                                              focusNode: _inputFocusNode,
+                                              scrollPhysics:
+                                                  const ClampingScrollPhysics(),
+                                              keyboardType:
+                                                  TextInputType.multiline,
+                                              decoration: InputDecoration(
+                                                hintText: context.tr.translate(
+                                                    'what_did_you_eat'),
+                                                hintStyle: TextStyle(
+                                                  fontSize: 15,
+                                                  color: isTranscribingAudio
+                                                      ? (isDarkMode
+                                                          ? AppTheme
+                                                              .primaryColorDarkMode
+                                                          : AppTheme
+                                                              .primaryColor)
+                                                      : isDarkMode
+                                                          ? Colors.grey[500]
+                                                          : AppTheme
+                                                              .textSecondaryColor,
+                                                ),
+                                                border: InputBorder.none,
+                                                contentPadding:
+                                                    EdgeInsets.symmetric(
+                                                        vertical: 10,
+                                                        horizontal: 0),
+                                                focusedBorder: InputBorder.none,
+                                                enabledBorder: InputBorder.none,
+                                                errorBorder: InputBorder.none,
+                                                disabledBorder:
+                                                    InputBorder.none,
+                                                fillColor: Colors.transparent,
+                                                filled: false,
+                                              ),
+                                              style: TextStyle(
+                                                  color: isDarkMode
+                                                      ? Colors.white
+                                                      : AppTheme
+                                                          .textPrimaryColor),
+                                              textCapitalization:
+                                                  TextCapitalization.sentences,
+                                              minLines: 1,
+                                              maxLines: 6,
+                                              onChanged: (text) {
+                                                if (_suggestions.isNotEmpty) {
+                                                  _clearSuggestions();
+                                                }
+                                              },
+                                              enabled:
+                                                  true, // Sempre habilitado, mesmo durante o carregamento
+                                              cursorColor: isDarkMode
+                                                  ? Colors.grey[400]
+                                                  : AppTheme.textPrimaryColor,
+                                            ),
+                                    ),
+
+                                    // Botão de microfone/parar/loading (sempre visível)
+                                    IconButton(
+                                      icon: isTranscribingAudio
+                                          ? SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(
+                                                  isDarkMode
+                                                      ? AppTheme
+                                                          .primaryColorDarkMode
+                                                      : AppTheme.primaryColor,
+                                                ),
+                                              ),
+                                            )
+                                          : Icon(
+                                              isListening
+                                                  ? Icons.stop_rounded
+                                                  : Icons.mic,
+                                              color: isListening
+                                                  ? (isDarkMode
+                                                      ? AppTheme
+                                                          .primaryColorDarkMode
+                                                      : AppTheme.primaryColor)
                                                   : isDarkMode
-                                                      ? Colors.grey[500]
+                                                      ? Colors.grey[400]
                                                       : AppTheme
                                                           .textSecondaryColor,
                                             ),
-                                            border: InputBorder.none,
-                                            contentPadding:
-                                                EdgeInsets.symmetric(
-                                                    vertical: 10,
-                                                    horizontal: 0),
-                                            focusedBorder: InputBorder.none,
-                                            enabledBorder: InputBorder.none,
-                                            errorBorder: InputBorder.none,
-                                            disabledBorder: InputBorder.none,
-                                            fillColor: isDarkMode
-                                                ? Color(0xFF303030)
-                                                : AppTheme.surfaceColor,
-                                            filled: true,
-                                          ),
-                                          style: TextStyle(
-                                              color: isDarkMode
-                                                  ? Colors.white
-                                                  : AppTheme.textPrimaryColor),
-                                          textCapitalization:
-                                              TextCapitalization.sentences,
-                                          minLines: 1,
-                                          maxLines: 6,
-                                          onChanged: (text) {
-                                            if (_suggestions.isNotEmpty) {
-                                              _clearSuggestions();
-                                            }
-                                            setState(() {});
-                                          },
-                                          enabled:
-                                              true, // Sempre habilitado, mesmo durante o carregamento
-                                          cursorColor: isDarkMode
-                                              ? Colors.grey[400]
-                                              : AppTheme.textPrimaryColor,
-                                        ),
-                                      ),
+                                      onPressed: () async {
+                                        final micTapStopwatch = Stopwatch()
+                                          ..start();
+                                        debugPrint(
+                                          '[MIC_PERF] ${micTapStopwatch.elapsedMilliseconds}ms mic_button_pressed listening=$isListening transcribing=$isTranscribingAudio',
+                                        );
+                                        if (isTranscribingAudio) {
+                                          return;
+                                        }
+                                        if (isListening) {
+                                          await stopListening();
+                                        } else {
+                                          startListening(
+                                            performanceStopwatch:
+                                                micTapStopwatch,
+                                          );
+                                        }
+                                      },
+                                      splashRadius: 20,
+                                      tooltip: isListening
+                                          ? 'Parar gravação'
+                                          : 'Microfone',
+                                    ),
 
-                                      // Botão de microfone (sempre visível)
-                                      IconButton(
-                                        icon: Icon(
-                                          isTranscribingAudio
-                                              ? Icons.hourglass_top
-                                              : Icons.mic,
-                                          color: isTranscribingAudio
-                                              ? Colors.orange
-                                              : isDarkMode
-                                                  ? Colors.grey[400]
-                                                  : AppTheme.textSecondaryColor,
-                                        ),
-                                        onPressed: () async {
-                                          if (isTranscribingAudio) {
-                                            return;
-                                          }
-                                          startListening();
-                                        },
-                                        splashRadius: 20,
-                                        tooltip: 'Microfone',
-                                      ),
+                                    // Botão de enviar/parar (aparece quando há texto, imagem ou está gerando)
+                                    ValueListenableBuilder<bool>(
+                                      valueListenable: _hasInputTextNotifier,
+                                      builder: (context, hasInputText, _) {
+                                        if (isListening ||
+                                            (!isLoading &&
+                                                !hasInputText &&
+                                                !hasSelectedImage)) {
+                                          return const SizedBox.shrink();
+                                        }
 
-                                      // Botão de enviar/parar (aparece quando há texto, imagem ou está gerando)
-                                      if (isLoading ||
-                                          _messageController.text
-                                              .trim()
-                                              .isNotEmpty ||
-                                          hasSelectedImage)
-                                        IconButton(
+                                        return IconButton(
                                           icon: Icon(
                                             isLoading
                                                 ? Icons.stop_circle
                                                 : Icons.send,
                                             color: isLoading
                                                 ? isDarkMode
-                                                    ? Colors.white
-                                                    : Colors.red
+                                                    ? AppTheme
+                                                        .primaryColorDarkMode
+                                                    : AppTheme.primaryColor
                                                 : isDarkMode
                                                     ? Colors.grey[400]
                                                     : AppTheme
@@ -2483,9 +2785,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                             }
                                           },
                                           splashRadius: 20,
-                                        ),
-                                    ],
-                                  ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -2498,118 +2804,76 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         });
   }
 
-  Widget _buildRecordingComposer(bool isDarkMode) {
-    final accentColor = const Color(0xFFFF5C5C);
-
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: accentColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: accentColor.withValues(alpha: 0.45),
-                blurRadius: 10,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDarkMode ? Color(0xFF1F2329) : Colors.white,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                Expanded(child: _buildRecordingWaveform(isDarkMode)),
-                SizedBox(width: 12),
-                Text(
-                  _formatRecordingDuration(recordingDuration),
-                  style: TextStyle(
-                    color:
-                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(width: 8),
-        Material(
-          color: accentColor.withValues(alpha: 0.18),
-          shape: CircleBorder(),
-          child: InkWell(
-            customBorder: CircleBorder(),
-            onTap: () async {
-              await stopListening();
-              if (mounted) {
-                setState(() {});
-              }
-            },
-            child: Padding(
-              padding: EdgeInsets.all(12),
-              child: Icon(
-                Icons.stop_rounded,
-                color: accentColor,
-                size: 24,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecordingWaveform(bool isDarkMode) {
-    final activeColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final idleColor =
-        (isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor)
-            .withValues(alpha: 0.55);
-
-    return SizedBox(
-      height: 34,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: waveformSamples.asMap().entries.map((entry) {
-          final index = entry.key;
-          final sample = entry.value;
-          final isCenterBar =
-              (index - (waveformSamples.length ~/ 2)).abs() <= 1;
-          final barHeight = 8.0 + (sample * 22.0);
-
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 1.6),
-            child: AnimatedContainer(
-              duration: Duration(milliseconds: 120),
-              curve: Curves.easeOut,
-              width: 4,
-              height: barHeight,
-              decoration: BoxDecoration(
-                color: isCenterBar ? activeColor : idleColor,
-                borderRadius: BorderRadius.circular(999),
-              ),
+  Widget _buildInlineRecordingVisualizer(bool isDarkMode) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: ValueListenableBuilder<List<double>>(
+        valueListenable: waveformSamplesListenable,
+        builder: (context, samples, _) {
+          return Center(
+            child: FractionallySizedBox(
+              widthFactor: 0.86,
+              child: _buildRecordingWaveform(isDarkMode, samples),
             ),
           );
-        }).toList(),
+        },
       ),
     );
   }
 
-  String _formatRecordingDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(1, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
+  Widget _buildRecordingWaveform(bool isDarkMode, List<double> samples) {
+    final activeColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final idleColor =
+        (isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor)
+            .withValues(alpha: 0.46);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final spacing = 3.0;
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : samples.length * 8.0;
+        final barWidth = ((availableWidth - (spacing * (samples.length - 1))) /
+                samples.length)
+            .clamp(3.0, 5.0)
+            .toDouble();
+
+        return SizedBox(
+          height: 42,
+          width: double.infinity,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: samples.asMap().entries.map((entry) {
+              final index = entry.key;
+              final sample = entry.value;
+              final isCenterBar = (index - (samples.length ~/ 2)).abs() <= 1;
+              final visibleSample = sample <= 0.08 ? sample * 0.45 : sample;
+              final barHeight = 2.5 + (visibleSample * 37.5);
+              final colorStrength =
+                  isCenterBar ? math.max(0.5, sample) : sample * 0.82;
+              final barColor = Color.lerp(
+                idleColor,
+                activeColor,
+                colorStrength.clamp(0.0, 1.0).toDouble(),
+              )!;
+
+              return AnimatedContainer(
+                duration: Duration(milliseconds: 34),
+                curve: Curves.easeOutCubic,
+                width: barWidth,
+                height: barHeight,
+                decoration: BoxDecoration(
+                  color: barColor,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _openLoginFromChat() async {
@@ -3549,11 +3813,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
     final titleWidget = widget.isFreeChat
         ? Builder(builder: (ctx) {
-            final provider = Provider.of<FreeChatProvider>(ctx);
-            String? title;
-            if (_currentFreeChatId != null) {
-              title = provider.getConversation(_currentFreeChatId!)?.title;
-            }
+            final currentChatId = _currentFreeChatId;
+            final title = currentChatId == null
+                ? null
+                : ctx.select<FreeChatProvider, String?>(
+                    (provider) =>
+                        provider.getConversation(currentChatId)?.title,
+                  );
             return Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -3678,6 +3944,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               onDaySelected: (date) async {
                 Navigator.of(sheetContext).pop();
                 _clearSuggestions();
+                _beginMealToastSuppressionForDate(date, mealsProvider);
+                _dismissMealAddedToast();
                 _showHeader();
                 mealsProvider.setSelectedDate(date);
                 await _chatController.changeSelectedDate(date);
@@ -3697,37 +3965,40 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required bool isDarkMode,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF3F3F3),
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: isDarkMode ? Colors.white12 : Colors.black12,
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isDarkMode ? Colors.white70 : Colors.black87,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.white : Colors.black87,
+    final surfaceColor =
+        isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+
+    return Card(
+      color: surfaceColor,
+      elevation: AppTheme.standardCardElevation(isDarkMode),
+      shadowColor: AppTheme.standardCardShadowColor(isDarkMode),
+      surfaceTintColor:
+          isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor,
+      shape: AppTheme.standardCardShape(isDarkMode, radius: 100),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(100),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isDarkMode ? Colors.white70 : Colors.black87,
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3742,61 +4013,63 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required VoidCallback onTap,
     bool isPrimary = false,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isPrimary
-              ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
-              : (isDarkMode ? Color(0xFF1E1E1E) : Colors.white),
-          borderRadius: BorderRadius.circular(16),
-          border: isPrimary
-              ? Border.all(
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                  width: 1.5,
-                )
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isPrimary
-                    ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
-                    : (isDarkMode ? Color(0xFF2A2A2A) : Color(0xFFF5F5F5)),
-                borderRadius: BorderRadius.circular(12),
+    final surfaceColor =
+        isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    return Card(
+      color: isPrimary ? primaryColor.withValues(alpha: 0.15) : surfaceColor,
+      elevation: AppTheme.standardCardElevation(isDarkMode),
+      shadowColor: AppTheme.standardCardShadowColor(isDarkMode),
+      surfaceTintColor:
+          isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor,
+      shape: AppTheme.standardCardShape(isDarkMode),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isPrimary
+                      ? primaryColor.withValues(alpha: 0.2)
+                      : (isDarkMode
+                          ? AppTheme.darkComponentColor
+                          : const Color(0xFFF5F5F5)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: isPrimary
+                      ? primaryColor
+                      : (isDarkMode ? Colors.white70 : Colors.black54),
+                ),
               ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: isPrimary
-                    ? Theme.of(context).primaryColor
-                    : (isDarkMode ? Colors.white70 : Colors.black54),
+              SizedBox(height: 14),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
               ),
-            ),
-            SizedBox(height: 14),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDarkMode ? Colors.white : Colors.black87,
+              SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
               ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 14,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

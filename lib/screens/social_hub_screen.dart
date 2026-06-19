@@ -51,6 +51,10 @@ Color _socialMutedTextColor(bool isDarkMode) =>
 Color _socialPrimaryColor(bool isDarkMode) =>
     isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
 
+const double _feedPortraitAspectRatio = 4 / 5;
+const double _feedLandscapeAspectRatio = 16 / 9;
+const double _profileShapeSingleAspectRatio = 3 / 4;
+
 class SocialHubScreen extends StatefulWidget {
   final VoidCallback? onOpenDrawer;
 
@@ -63,13 +67,17 @@ class SocialHubScreen extends StatefulWidget {
 class _SocialHubScreenState extends State<SocialHubScreen>
     with SingleTickerProviderStateMixin {
   // Apenas 2 abas: Social e Desafios
+  final ScrollController _scrollController = ScrollController();
+  static const double _scrollVisibilityThreshold = 6.0;
   late TabController _tabController;
   bool _showPublicChallenges = false;
   bool _isHeaderCollapsed = false;
+  double _lastScrollOffset = 0;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_handleScrollVisibility);
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabChanged);
 
@@ -89,7 +97,10 @@ class _SocialHubScreenState extends State<SocialHubScreen>
   }
 
   void _handleTabChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    _lastScrollOffset =
+        _scrollController.hasClients ? _scrollController.offset : 0;
+    setState(() => _isHeaderCollapsed = false);
   }
 
   Future<void> _refreshData() async {
@@ -101,15 +112,44 @@ class _SocialHubScreenState extends State<SocialHubScreen>
     ]);
   }
 
-  void _handleScrollVisibility(ScrollNotification notification) {
-    final shouldCollapse = notification.metrics.pixels > 12;
-    if (shouldCollapse == _isHeaderCollapsed) return;
-    setState(() => _isHeaderCollapsed = shouldCollapse);
+  void _handleScrollVisibility() {
+    if (!_scrollController.hasClients) return;
+
+    final currentOffset = _scrollController.offset;
+    final scrollDelta = currentOffset - _lastScrollOffset;
+
+    if (currentOffset <= 0) {
+      _lastScrollOffset = 0;
+      _setHeaderCollapsed(false);
+      return;
+    }
+
+    if (scrollDelta.abs() < _scrollVisibilityThreshold) return;
+
+    _lastScrollOffset = currentOffset;
+    if (scrollDelta > 0) {
+      _setHeaderCollapsed(true);
+    } else {
+      _setHeaderCollapsed(false);
+    }
+  }
+
+  void _setHeaderCollapsed(bool collapsed) {
+    if (_isHeaderCollapsed == collapsed) return;
+    setState(() => _isHeaderCollapsed = collapsed);
+  }
+
+  void _showHeader() {
+    _lastScrollOffset =
+        _scrollController.hasClients ? _scrollController.offset : 0;
+    _setHeaderCollapsed(false);
   }
 
   @override
   void dispose() {
     socialTabController.tabChangeCallback = null;
+    _scrollController.removeListener(_handleScrollVisibility);
+    _scrollController.dispose();
     _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();
     super.dispose();
@@ -208,10 +248,11 @@ class _SocialHubScreenState extends State<SocialHubScreen>
             _SocialModeTabs(
               selectedIndex: _tabController.index,
               onChanged: (index) {
-                setState(() {
+                if (_tabController.index != index) {
                   _tabController.index = index;
-                  _isHeaderCollapsed = false;
-                });
+                } else {
+                  _showHeader();
+                }
                 if (index == 1) {
                   context.read<ChallengesProvider>().loadOverview();
                 }
@@ -222,31 +263,25 @@ class _SocialHubScreenState extends State<SocialHubScreen>
                 onRefresh: _tabController.index == 0
                     ? _refreshData
                     : context.read<ChallengesProvider>().refresh,
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    _handleScrollVisibility(notification);
-                    return false;
-                  },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.only(
-                      bottom: _tabController.index == 1 ? 108 : 32,
-                    ),
-                    child: _tabController.index == 0
-                        ? _SocialTabContent(onRefresh: _refreshData)
-                        : _ChallengesContent(
-                            showPublic: _showPublicChallenges,
-                            onShowPublicChanged: (showPublic) {
-                              setState(
-                                  () => _showPublicChallenges = showPublic);
-                              if (showPublic) {
-                                context
-                                    .read<ChallengesProvider>()
-                                    .loadPublicChallenges();
-                              }
-                            },
-                          ),
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    bottom: _tabController.index == 1 ? 108 : 32,
                   ),
+                  child: _tabController.index == 0
+                      ? _SocialTabContent(onRefresh: _refreshData)
+                      : _ChallengesContent(
+                          showPublic: _showPublicChallenges,
+                          onShowPublicChanged: (showPublic) {
+                            setState(() => _showPublicChallenges = showPublic);
+                            if (showPublic) {
+                              context
+                                  .read<ChallengesProvider>()
+                                  .loadPublicChallenges();
+                            }
+                          },
+                        ),
                 ),
               ),
             ),
@@ -794,6 +829,11 @@ class _ActivityCard extends StatelessWidget {
     final profileShapeBeforeImageUrl = _profileShapeBeforeImageUrl;
     final challengeName = _challengeName;
     final stats = _stats;
+    final currentUserId = context.watch<AuthService>().currentUser?.id;
+    final friendship = _friendshipWith(
+      context.watch<FriendsProvider>().friends,
+    );
+    final isOwnPost = currentUserId == activity.user.id;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -831,13 +871,24 @@ class _ActivityCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: typeInfo.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(typeInfo.icon, color: typeInfo.color, size: 17),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: typeInfo.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(typeInfo.icon, color: typeInfo.color, size: 17),
+                  ),
+                  const SizedBox(width: 4),
+                  _ActivityOverflowMenu(
+                    activity: activity,
+                    isOwnPost: isOwnPost,
+                    friendship: friendship,
+                  ),
+                ],
               ),
             ],
           ),
@@ -906,6 +957,15 @@ class _ActivityCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Friend? _friendshipWith(List<Friend> friends) {
+    for (final friend in friends) {
+      if (friend.friend.id == activity.user.id) {
+        return friend;
+      }
+    }
+    return null;
   }
 
   _TypeInfo get _typeInfo {
@@ -1179,6 +1239,268 @@ class _ActivityCard extends StatelessWidget {
   }
 }
 
+enum _ActivityMenuAction {
+  delete,
+  hide,
+  unfriend,
+}
+
+class _ActivityOverflowMenu extends StatelessWidget {
+  final FeedActivity activity;
+  final bool isOwnPost;
+  final Friend? friendship;
+
+  const _ActivityOverflowMenu({
+    required this.activity,
+    required this.isOwnPost,
+    required this.friendship,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = _socialMutedTextColor(isDarkMode);
+
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: PopupMenuButton<_ActivityMenuAction>(
+        tooltip: 'Mais opções',
+        padding: EdgeInsets.zero,
+        icon: Icon(Icons.more_horiz_rounded, size: 22, color: iconColor),
+        color: _socialSurfaceColor(isDarkMode),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onSelected: (action) => _handleAction(context, action),
+        itemBuilder: (context) => [
+          if (isOwnPost)
+            const PopupMenuItem(
+              value: _ActivityMenuAction.delete,
+              child: _ActivityMenuItem(
+                icon: Icons.delete_outline_rounded,
+                label: 'Excluir publicação',
+                isDestructive: true,
+              ),
+            )
+          else ...[
+            const PopupMenuItem(
+              value: _ActivityMenuAction.hide,
+              child: _ActivityMenuItem(
+                icon: Icons.visibility_off_outlined,
+                label: 'Ocultar publicação',
+              ),
+            ),
+            if (friendship != null)
+              PopupMenuItem(
+                value: _ActivityMenuAction.unfriend,
+                child: _ActivityMenuItem(
+                  icon: Icons.person_remove_alt_1_outlined,
+                  label: 'Deixar de ser amigo',
+                  subtitle: activity.user.name,
+                  isDestructive: true,
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleAction(
+    BuildContext context,
+    _ActivityMenuAction action,
+  ) async {
+    switch (action) {
+      case _ActivityMenuAction.delete:
+        await _deletePost(context);
+        return;
+      case _ActivityMenuAction.hide:
+        context.read<FeedProvider>().hideActivity(activity.id);
+        _showSnackBar(context, 'Publicação ocultada');
+        return;
+      case _ActivityMenuAction.unfriend:
+        await _removeFriend(context);
+        return;
+    }
+  }
+
+  Future<void> _deletePost(BuildContext context) async {
+    final confirmed = await _confirmAction(
+      context: context,
+      title: 'Excluir publicação?',
+      message: 'Essa publicação será removida do feed.',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final success = await context.read<FeedProvider>().deleteActivity(
+          activity.id,
+        );
+    if (!context.mounted) return;
+
+    _showSnackBar(
+      context,
+      success ? 'Publicação excluída' : 'Não foi possível excluir a publicação',
+    );
+  }
+
+  Future<void> _removeFriend(BuildContext context) async {
+    final currentFriendship = friendship;
+    if (currentFriendship == null) return;
+
+    final confirmed = await _confirmAction(
+      context: context,
+      title: 'Deixar de ser amigo?',
+      message:
+          'Você deixará de ver publicações de ${activity.user.name} no feed.',
+      confirmLabel: 'Remover',
+      isDestructive: true,
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final success = await context.read<FriendsProvider>().removeFriend(
+          currentFriendship.friendshipId,
+        );
+    if (!context.mounted) return;
+
+    if (success) {
+      context.read<FeedProvider>().removeActivitiesByUser(activity.user.id);
+    }
+
+    _showSnackBar(
+      context,
+      success
+          ? '${activity.user.name} removido dos amigos'
+          : 'Não foi possível remover amizade',
+    );
+  }
+
+  Future<bool?> _confirmAction({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required bool isDestructive,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final actionColor =
+        isDestructive ? Colors.redAccent : _socialPrimaryColor(isDarkMode);
+
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: _socialSurfaceColor(isDarkMode),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          content: Text(
+            message,
+            style: TextStyle(
+              color: _socialMutedTextColor(isDarkMode),
+              fontSize: 14,
+              height: 1.35,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(
+                confirmLabel,
+                style: TextStyle(
+                  color: actionColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+}
+
+class _ActivityMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? subtitle;
+  final bool isDestructive;
+
+  const _ActivityMenuItem({
+    required this.icon,
+    required this.label,
+    this.subtitle,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final color = isDestructive
+        ? Colors.redAccent
+        : (isDarkMode ? Colors.white : AppTheme.textPrimaryColor);
+
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _socialMutedTextColor(isDarkMode),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _TypeInfo {
   final IconData icon;
   final Color color;
@@ -1316,14 +1638,19 @@ class _ActivityMediaPreview extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: DecoratedBox(
+      child: _AdaptiveFeedImageFrame(
+        imageUrl: imageUrl,
+        fallbackAspectRatio: _feedPortraitAspectRatio,
+        minAspectRatio: _feedPortraitAspectRatio,
+        maxAspectRatio: _feedLandscapeAspectRatio,
+        childBuilder: (context, imageUrl) => DecoratedBox(
           decoration: BoxDecoration(
             color: _socialInputFillColor(isDarkMode),
           ),
           child: Image.network(
             imageUrl,
+            width: double.infinity,
+            height: double.infinity,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => const _ActivityMediaPlaceholder(),
           ),
@@ -1350,40 +1677,149 @@ class _ProfileShapeActivityPreview extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: AspectRatio(
-        aspectRatio: showComparison ? 1.15 : 16 / 9,
-        child: ColoredBox(
-          color: _socialInputFillColor(isDarkMode),
-          child: showComparison
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: _ShapeFeedImagePanel(
-                        imageUrl: beforeImageUrl!,
-                        label: 'ANTES',
-                        labelColor: Colors.black.withValues(alpha: 0.72),
+      child: showComparison
+          ? AspectRatio(
+              aspectRatio: 1.15,
+              child: ColoredBox(
+                  color: _socialInputFillColor(isDarkMode),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ShapeFeedImagePanel(
+                          imageUrl: beforeImageUrl!,
+                          label: 'ANTES',
+                          labelColor: Colors.black.withValues(alpha: 0.72),
+                        ),
                       ),
-                    ),
-                    Container(
-                      width: 2,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                    Expanded(
-                      child: _ShapeFeedImagePanel(
-                        imageUrl: afterImageUrl,
-                        label: 'DEPOIS',
-                        labelColor: _socialPrimaryColor(isDarkMode),
+                      Container(
+                        width: 2,
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
-                    ),
-                  ],
-                )
-              : _ShapeFeedImagePanel(
+                      Expanded(
+                        child: _ShapeFeedImagePanel(
+                          imageUrl: afterImageUrl,
+                          label: 'DEPOIS',
+                          labelColor: _socialPrimaryColor(isDarkMode),
+                        ),
+                      ),
+                    ],
+                  )),
+            )
+          : _AdaptiveFeedImageFrame(
+              imageUrl: afterImageUrl,
+              fallbackAspectRatio: _profileShapeSingleAspectRatio,
+              minAspectRatio: _profileShapeSingleAspectRatio,
+              maxAspectRatio: _feedLandscapeAspectRatio,
+              childBuilder: (context, imageUrl) => ColoredBox(
+                color: _socialInputFillColor(isDarkMode),
+                child: _ShapeFeedImagePanel(
                   imageUrl: afterImageUrl,
                   label: 'DEPOIS',
                   labelColor: _socialPrimaryColor(isDarkMode),
                 ),
-        ),
-      ),
+              ),
+            ),
+    );
+  }
+}
+
+class _AdaptiveFeedImageFrame extends StatefulWidget {
+  final String imageUrl;
+  final double fallbackAspectRatio;
+  final double minAspectRatio;
+  final double maxAspectRatio;
+  final Widget Function(BuildContext context, String imageUrl) childBuilder;
+
+  const _AdaptiveFeedImageFrame({
+    required this.imageUrl,
+    required this.fallbackAspectRatio,
+    required this.minAspectRatio,
+    required this.maxAspectRatio,
+    required this.childBuilder,
+  });
+
+  @override
+  State<_AdaptiveFeedImageFrame> createState() =>
+      _AdaptiveFeedImageFrameState();
+}
+
+class _AdaptiveFeedImageFrameState extends State<_AdaptiveFeedImageFrame> {
+  ImageStream? _imageStream;
+  ImageStreamListener? _imageStreamListener;
+  double? _naturalAspectRatio;
+  bool _loadFailed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolveImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AdaptiveFeedImageFrame oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _naturalAspectRatio = null;
+      _loadFailed = false;
+      _resolveImage();
+    }
+  }
+
+  @override
+  void dispose() {
+    final listener = _imageStreamListener;
+    if (listener != null) {
+      _imageStream?.removeListener(listener);
+    }
+    super.dispose();
+  }
+
+  void _resolveImage() {
+    final listener = _imageStreamListener ??= ImageStreamListener(
+      _handleImageInfo,
+      onError: _handleImageError,
+    );
+    final newStream = NetworkImage(widget.imageUrl)
+        .resolve(createLocalImageConfiguration(context));
+    if (_imageStream?.key == newStream.key) return;
+    _imageStream?.removeListener(listener);
+    _imageStream = newStream;
+    newStream.addListener(listener);
+  }
+
+  void _handleImageInfo(ImageInfo imageInfo, bool synchronousCall) {
+    final imageHeight = imageInfo.image.height;
+    if (imageHeight <= 0) return;
+
+    final aspectRatio = imageInfo.image.width / imageHeight;
+    if (!mounted || (!_loadFailed && _naturalAspectRatio == aspectRatio)) {
+      return;
+    }
+
+    setState(() {
+      _naturalAspectRatio = aspectRatio;
+      _loadFailed = false;
+    });
+  }
+
+  void _handleImageError(Object error, StackTrace? stackTrace) {
+    if (!mounted || _loadFailed) return;
+    setState(() {
+      _loadFailed = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final aspectRatio = (_naturalAspectRatio ?? widget.fallbackAspectRatio)
+        .clamp(widget.minAspectRatio, widget.maxAspectRatio)
+        .toDouble();
+
+    return AspectRatio(
+      aspectRatio: aspectRatio,
+      child: _loadFailed
+          ? const _ActivityMediaPlaceholder()
+          : widget.childBuilder(context, widget.imageUrl),
     );
   }
 }

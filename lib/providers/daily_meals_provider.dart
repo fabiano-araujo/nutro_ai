@@ -26,6 +26,8 @@ class DailyMealsProvider extends ChangeNotifier {
   final Map<String, List<Meal>> _mealsByDate = {};
   final Map<String, int> _waterByDate = {};
   final Map<String, _StoredDailySummary> _serverSummariesByDate = {};
+  final Set<String> _pendingSyncDateKeys = {};
+  final Map<String, int> _localRevisionByDate = {};
   final Set<String> _loadedDetailDateKeys = {};
   final Set<String> _loadingDetailDateKeys = {};
   final Set<String> _loadedSummaryMonthKeys = {};
@@ -46,7 +48,10 @@ class DailyMealsProvider extends ChangeNotifier {
   String? _token;
   Timer? _syncDebounce;
   bool _isSyncing = false;
+  bool _syncRequestedWhileSyncing = false;
   bool _isLoadingFromServer = false;
+  int _mealAdditionVersion = 0;
+  DateTime? _lastMealAdditionDate;
 
   /// Callback disparado após sync bem-sucedido do dia atual.
   /// Usado para auto check-in de streak (ver main_navigation.dart).
@@ -59,6 +64,8 @@ class DailyMealsProvider extends ChangeNotifier {
   bool get isLoaded => _isLoaded;
   Future<void> get ready => _initialLoadFuture;
   bool get hasAnyLocalMealData => getLocalSyncSnapshots().isNotEmpty;
+  int get mealAdditionVersion => _mealAdditionVersion;
+  DateTime? get lastMealAdditionDate => _lastMealAdditionDate;
 
   DailyMealsProvider() {
     _initialLoadFuture = _loadFromPreferences();
@@ -162,6 +169,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (!force && _loadedDetailDateKeys.contains(dateKey)) return;
     if (_loadingDetailDateKeys.contains(dateKey)) return;
 
+    final startRevision = _revisionForDateKey(dateKey);
     _loadingDetailDateKeys.add(dateKey);
     try {
       final summary = await MealsSyncService.getDaySummary(
@@ -170,6 +178,11 @@ class DailyMealsProvider extends ChangeNotifier {
       );
       if (summary == null) {
         _loadedDetailDateKeys.add(dateKey);
+        return;
+      }
+
+      if (_hasPendingLocalChanges(dateKey) ||
+          _revisionForDateKey(dateKey) != startRevision) {
         return;
       }
 
@@ -184,17 +197,44 @@ class DailyMealsProvider extends ChangeNotifier {
     }
   }
 
-  void _applyServerSummary(
+  bool _applyServerSummary(
     DailySummary summary, {
     required bool includeMeals,
+    bool allowPendingLocalOverride = false,
   }) {
     final dateKey = _formatDate(summary.date);
+    if (_hasPendingLocalChanges(dateKey) && !allowPendingLocalOverride) {
+      return false;
+    }
+
     _serverSummariesByDate[dateKey] = _StoredDailySummary.fromServer(summary);
     _waterByDate[dateKey] = summary.waterGlasses;
 
     if (includeMeals) {
       _mealsByDate[dateKey] = _normalizeMeals(summary.meals);
     }
+
+    return true;
+  }
+
+  int _revisionForDateKey(String dateKey) => _localRevisionByDate[dateKey] ?? 0;
+
+  bool _hasPendingLocalChanges(String dateKey) =>
+      _pendingSyncDateKeys.contains(dateKey);
+
+  void _markDateLocallyModified(String dateKey) {
+    _serverSummariesByDate.remove(dateKey);
+    _pendingSyncDateKeys.add(dateKey);
+    _localRevisionByDate[dateKey] = _revisionForDateKey(dateKey) + 1;
+  }
+
+  void _markDateSynced(String dateKey) {
+    _pendingSyncDateKeys.remove(dateKey);
+  }
+
+  void _recordMealAddition(DateTime date) {
+    _mealAdditionVersion++;
+    _lastMealAdditionDate = DateTime(date.year, date.month, date.day);
   }
 
   /// Agenda sincronização com debounce de 3 segundos
@@ -209,17 +249,23 @@ class DailyMealsProvider extends ChangeNotifier {
 
   /// Sincroniza dados do dia selecionado com o servidor
   Future<void> _syncToServer() async {
-    if (_isSyncing || _userId == null || _token == null) return;
+    if (_userId == null || _token == null) return;
+    if (_isSyncing) {
+      _syncRequestedWhileSyncing = true;
+      return;
+    }
 
     _isSyncing = true;
+    _syncRequestedWhileSyncing = false;
     notifyListeners();
     print('[DailyMealsProvider] Sincronizando com servidor...');
 
     final syncDate = _selectedDate;
+    final dateKey = _formatDate(syncDate);
+    final startRevision = _revisionForDateKey(dateKey);
     bool synced = false;
 
     try {
-      final dateKey = _formatDate(syncDate);
       final meals = _mealsByDate[dateKey] ?? [];
       final water = _waterByDate[dateKey] ?? 0;
 
@@ -240,17 +286,33 @@ class DailyMealsProvider extends ChangeNotifier {
       if (summary == null) {
         print('[DailyMealsProvider] Sincronização não concluída');
       } else {
-        _applyServerSummary(summary, includeMeals: summary.meals.isNotEmpty);
-        _loadedDetailDateKeys.add(dateKey);
-        await _saveToPreferences();
-        synced = true;
-        print('[DailyMealsProvider] Sincronização concluída');
+        if (_revisionForDateKey(dateKey) == startRevision) {
+          _applyServerSummary(
+            summary,
+            includeMeals: summary.meals.isNotEmpty,
+            allowPendingLocalOverride: true,
+          );
+          _markDateSynced(dateKey);
+          _loadedDetailDateKeys.add(dateKey);
+          await _saveToPreferences();
+          synced = true;
+          print('[DailyMealsProvider] Sincronização concluída');
+        } else {
+          _syncRequestedWhileSyncing = true;
+          print(
+              '[DailyMealsProvider] Resposta de sync ignorada; há edição local mais recente');
+        }
       }
     } catch (e) {
       print('[DailyMealsProvider] Erro ao sincronizar: $e');
     } finally {
+      final shouldRunAgain = _syncRequestedWhileSyncing;
+      _syncRequestedWhileSyncing = false;
       _isSyncing = false;
       notifyListeners();
+      if (shouldRunAgain) {
+        _scheduleSync();
+      }
     }
 
     if (synced && _isSameDay(syncDate, DateTime.now())) {
@@ -289,7 +351,9 @@ class DailyMealsProvider extends ChangeNotifier {
         continue;
       }
 
-      final summary = _serverSummariesByDate[dateKey];
+      final summary = _hasPendingLocalChanges(dateKey)
+          ? null
+          : _serverSummariesByDate[dateKey];
       snapshots.add(
         DailyMealsSyncSnapshot(
           date: date,
@@ -318,13 +382,16 @@ class DailyMealsProvider extends ChangeNotifier {
     var synced = 0;
     for (final snapshot in snapshots) {
       final dateKey = _formatDate(snapshot.date);
-      final serverSummary = _serverSummariesByDate[dateKey];
+      final serverSummary = _hasPendingLocalChanges(dateKey)
+          ? null
+          : _serverSummariesByDate[dateKey];
       final hasServerData = serverSummary != null &&
           (serverSummary.hasMealData || serverSummary.waterGlasses > 0);
       if (skipServerConflicts && hasServerData) {
         continue;
       }
 
+      final startRevision = _revisionForDateKey(dateKey);
       final summary = await MealsSyncService.syncDay(
         token: token,
         date: snapshot.date,
@@ -336,8 +403,15 @@ class DailyMealsProvider extends ChangeNotifier {
         throw Exception('Falha ao sincronizar refeições de $dateKey');
       }
 
-      _applyServerSummary(summary, includeMeals: summary.meals.isNotEmpty);
-      _loadedDetailDateKeys.add(dateKey);
+      if (_revisionForDateKey(dateKey) == startRevision) {
+        _applyServerSummary(
+          summary,
+          includeMeals: summary.meals.isNotEmpty,
+          allowPendingLocalOverride: true,
+        );
+        _markDateSynced(dateKey);
+        _loadedDetailDateKeys.add(dateKey);
+      }
       synced++;
     }
 
@@ -360,12 +434,15 @@ class DailyMealsProvider extends ChangeNotifier {
       }
     }
 
+    if (_hasPendingLocalChanges(dateKey)) return false;
     return _serverSummariesByDate[dateKey]?.hasMealData ?? false;
   }
 
   bool hasNutritionDataOn(DateTime date) {
     final dateKey = _formatDate(date);
-    final summary = _serverSummariesByDate[dateKey];
+    final summary = _hasPendingLocalChanges(dateKey)
+        ? null
+        : _serverSummariesByDate[dateKey];
     if (summary != null) {
       return summary.hasMealData ||
           summary.totalCalories > 0 ||
@@ -379,7 +456,9 @@ class DailyMealsProvider extends ChangeNotifier {
   /// Retorna true se a meta de proteína foi batida na data informada.
   bool hasHitProteinGoalOn(DateTime date, {int? proteinTarget}) {
     final dateKey = _formatDate(date);
-    final summary = _serverSummariesByDate[dateKey];
+    final summary = _hasPendingLocalChanges(dateKey)
+        ? null
+        : _serverSummariesByDate[dateKey];
     if (summary != null) {
       final target = proteinTarget ?? summary.goals.protein;
       return summary.totalProtein > 0 && summary.totalProtein >= target;
@@ -403,7 +482,9 @@ class DailyMealsProvider extends ChangeNotifier {
     double margin = 0.1,
   }) {
     final dateKey = _formatDate(date);
-    final summary = _serverSummariesByDate[dateKey];
+    final summary = _hasPendingLocalChanges(dateKey)
+        ? null
+        : _serverSummariesByDate[dateKey];
     final calories = summary?.totalCalories ?? getCaloriesForDate(date);
     final target = calorieGoal ?? summary?.goals.calories ?? caloriesGoal;
     if (calories <= 0 || target <= 0) return false;
@@ -497,7 +578,9 @@ class DailyMealsProvider extends ChangeNotifier {
 
   Map<String, dynamic> getNutritionSnapshotForDate(DateTime date) {
     final dateKey = _formatDate(date);
-    final summary = _serverSummariesByDate[dateKey];
+    final summary = _hasPendingLocalChanges(dateKey)
+        ? null
+        : _serverSummariesByDate[dateKey];
     final meals = _mealsByDate[dateKey] ?? const <Meal>[];
     final localCalories =
         meals.fold<int>(0, (sum, meal) => sum + meal.totalCalories);
@@ -598,23 +681,32 @@ class DailyMealsProvider extends ChangeNotifier {
   }
 
   void addWater() {
-    final dateKey = _formatDate(_selectedDate);
-    _waterByDate[dateKey] = (_waterByDate[dateKey] ?? 0) + 1;
-    _serverSummariesByDate.remove(dateKey);
-    _saveWaterToPreferences();
-    _scheduleSync(); // Sync com servidor
-    notifyListeners();
+    _changeWaterForDate(_selectedDate, 1);
   }
 
   void removeWater() {
-    final dateKey = _formatDate(_selectedDate);
-    if ((_waterByDate[dateKey] ?? 0) > 0) {
-      _waterByDate[dateKey] = _waterByDate[dateKey]! - 1;
-      _serverSummariesByDate.remove(dateKey);
-      _saveWaterToPreferences();
-      _scheduleSync(); // Sync com servidor
-      notifyListeners();
-    }
+    _changeWaterForDate(_selectedDate, -1);
+  }
+
+  void addWaterForDate(DateTime date) {
+    _changeWaterForDate(date, 1);
+  }
+
+  void removeWaterForDate(DateTime date) {
+    _changeWaterForDate(date, -1);
+  }
+
+  void _changeWaterForDate(DateTime date, int delta) {
+    final dateKey = _formatDate(date);
+    final current = _waterByDate[dateKey] ?? 0;
+    final next = (current + delta).clamp(0, 999).toInt();
+    if (next == current) return;
+
+    _waterByDate[dateKey] = next;
+    _markDateLocallyModified(dateKey);
+    _saveWaterToPreferences();
+    _scheduleSync(); // Sync com servidor
+    notifyListeners();
   }
 
   int getWaterForDate(DateTime date) {
@@ -684,6 +776,29 @@ class DailyMealsProvider extends ChangeNotifier {
           ..addAll(_serverSummariesByDate.keys.map(_monthKeyFromDateKey));
       }
 
+      final pendingDatesJson =
+          prefs.getString('daily_meals_pending_sync_dates');
+      _pendingSyncDateKeys.clear();
+      if (pendingDatesJson != null) {
+        final decodedPendingDates = jsonDecode(pendingDatesJson);
+        if (decodedPendingDates is List) {
+          _pendingSyncDateKeys.addAll(
+            decodedPendingDates.map((value) => value.toString()),
+          );
+        }
+      } else {
+        final dateKeys = <String>{..._mealsByDate.keys, ..._waterByDate.keys};
+        for (final dateKey in dateKeys) {
+          final meals = _mealsByDate[dateKey] ?? const <Meal>[];
+          final hasMeals = meals.any((meal) => meal.foods.isNotEmpty);
+          final hasWater = (_waterByDate[dateKey] ?? 0) > 0;
+          if ((hasMeals || hasWater) &&
+              !_serverSummariesByDate.containsKey(dateKey)) {
+            _pendingSyncDateKeys.add(dateKey);
+          }
+        }
+      }
+
       _isLoaded = true;
       notifyListeners();
     } catch (e) {
@@ -713,6 +828,10 @@ class DailyMealsProvider extends ChangeNotifier {
         'daily_meal_summaries',
         jsonEncode(summariesToSave),
       );
+      await prefs.setString(
+        'daily_meals_pending_sync_dates',
+        jsonEncode(_pendingSyncDateKeys.toList()..sort()),
+      );
       await prefs.setString('water_by_date', jsonEncode(_waterByDate));
 
       // Save goals
@@ -735,6 +854,10 @@ class DailyMealsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('water_by_date', jsonEncode(_waterByDate));
+      await prefs.setString(
+        'daily_meals_pending_sync_dates',
+        jsonEncode(_pendingSyncDateKeys.toList()..sort()),
+      );
       await prefs.setInt('water_goal', waterGoal);
     } catch (e) {
       print('Error saving water data: $e');
@@ -799,7 +922,6 @@ class DailyMealsProvider extends ChangeNotifier {
   void addMeal(Meal meal) {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] ??= [];
-    _serverSummariesByDate.remove(dateKey);
 
     final meals = _mealsByDate[dateKey]!;
     final normalizedMeal = _normalizeMeal(
@@ -816,13 +938,19 @@ class DailyMealsProvider extends ChangeNotifier {
       if (existingByMessageId != -1) {
         // Mesmo messageId ja existe — atualiza no lugar (sem duplicar).
         meals[existingByMessageId] = normalizedMeal;
+        _markDateLocallyModified(dateKey);
         _saveToPreferences();
+        _scheduleSync();
         notifyListeners();
         return;
       }
 
       // Card de chat novo — adiciona como refeicao separada, sem merge.
       meals.add(normalizedMeal);
+      _markDateLocallyModified(dateKey);
+      if (normalizedMeal.foods.isNotEmpty) {
+        _recordMealAddition(_selectedDate);
+      }
       _saveToPreferences();
       _scheduleSync();
       notifyListeners();
@@ -845,6 +973,10 @@ class DailyMealsProvider extends ChangeNotifier {
       meals.add(normalizedMeal);
     }
 
+    _markDateLocallyModified(dateKey);
+    if (normalizedMeal.foods.isNotEmpty) {
+      _recordMealAddition(_selectedDate);
+    }
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -853,7 +985,6 @@ class DailyMealsProvider extends ChangeNotifier {
   void addFoodToMeal(MealType type, Food food) {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] ??= [];
-    _serverSummariesByDate.remove(dateKey);
 
     final meals = _mealsByDate[dateKey]!;
     final mealIndex = meals.indexWhere((m) => m.type == type);
@@ -871,6 +1002,8 @@ class DailyMealsProvider extends ChangeNotifier {
       ));
     }
 
+    _markDateLocallyModified(dateKey);
+    _recordMealAddition(_selectedDate);
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -880,13 +1013,14 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
-    _serverSummariesByDate.remove(dateKey);
 
     final mealIndex = meals.indexWhere((m) => m.type == type);
     if (mealIndex == -1) return;
 
+    final previousLength = meals[mealIndex].foods.length;
     final updatedFoods = List<Food>.from(meals[mealIndex].foods)
       ..removeWhere((f) => f.id == food.id);
+    if (updatedFoods.length == previousLength) return;
 
     if (updatedFoods.isEmpty) {
       // Remove meal if no foods left
@@ -895,6 +1029,7 @@ class DailyMealsProvider extends ChangeNotifier {
       meals[mealIndex] = meals[mealIndex].copyWith(foods: updatedFoods);
     }
 
+    _markDateLocallyModified(dateKey);
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -905,12 +1040,12 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
-    _serverSummariesByDate.remove(dateKey);
 
     final index = meals.indexWhere((m) => m.id == updatedMeal.id);
     if (index == -1) return;
 
     meals[index] = _normalizeMeal(updatedMeal);
+    _markDateLocallyModified(dateKey);
     _saveToPreferences();
     _scheduleSync();
     notifyListeners();
@@ -975,10 +1110,12 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
-    _serverSummariesByDate.remove(dateKey);
 
+    final previousLength = meals.length;
     meals.removeWhere((m) => m.id == mealId);
+    if (meals.length == previousLength) return;
 
+    _markDateLocallyModified(dateKey);
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -989,10 +1126,12 @@ class DailyMealsProvider extends ChangeNotifier {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
-    _serverSummariesByDate.remove(dateKey);
 
+    final previousLength = meals.length;
     meals.removeWhere((m) => m.type == type);
+    if (meals.length == previousLength) return;
 
+    _markDateLocallyModified(dateKey);
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -1010,7 +1149,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (carbs != null) carbsGoal = carbs;
     if (fats != null) fatsGoal = fats;
     if (fitnessGoal != null) this.fitnessGoal = fitnessGoal;
-    _serverSummariesByDate.remove(_formatDate(_selectedDate));
+    _markDateLocallyModified(_formatDate(_selectedDate));
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -1055,7 +1194,7 @@ class DailyMealsProvider extends ChangeNotifier {
   // Load sample data for testing
   void loadSampleData() {
     final dateKey = _formatDate(_selectedDate);
-    _serverSummariesByDate.remove(dateKey);
+    _markDateLocallyModified(dateKey);
 
     // Create sample foods with complete nutrient data
     final eggs = Food(
@@ -1279,7 +1418,7 @@ class DailyMealsProvider extends ChangeNotifier {
   void clearAllMeals() {
     final dateKey = _formatDate(_selectedDate);
     _mealsByDate[dateKey] = [];
-    _serverSummariesByDate.remove(dateKey);
+    _markDateLocallyModified(dateKey);
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
@@ -1365,7 +1504,9 @@ class DailyMealsProvider extends ChangeNotifier {
     for (int i = days - 1; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
       final dateKey = _formatDate(date);
-      final summary = _serverSummariesByDate[dateKey];
+      final summary = _hasPendingLocalChanges(dateKey)
+          ? null
+          : _serverSummariesByDate[dateKey];
       final macros = summary == null ? getMacrosForDate(date) : null;
       final goals = summary?.goals ?? _fallbackGoals(fallbackGoals);
       final calories = summary?.totalCalories ?? getCaloriesForDate(date);
@@ -1482,6 +1623,8 @@ class DailyMealsProvider extends ChangeNotifier {
     _mealsByDate.clear();
     _waterByDate.clear();
     _serverSummariesByDate.clear();
+    _pendingSyncDateKeys.clear();
+    _localRevisionByDate.clear();
     _loadedDetailDateKeys.clear();
     _loadingDetailDateKeys.clear();
     _loadedSummaryMonthKeys.clear();
@@ -1492,8 +1635,10 @@ class DailyMealsProvider extends ChangeNotifier {
       final removedMeals = await prefs.remove('daily_meals');
       final removedWater = await prefs.remove('water_by_date');
       final removedSummaries = await prefs.remove('daily_meal_summaries');
+      final removedPendingDates =
+          await prefs.remove('daily_meals_pending_sync_dates');
       print(
-          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater, summaries=$removedSummaries');
+          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater, summaries=$removedSummaries, pendingDates=$removedPendingDates');
 
       // Verificar se foi removido
       final checkMeals = prefs.getString('daily_meals');

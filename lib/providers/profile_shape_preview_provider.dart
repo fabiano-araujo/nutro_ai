@@ -40,6 +40,19 @@ class ProfileShapePreviewProvider extends ChangeNotifier {
     return credits;
   }
 
+  Future<void> clearGeneratedPreview({int? userId}) async {
+    _generatedImageUrl = null;
+    _pendingCredits = null;
+    _error = null;
+
+    if (userId != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(storageKey(userId));
+    }
+
+    notifyListeners();
+  }
+
   Future<Map<String, dynamic>?> startGeneration({
     required int userId,
     required String token,
