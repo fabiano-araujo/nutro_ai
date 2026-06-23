@@ -12,9 +12,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'services/app_integrity_service.dart';
 import 'services/diet_generation_background_service.dart';
 import 'services/notification_service.dart';
+import 'services/play_store_update_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation.dart';
 import 'screens/profile_shape_preview_screen.dart';
+import 'screens/subscription_management_screen.dart';
 import 'screens/subscription_screen.dart';
 import 'screens/essay_history_screen.dart';
 import 'screens/new_essay_screen.dart';
@@ -66,7 +68,7 @@ void main() async {
   // Inicializar o StorageService e carregar as configurações antes de iniciar o app
   final storageService = StorageService();
   final settings = await storageService.getSettings();
-  final savedTheme = settings['theme'] ?? 'system';
+  final savedTheme = settings['theme'] ?? 'light';
 
   print('Tema carregado ao iniciar o app: $savedTheme');
 
@@ -162,7 +164,7 @@ void _initializeWebView() {
 class MyApp extends StatefulWidget {
   final String initialTheme;
 
-  const MyApp({Key? key, this.initialTheme = 'system'}) : super(key: key);
+  const MyApp({Key? key, this.initialTheme = 'light'}) : super(key: key);
 
   @override
   _MyAppState createState() => _MyAppState();
@@ -180,12 +182,15 @@ class _MyAppState extends State<MyApp> {
     _themeMode = _getThemeMode(widget.initialTheme);
     _loadSettings();
     _initializeAuth();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(PlayStoreUpdateService().checkForUpdateOnLaunch());
+    });
   }
 
   Future<void> _loadSettings() async {
     try {
       final settings = await _storageService.getSettings();
-      final savedTheme = settings['theme'] ?? 'system';
+      final savedTheme = settings['theme'] ?? 'light';
 
       setState(() {
         _themeMode = _getThemeMode(savedTheme);
@@ -195,7 +200,7 @@ class _MyAppState extends State<MyApp> {
     } catch (e) {
       print('Erro ao carregar configurações: $e');
       setState(() {
-        _themeMode = ThemeMode.system;
+        _themeMode = ThemeMode.light;
       });
     }
   }
@@ -215,8 +220,9 @@ class _MyAppState extends State<MyApp> {
       case 'dark':
         return ThemeMode.dark;
       case 'system':
-      default:
         return ThemeMode.system;
+      default:
+        return ThemeMode.light;
     }
   }
 
@@ -382,6 +388,8 @@ class _MyAppState extends State<MyApp> {
               );
             },
             routes: {
+              '/subscription-management': (context) =>
+                  const SubscriptionManagementScreen(),
               '/subscription': (context) => const SubscriptionScreen(),
               '/essay_history': (context) => const EssayHistoryScreen(),
               '/new_essay': (context) => const NewEssayScreen(),

@@ -26,6 +26,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   int _selectedPlanIndex = 0;
   bool _isLoading = false;
   bool _hasError = false;
+  bool _capturedInitialPremiumState = false;
+  bool _wasPremiumOnEntry = false;
+  bool _handledPremiumActivation = false;
+  bool _waitingForPremiumActivation = false;
   String _errorMessage = '';
 
   Color _pageColor(bool isDarkMode) =>
@@ -84,6 +88,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final purchaseService = context.watch<PurchaseService>();
     final authService = context.watch<AuthService>();
 
+    if (!_capturedInitialPremiumState) {
+      _capturedInitialPremiumState = true;
+      _wasPremiumOnEntry = purchaseService.isPremium;
+    }
+    _maybeHandlePremiumActivation(context, purchaseService);
+
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
@@ -96,11 +106,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     final selectedPlan =
         _visiblePlans[_selectedPlanIndex.clamp(0, _visiblePlans.length - 1)];
-    final selectedProduct =
-        _findProduct(purchaseService.products, selectedPlan.id);
+    final selectedProduct = purchaseService.productForPlan(selectedPlan.id);
     final isBusy = _isLoading || purchaseService.isLoading;
+    final shouldRetryProducts =
+        authService.isAuthenticated && selectedProduct == null && !isBusy;
     final actionEnabled = authService.isAuthenticated
-        ? selectedProduct != null && !isBusy
+        ? (selectedProduct != null && !isBusy) || shouldRetryProducts
         : !isBusy;
 
     return Scaffold(
@@ -133,6 +144,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               selectedPlan: selectedPlan,
               selectedProduct: selectedProduct,
               actionEnabled: actionEnabled,
+              showActionLoading: isBusy,
+              shouldRetryProducts: shouldRetryProducts,
               isDarkMode: isDarkMode,
               textColor: textColor,
             ),
@@ -156,10 +169,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       automaticallyImplyLeading: false,
-      leadingWidth: 78,
-      toolbarHeight: 70,
+      leadingWidth: 66,
+      toolbarHeight: 64,
       leading: Padding(
-        padding: const EdgeInsets.only(left: 24, top: 8, bottom: 8),
+        padding: const EdgeInsets.only(left: 18, top: 8, bottom: 8),
         child: _CircleIconButton(
           icon: Icons.arrow_back_rounded,
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
@@ -182,7 +195,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
       actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 24, top: 8, bottom: 8),
+          padding: const EdgeInsets.only(right: 18, top: 8, bottom: 8),
           child: _CircleIconButton(
             icon: Icons.shield_outlined,
             tooltip: context.tr.translate('restore_purchases'),
@@ -224,7 +237,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(26, 4, 26, 14),
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Center(
@@ -234,15 +247,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildHero(context, isDarkMode, textColor),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     _buildSectionTitle(context, isDarkMode, textColor),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     _buildPlanOptions(
                       context,
                       purchaseService,
                       isDarkMode,
                       textColor,
                     ),
+                    const SizedBox(height: 8),
+                    _buildGuaranteeTile(context, isDarkMode, textColor),
                     if (!authService.isAuthenticated) ...[
                       const SizedBox(height: 10),
                       _inlineHint(
@@ -263,8 +278,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         textColor: textColor,
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    _buildGuaranteeTile(context, isDarkMode, textColor),
+                    if (_errorMessage.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      _inlineHint(
+                        _errorMessage,
+                        icon: Icons.info_outline_rounded,
+                        foregroundColor: const Color(0xFF8A4C00),
+                        backgroundColor: const Color(0xFFFFF1DE),
+                        isDarkMode: isDarkMode,
+                        textColor: textColor,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -279,20 +303,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final accent = _accentColor(isDarkMode);
 
     return Container(
-      height: 252,
+      height: 220,
       decoration: BoxDecoration(
         color: _cardColor(isDarkMode),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: _subtleBorderColor(isDarkMode)),
         boxShadow: AppTheme.profileCardShadow(isDarkMode),
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Expanded(
-            flex: 10,
+            flex: 9,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(2, 5, 0, 3),
+              padding: const EdgeInsets.fromLTRB(0, 3, 0, 1),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -314,20 +338,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: textColor,
-                      fontSize: 25,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                       height: 1.05,
                       letterSpacing: 0,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 9),
                   Text(
                     context.tr.translate('subscription_hero_subtitle'),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: _mutedTextColor(isDarkMode),
-                      fontSize: 14,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w500,
                       height: 1.42,
                       letterSpacing: 0,
@@ -339,7 +363,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             flex: 7,
             child: _TransformationHeroImage(
@@ -362,7 +386,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final accent = _accentColor(isDarkMode);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
       decoration: BoxDecoration(
         color: _cardColor(isDarkMode),
         borderRadius: BorderRadius.circular(18),
@@ -372,8 +396,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: _softMintColor(isDarkMode),
               borderRadius: BorderRadius.circular(14),
@@ -381,7 +405,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: Icon(
               Icons.timer_outlined,
               color: accent,
-              size: 23,
+              size: 21,
             ),
           ),
           const SizedBox(width: 9),
@@ -405,7 +429,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: _mutedTextColor(isDarkMode),
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
                 height: 1.25,
                 letterSpacing: 0,
@@ -429,7 +453,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           color: textColor.withValues(alpha: 0.72),
           size: 22,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 7),
         Expanded(
           child: Text(
             context.tr.translate('subscription_choose_plan'),
@@ -437,7 +461,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: textColor.withValues(alpha: 0.78),
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               letterSpacing: 0,
             ),
@@ -457,10 +481,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _visiblePlans.map((plan) {
         final index = _visiblePlans.indexWhere((item) => item.id == plan.id);
-        final product = _findProduct(purchaseService.products, plan.id);
+        final product = purchaseService.productForPlan(plan.id);
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 8),
           child: _PremiumPlanCard(
             plan: plan,
             product: product,
@@ -501,7 +525,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final accent = _accentColor(isDarkMode);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 15, 14, 15),
+      padding: const EdgeInsets.fromLTRB(15, 8, 12, 8),
       decoration: BoxDecoration(
         color: _cardColor(isDarkMode),
         borderRadius: BorderRadius.circular(22),
@@ -513,9 +537,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           Icon(
             Icons.verified_user_outlined,
             color: accent,
-            size: 31,
+            size: 24,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -526,7 +550,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: textColor.withValues(alpha: 0.88),
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0,
                   ),
@@ -538,7 +562,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: _mutedTextColor(isDarkMode),
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0,
                   ),
@@ -563,6 +587,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     required SubscriptionPlan selectedPlan,
     required ProductDetails? selectedProduct,
     required bool actionEnabled,
+    required bool showActionLoading,
+    required bool shouldRetryProducts,
     required bool isDarkMode,
     required Color textColor,
   }) {
@@ -575,7 +601,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           top: BorderSide(color: _subtleBorderColor(isDarkMode)),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(26, 12, 26, 10),
+      padding: const EdgeInsets.fromLTRB(18, 5, 18, 6),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -585,24 +611,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final buttonWidth =
-                      math.min(210.0, constraints.maxWidth * 0.46);
+                      math.min(230.0, constraints.maxWidth * 0.50);
 
                   return Row(
                     children: [
                       Container(
-                        width: 52,
-                        height: 52,
+                        width: 42,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: _softMintColor(isDarkMode),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(15),
                         ),
                         child: Icon(
                           _planIcon(selectedPlan),
                           color: accent,
-                          size: 26,
+                          size: 22,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -614,7 +640,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: textColor.withValues(alpha: 0.9),
-                                fontSize: 15,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0,
                               ),
@@ -628,7 +654,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: _mutedTextColor(isDarkMode),
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0,
                               ),
@@ -636,15 +662,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       SizedBox(
                         width: buttonWidth,
-                        height: 60,
+                        height: 44,
                         child: ElevatedButton(
                           onPressed: actionEnabled
                               ? () {
                                   if (!authService.isAuthenticated) {
                                     _openLogin(context);
+                                    return;
+                                  }
+                                  if (shouldRetryProducts) {
+                                    _reloadStoreProducts(
+                                        context, purchaseService);
                                     return;
                                   }
                                   _subscribe(context, purchaseService);
@@ -659,10 +690,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             disabledForegroundColor:
                                 _mutedTextColor(isDarkMode),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
-                          child: _isLoading
+                          child: showActionLoading
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
@@ -679,21 +710,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                     Flexible(
                                       child: Text(
                                         authService.isAuthenticated
-                                            ? context.tr.translate('continue')
+                                            ? shouldRetryProducts
+                                                ? context.tr
+                                                    .translate('try_again')
+                                                : context.tr
+                                                    .translate('continue')
                                             : context.tr.translate('sign_in'),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 14.5,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 6),
                                     const Icon(
                                       Icons.chevron_right_rounded,
-                                      size: 25,
+                                      size: 22,
                                     ),
                                   ],
                                 ),
@@ -703,7 +738,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 4),
               _buildSecureLine(context, isDarkMode, textColor),
             ],
           ),
@@ -722,7 +757,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           padding: const EdgeInsets.only(top: 1),
           child: Icon(
             Icons.lock_outline_rounded,
-            size: 15,
+            size: 13,
             color: textColor.withValues(alpha: 0.50),
           ),
         ),
@@ -734,7 +769,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
               color: textColor.withValues(alpha: 0.58),
               height: 1.25,
@@ -879,24 +914,261 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
+  void _maybeHandlePremiumActivation(
+    BuildContext context,
+    PurchaseService purchaseService,
+  ) {
+    if (_handledPremiumActivation ||
+        _wasPremiumOnEntry ||
+        !_waitingForPremiumActivation ||
+        !purchaseService.isPremium) {
+      return;
+    }
+
+    _handledPremiumActivation = true;
+    _waitingForPremiumActivation = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      final hostContext = navigator.context;
+
+      if (navigator.canPop()) {
+        navigator.pop(true);
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!hostContext.mounted) return;
+        _showPremiumActivatedSheet(hostContext);
+      });
+    });
+  }
+
+  void _showPremiumActivatedSheet(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = _textColor(isDarkMode);
+    final accent = _accentColor(isDarkMode);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                decoration: BoxDecoration(
+                  color: _cardColor(isDarkMode),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: _subtleBorderColor(isDarkMode)),
+                  boxShadow: AppTheme.profileCardShadow(isDarkMode),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: _softMintColor(isDarkMode),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.workspace_premium_rounded,
+                            color: accent,
+                            size: 30,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr.translate('premium_activated_title'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                context.tr
+                                    .translate('premium_activated_subtitle'),
+                                style: TextStyle(
+                                  color: _mutedTextColor(isDarkMode),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.3,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _premiumBenefitRow(
+                      context,
+                      icon: Icons.restaurant_menu_rounded,
+                      textKey: 'premium_benefit_diet',
+                      isDarkMode: isDarkMode,
+                      textColor: textColor,
+                    ),
+                    _premiumBenefitRow(
+                      context,
+                      icon: Icons.calendar_month_rounded,
+                      textKey: 'premium_benefit_daily_menu',
+                      isDarkMode: isDarkMode,
+                      textColor: textColor,
+                    ),
+                    _premiumBenefitRow(
+                      context,
+                      icon: Icons.auto_awesome_rounded,
+                      textKey: 'premium_benefit_shape',
+                      isDarkMode: isDarkMode,
+                      textColor: textColor,
+                    ),
+                    _premiumBenefitRow(
+                      context,
+                      icon: Icons.block_rounded,
+                      textKey: 'premium_benefit_no_ads',
+                      isDarkMode: isDarkMode,
+                      textColor: textColor,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: accent,
+                          foregroundColor: AppTheme.onColor(accent),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: Text(
+                          context.tr.translate('premium_activated_cta'),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _premiumBenefitRow(
+    BuildContext context, {
+    required IconData icon,
+    required String textKey,
+    required bool isDarkMode,
+    required Color textColor,
+  }) {
+    final accent = _accentColor(isDarkMode);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: _softMintColor(isDarkMode),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: accent, size: 19),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              context.tr.translate(textKey),
+              style: TextStyle(
+                color: textColor.withValues(alpha: 0.86),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                height: 1.25,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _restorePurchases(
       BuildContext context, PurchaseService purchaseService) async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
     try {
+      _waitingForPremiumActivation = true;
       await purchaseService.restorePurchases();
       if (purchaseService.errorMessage != null) {
+        final message = purchaseService.errorMessage!;
+        _waitingForPremiumActivation = false;
         setState(() {
-          _hasError = true;
-          _errorMessage = purchaseService.errorMessage!;
+          _hasError = false;
+          _errorMessage = message;
         });
+        _showPurchaseError(context, message);
       }
     } catch (_) {
+      final message = context.tr.translate('subscription_error');
+      _waitingForPremiumActivation = false;
       setState(() {
-        _hasError = true;
-        _errorMessage = context.tr.translate('subscription_error');
+        _hasError = false;
+        _errorMessage = message;
       });
+      _showPurchaseError(context, message);
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _reloadStoreProducts(
+      BuildContext context, PurchaseService purchaseService) async {
+    setState(() {
+      _errorMessage = '';
+    });
+
+    await purchaseService.reloadProducts();
+
+    if (!mounted) return;
+    final message = purchaseService.errorMessage;
+    if (message != null && message.isNotEmpty) {
+      setState(() {
+        _hasError = false;
+        _errorMessage = message;
+      });
+      _showPurchaseError(context, message);
     }
   }
 
@@ -904,33 +1176,57 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       BuildContext context, PurchaseService purchaseService) async {
     final selectedPlan =
         _visiblePlans[_selectedPlanIndex.clamp(0, _visiblePlans.length - 1)];
-    final selectedProduct =
-        _findProduct(purchaseService.products, selectedPlan.id);
+    final selectedProduct = purchaseService.productForPlan(selectedPlan.id);
     if (selectedProduct == null) {
+      final message = context.tr.translate('try_again_later');
       setState(() {
-        _hasError = true;
-        _errorMessage = context.tr.translate('try_again_later');
+        _hasError = false;
+        _errorMessage = message;
       });
+      _showPurchaseError(context, message);
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
     try {
+      _waitingForPremiumActivation = true;
       await purchaseService.buySubscription(selectedProduct);
       if (purchaseService.errorMessage != null) {
+        final message = purchaseService.errorMessage!;
+        _waitingForPremiumActivation = false;
         setState(() {
-          _hasError = true;
-          _errorMessage = purchaseService.errorMessage!;
+          _hasError = false;
+          _errorMessage = message;
         });
+        _showPurchaseError(context, message);
       }
     } catch (e) {
+      final message = '${context.tr.translate('subscription_error')}: $e';
+      _waitingForPremiumActivation = false;
       setState(() {
-        _hasError = true;
-        _errorMessage = '${context.tr.translate('subscription_error')}: $e';
+        _hasError = false;
+        _errorMessage = message;
       });
+      _showPurchaseError(context, message);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showPurchaseError(BuildContext context, String message) {
+    if (!mounted || message.isEmpty) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   void _openLogin(BuildContext context) {
@@ -947,15 +1243,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       PurchaseService.planoSemanal: 2,
     };
     return (order[a.id] ?? 99).compareTo(order[b.id] ?? 99);
-  }
-
-  ProductDetails? _findProduct(List<ProductDetails> products, String planId) {
-    final matches = products.where((product) => product.id == planId).toList();
-    if (matches.isEmpty) return null;
-    final nonZero = matches.where((product) => product.rawPrice > 0).toList();
-    final candidates = nonZero.isNotEmpty ? nonZero : matches;
-    candidates.sort((a, b) => a.rawPrice.compareTo(b.rawPrice));
-    return candidates.first;
   }
 
   String _productTitle(ProductDetails? product, SubscriptionPlan plan) {
@@ -1108,10 +1395,20 @@ class _TransformationHeroImage extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Icon(
-                  Icons.compare_arrows_rounded,
-                  color: accentColor,
-                  size: 22,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.chevron_left_rounded,
+                      color: accentColor,
+                      size: 17,
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: accentColor,
+                      size: 17,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1190,7 +1487,7 @@ class _PremiumPlanCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: Ink(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          padding: const EdgeInsets.fromLTRB(14, 7, 14, 9),
           decoration: BoxDecoration(
             color: isSelected ? selectedCardColor : cardColor,
             borderRadius: BorderRadius.circular(24),
@@ -1218,7 +1515,7 @@ class _PremiumPlanCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 5),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1226,11 +1523,11 @@ class _PremiumPlanCard extends StatelessWidget {
                     icon: icon,
                     accentColor: accentColor,
                     backgroundColor: mintColor,
-                    size: 72,
-                    radius: 28,
-                    iconSize: 36,
+                    size: 46,
+                    radius: 18,
+                    iconSize: 26,
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1241,25 +1538,25 @@ class _PremiumPlanCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: textColor,
-                            fontSize: 20,
+                            fontSize: 15,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 0,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 3),
                         Text(
                           marketingDescription,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: mutedTextColor,
-                            fontSize: 15,
+                            fontSize: 10.8,
                             fontWeight: FontWeight.w600,
-                            height: 1.35,
+                            height: 1.18,
                             letterSpacing: 0,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 6),
                         _PriceLine(
                           price: monthlyPrice,
                           period: monthlyLabel,
@@ -1267,14 +1564,14 @@ class _PremiumPlanCard extends StatelessWidget {
                           textColor: textColor,
                           selected: true,
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 2),
                         Text(
                           chargedLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: mutedTextColor.withValues(alpha: 0.9),
-                            fontSize: 12,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0,
                           ),
@@ -1282,7 +1579,7 @@ class _PremiumPlanCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 7),
                   _SavingsBadge(
                     label: savingsChipLabel,
                     accentColor: accentColor,
@@ -1290,10 +1587,10 @@ class _PremiumPlanCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 7),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: mintColor.withValues(alpha: isDarkMode ? 0.45 : 0.78),
                   borderRadius: BorderRadius.circular(16),
@@ -1303,9 +1600,9 @@ class _PremiumPlanCard extends StatelessWidget {
                     Icon(
                       Icons.local_offer_outlined,
                       color: accentColor,
-                      size: 26,
+                      size: 20,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 9),
                     Expanded(
                       child: Text.rich(
                         TextSpan(
@@ -1326,9 +1623,9 @@ class _PremiumPlanCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: mutedTextColor,
-                          fontSize: 13,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          height: 1.18,
+                          height: 1.08,
                           letterSpacing: 0,
                         ),
                       ),
@@ -1350,7 +1647,7 @@ class _PremiumPlanCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: Ink(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 9),
           decoration: BoxDecoration(
             color: isSelected ? selectedCardColor : cardColor,
             borderRadius: BorderRadius.circular(24),
@@ -1368,11 +1665,11 @@ class _PremiumPlanCard extends StatelessWidget {
                 accentColor: isSelected ? accentColor : mutedTextColor,
                 backgroundColor:
                     isSelected ? mintColor : mintColor.withValues(alpha: 0.42),
-                size: 70,
-                radius: 28,
-                iconSize: 34,
+                size: 46,
+                radius: 18,
+                iconSize: 25,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1387,13 +1684,13 @@ class _PremiumPlanCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: textColor,
-                              fontSize: 19,
+                              fontSize: 15,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         _SelectionIndicator(
                           isSelected: isSelected,
                           accentColor: accentColor,
@@ -1401,20 +1698,20 @@ class _PremiumPlanCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 3),
                     Text(
                       marketingDescription,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: mutedTextColor,
-                        fontSize: 14,
+                        fontSize: 10.8,
                         fontWeight: FontWeight.w600,
-                        height: 1.4,
+                        height: 1.22,
                         letterSpacing: 0,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 5),
                     _PriceLine(
                       price: monthlyPrice,
                       period: monthlyLabel,
@@ -1423,7 +1720,7 @@ class _PremiumPlanCard extends StatelessWidget {
                       selected: isSelected,
                     ),
                     if (savingsChipLabel.isNotEmpty) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 5),
                       _SmallSavingsChip(
                         label: savingsChipLabel,
                         accentColor: accentColor,
@@ -1546,7 +1843,7 @@ class _TopBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
         color: accentColor,
         borderRadius: BorderRadius.circular(100),
@@ -1556,7 +1853,7 @@ class _TopBadge extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 13,
+            size: 11,
             color: Colors.white,
           ),
           const SizedBox(width: 4),
@@ -1566,7 +1863,7 @@ class _TopBadge extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: FontWeight.w900,
               letterSpacing: 0,
             ),
@@ -1592,8 +1889,8 @@ class _SelectionIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
-      width: 32,
-      height: 32,
+      width: 26,
+      height: 26,
       decoration: BoxDecoration(
         color: isSelected ? accentColor : Colors.transparent,
         borderRadius: BorderRadius.circular(100),
@@ -1606,7 +1903,7 @@ class _SelectionIndicator extends StatelessWidget {
           ? const Icon(
               Icons.check_rounded,
               color: Colors.white,
-              size: 21,
+              size: 18,
             )
           : null,
     );
@@ -1641,7 +1938,7 @@ class _PriceLine extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: selected ? accentColor : textColor,
-            fontSize: 22,
+            fontSize: 16.5,
             fontWeight: FontWeight.w900,
             letterSpacing: 0,
           ),
@@ -1652,7 +1949,7 @@ class _PriceLine extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: textColor.withValues(alpha: 0.66),
-            fontSize: 12,
+            fontSize: 9.5,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),
@@ -1680,14 +1977,14 @@ class _SavingsBadge extends StatelessWidget {
     final percentage = parts.length > 1 ? parts.sublist(1).join(' ') : '';
 
     return Container(
-      width: 96,
-      height: 92,
+      width: 62,
+      height: 60,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: isDarkMode
             ? accentColor.withValues(alpha: 0.14)
             : const Color(0xFFE1F7F1),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1698,7 +1995,7 @@ class _SavingsBadge extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: accentColor,
-              fontSize: 10,
+              fontSize: 8,
               fontWeight: FontWeight.w900,
               letterSpacing: 0,
             ),
@@ -1710,7 +2007,7 @@ class _SavingsBadge extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: accentColor,
-                fontSize: 32,
+                fontSize: 22,
                 fontWeight: FontWeight.w900,
                 height: 0.98,
                 letterSpacing: 0,
@@ -1736,7 +2033,7 @@ class _SmallSavingsChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: isDarkMode
             ? accentColor.withValues(alpha: 0.16)
@@ -1749,7 +2046,7 @@ class _SmallSavingsChip extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: accentColor,
-          fontSize: 11,
+          fontSize: 9,
           fontWeight: FontWeight.w900,
           letterSpacing: 0,
         ),

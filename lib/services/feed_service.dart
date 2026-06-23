@@ -208,7 +208,9 @@ class FeedService {
         },
       );
 
-      if (response.statusCode == 200) return true;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
 
       print('[FeedService] Erro ao excluir publicação: ${response.body}');
       return false;

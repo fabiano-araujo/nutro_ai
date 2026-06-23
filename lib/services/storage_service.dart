@@ -304,7 +304,7 @@ class StorageService {
       } else {
         // Return default settings
         return {
-          'theme': 'system',
+          'theme': 'light',
           'textSize': 'medium',
           'notificationsEnabled': false,
         };
@@ -313,7 +313,7 @@ class StorageService {
       print('Error getting settings: $e');
       // Return default settings on error
       return {
-        'theme': 'system',
+        'theme': 'light',
         'textSize': 'medium',
         'notificationsEnabled': false,
       };

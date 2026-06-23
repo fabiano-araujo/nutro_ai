@@ -14,6 +14,7 @@ import '../providers/feed_provider.dart';
 import '../providers/profile_shape_preview_provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/reward_ad_dialog.dart';
 
@@ -171,6 +172,11 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
   }
 
   Future<void> _generatePreview() async {
+    if (!_hasPremiumAccess()) {
+      await _openSubscriptionScreen();
+      return;
+    }
+
     final imageBytes = _sourceImageBytes;
     final authService = context.read<AuthService>();
     final token = authService.token;
@@ -505,6 +511,17 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     setState(() {
       _showInfoChip = !_showInfoChip;
     });
+  }
+
+  bool _hasPremiumAccess() {
+    final purchaseService = context.read<PurchaseService>();
+    final authService = context.read<AuthService>();
+    return purchaseService.isPremium ||
+        (authService.currentUser?.subscription.isPremium ?? false);
+  }
+
+  Future<void> _openSubscriptionScreen() async {
+    await Navigator.of(context).pushNamed('/subscription');
   }
 
   Future<void> _showImageSourcePicker() async {
@@ -1097,10 +1114,6 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
   Widget _buildTipRow(ThemeData theme, Color primary, bool isDarkMode) {
     final tips = [
       (
-        Icons.accessibility_new_rounded,
-        context.tr.translate('profile_shape_tip_full_body'),
-      ),
-      (
         Icons.center_focus_strong_rounded,
         context.tr.translate('profile_shape_tip_light'),
       ),
@@ -1108,14 +1121,10 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
         Icons.checkroom_rounded,
         context.tr.translate('profile_shape_tip_clothes'),
       ),
-      (
-        Icons.landscape_outlined,
-        context.tr.translate('profile_shape_tip_background'),
-      ),
     ];
 
     return SizedBox(
-      height: 62,
+      height: 72,
       child: Row(
         children: [
           for (var i = 0; i < tips.length; i++) ...[
@@ -1153,7 +1162,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
         const SizedBox(height: 6),
         Text(
           label,
-          maxLines: 2,
+          maxLines: 3,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: theme.textTheme.labelSmall?.copyWith(

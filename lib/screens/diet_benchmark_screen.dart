@@ -362,7 +362,6 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
       final locale = Localizations.localeOf(context);
       final languageCode =
           '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
-      final userId = authService.currentUser!.id.toString();
       final selectedDate = dietProvider.selectedDate;
       final mealTypes = mealTypesProvider.mealTypes;
       final targetCalories = nutritionGoals.caloriesGoal;
@@ -410,7 +409,6 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
             nutritionGoals,
             modelId: entry.modelId,
             mealTypes: mealTypes,
-            userId: userId,
             languageCode: languageCode,
             reasoningEffort: reasoningEffort,
           );

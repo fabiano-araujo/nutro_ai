@@ -851,7 +851,6 @@ Future<String> _requestDietGeneration({
       'temperature': 0.5,
       'model': task.modelId,
       'streaming': true,
-      'userId': task.userId,
       'agentType': 'diet',
       'language': task.languageCode,
       'mealTypes': task.mealTypes

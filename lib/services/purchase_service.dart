@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ad_manager.dart';
@@ -21,7 +22,6 @@ class PurchaseService with ChangeNotifier {
   static const String planoAnual = 'plano_anual';
 
   static const List<String> _productIds = <String>[
-    planoSemanal,
     planoMensal,
     planoAnual,
   ];
@@ -31,6 +31,7 @@ class PurchaseService with ChangeNotifier {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   List<ProductDetails> _products = <ProductDetails>[];
   bool _isLoading = true;
+  bool _isPurchaseInProgress = false;
   bool _isPremium = false;
   String _subscriptionType = 'free';
   DateTime? _subscriptionExpiryDate;
@@ -39,8 +40,10 @@ class PurchaseService with ChangeNotifier {
   int? _lastSyncedUserId;
   String? _lastSyncedToken;
   bool _isSyncingServerStatus = false;
+  Timer? _purchaseLaunchWatchdog;
 
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isLoading || _isPurchaseInProgress;
+  bool get isPurchaseInProgress => _isPurchaseInProgress;
   bool get isPremium => _isPremium;
   List<ProductDetails> get products => _products;
   String get subscriptionType => _subscriptionType;
@@ -199,8 +202,9 @@ class PurchaseService with ChangeNotifier {
 
   Future<void> _loadProducts() async {
     try {
-      final ProductDetailsResponse response =
-          await _inAppPurchase.queryProductDetails(_productIds.toSet());
+      final ProductDetailsResponse response = await _inAppPurchase
+          .queryProductDetails(_productIds.toSet())
+          .timeout(const Duration(seconds: 20));
 
       if (response.error != null) {
         _errorMessage = 'Erro ao carregar produtos: ${response.error!.message}';
@@ -210,6 +214,16 @@ class PurchaseService with ChangeNotifier {
       }
 
       _products = response.productDetails;
+      debugPrint(
+        'Produtos Google Play carregados: '
+        '${_products.map((product) => product.id).join(', ')}',
+      );
+      if (response.notFoundIDs.isNotEmpty) {
+        debugPrint(
+          'Produtos Google Play nao encontrados: '
+          '${response.notFoundIDs.join(', ')}',
+        );
+      }
       if (_products.isEmpty) {
         _errorMessage =
             'Não foi possível encontrar os planos de assinatura na loja.';
@@ -225,6 +239,30 @@ class PurchaseService with ChangeNotifier {
     }
   }
 
+  Future<void> reloadProducts() async {
+    _errorMessage = null;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final available = await _inAppPurchase.isAvailable();
+      if (!available) {
+        _isLoading = false;
+        _errorMessage =
+            'A loja de aplicativos não está disponível neste momento.';
+        notifyListeners();
+        return;
+      }
+
+      await _loadProducts();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Não foi possível recarregar os planos da loja.';
+      debugPrint('Erro ao recarregar produtos: $e');
+      notifyListeners();
+    }
+  }
+
   Future<void> buySubscription(ProductDetails productDetails) async {
     _errorMessage = null;
 
@@ -234,10 +272,36 @@ class PurchaseService with ChangeNotifier {
       return;
     }
 
+    final authService = _authService!;
+    final currentUser = authService.currentUser!;
+
+    if (Platform.isAndroid && !_isAndroidSubscriptionProduct(productDetails)) {
+      _errorMessage =
+          'Este plano não está configurado como assinatura na Google Play.';
+      notifyListeners();
+      return;
+    }
+
+    _isPurchaseInProgress = true;
+    _startPurchaseLaunchWatchdog(productDetails.id);
+    notifyListeners();
+
     try {
+      debugPrint(
+        'Abrindo compra Google Play: productId=${productDetails.id}, '
+        'price=${productDetails.price}, '
+        'offerToken=${productDetails is GooglePlayProductDetails ? productDetails.offerToken : null}',
+      );
+
       final PurchaseParam purchaseParam = Platform.isAndroid
-          ? GooglePlayPurchaseParam(productDetails: productDetails)
-          : PurchaseParam(productDetails: productDetails);
+          ? GooglePlayPurchaseParam(
+              productDetails: productDetails,
+              applicationUserName: currentUser.id.toString(),
+            )
+          : PurchaseParam(
+              productDetails: productDetails,
+              applicationUserName: currentUser.id.toString(),
+            );
 
       final launched = await _inAppPurchase.buyNonConsumable(
         purchaseParam: purchaseParam,
@@ -246,8 +310,12 @@ class PurchaseService with ChangeNotifier {
       if (!launched) {
         _errorMessage =
             'Não foi possível abrir o Google Play para concluir a assinatura.';
+        _isPurchaseInProgress = false;
+        _purchaseLaunchWatchdog?.cancel();
       }
     } catch (e) {
+      _isPurchaseInProgress = false;
+      _purchaseLaunchWatchdog?.cancel();
       _errorMessage = 'Erro ao iniciar a compra. Tente novamente mais tarde.';
       debugPrint('Erro ao comprar assinatura: $e');
     }
@@ -305,22 +373,38 @@ class PurchaseService with ChangeNotifier {
   Future<void> _listenToPurchaseUpdated(
     List<PurchaseDetails> purchaseDetailsList,
   ) async {
+    if (purchaseDetailsList.isNotEmpty) {
+      _purchaseLaunchWatchdog?.cancel();
+    }
+
     for (final purchaseDetails in purchaseDetailsList) {
+      debugPrint(
+        'Atualizacao de compra Google Play: '
+        'productId=${purchaseDetails.productID}, '
+        'status=${purchaseDetails.status}, '
+        'pendingComplete=${purchaseDetails.pendingCompletePurchase}',
+      );
+
       if (purchaseDetails.status == PurchaseStatus.pending) {
+        _isPurchaseInProgress = true;
+        _errorMessage = null;
         continue;
       }
+
+      _isPurchaseInProgress = false;
+      var shouldCompletePurchase = false;
 
       if (purchaseDetails.status == PurchaseStatus.error) {
         _errorMessage =
             'Erro na compra: ${purchaseDetails.error?.message ?? 'Desconhecido'}';
       } else if (purchaseDetails.status == PurchaseStatus.purchased ||
           purchaseDetails.status == PurchaseStatus.restored) {
-        await _verifyPurchase(purchaseDetails);
+        shouldCompletePurchase = await _verifyPurchase(purchaseDetails);
       } else if (purchaseDetails.status == PurchaseStatus.canceled) {
         _errorMessage = 'Compra cancelada pelo usuário.';
       }
 
-      if (purchaseDetails.pendingCompletePurchase) {
+      if (purchaseDetails.pendingCompletePurchase && shouldCompletePurchase) {
         try {
           await _inAppPurchase.completePurchase(purchaseDetails);
         } catch (e) {
@@ -332,20 +416,20 @@ class PurchaseService with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _verifyPurchase(PurchaseDetails purchaseDetails) async {
+  Future<bool> _verifyPurchase(PurchaseDetails purchaseDetails) async {
     final authService = _authService;
     final currentUser = authService?.currentUser;
     final token = authService?.token;
 
     if (authService == null || currentUser == null || token == null) {
       _errorMessage = 'Entre na sua conta antes de assinar o Premium.';
-      return;
+      return false;
     }
 
     if (!Platform.isAndroid) {
       _errorMessage =
           'A assinatura premium pela loja está disponível apenas no Android neste momento.';
-      return;
+      return false;
     }
 
     try {
@@ -360,13 +444,38 @@ class PurchaseService with ChangeNotifier {
       if (data['isPremium'] != true) {
         _errorMessage =
             'A compra foi validada, mas a assinatura ainda não está ativa.';
+        return false;
       } else {
         _errorMessage = null;
+        return true;
       }
     } catch (e) {
       debugPrint('Erro ao validar compra no servidor: $e');
       _errorMessage = _humanizeException(e);
+      return false;
     }
+  }
+
+  ProductDetails? productForPlan(String planId) {
+    final matches = _products.where((product) => product.id == planId).toList();
+    if (matches.isEmpty) return null;
+
+    if (Platform.isAndroid) {
+      final androidSubscriptions = matches
+          .whereType<GooglePlayProductDetails>()
+          .where(_isAndroidSubscriptionProduct)
+          .toList()
+        ..sort(_compareAndroidSubscriptionProducts);
+
+      if (androidSubscriptions.isNotEmpty) {
+        return androidSubscriptions.first;
+      }
+    }
+
+    final nonZero = matches.where((product) => product.rawPrice > 0).toList();
+    final candidates = nonZero.isNotEmpty ? nonZero : matches;
+    candidates.sort((a, b) => a.rawPrice.compareTo(b.rawPrice));
+    return candidates.first;
   }
 
   Future<void> _applyServerSubscriptionData(Map<String, dynamic> data) async {
@@ -479,6 +588,71 @@ class PurchaseService with ChangeNotifier {
         authService.token != null;
   }
 
+  bool _isAndroidSubscriptionProduct(ProductDetails productDetails) {
+    if (productDetails is! GooglePlayProductDetails) return false;
+    final offer = _subscriptionOfferFor(productDetails);
+    return offer != null && productDetails.offerToken?.isNotEmpty == true;
+  }
+
+  SubscriptionOfferDetailsWrapper? _subscriptionOfferFor(
+    GooglePlayProductDetails productDetails,
+  ) {
+    final index = productDetails.subscriptionIndex;
+    final offers = productDetails.productDetails.subscriptionOfferDetails;
+
+    if (index == null ||
+        offers == null ||
+        index < 0 ||
+        index >= offers.length) {
+      return null;
+    }
+
+    return offers[index];
+  }
+
+  int _compareAndroidSubscriptionProducts(
+    GooglePlayProductDetails a,
+    GooglePlayProductDetails b,
+  ) {
+    final aScore = _androidSubscriptionProductScore(a);
+    final bScore = _androidSubscriptionProductScore(b);
+    if (aScore != bScore) return aScore.compareTo(bScore);
+    return a.rawPrice.compareTo(b.rawPrice);
+  }
+
+  int _androidSubscriptionProductScore(GooglePlayProductDetails product) {
+    final offer = _subscriptionOfferFor(product);
+    if (offer == null) return 100;
+
+    var score = 0;
+    if (offer.offerId != null && offer.offerId!.isNotEmpty) score += 10;
+    if (product.rawPrice <= 0) score += 20;
+
+    final hasRecurringPrice = offer.pricingPhases.any(
+      (phase) =>
+          phase.recurrenceMode == RecurrenceMode.infiniteRecurring &&
+          phase.priceAmountMicros > 0,
+    );
+    if (!hasRecurringPrice) score += 5;
+
+    return score;
+  }
+
+  void _startPurchaseLaunchWatchdog(String productId) {
+    _purchaseLaunchWatchdog?.cancel();
+    _purchaseLaunchWatchdog = Timer(const Duration(seconds: 45), () {
+      if (!_isPurchaseInProgress) return;
+
+      _isPurchaseInProgress = false;
+      _errorMessage =
+          'O Google Play não retornou a tela de compra. Instale o app pela faixa de teste interno da Play Store e tente novamente.';
+      debugPrint(
+        'Timeout aguardando retorno da compra Google Play para $productId.',
+      );
+      notifyListeners();
+    });
+  }
+
   DateTime? _parseExpirationDate(dynamic value) {
     if (value == null) {
       return null;
@@ -513,6 +687,7 @@ class PurchaseService with ChangeNotifier {
 
   @override
   void dispose() {
+    _purchaseLaunchWatchdog?.cancel();
     _subscription?.cancel();
     super.dispose();
   }

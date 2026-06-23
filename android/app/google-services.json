@@ -30,6 +30,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -91,6 +98,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -152,6 +166,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -181,6 +202,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -234,6 +262,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -263,6 +298,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -292,6 +334,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -305,6 +354,22 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "853860056867-82h3g17e0tv3pgchvi71sh2fec62s8ia.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.apps.nutreai",
+            "certificate_hash": "f905d9c78f7cf46bf78a0281176107c423ff005a"
+          }
+        },
+        {
+          "client_id": "853860056867-rir0a8v09vfm7lps5509o5qcn7a5em08.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.snapdark.apps.nutreai",
+            "certificate_hash": "24ed1c97dca688d35cdc936a26702c125ec87865"
+          }
+        },
         {
           "client_id": "853860056867-j1g89d7f2l4rc10uq69q5f0pn193np3s.apps.googleusercontent.com",
           "client_type": 3
@@ -321,6 +386,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -350,6 +422,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -395,6 +474,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -432,6 +518,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }
@@ -493,6 +586,13 @@
             {
               "client_id": "853860056867-86eha2k9nuhq5uuc12qef46dgot0uvak.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853860056867-1qlbl6n6g3deurmqssurmiq927ceuvv5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.snapdark.apps.nutreai"
+              }
             }
           ]
         }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../providers/diet_plan_provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
+import '../widgets/reward_ad_dialog.dart';
 import '../widgets/message_notifier.dart';
 import 'auth_service.dart';
 import 'app_debug_log_service.dart';
@@ -5935,6 +5937,22 @@ $basePrompt
       );
     }
 
+    if (!dietProvider.isPremium && !dietProvider.hasActiveDietGenerationJob) {
+      final watchedRewardedAd =
+          await _showDietGenerationRewardedAdGate(context);
+      if (!watchedRewardedAd) {
+        return AppAgentExecutionResult(
+          commandName: command.name,
+          success: false,
+          errorMessage: 'rewarded_ad_required',
+          payload: {
+            'reason': 'rewarded_ad_required',
+            'dietMode': dietProvider.dietMode.name,
+          },
+        );
+      }
+    }
+
     final locale = Localizations.localeOf(context);
     final languageCode =
         '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
@@ -5983,6 +6001,34 @@ $basePrompt
         'meals': plan.meals.map(_serializePlannedMeal).toList(),
       },
     );
+  }
+
+  static Future<bool> _showDietGenerationRewardedAdGate(
+    BuildContext context,
+  ) async {
+    if (!context.mounted) {
+      return false;
+    }
+
+    final completer = Completer<bool>();
+    await RewardAdDialog.showRewardedAd(
+      context,
+      grantCredits: false,
+      onRewardEarned: () {
+        if (!completer.isCompleted) {
+          completer.complete(true);
+        }
+      },
+    );
+
+    try {
+      return await completer.future.timeout(
+        const Duration(minutes: 3),
+        onTimeout: () => false,
+      );
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<AppAgentExecutionResult> _getDietGenerationPreferencesStatus(

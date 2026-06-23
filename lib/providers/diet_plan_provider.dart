@@ -786,7 +786,6 @@ class DietPlanProvider extends ChangeNotifier {
     NutritionGoalsProvider nutritionGoals, {
     required String modelId,
     List<MealTypeConfig> mealTypes = const [],
-    String userId = '',
     String languageCode = 'pt_BR',
     String? reasoningEffort,
   }) async {
@@ -816,7 +815,6 @@ class DietPlanProvider extends ChangeNotifier {
       date: date,
       prompt: prompt,
       targetNutrition: targetNutrition,
-      userId: userId,
       languageCode: languageCode,
       modelId: normalizedModel,
       mealTypes: benchmarkMealTypes,
@@ -839,7 +837,6 @@ class DietPlanProvider extends ChangeNotifier {
     required DateTime date,
     required String prompt,
     required DailyNutrition targetNutrition,
-    required String userId,
     required String languageCode,
     String? modelId,
     List<MealTypeConfig>? mealTypes,
@@ -864,7 +861,6 @@ class DietPlanProvider extends ChangeNotifier {
       'temperature': 0.5,
       'model': selectedModel,
       'streaming': true,
-      'userId': userId,
       'agentType': 'diet',
       'language': languageCode,
       'mealTypes':
@@ -1643,7 +1639,6 @@ One-time user replacement request for $scope:
         'temperature': 0.5,
         'model': _selectedDietGenerationModel,
         'streaming': true,
-        'userId': userId,
         'agentType': 'diet',
         'language': languageCode,
         'mealTypes':

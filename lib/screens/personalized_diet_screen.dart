@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../theme/macro_theme.dart';
 import 'package:provider/provider.dart';
-import '../providers/credit_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/meal_types_provider.dart';
@@ -536,40 +535,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     return message;
   }
 
-  void _showDietCreditOptions({
+  Future<bool> _ensureRewardedAdBeforeDietRequest({
     required DietPlanProvider dietProvider,
-    required VoidCallback onRewardEarned,
-  }) {
-    unawaited(context.read<CreditProvider>().markCreditsExhausted());
-    dietProvider.markDietGenerationInsufficientCredits();
-    RewardAdDialog.show(
-      context,
-      onRewardEarned: onRewardEarned,
-    );
-  }
-
-  Future<bool> _ensureCreditsBeforeDietRequest({
-    required AuthService authService,
-    required DietPlanProvider dietProvider,
+    required bool rewardedAdWatched,
     required VoidCallback onRewardEarned,
   }) async {
-    final token = authService.token;
-    final userId = authService.currentUser?.id;
-    if (token == null || token.isEmpty || userId == null) {
-      return true;
-    }
-
-    final creditProvider = context.read<CreditProvider>();
-    try {
-      await creditProvider.refreshCreditsFromServer(
-        token: token,
-        userId: userId,
-      );
-    } catch (e) {
-      debugPrint('Não foi possível atualizar créditos antes da dieta: $e');
-    }
-
-    if (creditProvider.creditsRemaining > 0) {
+    if (rewardedAdWatched ||
+        dietProvider.isPremium ||
+        dietProvider.hasActiveDietGenerationJob) {
       return true;
     }
 
@@ -577,9 +550,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       return false;
     }
 
-    _showDietCreditOptions(
-      dietProvider: dietProvider,
+    await RewardAdDialog.showRewardedAd(
+      context,
       onRewardEarned: onRewardEarned,
+      grantCredits: false,
     );
     return false;
   }
@@ -587,16 +561,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
   void _handleDietActionError({
     required DietPlanProvider dietProvider,
     required AppLocalizations l10n,
-    required VoidCallback onRewardEarned,
   }) {
-    if (_isInsufficientCreditsError(dietProvider.error)) {
-      _showDietCreditOptions(
-        dietProvider: dietProvider,
-        onRewardEarned: onRewardEarned,
-      );
-      return;
-    }
-
     _showDietGenerationErrorSnackBar(dietProvider, l10n);
   }
 
@@ -712,7 +677,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
   }
 
   // Generate diet plan for selected date
-  Future<void> _generateDietPlan() async {
+  Future<void> _generateDietPlan({bool rewardedAdWatched = false}) async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals =
         Provider.of<NutritionGoalsProvider>(context, listen: false);
@@ -748,10 +713,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       return;
     }
 
-    if (!await _ensureCreditsBeforeDietRequest(
-      authService: authService,
+    if (!await _ensureRewardedAdBeforeDietRequest(
       dietProvider: dietProvider,
-      onRewardEarned: () => unawaited(_generateDietPlan()),
+      rewardedAdWatched: rewardedAdWatched,
+      onRewardEarned: () =>
+          unawaited(_generateDietPlan(rewardedAdWatched: true)),
     )) {
       return;
     }
@@ -816,7 +782,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
         _handleDietActionError(
           dietProvider: dietProvider,
           l10n: l10n,
-          onRewardEarned: () => unawaited(_generateDietPlan()),
         );
       }
     } else if (dietProvider.currentDietPlan != null) {
@@ -1381,6 +1346,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     String mealType, {
     String? replacementNotes,
     bool skipNotesSheet = false,
+    bool rewardedAdWatched = false,
   }) async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final nutritionGoals =
@@ -1404,13 +1370,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       );
     }
 
-    if (!await _ensureCreditsBeforeDietRequest(
-      authService: authService,
+    if (!await _ensureRewardedAdBeforeDietRequest(
       dietProvider: dietProvider,
+      rewardedAdWatched: rewardedAdWatched,
       onRewardEarned: () => unawaited(_replaceMeal(
         mealType,
         replacementNotes: replacementNotes,
         skipNotesSheet: skipNotesSheet,
+        rewardedAdWatched: true,
       )),
     )) {
       return;
@@ -1460,11 +1427,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       _handleDietActionError(
         dietProvider: dietProvider,
         l10n: l10n,
-        onRewardEarned: () => unawaited(_replaceMeal(
-          mealType,
-          replacementNotes: effectiveReplacementNotes,
-          skipNotesSheet: true,
-        )),
       );
     }
   }
@@ -1473,6 +1435,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
   Future<void> _replaceAllMeals({
     String? replacementNotes,
     bool skipNotesSheet = false,
+    bool rewardedAdWatched = false,
   }) async {
     final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
     final isWeeklyMode = dietProvider.dietMode == DietMode.weekly;
@@ -1498,12 +1461,13 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       );
     }
 
-    if (!await _ensureCreditsBeforeDietRequest(
-      authService: authService,
+    if (!await _ensureRewardedAdBeforeDietRequest(
       dietProvider: dietProvider,
+      rewardedAdWatched: rewardedAdWatched,
       onRewardEarned: () => unawaited(_replaceAllMeals(
         replacementNotes: replacementNotes,
         skipNotesSheet: skipNotesSheet,
+        rewardedAdWatched: true,
       )),
     )) {
       return;
@@ -1548,10 +1512,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       _handleDietActionError(
         dietProvider: dietProvider,
         l10n: l10n,
-        onRewardEarned: () => unawaited(_replaceAllMeals(
-          replacementNotes: effectiveReplacementNotes,
-          skipNotesSheet: true,
-        )),
       );
     }
   }

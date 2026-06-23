@@ -24,6 +24,7 @@ import 'nutrition_goals_screen.dart';
 import 'activity_tracking_apps_screen.dart';
 import 'profile_shape_preview_screen.dart';
 import 'settings_screen.dart';
+import 'subscription_management_screen.dart';
 import '../i18n/app_localizations_extension.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -525,7 +526,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(22),
-            onTap: () => Navigator.of(context).pushNamed('/subscription'),
+            onTap: () {
+              if (isPremium) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const SubscriptionManagementScreen(),
+                  ),
+                );
+                return;
+              }
+
+              Navigator.of(context).pushNamed('/subscription');
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(

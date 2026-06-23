@@ -173,16 +173,26 @@ class RewardAdDialog {
   }
 
   // Método para mostrar o anúncio premiado
-  static Future<void> showRewardedAd(BuildContext context,
-      {int retryAttempt = 0, VoidCallback? onRewardEarned}) async {
-    final creditProvider = Provider.of<CreditProvider>(context, listen: false);
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final token = authService.isAuthenticated ? authService.token : null;
+  static Future<void> showRewardedAd(
+    BuildContext context, {
+    int retryAttempt = 0,
+    VoidCallback? onRewardEarned,
+    bool grantCredits = true,
+  }) async {
+    final CreditProvider? creditProvider = grantCredits
+        ? Provider.of<CreditProvider>(context, listen: false)
+        : null;
+    final AuthService? authService =
+        grantCredits ? Provider.of<AuthService>(context, listen: false) : null;
+    final token =
+        grantCredits && authService != null && authService.isAuthenticated
+            ? authService.token
+            : null;
     final maxRetryAttempt = 3;
 
     if (kIsWeb) {
       await _grantRewardedCreditsForWeb(context, creditProvider, token,
-          onRewardEarned: onRewardEarned);
+          onRewardEarned: onRewardEarned, grantCredits: grantCredits);
       return;
     }
 
@@ -210,11 +220,13 @@ class RewardAdDialog {
         rewardProcessing = true;
 
         try {
-          await creditProvider.addRewardedCredits(7, token: token);
+          if (grantCredits) {
+            await creditProvider!.addRewardedCredits(7, token: token);
+          }
           rewardProcessed = true;
           onRewardEarned?.call();
 
-          if (context.mounted) {
+          if (grantCredits && context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(context.tr.translate('earned_credits')),
@@ -223,11 +235,13 @@ class RewardAdDialog {
             );
           }
         } catch (e) {
-          debugPrint('Erro ao adicionar créditos do anúncio premiado: $e');
+          debugPrint('Erro ao processar recompensa do anúncio premiado: $e');
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(context.tr.translate('reward_credit_sync_error')),
+                content: Text(context.tr.translate(grantCredits
+                    ? 'reward_credit_sync_error'
+                    : 'ad_load_error')),
                 backgroundColor: Colors.red,
               ),
             );
@@ -257,7 +271,8 @@ class RewardAdDialog {
               if (context.mounted) {
                 showRewardedAd(context,
                     retryAttempt: retryAttempt + 1,
-                    onRewardEarned: onRewardEarned);
+                    onRewardEarned: onRewardEarned,
+                    grantCredits: grantCredits);
               }
             });
           }
@@ -316,7 +331,8 @@ class RewardAdDialog {
             if (context.mounted) {
               showRewardedAd(context,
                   retryAttempt: retryAttempt + 1,
-                  onRewardEarned: onRewardEarned);
+                  onRewardEarned: onRewardEarned,
+                  grantCredits: grantCredits);
             }
           });
           return;
@@ -342,7 +358,8 @@ class RewardAdDialog {
                       Navigator.of(context).pop();
                       showRewardedAd(context,
                           retryAttempt: 0,
-                          onRewardEarned: onRewardEarned); // Reiniciar contagem
+                          onRewardEarned: onRewardEarned,
+                          grantCredits: grantCredits); // Reiniciar contagem
                     },
                     child: Text(context.tr.translate('retry')),
                   ),
@@ -367,9 +384,10 @@ class RewardAdDialog {
 
   static Future<void> _grantRewardedCreditsForWeb(
     BuildContext context,
-    CreditProvider creditProvider,
+    CreditProvider? creditProvider,
     String? token, {
     VoidCallback? onRewardEarned,
+    bool grantCredits = true,
   }) async {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -381,10 +399,12 @@ class RewardAdDialog {
     }
 
     try {
-      await creditProvider.addRewardedCredits(7, token: token);
+      if (grantCredits) {
+        await creditProvider!.addRewardedCredits(7, token: token);
+      }
       onRewardEarned?.call();
 
-      if (context.mounted) {
+      if (grantCredits && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(context.tr.translate('earned_credits')),
