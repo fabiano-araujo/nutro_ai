@@ -193,6 +193,90 @@ void main() {
     expect(provider.todayMeals.single.id, 'stored-meal-id');
     expect(provider.totalCalories, 105);
   });
+
+  test('keeps deleted chat meal blocked after provider reload', () async {
+    final provider = DailyMealsProvider();
+    await provider.ready;
+    provider.setSelectedDate(DateTime(2026, 7, 8));
+
+    provider.addMeal(
+      Meal(
+        id: 'stored-meal-id',
+        type: MealType.snack,
+        messageId: 'msg-1800000000000003#meal-0',
+        foods: [
+          _food('pao', calories: 80, protein: 3, carbs: 15, fat: 1),
+        ],
+      ),
+    );
+
+    provider.deleteMeal(
+      'stored-meal-id',
+      messageId: 'msg-1800000000000003#meal-0',
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final reloaded = DailyMealsProvider();
+    await reloaded.ready;
+    reloaded.setSelectedDate(DateTime(2026, 7, 8));
+
+    expect(
+      reloaded.isChatMealDeleted(
+        'msg-1800000000000003#meal-0',
+        date: DateTime(2026, 7, 8),
+      ),
+      isTrue,
+    );
+
+    reloaded.addMeal(
+      Meal(
+        id: 'auto-added-again',
+        type: MealType.snack,
+        messageId: 'msg-1800000000000003#meal-0',
+        foods: [
+          _food('pao', calories: 80, protein: 3, carbs: 15, fat: 1),
+        ],
+      ),
+    );
+
+    expect(reloaded.todayMeals, isEmpty);
+    expect(reloaded.totalCalories, 0);
+  });
+
+  test('filters stale cached meals that were already deleted', () async {
+    final staleMeal = Meal(
+      id: 'stale-meal',
+      type: MealType.breakfast,
+      messageId: 'msg-1800000000000004#meal-0',
+      foods: [
+        _food('pao', calories: 80, protein: 3, carbs: 15, fat: 1),
+      ],
+      dateTime: DateTime(2026, 7, 8, 8),
+    );
+
+    SharedPreferences.setMockInitialValues({
+      'daily_meals': jsonEncode({
+        '2026-07-08': [staleMeal.toJson()],
+      }),
+      'daily_meals_deleted_chat_meal_ids': jsonEncode({
+        '2026-07-08': ['msg-1800000000000004#meal-0'],
+      }),
+    });
+
+    final provider = DailyMealsProvider();
+    await provider.ready;
+    provider.setSelectedDate(DateTime(2026, 7, 8));
+
+    expect(provider.todayMeals, isEmpty);
+    expect(provider.totalCalories, 0);
+    expect(
+      provider.isChatMealDeleted(
+        'msg-1800000000000004#meal-0',
+        date: DateTime(2026, 7, 8),
+      ),
+      isTrue,
+    );
+  });
 }
 
 Food _food(

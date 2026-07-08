@@ -26,6 +26,7 @@ class DailyMealsProvider extends ChangeNotifier {
   final Map<String, List<Meal>> _mealsByDate = {};
   final Map<String, int> _waterByDate = {};
   final Map<String, _StoredDailySummary> _serverSummariesByDate = {};
+  final Map<String, Set<String>> _deletedChatMealIdsByDate = {};
   final Set<String> _pendingSyncDateKeys = {};
   final Map<String, int> _localRevisionByDate = {};
   final Set<String> _loadedDetailDateKeys = {};
@@ -34,6 +35,8 @@ class DailyMealsProvider extends ChangeNotifier {
   late final Future<void> _initialLoadFuture;
   bool _isLoaded = false;
   static const int _initialSummaryLookbackDays = 90;
+  static const String _deletedChatMealsPrefsKey =
+      'daily_meals_deleted_chat_meal_ids';
 
   // Goals (can be customized by user later)
   int caloriesGoal = 2000;
@@ -79,6 +82,9 @@ class DailyMealsProvider extends ChangeNotifier {
     print(
         '[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - Carregando dados do servidor...');
     await _loadFromServer();
+    if (_pendingSyncDateKeys.isNotEmpty) {
+      _scheduleSync();
+    }
     print(
         '[🔄 AUTH_DATA] DailyMealsProvider.setAuth() - ✅ Carregamento concluído');
   }
@@ -211,7 +217,9 @@ class DailyMealsProvider extends ChangeNotifier {
     _waterByDate[dateKey] = summary.waterGlasses;
 
     if (includeMeals) {
-      _mealsByDate[dateKey] = _normalizeMeals(summary.meals);
+      _mealsByDate[dateKey] = _normalizeMeals(summary.meals)
+          .where((meal) => !_isChatMealDeletedForDate(dateKey, meal.messageId))
+          .toList();
     }
 
     return true;
@@ -247,6 +255,13 @@ class DailyMealsProvider extends ChangeNotifier {
     });
   }
 
+  void _syncNowOrSchedule() {
+    if (_userId == null || _token == null) return;
+
+    _syncDebounce?.cancel();
+    unawaited(_syncToServer());
+  }
+
   /// Sincroniza dados do dia selecionado com o servidor
   Future<void> _syncToServer() async {
     if (_userId == null || _token == null) return;
@@ -260,8 +275,11 @@ class DailyMealsProvider extends ChangeNotifier {
     notifyListeners();
     print('[DailyMealsProvider] Sincronizando com servidor...');
 
-    final syncDate = _selectedDate;
-    final dateKey = _formatDate(syncDate);
+    final pendingDateKeys = _pendingSyncDateKeys.toList()..sort();
+    final dateKey = pendingDateKeys.isNotEmpty
+        ? pendingDateKeys.first
+        : _formatDate(_selectedDate);
+    final syncDate = DateTime.tryParse(dateKey) ?? _selectedDate;
     final startRevision = _revisionForDateKey(dateKey);
     bool synced = false;
 
@@ -310,7 +328,7 @@ class DailyMealsProvider extends ChangeNotifier {
       _syncRequestedWhileSyncing = false;
       _isSyncing = false;
       notifyListeners();
-      if (shouldRunAgain) {
+      if (shouldRunAgain || _pendingSyncDateKeys.isNotEmpty) {
         _scheduleSync();
       }
     }
@@ -719,6 +737,8 @@ class DailyMealsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
 
+      _loadDeletedChatMealsFromPreferences(prefs);
+
       // Load meals by date
       final mealsJson = prefs.getString('daily_meals');
       if (mealsJson != null) {
@@ -733,7 +753,11 @@ class DailyMealsProvider extends ChangeNotifier {
                   (mealJson) => Meal.fromJson(mealJson as Map<String, dynamic>),
                 )
                 .toList(),
-          );
+          )
+              .where(
+                (meal) => !_isChatMealDeletedForDate(dateKey, meal.messageId),
+              )
+              .toList();
         });
         _loadedDetailDateKeys
           ..clear()
@@ -819,6 +843,10 @@ class DailyMealsProvider extends ChangeNotifier {
       });
 
       await prefs.setString('daily_meals', jsonEncode(mealsToSave));
+      await prefs.setString(
+        _deletedChatMealsPrefsKey,
+        jsonEncode(_encodeDeletedChatMealIds()),
+      );
 
       final Map<String, dynamic> summariesToSave = {};
       _serverSummariesByDate.forEach((dateKey, summary) {
@@ -864,6 +892,37 @@ class DailyMealsProvider extends ChangeNotifier {
     }
   }
 
+  void _loadDeletedChatMealsFromPreferences(SharedPreferences prefs) {
+    _deletedChatMealIdsByDate.clear();
+
+    final deletedJson = prefs.getString(_deletedChatMealsPrefsKey);
+    if (deletedJson == null || deletedJson.trim().isEmpty) return;
+
+    final decoded = jsonDecode(deletedJson);
+    if (decoded is! Map) return;
+
+    decoded.forEach((dateKey, value) {
+      if (value is List) {
+        final deletedIds = value
+            .map((item) => item.toString().trim())
+            .where((item) => item.isNotEmpty)
+            .toSet();
+        if (deletedIds.isNotEmpty) {
+          _deletedChatMealIdsByDate[dateKey.toString()] = deletedIds;
+        }
+      }
+    });
+  }
+
+  Map<String, List<String>> _encodeDeletedChatMealIds() {
+    final encoded = <String, List<String>>{};
+    _deletedChatMealIdsByDate.forEach((dateKey, deletedIds) {
+      if (deletedIds.isEmpty) return;
+      encoded[dateKey] = deletedIds.toList()..sort();
+    });
+    return encoded;
+  }
+
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
@@ -907,6 +966,30 @@ class DailyMealsProvider extends ChangeNotifier {
     return meals
         .where((m) => _matchesChatMessageGroup(m.messageId, messageId))
         .toList(growable: false);
+  }
+
+  bool isChatMealDeleted(String? messageId, {DateTime? date}) {
+    final dateKey = _formatDate(date ?? _selectedDate);
+    return _isChatMealDeletedForDate(dateKey, messageId);
+  }
+
+  bool _isChatMealDeletedForDate(String dateKey, String? messageId) {
+    final deletedIds = _deletedChatMealIdsByDate[dateKey];
+    if (deletedIds == null || deletedIds.isEmpty) return false;
+
+    final identity = _chatMealIdentity(messageId);
+    if (identity == null) return false;
+    if (deletedIds.contains(identity)) return true;
+
+    final groupId = _chatMessageGroupId(messageId);
+    return groupId != null && deletedIds.contains(groupId);
+  }
+
+  void _markChatMealDeletedForDate(String dateKey, String? messageId) {
+    final identity = _chatMealIdentity(messageId);
+    if (identity == null) return;
+
+    (_deletedChatMealIdsByDate[dateKey] ??= <String>{}).add(identity);
   }
 
   bool _matchesChatMessageGroup(String? mealMessageId, String messageId) {
@@ -977,6 +1060,9 @@ class DailyMealsProvider extends ChangeNotifier {
     final normalizedMeal = _normalizeMeal(
       meal.copyWith(dateTime: _selectedDate),
     );
+    if (_isChatMealDeletedForDate(dateKey, normalizedMeal.messageId)) {
+      return;
+    }
 
     // Refeicoes vindas do chat (com messageId) sao SEMPRE entradas
     // independentes — cada card do chat = sua propria refeicao. Isso evita
@@ -1073,6 +1159,7 @@ class DailyMealsProvider extends ChangeNotifier {
     if (updatedFoods.length == previousLength) return;
 
     if (updatedFoods.isEmpty) {
+      _markChatMealDeletedForDate(dateKey, meals[mealIndex].messageId);
       // Remove meal if no foods left
       meals.removeAt(mealIndex);
     } else {
@@ -1081,7 +1168,7 @@ class DailyMealsProvider extends ChangeNotifier {
 
     _markDateLocallyModified(dateKey);
     _saveToPreferences();
-    _scheduleSync(); // Sync com servidor
+    _syncNowOrSchedule(); // Sync com servidor
     notifyListeners();
   }
 
@@ -1189,11 +1276,15 @@ class DailyMealsProvider extends ChangeNotifier {
     }
     if (mealIndex == -1) return;
 
-    meals.removeAt(mealIndex);
+    final removedMeal = meals.removeAt(mealIndex);
+    _markChatMealDeletedForDate(
+      dateKey,
+      removedMeal.messageId ?? messageId,
+    );
 
     _markDateLocallyModified(dateKey);
     _saveToPreferences();
-    _scheduleSync(); // Sync com servidor
+    _syncNowOrSchedule(); // Sync com servidor
     notifyListeners();
   }
 
@@ -1203,13 +1294,21 @@ class DailyMealsProvider extends ChangeNotifier {
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
 
+    final removedMessageIds = meals
+        .where((m) => m.type == type)
+        .map((m) => m.messageId)
+        .whereType<String>()
+        .toList();
     final previousLength = meals.length;
     meals.removeWhere((m) => m.type == type);
     if (meals.length == previousLength) return;
 
+    for (final messageId in removedMessageIds) {
+      _markChatMealDeletedForDate(dateKey, messageId);
+    }
     _markDateLocallyModified(dateKey);
     _saveToPreferences();
-    _scheduleSync(); // Sync com servidor
+    _syncNowOrSchedule(); // Sync com servidor
     notifyListeners();
   }
 
@@ -1493,10 +1592,14 @@ class DailyMealsProvider extends ChangeNotifier {
 
   void clearAllMeals() {
     final dateKey = _formatDate(_selectedDate);
+    final meals = _mealsByDate[dateKey] ?? const <Meal>[];
+    for (final meal in meals) {
+      _markChatMealDeletedForDate(dateKey, meal.messageId);
+    }
     _mealsByDate[dateKey] = [];
     _markDateLocallyModified(dateKey);
     _saveToPreferences();
-    _scheduleSync(); // Sync com servidor
+    _syncNowOrSchedule(); // Sync com servidor
     notifyListeners();
   }
 
@@ -1699,6 +1802,7 @@ class DailyMealsProvider extends ChangeNotifier {
     _mealsByDate.clear();
     _waterByDate.clear();
     _serverSummariesByDate.clear();
+    _deletedChatMealIdsByDate.clear();
     _pendingSyncDateKeys.clear();
     _localRevisionByDate.clear();
     _loadedDetailDateKeys.clear();
@@ -1711,10 +1815,12 @@ class DailyMealsProvider extends ChangeNotifier {
       final removedMeals = await prefs.remove('daily_meals');
       final removedWater = await prefs.remove('water_by_date');
       final removedSummaries = await prefs.remove('daily_meal_summaries');
+      final removedDeletedChatMeals =
+          await prefs.remove(_deletedChatMealsPrefsKey);
       final removedPendingDates =
           await prefs.remove('daily_meals_pending_sync_dates');
       print(
-          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater, summaries=$removedSummaries, pendingDates=$removedPendingDates');
+          '[🔄 AUTH_DATA] DailyMealsProvider.clearAllData() - SharedPreferences removido: meals=$removedMeals, water=$removedWater, summaries=$removedSummaries, deletedChatMeals=$removedDeletedChatMeals, pendingDates=$removedPendingDates');
 
       // Verificar se foi removido
       final checkMeals = prefs.getString('daily_meals');

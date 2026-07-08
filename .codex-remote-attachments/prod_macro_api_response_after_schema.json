@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "data": {
+    "text": "{\"app_command\":{\"name\":\"update_macro_targets_grams_per_kg\",\"arguments\":{\"proteinPerKg\":2.2,\"fatPerKg\":0.5}}}",
+    "model": "deepseek/deepseek-v4-flash-20260423",
+    "usage": {
+      "prompt_tokens": 591,
+      "completion_tokens": 728,
+      "total_tokens": 1319,
+      "cost": 0.000274298,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.000274298,
+        "upstream_inference_prompt_cost": 7.9194E-05,
+        "upstream_inference_completions_cost": 0.000195104
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 691,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  }
+}

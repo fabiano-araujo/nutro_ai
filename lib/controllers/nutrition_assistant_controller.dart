@@ -2912,7 +2912,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     }
 
     notifyListeners();
-    _saveMessagesForCurrentDate();
+    unawaited(
+      _saveMessagesForCurrentDate().then(
+        (_) => DailyChatSyncService.instance.syncPendingIfNeeded(),
+      ),
+    );
     print(
         '🗑️ NutritionAssistantController - Par de mensagens deletado no índice $messageIndex');
   }
@@ -2949,20 +2953,23 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
   /// Salva as mensagens da data atual
   Future<void> _saveMessagesForCurrentDate() async {
     final dateKey = _formatDateKey(_selectedDate);
+    final storageKey = _buildStorageKey(dateKey);
     if (_messages.isEmpty) {
+      final removed = await _storageService.removeData(storageKey);
+      await DailyChatSyncService.instance.syncDeletedDate(dateKey);
       _logDailyChatTrace('cache_save_skip_empty', {
         'date': dateKey,
         'scope': storageScope,
         'toolType': toolType,
+        'key': storageKey,
+        'removed': removed,
       });
       print(
-          '💾 NutritionAssistantController - Nenhuma mensagem para salvar na data $dateKey');
+          '💾 NutritionAssistantController - Chat vazio removido para data $dateKey (removed=$removed)');
       return;
     }
 
     try {
-      final storageKey = _buildStorageKey(dateKey);
-
       // Converter mensagens para formato serializável
       final messagesData = _messages.map((msg) {
         final data = <String, dynamic>{

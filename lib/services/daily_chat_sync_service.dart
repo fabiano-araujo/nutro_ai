@@ -185,6 +185,29 @@ class DailyChatSyncService {
     await _syncToServer();
   }
 
+  Future<void> syncDeletedDate(String dateKey) async {
+    final token = _token;
+    if (token == null || _userId == null || !_isDateKey(dateKey)) {
+      return;
+    }
+
+    try {
+      await _appStateService.syncAppState(
+        token: token,
+        nutritionChatByDate: {
+          dateKey: {'messages': <Map<String, dynamic>>[]},
+        },
+        nutritionChatDateKey: dateKey,
+      );
+      _pendingDateKeys.remove(dateKey);
+      _hasPending = _pendingDateKeys.isNotEmpty;
+      print(
+          '✅ DailyChatSyncService - chat diário de $dateKey removido do servidor');
+    } catch (e) {
+      print('⚠️ DailyChatSyncService - Erro ao remover chat de $dateKey: $e');
+    }
+  }
+
   Future<void> _syncToServer() async {
     final token = _token;
     if (_isSyncing || token == null || _userId == null || !_hasPending) {

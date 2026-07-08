@@ -55,6 +55,9 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
       await mealsProvider.ready;
       if (!mounted) return;
 
+      _removeDeletedMeals(mealsProvider);
+      if (_meals.isEmpty) return;
+
       // Verificar se já existe uma refeição com este messageId no provider
       if (widget.messageId != null) {
         final existingMeals =
@@ -73,6 +76,23 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
       if (!_isAdded) {
         _addMealsToDay();
       }
+    });
+  }
+
+  void _removeDeletedMeals(DailyMealsProvider mealsProvider) {
+    final filteredMeals = _meals
+        .where(
+          (meal) => !mealsProvider.isChatMealDeleted(
+            meal.messageId,
+            date: widget.selectedDate,
+          ),
+        )
+        .toList(growable: false);
+    if (filteredMeals.length == _meals.length) return;
+
+    setState(() {
+      _meals = filteredMeals;
+      _isAdded = filteredMeals.isNotEmpty && _isAdded;
     });
   }
 
@@ -212,12 +232,28 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
         id: '$timestamp-$i',
         messageId: _messageIdForMeal(i),
       );
+      if (mealsProvider.isChatMealDeleted(
+        mealToAdd.messageId,
+        date: widget.selectedDate,
+      )) {
+        continue;
+      }
 
       mealsProvider.addMeal(mealToAdd);
       addedMeals.add(mealToAdd);
 
       // Conta cada refeição registrada, mas o intersticial é tentado uma vez.
       AdManager.notifyMealRegistered();
+    }
+
+    if (addedMeals.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _meals = const [];
+          _isAdded = false;
+        });
+      }
+      return;
     }
 
     if (mounted) {
