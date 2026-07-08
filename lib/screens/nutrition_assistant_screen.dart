@@ -91,6 +91,14 @@ class NutritionAssistantManager {
 // Singleton global para facilitar acesso de qualquer lugar do app
 final nutritionAssistantManager = NutritionAssistantManager();
 
+enum _MessageOptionAction {
+  copy,
+  selectText,
+  edit,
+  speak,
+  regenerate,
+}
+
 class NutritionAssistantScreen extends StatefulWidget {
   static const macroGoalsToolType =
       NutritionAssistantController.macroGoalsToolType;
@@ -211,6 +219,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   int? _lastLoggedMessageCount;
   bool? _lastLoggedIsLoading;
   bool? _lastLoggedIsLoadingMessages;
+  String? _lastChatSurfaceSignature;
 
   String _formatMealToastDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -303,6 +312,22 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         'isFreeChat': widget.isFreeChat,
       });
     }
+  }
+
+  void _logChatSurfaceDecision(
+    String surface, [
+    Map<String, Object?> data = const {},
+  ]) {
+    final payload = <String, Object?>{
+      'surface': surface,
+      ...data,
+    };
+    final signature = jsonEncode(payload);
+    if (_lastChatSurfaceSignature == signature) {
+      return;
+    }
+    _lastChatSurfaceSignature = signature;
+    _logChatBootPerf('surface_decision', payload);
   }
 
   String _mealAddedToastMessage(DateTime date) {
@@ -1410,11 +1435,16 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }
 
   // Método para lidar com o envio de mensagem (botão Enviar ou Enter)
-  Future<void> _handleSendMessage() async {
+  Future<void> _handleSendMessage({bool dismissKeyboard = false}) async {
     _endMealToastSuppression();
     final message = _messageController.text.trim();
     final shouldScrollAfterSend =
         message.isNotEmpty || _chatController.hasSelectedImage;
+
+    if (dismissKeyboard && shouldScrollAfterSend) {
+      _inputFocusNode.unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
 
     // Incrementar contador de mensagens do usuário se a mensagem não estiver vazia
     if (message.isNotEmpty) {
@@ -1476,165 +1506,458 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     );
   }
 
-  // Método para mostrar o menu de opções ao fazer long press
-  void _showMessageOptions(String message, bool isUser) {
-    final appLocalizations = AppLocalizations.of(context);
+  String _translateOrFallback(String key, String fallback) {
+    final translated = AppLocalizations.of(context).translate(key);
+    return translated == key ? fallback : translated;
+  }
 
-    showModalBottomSheet(
+  String _formatMessageOptionsTimestamp(DateTime timestamp) {
+    final localeName = Localizations.localeOf(context).toString();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDay = DateTime(timestamp.year, timestamp.month, timestamp.day);
+    final time = DateFormat.Hm(localeName).format(timestamp);
+
+    if (messageDay == today) {
+      return '${_translateOrFallback('today', 'Hoje')}, $time';
+    }
+    if (messageDay == yesterday) {
+      return '${_translateOrFallback('yesterday', 'Ontem')}, $time';
+    }
+    return DateFormat('dd/MM/yyyy, HH:mm', localeName).format(timestamp);
+  }
+
+  // Método para mostrar o menu de opções ao fazer long press.
+  Future<void> _showMessageOptions({
+    required String message,
+    required bool isUser,
+    required DateTime timestamp,
+    required int messageIndex,
+    required Offset globalPosition,
+    bool canSubmitEmptyEdit = false,
+  }) async {
+    final action = await showGeneralDialog<_MessageOptionAction>(
       context: context,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: Icon(Icons.content_copy,
-                    color: Theme.of(context).textTheme.bodyMedium?.color),
-                title: Text('Copiar',
-                    style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge?.color)),
-                onTap: () {
-                  final readable =
-                      isUser ? message : _getReadableMessage(message);
-                  Clipboard.setData(ClipboardData(text: readable));
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(appLocalizations.translate('text_copied')),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.text_fields,
-                    color: Theme.of(context).textTheme.bodyMedium?.color),
-                title: Text('Selecionar texto',
-                    style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge?.color)),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Implementar seleção de texto: copiar para a área de transferência
-                  // e mostrar diálogo para facilitar a seleção
-                  _showSelectableTextDialog(
-                      isUser ? message : _getReadableMessage(message));
-                },
-              ),
-              // Opção de editar - apenas para mensagens do usuário
-              if (isUser)
-                ListTile(
-                  leading: Icon(Icons.edit,
-                      color: Theme.of(context).textTheme.bodyMedium?.color),
-                  title: Text('Editar',
-                      style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyLarge?.color)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Preencher o campo de texto com a mensagem
-                    _messageController.text = message;
-                    // Focar no campo de texto
-                    FocusScope.of(context).requestFocus(_inputFocusNode);
-                    // Mover o cursor para o final do texto
-                    _messageController.selection = TextSelection.fromPosition(
-                      TextPosition(offset: _messageController.text.length),
-                    );
-                  },
-                ),
-              // Ler em voz alta - apenas para mensagens da IA
-              if (!isUser)
-                ListTile(
-                  leading: Icon(
-                      isSpeaking ? Icons.stop : Icons.volume_up_outlined,
-                      color: Theme.of(context).textTheme.bodyMedium?.color),
-                  title: Text('Ler em voz alta',
-                      style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyLarge?.color)),
-                  onTap: () {
-                    Navigator.pop(context);
-
-                    try {
-                      // Encontrar índice da mensagem no array de mensagens
-                      int messageIndex = -1;
-                      final messages = _chatController.messages;
-                      for (int i = 0; i < messages.length; i++) {
-                        if ((messages[i].containsKey('message') &&
-                                messages[i]['message'] == message) ||
-                            (messages[i].containsKey('notifier') &&
-                                messages[i]['notifier'].message == message)) {
-                          messageIndex = i;
-                          break;
-                        }
-                      }
-
-                      final readable = _getReadableMessage(message);
-
-                      if (messageIndex >= 0) {
-                        _chatController.handleVoiceButtonPressed(
-                          messageIndex,
-                          context,
-                          overrideText: readable,
-                        );
-                      } else {
-                        // Se não encontrar a mensagem específica, lê o texto atual
-                        if (isSpeaking) {
-                          stopSpeech();
-                        } else {
-                          speak(readable).catchError((error) {
-                            print('Erro ao iniciar leitura: $error');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Não foi possível ler o texto. Verifique as permissões do aplicativo.'),
-                                backgroundColor: Colors.red,
-                                duration: Duration(seconds: 3),
-                              ),
-                            );
-                          });
-                        }
-                      }
-                    } catch (e) {
-                      print('Erro ao iniciar leitura de voz: $e');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              'Função de leitura não disponível no momento.'),
-                          backgroundColor: Colors.red,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              // Gerar resposta novamente - apenas para mensagens da IA
-              if (!isUser)
-                ListTile(
-                  leading: Icon(Icons.refresh_outlined,
-                      color: Theme.of(context).textTheme.bodyMedium?.color),
-                  title: Text('Gerar resposta novamente',
-                      style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyLarge?.color)),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    // Chamar o método regenerateLastResponse do controller
-                    final hadEnoughCredits =
-                        await _chatController.regenerateLastResponse(context);
-
-                    // Após iniciar a regeneração, rolar até o início da última resposta da IA (apenas se houver créditos)
-                    if (hadEnoughCredits) {
-                      Future.delayed(Duration(milliseconds: 100), () {
-                        _scrollToLastAiResponse(animate: true);
-                      });
-                    }
-                  },
-                ),
-            ],
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black.withValues(alpha: 0.08),
+      transitionDuration: const Duration(milliseconds: 140),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return _buildMessageOptionsOverlay(
+          dialogContext: dialogContext,
+          globalPosition: globalPosition,
+          timestampLabel: _formatMessageOptionsTimestamp(timestamp),
+          isUser: isUser,
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
+            alignment: Alignment.topRight,
+            child: child,
           ),
         );
       },
     );
+
+    if (!mounted || action == null) return;
+
+    await _handleMessageOptionAction(
+      action: action,
+      message: message,
+      isUser: isUser,
+      messageIndex: messageIndex,
+      canSubmitEmptyEdit: canSubmitEmptyEdit,
+    );
+  }
+
+  Widget _buildMessageOptionsOverlay({
+    required BuildContext dialogContext,
+    required Offset globalPosition,
+    required String timestampLabel,
+    required bool isUser,
+  }) {
+    final media = MediaQuery.of(dialogContext);
+    final availableWidth = media.size.width - 32;
+    final menuWidth = math.min(344.0, availableWidth);
+    final actionCount = isUser ? 3 : 4;
+    final estimatedHeight = 58.0 + (actionCount * 62.0) + 20.0;
+    final safeTop = media.padding.top + 8;
+    final safeBottom = media.padding.bottom + media.viewInsets.bottom + 16;
+    final maxLeft = math.max(16.0, media.size.width - menuWidth - 16);
+    final maxTop =
+        math.max(safeTop, media.size.height - safeBottom - estimatedHeight);
+
+    var left =
+        isUser ? globalPosition.dx - menuWidth + 28 : globalPosition.dx - 28;
+    left = left.clamp(16.0, maxLeft).toDouble();
+
+    var top = globalPosition.dy + 10;
+    if (top + estimatedHeight > media.size.height - safeBottom) {
+      top = globalPosition.dy - estimatedHeight - 10;
+    }
+    top = top.clamp(safeTop, maxTop).toDouble();
+
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(dialogContext).pop(),
+            ),
+          ),
+          Positioned(
+            left: left,
+            top: top,
+            width: menuWidth,
+            child: _buildMessageOptionsCard(
+              dialogContext: dialogContext,
+              timestampLabel: timestampLabel,
+              isUser: isUser,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageOptionsCard({
+    required BuildContext dialogContext,
+    required String timestampLabel,
+    required bool isUser,
+  }) {
+    final theme = Theme.of(dialogContext);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? const Color(0xFF242424) : Colors.white;
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+    final primaryText = isDarkMode ? Colors.white : Colors.black87;
+    final secondaryText = isDarkMode ? Colors.white54 : Colors.black45;
+
+    final actions = <Widget>[
+      _buildMessageOptionButton(
+        icon: Icons.content_copy_rounded,
+        label: _translateOrFallback('copy', 'Copiar'),
+        textColor: primaryText,
+        iconColor: primaryText,
+        onTap: () => Navigator.of(dialogContext).pop(_MessageOptionAction.copy),
+      ),
+      _buildMessageOptionButton(
+        icon: Icons.notes_rounded,
+        label: _translateOrFallback('select_text', 'Selecionar texto'),
+        textColor: primaryText,
+        iconColor: primaryText,
+        onTap: () =>
+            Navigator.of(dialogContext).pop(_MessageOptionAction.selectText),
+      ),
+      if (isUser)
+        _buildMessageOptionButton(
+          icon: Icons.edit_outlined,
+          label: _translateOrFallback('edit_message', 'Editar mensagem'),
+          textColor: primaryText,
+          iconColor: primaryText,
+          onTap: () =>
+              Navigator.of(dialogContext).pop(_MessageOptionAction.edit),
+        )
+      else ...[
+        _buildMessageOptionButton(
+          icon: isSpeaking
+              ? Icons.stop_circle_outlined
+              : Icons.volume_up_outlined,
+          label: _translateOrFallback('speak_aloud', 'Ler em voz alta'),
+          textColor: primaryText,
+          iconColor: primaryText,
+          onTap: () =>
+              Navigator.of(dialogContext).pop(_MessageOptionAction.speak),
+        ),
+        _buildMessageOptionButton(
+          icon: Icons.refresh_rounded,
+          label: _translateOrFallback(
+            'regenerate_response',
+            'Gerar resposta novamente',
+          ),
+          textColor: primaryText,
+          iconColor: primaryText,
+          onTap: () =>
+              Navigator.of(dialogContext).pop(_MessageOptionAction.regenerate),
+        ),
+      ],
+    ];
+
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDarkMode ? 0.38 : 0.16),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 18, right: 18, bottom: 14),
+              child: Text(
+                timestampLabel,
+                style: TextStyle(
+                  color: secondaryText,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ...actions,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageOptionButton({
+    required IconData icon,
+    required String label,
+    required Color textColor,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        height: 62,
+        child: Row(
+          children: [
+            const SizedBox(width: 18),
+            Icon(icon, size: 30, color: iconColor),
+            const SizedBox(width: 24),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleMessageOptionAction({
+    required _MessageOptionAction action,
+    required String message,
+    required bool isUser,
+    required int messageIndex,
+    required bool canSubmitEmptyEdit,
+  }) async {
+    final appLocalizations = AppLocalizations.of(context);
+    final readable = isUser ? message : _getReadableMessage(message);
+
+    switch (action) {
+      case _MessageOptionAction.copy:
+        Clipboard.setData(ClipboardData(text: readable));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(appLocalizations.translate('text_copied')),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+        break;
+      case _MessageOptionAction.selectText:
+        _showSelectableTextDialog(readable);
+        break;
+      case _MessageOptionAction.edit:
+        await _showEditMessageDialog(
+          messageIndex: messageIndex,
+          message: message,
+          canSubmitEmptyEdit: canSubmitEmptyEdit,
+        );
+        break;
+      case _MessageOptionAction.speak:
+        try {
+          if (messageIndex >= 0 &&
+              messageIndex < _chatController.messages.length) {
+            _chatController.handleVoiceButtonPressed(
+              messageIndex,
+              context,
+              overrideText: readable,
+            );
+          } else if (isSpeaking) {
+            stopSpeech();
+          } else {
+            await speak(readable);
+          }
+        } catch (e) {
+          print('Erro ao iniciar leitura de voz: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_translateOrFallback(
+                'voice_unavailable',
+                'Função de leitura não disponível no momento.',
+              )),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        break;
+      case _MessageOptionAction.regenerate:
+        final hadEnoughCredits =
+            await _chatController.regenerateLastResponse(context);
+        if (hadEnoughCredits) {
+          Future.delayed(const Duration(milliseconds: 100), () {
+            _scrollToLastAiResponse(animate: true);
+          });
+        }
+        break;
+    }
+  }
+
+  Future<void> _showEditMessageDialog({
+    required int messageIndex,
+    required String message,
+    required bool canSubmitEmptyEdit,
+  }) async {
+    if (_chatController.isLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_translateOrFallback(
+            'wait_response_before_edit',
+            'Aguarde a resposta terminar antes de editar.',
+          )),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final editController = TextEditingController(text: message);
+    final focusNode = FocusNode();
+    editController.selection = TextSelection.fromPosition(
+      TextPosition(offset: editController.text.length),
+    );
+
+    final editedMessage = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: Theme.of(dialogContext).scaffoldBackgroundColor,
+          title: Text(
+            _translateOrFallback('edit_message', 'Editar mensagem'),
+            style: TextStyle(
+              color: Theme.of(dialogContext).textTheme.bodyLarge?.color,
+            ),
+          ),
+          content: TextField(
+            controller: editController,
+            focusNode: focusNode,
+            autofocus: true,
+            keyboardType: TextInputType.multiline,
+            minLines: 1,
+            maxLines: 8,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: _translateOrFallback(
+                'edit_your_message',
+                'Edite sua mensagem',
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(_translateOrFallback('cancel', 'Cancelar')),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(editController.text),
+              child: Text(_translateOrFallback(
+                'save_and_resend',
+                'Salvar e reenviar',
+              )),
+            ),
+          ],
+        );
+      },
+    );
+
+    focusNode.dispose();
+    editController.dispose();
+
+    if (!mounted || editedMessage == null) return;
+
+    final trimmed = editedMessage.trim();
+    if (trimmed == message.trim()) return;
+    if (trimmed.isEmpty && !canSubmitEmptyEdit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_translateOrFallback(
+            'message_required_before_resend',
+            'Digite uma mensagem antes de reenviar.',
+          )),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    _pinChatToBottom = true;
+    final hadEnoughCredits = await _chatController.editUserMessageAndRegenerate(
+      messageIndex,
+      trimmed,
+      context,
+    );
+
+    if (hadEnoughCredits) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _scrollToLastAiResponse(animate: true);
+      });
+    } else if (!_chatController.isLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_translateOrFallback(
+            'message_edit_failed',
+            'Não foi possível editar a mensagem agora.',
+          )),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   // Método para mostrar o diálogo com texto selecionável
@@ -1644,7 +1967,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         builder: (context) {
           return AlertDialog(
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            title: Text('Selecionar Texto',
+            title: Text(
+                _translateOrFallback(
+                  'select_text_title',
+                  'Selecionar Texto',
+                ),
                 style: TextStyle(
                     color: Theme.of(context).textTheme.bodyLarge?.color)),
             content: Container(
@@ -1667,14 +1994,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             ),
             actions: [
               TextButton(
-                child: Text('Fechar',
+                child: Text(_translateOrFallback('close', 'Fechar'),
                     style: TextStyle(color: Theme.of(context).primaryColor)),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
               ),
               TextButton(
-                child: Text('Copiar Tudo',
+                child: Text(_translateOrFallback('copy_all', 'Copiar Tudo'),
                     style: TextStyle(color: Theme.of(context).primaryColor)),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: message));
@@ -1716,14 +2043,31 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           final currentlySpeakingMessageIndex =
               _chatController.currentlySpeakingMessageIndex;
           final hasCachedMessages = messages.isNotEmpty;
-          final shouldBlockChatContent =
-              !hasCachedMessages && isLoadingMessages;
+          final shouldWaitForInitialChatBootstrap =
+              widget.isBootstrappingInitialChat && !hasCachedMessages;
+          final shouldBlockChatContent = !hasCachedMessages &&
+              (isLoadingMessages || shouldWaitForInitialChatBootstrap);
           _logChatBuildPerf(
             messageCount: messages.length,
             isLoading: isLoading,
             isLoadingMessages: isLoadingMessages,
             shouldBlockChatContent: shouldBlockChatContent,
           );
+          final surface = shouldBlockChatContent
+              ? 'initial_loader'
+              : messages.isNotEmpty
+                  ? 'message_list'
+                  : _suggestions.isNotEmpty
+                      ? 'suggestions'
+                      : 'empty_or_reconstructed';
+          _logChatSurfaceDecision(surface, {
+            'messages': messages.length,
+            'loading': isLoading,
+            'loadingMessages': isLoadingMessages,
+            'bootstrapping': widget.isBootstrappingInitialChat,
+            'waitingBootstrap': shouldWaitForInitialChatBootstrap,
+            'suggestions': _suggestions.length,
+          });
 
           // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
           if (!_hasScrolledToInitialMessages &&
@@ -2037,8 +2381,22 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                 builder:
                                     (context, reconstructMealsProvider, _) {
                                   final shouldShowInitialLoader =
-                                      isLoadingMessages || isLoading;
+                                      isLoadingMessages ||
+                                          isLoading ||
+                                          shouldWaitForInitialChatBootstrap;
                                   if (shouldShowInitialLoader) {
+                                    _logChatSurfaceDecision(
+                                      'empty_loader',
+                                      {
+                                        'messages': messages.length,
+                                        'loading': isLoading,
+                                        'loadingMessages': isLoadingMessages,
+                                        'bootstrapping':
+                                            widget.isBootstrappingInitialChat,
+                                        'waitingBootstrap':
+                                            shouldWaitForInitialChatBootstrap,
+                                      },
+                                    );
                                     return _buildInitialChatLoadingView(
                                       backgroundColor:
                                           currentScaffoldBackgroundColor,
@@ -2050,6 +2408,18 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                           reconstructMealsProvider
                                               .selectedDate);
                                   if (reconstructedDayMeals.isNotEmpty) {
+                                    _logChatSurfaceDecision(
+                                      'reconstructed_meals_without_messages',
+                                      {
+                                        'messages': messages.length,
+                                        'mealCount':
+                                            reconstructedDayMeals.length,
+                                        'loading': isLoading,
+                                        'loadingMessages': isLoadingMessages,
+                                        'bootstrapping':
+                                            widget.isBootstrappingInitialChat,
+                                      },
+                                    );
                                     return _buildReconstructedMealsView(
                                       meals: reconstructedDayMeals,
                                       mealsProvider: reconstructMealsProvider,
@@ -2058,6 +2428,16 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                           currentScaffoldBackgroundColor,
                                     );
                                   }
+                                  _logChatSurfaceDecision(
+                                    'welcome_empty',
+                                    {
+                                      'messages': messages.length,
+                                      'loading': isLoading,
+                                      'loadingMessages': isLoadingMessages,
+                                      'bootstrapping':
+                                          widget.isBootstrappingInitialChat,
+                                    },
+                                  );
                                   return Container(
                                     color: currentScaffoldBackgroundColor,
                                     child: Align(
@@ -2781,7 +3161,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                             if (isLoading) {
                                               _chatController.stopGeneration();
                                             } else {
-                                              _handleSendMessage();
+                                              _handleSendMessage(
+                                                dismissKeyboard: true,
+                                              );
                                             }
                                           },
                                           splashRadius: 20,
@@ -3063,7 +3445,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         !isUser && FoodJsonParser.containsFoodJson(message);
     final bool canRenderFoodDiaryCards = !widget.isFreeChat;
     final bool shouldRenderFoodCard = canRenderFoodDiaryCards && hasFoodJson;
-    final foodMessageId = 'msg-${timestamp.microsecondsSinceEpoch}-$index';
+    final foodMessageId = 'msg-${timestamp.microsecondsSinceEpoch}';
     final String displayMessage = AppAgentService.sanitizeDisplayMessage(
       message,
       autoRegisterFoods: shouldRenderFoodCard,
@@ -3112,8 +3494,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     isUser: isUser,
                     isError: notifier.isError,
                     isStreaming: notifier.isStreaming,
-                    onLongPress: () =>
-                        _showMessageOptions(notifier.message, isUser),
+                    onLongPress: (position) => _showMessageOptions(
+                      message: notifier.message,
+                      isUser: isUser,
+                      timestamp: timestamp,
+                      messageIndex: index,
+                      globalPosition: position,
+                    ),
                     bottomSpacing: showsMealCard ? 4 : 8,
                   ),
                 if (canRenderFoodDiaryCards && !isUser && !notifier.isStreaming)
@@ -3153,7 +3540,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               isUser: isUser,
               isError: isError,
               isStreaming: isStreaming,
-              onLongPress: () => _showMessageOptions(message, isUser),
+              onLongPress: (position) => _showMessageOptions(
+                message: message,
+                isUser: isUser,
+                timestamp: timestamp,
+                messageIndex: index,
+                globalPosition: position,
+                canSubmitEmptyEdit: imageBytes != null,
+              ),
               imageBytes: imageBytes,
               bottomSpacing: showsMealCard ? 4 : 8,
             ),
@@ -3211,7 +3605,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 topContentPadding: 16,
                 onMealUpdated: (updatedMeal) {
                   if (updatedMeal.foods.isEmpty) {
-                    mealsProvider.deleteMeal(updatedMeal.id);
+                    mealsProvider.deleteMeal(
+                      updatedMeal.id,
+                      messageId: updatedMeal.messageId,
+                    );
                     if (cachedMeals.length == 1) {
                       _chatController.deleteMessagePair(messageIndex);
                     }
@@ -3220,7 +3617,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                   }
                 },
                 onDelete: () {
-                  mealsProvider.deleteMeal(meal.id);
+                  mealsProvider.deleteMeal(
+                    meal.id,
+                    messageId: meal.messageId,
+                  );
                   if (cachedMeals.length == 1) {
                     _chatController.deleteMessagePair(messageIndex);
                   }
@@ -3259,12 +3659,18 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               topContentPadding: 16,
               onMealUpdated: (updatedMeal) {
                 if (updatedMeal.foods.isEmpty) {
-                  mealsProvider.deleteMeal(updatedMeal.id);
+                  mealsProvider.deleteMeal(
+                    updatedMeal.id,
+                    messageId: updatedMeal.messageId,
+                  );
                 } else {
                   mealsProvider.updateMeal(updatedMeal);
                 }
               },
-              onDelete: () => mealsProvider.deleteMeal(meal.id),
+              onDelete: () => mealsProvider.deleteMeal(
+                meal.id,
+                messageId: meal.messageId,
+              ),
             ),
           );
         },

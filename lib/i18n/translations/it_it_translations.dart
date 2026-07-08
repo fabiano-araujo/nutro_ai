@@ -271,6 +271,18 @@ final Map<String, String> itITTranslations = {
   'camera': 'Fotocamera',
   'edit_message': 'Modifica messaggio',
   'edit_your_message': 'Modifica il tuo messaggio',
+  'select_text': 'Seleziona testo',
+  'select_text_title': 'Seleziona testo',
+  'copy_all': 'Copia tutto',
+  'speak_aloud': 'Leggi ad alta voce',
+  'regenerate_response': 'Genera di nuovo la risposta',
+  'save_and_resend': 'Salva e reinvia',
+  'wait_response_before_edit':
+      'Attendi che la risposta finisca prima di modificare.',
+  'message_required_before_resend':
+      'Inserisci un messaggio prima di reinviare.',
+  'message_edit_failed': 'Impossibile modificare il messaggio ora.',
+  'voice_unavailable': 'La lettura vocale non è disponibile al momento.',
   'error_selecting_image':
       'Errore durante la selezione dell\'immagine: {error}',
   'could_not_load_conversation': 'Impossibile caricare la conversazione.',
@@ -406,11 +418,13 @@ final Map<String, String> itITTranslations = {
       'Flessibilità per evolvere al tuo ritmo',
   'subscription_charged_annually': 'Addebitato {price} / anno',
   'subscription_economize_percentage': 'RISPARMIA {percentage}%',
-  'subscription_annual_savings_amount': 'R\$ 100,00 di risparmio',
+  'subscription_annual_savings_amount': '{amount} di risparmio',
   'subscription_annual_savings_compare': 'rispetto al piano mensile',
   'subscription_guarantee_title': '7 giorni di garanzia',
   'subscription_guarantee_subtitle':
       'Non soddisfatto? Rimborsiamo il 100% del tuo denaro.',
+  'subscription_free_trial_badge': 'Prova gratis',
+  'subscription_free_trial_days': '{days} giorni gratis',
   'premium_activated_title': 'Premium attivato',
   'premium_activated_subtitle':
       'Il tuo abbonamento è confermato. Queste funzioni sono ora sbloccate:',

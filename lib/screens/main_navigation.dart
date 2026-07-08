@@ -49,6 +49,13 @@ class NavigationController {
   NavigationController._internal();
 
   Function(int)? tabChangeCallback;
+  final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
+
+  void updateSelectedIndex(int index) {
+    if (selectedIndexNotifier.value != index) {
+      selectedIndexNotifier.value = index;
+    }
+  }
 
   void changeTab(int index) {
     if (tabChangeCallback != null) {
@@ -407,6 +414,12 @@ class _MainNavigationState extends State<MainNavigation> {
     }
 
     final allowLocalAutoSync = !shouldOfferGuestDataPrompt;
+    if (allowLocalAutoSync) {
+      DailyChatSyncService.instance.setAuth(token, userId);
+      _logChatBootPerf('daily_chat_sync_auth_ready_early', {
+        'userId': userId,
+      });
+    }
     _logChatBootPerf('configure_authenticated_providers_ready', {
       'allowLocalAutoSync': allowLocalAutoSync,
       'hasGuestSnapshot': guestSnapshot?.hasData ?? false,
@@ -1073,6 +1086,7 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       _selectedIndex = index;
     });
+    navigationController.updateSelectedIndex(index);
   }
 
   void _openDrawer() {
@@ -1095,6 +1109,7 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       _selectedIndex = 2;
     });
+    navigationController.updateSelectedIndex(2);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       socialTabController.changeTab(0);
     });
@@ -1148,6 +1163,7 @@ class _MainNavigationState extends State<MainNavigation> {
       _currentFreeChatId = null;
       _nutritionAssistantKey = UniqueKey();
     });
+    navigationController.updateSelectedIndex(0);
   }
 
   @override
@@ -1169,6 +1185,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 setState(() {
                   _selectedIndex = 0;
                 });
+                navigationController.updateSelectedIndex(0);
               }
             },
             child: isWide

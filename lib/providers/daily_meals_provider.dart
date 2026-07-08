@@ -905,17 +905,67 @@ class DailyMealsProvider extends ChangeNotifier {
     if (meals == null) return const [];
 
     return meals
-        .where((m) => _matchesChatMessageId(m.messageId, messageId))
+        .where((m) => _matchesChatMessageGroup(m.messageId, messageId))
         .toList(growable: false);
   }
 
-  bool _matchesChatMessageId(String? mealMessageId, String messageId) {
-    if (mealMessageId == null || mealMessageId.isEmpty) {
+  bool _matchesChatMessageGroup(String? mealMessageId, String messageId) {
+    final mealGroupId = _chatMessageGroupId(mealMessageId);
+    final targetGroupId = _chatMessageGroupId(messageId);
+    if (mealGroupId == null || targetGroupId == null) {
       return false;
     }
 
-    return mealMessageId == messageId ||
-        mealMessageId.startsWith('$messageId#meal-');
+    return mealGroupId == targetGroupId;
+  }
+
+  String? _chatMessageGroupId(String? messageId) {
+    final trimmed = messageId?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+
+    final withoutMealSuffix = trimmed.split('#meal-').first;
+    final legacyMatch =
+        RegExp(r'^(msg-\d+)-\d+$').firstMatch(withoutMealSuffix);
+    if (legacyMatch != null) {
+      return legacyMatch.group(1);
+    }
+
+    return withoutMealSuffix;
+  }
+
+  int? _chatMealOrdinal(String? messageId) {
+    final trimmed = messageId?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+
+    final match = RegExp(r'#meal-(\d+)$').firstMatch(trimmed);
+    if (match == null) return null;
+    return int.tryParse(match.group(1) ?? '');
+  }
+
+  String? _chatMealIdentity(String? messageId) {
+    final groupId = _chatMessageGroupId(messageId);
+    if (groupId == null) return null;
+
+    final ordinal = _chatMealOrdinal(messageId);
+    if (ordinal == null) return groupId;
+    return '$groupId#meal-$ordinal';
+  }
+
+  int _findMealIndexByMessageId(List<Meal> meals, String? messageId) {
+    final targetIdentity = _chatMealIdentity(messageId);
+    if (targetIdentity == null) return -1;
+
+    final specificIndex = meals
+        .indexWhere((m) => _chatMealIdentity(m.messageId) == targetIdentity);
+    if (specificIndex != -1) return specificIndex;
+
+    if (_chatMealOrdinal(messageId) != null) return -1;
+
+    final targetGroupId = _chatMessageGroupId(messageId);
+    if (targetGroupId == null) return -1;
+
+    return meals
+        .indexWhere((m) => _chatMessageGroupId(m.messageId) == targetGroupId);
   }
 
   /// Adiciona uma refeição completa ao dia selecionado
@@ -934,7 +984,7 @@ class DailyMealsProvider extends ChangeNotifier {
     // outra mensagem mesclada do mesmo tipo de refeicao.
     if (normalizedMeal.messageId != null) {
       final existingByMessageId =
-          meals.indexWhere((m) => m.messageId == normalizedMeal.messageId);
+          _findMealIndexByMessageId(meals, normalizedMeal.messageId);
       if (existingByMessageId != -1) {
         // Mesmo messageId ja existe — atualiza no lugar (sem duplicar).
         meals[existingByMessageId] = normalizedMeal;
@@ -1037,18 +1087,40 @@ class DailyMealsProvider extends ChangeNotifier {
 
   /// Substitui uma refeição existente (mesmo id) mantendo posição na lista
   void updateMeal(Meal updatedMeal) {
+    if (updatedMeal.foods.isEmpty) {
+      deleteMeal(updatedMeal.id, messageId: updatedMeal.messageId);
+      return;
+    }
+
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
 
-    final index = meals.indexWhere((m) => m.id == updatedMeal.id);
+    final index = _findMealIndexForUpdate(meals, updatedMeal);
     if (index == -1) return;
 
-    meals[index] = _normalizeMeal(updatedMeal);
+    final existingMeal = meals[index];
+    meals[index] = _normalizeMeal(
+      updatedMeal.copyWith(
+        id: existingMeal.id,
+        dateTime: existingMeal.dateTime,
+        messageId: existingMeal.messageId ?? updatedMeal.messageId,
+      ),
+    );
     _markDateLocallyModified(dateKey);
     _saveToPreferences();
     _scheduleSync();
     notifyListeners();
+  }
+
+  int _findMealIndexForUpdate(List<Meal> meals, Meal updatedMeal) {
+    final byId = meals.indexWhere((m) => m.id == updatedMeal.id);
+    if (byId != -1) return byId;
+
+    final messageId = updatedMeal.messageId;
+    if (messageId == null || messageId.isEmpty) return -1;
+
+    return _findMealIndexByMessageId(meals, messageId);
   }
 
   List<Meal> _normalizeMeals(List<Meal> meals) {
@@ -1098,7 +1170,7 @@ class DailyMealsProvider extends ChangeNotifier {
 
   String _mealIdentity(Meal meal) {
     if (meal.messageId != null && meal.messageId!.isNotEmpty) {
-      return 'message:${meal.messageId}';
+      return 'message:${_chatMealIdentity(meal.messageId) ?? meal.messageId}';
     }
 
     final foodNames = meal.foods.map(_foodIdentity).toList()..sort();
@@ -1106,14 +1178,18 @@ class DailyMealsProvider extends ChangeNotifier {
   }
 
   /// Remove uma refeição completa pelo ID
-  void deleteMeal(String mealId) {
+  void deleteMeal(String mealId, {String? messageId}) {
     final dateKey = _formatDate(_selectedDate);
     final meals = _mealsByDate[dateKey];
     if (meals == null) return;
 
-    final previousLength = meals.length;
-    meals.removeWhere((m) => m.id == mealId);
-    if (meals.length == previousLength) return;
+    var mealIndex = meals.indexWhere((m) => m.id == mealId);
+    if (mealIndex == -1) {
+      mealIndex = _findMealIndexByMessageId(meals, messageId);
+    }
+    if (mealIndex == -1) return;
+
+    meals.removeAt(mealIndex);
 
     _markDateLocallyModified(dateKey);
     _saveToPreferences();

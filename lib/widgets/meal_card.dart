@@ -2564,6 +2564,20 @@ class _FoodItemState extends State<_FoodItem> {
     return 'por ${_formatServingAmount(base, unit)}';
   }
 
+  String? _aiServingFooter(Food food, Nutrient? aiNutrient) {
+    final amount = _readText(food.amount);
+    if (amount != null) return amount;
+
+    final nutrient = aiNutrient ??
+        (food.nutrients?.isNotEmpty == true ? food.nutrients!.first : null);
+    if (nutrient == null || nutrient.servingSize <= 0) return null;
+
+    final unit = _normalizeUnit(nutrient.servingUnit);
+    if (unit.isEmpty) return null;
+
+    return 'por ${_formatServingAmount(nutrient.servingSize, unit)}';
+  }
+
   String _sourceMacroSubtitle(
     _SourceMacroValues values, {
     String? suffix,
@@ -2904,12 +2918,18 @@ class _FoodItemState extends State<_FoodItem> {
                             carbs: aiCarbs,
                             fat: aiFat,
                           );
+                          final aiFooter =
+                              _aiServingFooter(effectiveFood, aiNut);
                           return _SourceOption(
                             icon: Icons.auto_awesome_rounded,
                             iconColor: const Color(0xFF14B8A6),
                             title: 'Estimativa da IA',
-                            subtitle: _sourceMacroSubtitle(aiMacros),
+                            subtitle: _sourceMacroSubtitle(
+                              aiMacros,
+                              suffix: aiFooter,
+                            ),
                             macros: aiMacros,
+                            footer: aiFooter,
                             selected: currentSource == FoodSource.ai,
                             isDarkMode: isDark,
                             onTap: () => Navigator.pop(

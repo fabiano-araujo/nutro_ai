@@ -11,6 +11,7 @@ class SubscriptionPlan {
   final IconData icon;
   final List<String> features;
   final int savePercentage;
+  final int freeTrialDays;
   final bool isMostPopular;
 
   SubscriptionPlan({
@@ -23,6 +24,7 @@ class SubscriptionPlan {
     required this.icon,
     required this.features,
     this.savePercentage = 0,
+    this.freeTrialDays = 0,
     this.isMostPopular = false,
   });
 
@@ -60,7 +62,8 @@ class SubscriptionPlan {
           'Ajuste de macros e metas nutricionais',
           'Resumo semanal com sua evolucao',
         ],
-        savePercentage: 25,
+        savePercentage: 0,
+        freeTrialDays: 7,
         isMostPopular: false,
       ),
       SubscriptionPlan(
@@ -79,6 +82,7 @@ class SubscriptionPlan {
           'Prioridade nos recursos premium do app',
         ],
         savePercentage: 30,
+        freeTrialDays: 7,
         isMostPopular: true,
       ),
     ];

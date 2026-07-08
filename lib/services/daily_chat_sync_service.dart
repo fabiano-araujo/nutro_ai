@@ -38,6 +38,8 @@ class DailyChatSyncService {
   void setAuth(String token, int userId) {
     _token = token;
     _userId = userId;
+    print(
+        '[DAILY_CHAT_SYNC] set_auth userId=$userId hasToken=${token.isNotEmpty}');
   }
 
   /// Limpa as credenciais (logout). Cancela qualquer sync pendente.
@@ -48,6 +50,7 @@ class DailyChatSyncService {
     _debounce = null;
     _hasPending = false;
     _pendingDateKeys.clear();
+    print('[DAILY_CHAT_SYNC] clear_auth');
   }
 
   /// Restaura as conversas vindas do servidor para o armazenamento local.
@@ -60,23 +63,40 @@ class DailyChatSyncService {
     Map<String, dynamic>? serverChat, {
     required String scope,
   }) async {
-    if (serverChat == null || serverChat.isEmpty) return;
+    print(
+        '[DAILY_CHAT_SYNC] restore_from_server_start scope=$scope days=${serverChat?.length ?? 0}');
+    if (serverChat == null || serverChat.isEmpty) {
+      print('[DAILY_CHAT_SYNC] restore_from_server_skip_empty scope=$scope');
+      return;
+    }
 
     var restored = 0;
+    var skippedExisting = 0;
+    var skippedInvalid = 0;
     for (final entry in serverChat.entries) {
       final dateKey = entry.key;
-      if (!_dateSuffix.hasMatch('_$dateKey')) continue;
+      if (!_dateSuffix.hasMatch('_$dateKey')) {
+        skippedInvalid++;
+        continue;
+      }
 
       final value = entry.value;
-      if (value is! Map) continue;
+      if (value is! Map) {
+        skippedInvalid++;
+        continue;
+      }
       final messages = value['messages'];
-      if (messages is! List || messages.isEmpty) continue;
+      if (messages is! List || messages.isEmpty) {
+        skippedInvalid++;
+        continue;
+      }
 
       final localKey = '$_chatKeyPrefix${scope}_$dateKey';
       final existing = await _storage.getData(localKey);
       final existingMsgs = existing?['messages'];
       if (existingMsgs is List && existingMsgs.length >= messages.length) {
         // Conversa local já está igual/maior — preservar.
+        skippedExisting++;
         continue;
       }
 
@@ -88,6 +108,8 @@ class DailyChatSyncService {
       print(
           '♻️ DailyChatSyncService - $restored conversa(s) restaurada(s) do servidor (scope=$scope)');
     }
+    print(
+        '[DAILY_CHAT_SYNC] restore_from_server_done scope=$scope restored=$restored skippedExisting=$skippedExisting skippedInvalid=$skippedInvalid');
   }
 
   /// Busca e restaura do servidor somente o chat de [dateKey].
@@ -99,10 +121,14 @@ class DailyChatSyncService {
   }) async {
     final token = _token;
     if (token == null || _userId == null || !_isDateKey(dateKey)) {
+      print(
+          '[DAILY_CHAT_SYNC] restore_date_skip date=$dateKey scope=$scope reason=missing_auth_or_invalid_date hasToken=${token != null} hasUser=${_userId != null}');
       return false;
     }
 
     try {
+      print(
+          '[DAILY_CHAT_SYNC] restore_date_fetch_start date=$dateKey scope=$scope userId=$_userId');
       final appState = await _appStateService.fetchAppState(
         token: token,
         nutritionChatDateKey: dateKey,
@@ -112,18 +138,22 @@ class DailyChatSyncService {
           (appState['nutritionChatByDate'] as Map?)?.cast<String, dynamic>();
       final day = chatByDate?[dateKey];
       if (day is! Map) {
+        print(
+            '[DAILY_CHAT_SYNC] restore_date_empty date=$dateKey scope=$scope reason=missing_day');
         return false;
       }
 
       final messages = day['messages'];
       if (messages is! List || messages.isEmpty) {
+        print(
+            '[DAILY_CHAT_SYNC] restore_date_empty date=$dateKey scope=$scope reason=empty_messages');
         return false;
       }
 
       final localKey = '$_chatKeyPrefix${scope}_$dateKey';
       await _storage.saveData(localKey, {'messages': messages});
       print(
-          '♻️ DailyChatSyncService - conversa de $dateKey restaurada sob demanda');
+          '♻️ DailyChatSyncService - conversa de $dateKey restaurada sob demanda (${messages.length} mensagens)');
       return true;
     } catch (e) {
       print('⚠️ DailyChatSyncService - Erro ao restaurar chat de $dateKey: $e');
@@ -133,13 +163,19 @@ class DailyChatSyncService {
 
   /// Agenda um upload do chat diário (debounced). Chamado após cada save local.
   void scheduleSync({String? dateKey}) {
-    if (_token == null || _userId == null) return;
+    if (_token == null || _userId == null) {
+      print(
+          '[DAILY_CHAT_SYNC] schedule_sync_skip date=$dateKey reason=missing_auth');
+      return;
+    }
     if (dateKey != null && _isDateKey(dateKey)) {
       _pendingDateKeys.add(dateKey);
     }
     _hasPending = true;
     _debounce?.cancel();
     _debounce = Timer(const Duration(seconds: 2), _syncToServer);
+    print(
+        '[DAILY_CHAT_SYNC] schedule_sync date=$dateKey pendingDates=${_pendingDateKeys.length}');
   }
 
   Future<void> syncPendingIfNeeded() async {

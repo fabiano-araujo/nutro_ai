@@ -218,6 +218,7 @@ class PurchaseService with ChangeNotifier {
         'Produtos Google Play carregados: '
         '${_products.map((product) => product.id).join(', ')}',
       );
+      _debugLogProductDetails(_products);
       if (response.notFoundIDs.isNotEmpty) {
         debugPrint(
           'Produtos Google Play nao encontrados: '
@@ -287,16 +288,26 @@ class PurchaseService with ChangeNotifier {
     notifyListeners();
 
     try {
+      final androidProduct =
+          productDetails is GooglePlayProductDetails ? productDetails : null;
+      final androidOffer =
+          androidProduct == null ? null : _subscriptionOfferFor(androidProduct);
+      final androidOfferToken = androidOffer?.offerIdToken;
+
       debugPrint(
         'Abrindo compra Google Play: productId=${productDetails.id}, '
         'price=${productDetails.price}, '
-        'offerToken=${productDetails is GooglePlayProductDetails ? productDetails.offerToken : null}',
+        'basePlanId=${androidOffer?.basePlanId}, '
+        'offerId=${androidOffer?.offerId}, '
+        'offerToken=$androidOfferToken, '
+        'phases=${androidOffer == null ? null : _debugPricingPhases(androidOffer.pricingPhases)}',
       );
 
       final PurchaseParam purchaseParam = Platform.isAndroid
           ? GooglePlayPurchaseParam(
               productDetails: productDetails,
               applicationUserName: currentUser.id.toString(),
+              offerToken: androidOfferToken,
             )
           : PurchaseParam(
               productDetails: productDetails,
@@ -591,7 +602,7 @@ class PurchaseService with ChangeNotifier {
   bool _isAndroidSubscriptionProduct(ProductDetails productDetails) {
     if (productDetails is! GooglePlayProductDetails) return false;
     final offer = _subscriptionOfferFor(productDetails);
-    return offer != null && productDetails.offerToken?.isNotEmpty == true;
+    return offer != null && offer.offerIdToken.isNotEmpty;
   }
 
   SubscriptionOfferDetailsWrapper? _subscriptionOfferFor(
@@ -625,8 +636,13 @@ class PurchaseService with ChangeNotifier {
     if (offer == null) return 100;
 
     var score = 0;
+    final trialDays = _freeTrialDays(offer);
+    final hasFreeTrial = trialDays != null;
+    if (hasFreeTrial) {
+      score -= 30 + trialDays.clamp(0, 365).toInt();
+    }
     if (offer.offerId != null && offer.offerId!.isNotEmpty) score += 10;
-    if (product.rawPrice <= 0) score += 20;
+    if (product.rawPrice <= 0 && !hasFreeTrial) score += 20;
 
     final hasRecurringPrice = offer.pricingPhases.any(
       (phase) =>
@@ -636,6 +652,71 @@ class PurchaseService with ChangeNotifier {
     if (!hasRecurringPrice) score += 5;
 
     return score;
+  }
+
+  int? _freeTrialDays(SubscriptionOfferDetailsWrapper offer) {
+    for (final phase in offer.pricingPhases) {
+      if (phase.priceAmountMicros == 0 &&
+          phase.recurrenceMode != RecurrenceMode.infiniteRecurring) {
+        return _trialDaysFromBillingPeriod(phase.billingPeriod) ?? 0;
+      }
+    }
+
+    return null;
+  }
+
+  void _debugLogProductDetails(List<ProductDetails> products) {
+    for (final product in products) {
+      if (product is! GooglePlayProductDetails) continue;
+
+      final offers = product.productDetails.subscriptionOfferDetails;
+      if (offers == null || offers.isEmpty) {
+        debugPrint(
+          'Google Play produto sem ofertas: productId=${product.id}, '
+          'price=${product.price}',
+        );
+        continue;
+      }
+
+      for (var index = 0; index < offers.length; index++) {
+        final offer = offers[index];
+        debugPrint(
+          'Google Play oferta: productId=${product.id}, '
+          'subscriptionIndex=${product.subscriptionIndex}, '
+          'offerIndex=$index, '
+          'basePlanId=${offer.basePlanId}, '
+          'offerId=${offer.offerId}, '
+          'trialDays=${_freeTrialDays(offer)}, '
+          'hasToken=${offer.offerIdToken.isNotEmpty}, '
+          'phases=${_debugPricingPhases(offer.pricingPhases)}',
+        );
+      }
+    }
+  }
+
+  String _debugPricingPhases(List<PricingPhaseWrapper> phases) {
+    return phases
+        .map(
+          (phase) => '${phase.billingPeriod}/${phase.formattedPrice}/'
+              '${phase.priceAmountMicros}/${phase.recurrenceMode}/'
+              'cycles=${phase.billingCycleCount}',
+        )
+        .join(' | ');
+  }
+
+  int? _trialDaysFromBillingPeriod(String billingPeriod) {
+    final dayMatch = RegExp(r'^P(\d+)D$').firstMatch(billingPeriod);
+    if (dayMatch != null) {
+      return int.tryParse(dayMatch.group(1)!);
+    }
+
+    final weekMatch = RegExp(r'^P(\d+)W$').firstMatch(billingPeriod);
+    if (weekMatch != null) {
+      final weeks = int.tryParse(weekMatch.group(1)!);
+      return weeks == null ? null : weeks * 7;
+    }
+
+    return null;
   }
 
   void _startPurchaseLaunchWatchdog(String productId) {

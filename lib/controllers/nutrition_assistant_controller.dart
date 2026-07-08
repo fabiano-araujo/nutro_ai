@@ -103,6 +103,128 @@ class NutritionAssistantController with ChangeNotifier {
   int? get currentlySpeakingMessageIndex => _currentlySpeakingMessageIndex;
   DateTime get selectedDate => _selectedDate;
 
+  void _logDailyChatTrace(
+    String event, [
+    Map<String, Object?> data = const {},
+  ]) {
+    final payload = data.isEmpty ? '' : ' ${jsonEncode(data)}';
+    debugPrint('[DAILY_CHAT_TRACE] $event$payload');
+  }
+
+  String _messageText(Map<String, dynamic> msg) {
+    final value = msg['message'];
+    if (value is String) return value;
+
+    final notifier = msg['notifier'];
+    if (notifier is MessageNotifier) return notifier.message;
+
+    return '';
+  }
+
+  String _messagePreview(String text) {
+    final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= 80) return normalized;
+    return '${normalized.substring(0, 80)}...';
+  }
+
+  Map<String, Object?> _summarizeMessages(
+    Iterable<Map<String, dynamic>> messages,
+  ) {
+    var total = 0;
+    var user = 0;
+    var assistant = 0;
+    var emptyText = 0;
+    var notifier = 0;
+    var foodJson = 0;
+    var images = 0;
+    String? firstPreview;
+    String? lastPreview;
+    String? firstTimestamp;
+    String? lastTimestamp;
+
+    for (final msg in messages) {
+      total++;
+      final isUser = msg['isUser'] == true;
+      if (isUser) {
+        user++;
+      } else {
+        assistant++;
+      }
+
+      if (msg.containsKey('notifier')) {
+        notifier++;
+      }
+      if (msg['hasImage'] == true || msg['hadImage'] == true) {
+        images++;
+      }
+
+      final text = _messageText(msg);
+      if (text.trim().isEmpty) {
+        emptyText++;
+      }
+      if (FoodJsonParser.hasFoodJsonSignal(text)) {
+        foodJson++;
+      }
+
+      final previewPrefix = isUser ? 'user' : 'assistant';
+      final preview = '$previewPrefix:${_messagePreview(text)}';
+      firstPreview ??= preview;
+      lastPreview = preview;
+
+      final timestamp = msg['timestamp'];
+      final timestampText = timestamp is DateTime
+          ? timestamp.toIso8601String()
+          : timestamp?.toString();
+      firstTimestamp ??= timestampText;
+      lastTimestamp = timestampText;
+    }
+
+    return {
+      'total': total,
+      'user': user,
+      'assistant': assistant,
+      'emptyText': emptyText,
+      'notifier': notifier,
+      'foodJson': foodJson,
+      'images': images,
+      'first': firstPreview,
+      'last': lastPreview,
+      'firstTimestamp': firstTimestamp,
+      'lastTimestamp': lastTimestamp,
+    };
+  }
+
+  Map<String, dynamic>? _normalizeStoredChatData(Map<String, dynamic>? data) {
+    if (data == null) return null;
+    final messages = data['messages'];
+    if (messages is! List) return data;
+
+    return {
+      ...data,
+      'messages': messages
+          .whereType<Map>()
+          .map((msg) => Map<String, dynamic>.from(msg))
+          .toList(growable: false),
+    };
+  }
+
+  Map<String, Object?> _summarizeStoredChatData(Map<String, dynamic>? data) {
+    final normalized = _normalizeStoredChatData(data);
+    final messages = normalized?['messages'];
+    if (messages is! List<Map<String, dynamic>>) {
+      return const {
+        'total': 0,
+        'user': 0,
+        'assistant': 0,
+        'emptyText': 0,
+        'notifier': 0,
+        'foodJson': 0,
+        'images': 0,
+      };
+    }
+    return _summarizeMessages(messages);
+  }
+
   bool get _usesFreeNutritionAgent =>
       toolType == 'free_chat' ||
       toolType == 'my_diet' ||
@@ -155,6 +277,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     if (initialMessages != null) {
       // Prioridade máxima: se mensagens iniciais são fornecidas, usá-las.
       _messages = List<Map<String, dynamic>>.from(initialMessages);
+      _logDailyChatTrace('controller_initial_messages', {
+        'date': _formatDateKey(_selectedDate),
+        'scope': storageScope,
+        'toolType': toolType,
+        'source': 'initialMessages',
+        ..._summarizeMessages(_messages),
+      });
 
       // Log formatado das mensagens iniciais
       print('\n');
@@ -263,6 +392,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       // Carregar mensagens da data inicial (se houver)
       print(
           '📅 NutritionAssistantController: Carregando mensagens da data inicial: ${_formatDateKey(_selectedDate)}');
+      _isLoadingMessages = true;
+      _logDailyChatTrace('initial_date_load_scheduled', {
+        'date': _formatDateKey(_selectedDate),
+        'scope': storageScope,
+        'toolType': toolType,
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_disposed) return;
         print(
@@ -629,6 +764,15 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
     // Marcar que o usuário enviou mensagem nesta sessão
     _userSentMessage = true;
+    _logDailyChatTrace('user_message_added', {
+      'date': _formatDateKey(_selectedDate),
+      'scope': storageScope,
+      'toolType': toolType,
+      'hasImage': enviandoImagem,
+      'messageIndex': _messages.length - 1,
+      'preview': _messagePreview(trimmedMessage),
+      ..._summarizeMessages(_messages),
+    });
 
     // Persistir imediatamente a mensagem do usuário, especialmente fotos.
     // A resposta da IA será salva novamente quando o stream terminar.
@@ -639,6 +783,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       'isUser': false,
       'notifier': _messageNotifier,
       'timestamp': DateTime.now(),
+    });
+    _logDailyChatTrace('assistant_placeholder_added', {
+      'date': _formatDateKey(_selectedDate),
+      'scope': storageScope,
+      'toolType': toolType,
+      'messageIndex': _messages.length - 1,
+      ..._summarizeMessages(_messages),
     });
 
     _isLoading = true;
@@ -2427,6 +2578,54 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     return true; // Consumiu créditos, é um sucesso
   }
 
+  /// Edita uma mensagem do usuário e gera novamente a resposta a partir dela.
+  Future<bool> editUserMessageAndRegenerate(
+    int messageIndex,
+    String newMessage,
+    BuildContext context,
+  ) async {
+    if (messageIndex < 0 || messageIndex >= _messages.length) return true;
+    if (_messages[messageIndex]['isUser'] != true) return true;
+    if (_isLoading) return false;
+
+    final originalMessages = _messages
+        .map((message) => Map<String, dynamic>.from(message))
+        .toList(growable: true);
+    final originalMessage = _messages[messageIndex];
+    final hasImage = originalMessage['hasImage'] == true;
+    final trimmedMessage = newMessage.trim();
+
+    if (trimmedMessage.isEmpty && !hasImage) return false;
+
+    final updatedMessage = Map<String, dynamic>.from(originalMessage);
+    updatedMessage['message'] = trimmedMessage;
+    updatedMessage['timestamp'] =
+        originalMessage['timestamp'] ?? DateTime.now();
+
+    _messages[messageIndex] = updatedMessage;
+    if (messageIndex + 1 < _messages.length) {
+      _messages.removeRange(messageIndex + 1, _messages.length);
+    }
+
+    notifyListeners();
+
+    final hadEnoughCredits = await regenerateLastResponse(context);
+    if (!hadEnoughCredits) {
+      _messages = originalMessages;
+      _isLoading = false;
+      notifyListeners();
+      unawaited(_saveMessagesForCurrentDate());
+      return false;
+    }
+
+    _userSentMessage = true;
+    _lastContext = context;
+    unawaited(_saveMessagesForCurrentDate());
+    print(
+        '✏️ NutritionAssistantController - Mensagem do usuário editada no índice $messageIndex');
+    return true;
+  }
+
   /// Regenera a última resposta da IA
   Future<bool> regenerateLastResponse(BuildContext context) async {
     // Verificar se há mensagens para regenerar
@@ -2749,14 +2948,19 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
   /// Salva as mensagens da data atual
   Future<void> _saveMessagesForCurrentDate() async {
+    final dateKey = _formatDateKey(_selectedDate);
     if (_messages.isEmpty) {
+      _logDailyChatTrace('cache_save_skip_empty', {
+        'date': dateKey,
+        'scope': storageScope,
+        'toolType': toolType,
+      });
       print(
-          '💾 NutritionAssistantController - Nenhuma mensagem para salvar na data ${_formatDateKey(_selectedDate)}');
+          '💾 NutritionAssistantController - Nenhuma mensagem para salvar na data $dateKey');
       return;
     }
 
     try {
-      final dateKey = _formatDateKey(_selectedDate);
       final storageKey = _buildStorageKey(dateKey);
 
       // Converter mensagens para formato serializável
@@ -2793,9 +2997,25 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         return data;
       }).toList();
 
-      await _storageService.saveData(storageKey, {'messages': messagesData});
+      _logDailyChatTrace('cache_save_start', {
+        'date': dateKey,
+        'scope': storageScope,
+        'toolType': toolType,
+        'key': storageKey,
+        ..._summarizeMessages(_messages),
+      });
+      final saved = await _storageService
+          .saveData(storageKey, {'messages': messagesData});
       print(
-          '✅ NutritionAssistantController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens');
+          '✅ NutritionAssistantController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens (saved=$saved)');
+      _logDailyChatTrace('cache_save_done', {
+        'date': dateKey,
+        'scope': storageScope,
+        'toolType': toolType,
+        'key': storageKey,
+        'saved': saved,
+        ..._summarizeStoredChatData({'messages': messagesData}),
+      });
       // Enviar para o servidor (debounced) para o chat sobreviver a
       // limpeza de dados/reinstalação/troca de aparelho.
       DailyChatSyncService.instance.scheduleSync(dateKey: dateKey);
@@ -2822,10 +3042,26 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       final storageKey = _buildStorageKey(dateKey);
       print(
           '[CHAT_LOAD_PERF] load_messages_start date=$dateKey scope=$storageScope showLoading=$showLoading');
+      _logDailyChatTrace('load_start', {
+        'date': dateKey,
+        'scope': storageScope,
+        'toolType': toolType,
+        'key': storageKey,
+        'showLoading': showLoading,
+      });
 
       var data = await _storageService.getData(storageKey);
       print(
           '[CHAT_LOAD_PERF] primary_cache_read elapsedMs=${stopwatch.elapsedMilliseconds} hasMessages=${_hasMessages(data)}');
+      _logDailyChatTrace('cache_read_done', {
+        'date': dateKey,
+        'scope': storageScope,
+        'toolType': toolType,
+        'key': storageKey,
+        'elapsedMs': stopwatch.elapsedMilliseconds,
+        'hasMessages': _hasMessages(data),
+        ..._summarizeStoredChatData(data),
+      });
 
       // Fallback de "scope": a conversa pode ter sido salva sob outro escopo
       // de armazenamento (ex.: 'guest', gravado antes de o login terminar de
@@ -2838,6 +3074,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           data = fallback;
           print(
               '♻️ NutritionAssistantController - Conversa recuperada de outro escopo para data $dateKey');
+          _logDailyChatTrace('scope_fallback_restored', {
+            'date': dateKey,
+            'scope': storageScope,
+            'toolType': toolType,
+            'elapsedMs': stopwatch.elapsedMilliseconds,
+            ..._summarizeStoredChatData(data),
+          });
         }
       }
 
@@ -2848,10 +3091,32 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
             notifyListeners();
           }
         }
+        _logDailyChatTrace('server_restore_start', {
+          'date': dateKey,
+          'scope': storageScope,
+          'toolType': toolType,
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+        });
         final restored = await DailyChatSyncService.instance
             .restoreDateFromServer(dateKey, scope: storageScope);
+        _logDailyChatTrace('server_restore_done', {
+          'date': dateKey,
+          'scope': storageScope,
+          'toolType': toolType,
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+          'restored': restored,
+        });
         if (restored) {
           data = await _storageService.getData(storageKey);
+          _logDailyChatTrace('server_restored_cache_read', {
+            'date': dateKey,
+            'scope': storageScope,
+            'toolType': toolType,
+            'key': storageKey,
+            'elapsedMs': stopwatch.elapsedMilliseconds,
+            'hasMessages': _hasMessages(data),
+            ..._summarizeStoredChatData(data),
+          });
         }
       }
 
@@ -2859,6 +3124,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         print(
             '📭 NutritionAssistantController - Nenhuma mensagem encontrada para data $dateKey');
         _messages = [];
+        _logDailyChatTrace('load_empty', {
+          'date': dateKey,
+          'scope': storageScope,
+          'toolType': toolType,
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+        });
         print(
             '[CHAT_LOAD_PERF] load_messages_empty elapsedMs=${stopwatch.elapsedMilliseconds} date=$dateKey');
         return;
@@ -2906,6 +3177,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
       print(
           '✅ NutritionAssistantController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
+      _logDailyChatTrace('load_done', {
+        'date': dateKey,
+        'scope': storageScope,
+        'toolType': toolType,
+        'elapsedMs': stopwatch.elapsedMilliseconds,
+        ..._summarizeMessages(_messages),
+      });
       print(
           '[CHAT_LOAD_PERF] load_messages_done elapsedMs=${stopwatch.elapsedMilliseconds} date=$dateKey count=${_messages.length}');
     } catch (e) {
@@ -2946,6 +3224,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
               k.startsWith('nutrition_chat_') &&
               k.endsWith(suffix))
           .toList();
+      _logDailyChatTrace('scope_fallback_scan', {
+        'date': dateKey,
+        'scope': storageScope,
+        'currentKey': currentKey,
+        'candidateKeys': siblings.length,
+      });
       if (siblings.isEmpty) return null;
 
       // 1) Preferir 'guest' (dados pré-login do próprio usuário).
@@ -2953,7 +3237,15 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       final guestKey = '${guestPrefix}_$dateKey';
       if (siblings.contains(guestKey)) {
         final data = await _storageService.getData(guestKey);
-        if (_hasMessages(data)) return data;
+        if (_hasMessages(data)) {
+          _logDailyChatTrace('scope_fallback_guest_hit', {
+            'date': dateKey,
+            'scope': storageScope,
+            'fallbackKey': guestKey,
+            ..._summarizeStoredChatData(data),
+          });
+          return data;
+        }
       }
 
       // 2) Se o escopo atual é 'guest', tentar recuperar de um escopo de
@@ -2965,7 +3257,15 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
             .toList();
         if (userSiblings.length == 1) {
           final data = await _storageService.getData(userSiblings.first);
-          if (_hasMessages(data)) return data;
+          if (_hasMessages(data)) {
+            _logDailyChatTrace('scope_fallback_single_user_hit', {
+              'date': dateKey,
+              'scope': storageScope,
+              'fallbackKey': userSiblings.first,
+              ..._summarizeStoredChatData(data),
+            });
+            return data;
+          }
         }
       }
 

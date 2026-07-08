@@ -713,15 +713,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       return;
     }
 
-    if (!await _ensureRewardedAdBeforeDietRequest(
-      dietProvider: dietProvider,
-      rewardedAdWatched: rewardedAdWatched,
-      onRewardEarned: () =>
-          unawaited(_generateDietPlan(rewardedAdWatched: true)),
-    )) {
-      return;
-    }
-
     await nutritionGoals.ensureLoaded();
 
     // Check if nutrition goals are configured
@@ -744,6 +735,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       if (!mounted || !shouldContinue) {
         return;
       }
+    }
+
+    if (!await _ensureRewardedAdBeforeDietRequest(
+      dietProvider: dietProvider,
+      rewardedAdWatched: rewardedAdWatched,
+      onRewardEarned: () =>
+          unawaited(_generateDietPlan(rewardedAdWatched: true)),
+    )) {
+      return;
     }
 
     // Get device locale
@@ -1370,19 +1370,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       );
     }
 
-    if (!await _ensureRewardedAdBeforeDietRequest(
-      dietProvider: dietProvider,
-      rewardedAdWatched: rewardedAdWatched,
-      onRewardEarned: () => unawaited(_replaceMeal(
-        mealType,
-        replacementNotes: replacementNotes,
-        skipNotesSheet: skipNotesSheet,
-        rewardedAdWatched: true,
-      )),
-    )) {
-      return;
-    }
-
     await nutritionGoals.ensureLoaded();
 
     // Ensure meal types are loaded
@@ -1405,6 +1392,19 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
           );
 
     if (effectiveReplacementNotes == null) {
+      return;
+    }
+
+    if (!await _ensureRewardedAdBeforeDietRequest(
+      dietProvider: dietProvider,
+      rewardedAdWatched: rewardedAdWatched,
+      onRewardEarned: () => unawaited(_replaceMeal(
+        mealType,
+        replacementNotes: effectiveReplacementNotes,
+        skipNotesSheet: true,
+        rewardedAdWatched: true,
+      )),
+    )) {
       return;
     }
 
@@ -1461,18 +1461,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       );
     }
 
-    if (!await _ensureRewardedAdBeforeDietRequest(
-      dietProvider: dietProvider,
-      rewardedAdWatched: rewardedAdWatched,
-      onRewardEarned: () => unawaited(_replaceAllMeals(
-        replacementNotes: replacementNotes,
-        skipNotesSheet: skipNotesSheet,
-        rewardedAdWatched: true,
-      )),
-    )) {
-      return;
-    }
-
     await nutritionGoals.ensureLoaded();
 
     // Ensure meal types are loaded
@@ -1491,6 +1479,18 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
           );
 
     if (effectiveReplacementNotes == null) {
+      return;
+    }
+
+    if (!await _ensureRewardedAdBeforeDietRequest(
+      dietProvider: dietProvider,
+      rewardedAdWatched: rewardedAdWatched,
+      onRewardEarned: () => unawaited(_replaceAllMeals(
+        replacementNotes: effectiveReplacementNotes,
+        skipNotesSheet: true,
+        rewardedAdWatched: true,
+      )),
+    )) {
       return;
     }
 

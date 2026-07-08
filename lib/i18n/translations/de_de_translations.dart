@@ -438,6 +438,18 @@ final Map<String, String> deDETranslations = {
   'camera': 'Kamera',
   'edit_message': 'Nachricht bearbeiten',
   'edit_your_message': 'Bearbeite deine Nachricht',
+  'select_text': 'Text auswählen',
+  'select_text_title': 'Text auswählen',
+  'copy_all': 'Alles kopieren',
+  'speak_aloud': 'Vorlesen',
+  'regenerate_response': 'Antwort erneut generieren',
+  'save_and_resend': 'Speichern und erneut senden',
+  'wait_response_before_edit':
+      'Warte, bis die Antwort fertig ist, bevor du sie bearbeitest.',
+  'message_required_before_resend':
+      'Gib eine Nachricht ein, bevor du erneut sendest.',
+  'message_edit_failed': 'Die Nachricht konnte jetzt nicht bearbeitet werden.',
+  'voice_unavailable': 'Vorlesen ist im Moment nicht verfügbar.',
   'error_selecting_image': 'Fehler bei der Bildauswahl: {error}',
   'could_not_load_conversation': 'Das Gespräch konnte nicht geladen werden.',
   'view_html': 'HTML anzeigen',
@@ -570,11 +582,13 @@ final Map<String, String> deDETranslations = {
       'Flexibilität, um in deinem Tempo voranzukommen',
   'subscription_charged_annually': 'Berechnet {price} / Jahr',
   'subscription_economize_percentage': 'SPARE {percentage}%',
-  'subscription_annual_savings_amount': 'R\$ 100,00 Ersparnis',
+  'subscription_annual_savings_amount': '{amount} Ersparnis',
   'subscription_annual_savings_compare': 'im Vergleich zum Monatsplan',
   'subscription_guarantee_title': '7 Tage Garantie',
   'subscription_guarantee_subtitle':
       'Nicht zufrieden? Wir erstatten 100% deines Geldes.',
+  'subscription_free_trial_badge': 'Kostenlos testen',
+  'subscription_free_trial_days': '{days} Tage gratis',
   'premium_activated_title': 'Premium aktiviert',
   'premium_activated_subtitle':
       'Dein Abonnement wurde bestätigt. Diese Funktionen sind jetzt freigeschaltet:',

@@ -101,6 +101,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           type: fallbackMealType,
           foods: const [],
           dateTime: widget.selectedDate,
+          messageId: _messageIdForParsedMeal(0, 1),
         ),
       ];
       return;
@@ -113,7 +114,10 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
         entry.foods,
         type: entry.mealType,
         dateTime: widget.selectedDate,
-      ).copyWith(id: 'parsed-$timestamp-$index');
+      ).copyWith(
+        id: 'parsed-$timestamp-$index',
+        messageId: _messageIdForParsedMeal(index, entries.length),
+      );
     });
   }
 
@@ -135,7 +139,10 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           Provider.of<DailyMealsProvider>(context, listen: false);
 
       if (updatedMeal.foods.isEmpty) {
-        mealsProvider.deleteMeal(updatedMeal.id);
+        mealsProvider.deleteMeal(
+          updatedMeal.id,
+          messageId: updatedMeal.messageId,
+        );
       } else {
         mealsProvider.updateMeal(updatedMeal);
       }
@@ -169,7 +176,10 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
         Provider.of<DailyMealsProvider>(context, listen: false);
     final meal = _meals[index];
 
-    mealsProvider.deleteMeal(meal.id);
+    mealsProvider.deleteMeal(
+      meal.id,
+      messageId: meal.messageId,
+    );
 
     if (mounted) {
       setState(() {
@@ -226,11 +236,15 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   }
 
   String? _messageIdForMeal(int index) {
+    return _messageIdForParsedMeal(index, _meals.length);
+  }
+
+  String? _messageIdForParsedMeal(int index, int mealCount) {
     final messageId = widget.messageId;
     if (messageId == null || messageId.isEmpty) {
       return null;
     }
-    if (_meals.length == 1) {
+    if (mealCount == 1) {
       return messageId;
     }
     return '$messageId#meal-$index';

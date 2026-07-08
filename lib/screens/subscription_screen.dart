@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:nutro_ai/i18n/app_localizations_extension.dart';
 import 'package:nutro_ai/models/subscription_plan.dart';
 import 'package:nutro_ai/screens/login_screen.dart';
@@ -20,7 +22,7 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   static const String _heroAsset =
-      'assets/images/subscription_transformation_hero.png';
+      'assets/images/subscription_before_after_full_hero.png';
 
   late final List<SubscriptionPlan> _visiblePlans;
   int _selectedPlanIndex = 0;
@@ -256,8 +258,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       isDarkMode,
                       textColor,
                     ),
-                    const SizedBox(height: 8),
-                    _buildGuaranteeTile(context, isDarkMode, textColor),
                     if (!authService.isAuthenticated) ...[
                       const SizedBox(height: 10),
                       _inlineHint(
@@ -266,29 +266,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         textColor: textColor,
                       ),
                     ],
-                    if (purchaseService.errorMessage != null &&
-                        purchaseService.errorMessage!.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      _inlineHint(
-                        purchaseService.errorMessage!,
-                        icon: Icons.info_outline_rounded,
-                        foregroundColor: const Color(0xFF8A4C00),
-                        backgroundColor: const Color(0xFFFFF1DE),
-                        isDarkMode: isDarkMode,
-                        textColor: textColor,
-                      ),
-                    ],
-                    if (_errorMessage.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      _inlineHint(
-                        _errorMessage,
-                        icon: Icons.info_outline_rounded,
-                        foregroundColor: const Color(0xFF8A4C00),
-                        backgroundColor: const Color(0xFFFFF1DE),
-                        isDarkMode: isDarkMode,
-                        textColor: textColor,
-                      ),
-                    ],
+                    const SizedBox(height: 10),
+                    _buildPremiumBenefitsPreview(
+                      context,
+                      isDarkMode,
+                      textColor,
+                    ),
                   ],
                 ),
               ),
@@ -299,86 +282,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildHero(BuildContext context, bool isDarkMode, Color textColor) {
-    final accent = _accentColor(isDarkMode);
-
-    return Container(
-      height: 220,
-      decoration: BoxDecoration(
-        color: _cardColor(isDarkMode),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
-        boxShadow: AppTheme.profileCardShadow(isDarkMode),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 9,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 3, 0, 1),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: context.tr
-                              .translate('subscription_hero_title_prefix'),
-                        ),
-                        TextSpan(
-                          text: context.tr
-                              .translate('subscription_hero_title_highlight'),
-                          style: TextStyle(color: accent),
-                        ),
-                      ],
-                    ),
-                    maxLines: 5,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      height: 1.05,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  Text(
-                    context.tr.translate('subscription_hero_subtitle'),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _mutedTextColor(isDarkMode),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
-                      height: 1.42,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                  const Spacer(),
-                  _buildResultChip(context, isDarkMode, textColor),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 7,
-            child: _TransformationHeroImage(
-              assetPath: _heroAsset,
-              accentColor: accent,
-              backgroundColor: _softMintColor(isDarkMode),
-              borderColor: _subtleBorderColor(isDarkMode),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultChip(
+  Widget _buildPremiumBenefitsPreview(
     BuildContext context,
     bool isDarkMode,
     Color textColor,
@@ -386,53 +290,147 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final accent = _accentColor(isDarkMode);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: _cardColor(isDarkMode),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _subtleBorderColor(isDarkMode)),
         boxShadow: AppTheme.profileCardShadow(isDarkMode),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: _softMintColor(isDarkMode),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              Icons.timer_outlined,
-              color: accent,
-              size: 21,
+          Text(
+            context.tr.translate('subscription_premium_benefits_title'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textColor.withValues(alpha: 0.9),
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
             ),
           ),
-          const SizedBox(width: 9),
-          Expanded(
+          const SizedBox(height: 10),
+          _PremiumBenefitChip(
+            icon: Icons.block_rounded,
+            label: context.tr.translate('premium_benefit_no_ads'),
+            accentColor: accent,
+            textColor: textColor,
+            backgroundColor: _softMintColor(isDarkMode),
+          ),
+          const SizedBox(height: 8),
+          _PremiumBenefitChip(
+            icon: Icons.calendar_month_rounded,
+            label: context.tr.translate('premium_benefit_daily_menu'),
+            accentColor: accent,
+            textColor: textColor,
+            backgroundColor: _softMintColor(isDarkMode),
+          ),
+          const SizedBox(height: 8),
+          _PremiumBenefitChip(
+            icon: Icons.restaurant_menu_rounded,
+            label: context.tr.translate('premium_benefit_diet'),
+            accentColor: accent,
+            textColor: textColor,
+            backgroundColor: _softMintColor(isDarkMode),
+          ),
+          const SizedBox(height: 8),
+          _PremiumBenefitChip(
+            icon: Icons.auto_awesome_rounded,
+            label: context.tr.translate('premium_benefit_shape'),
+            accentColor: accent,
+            textColor: textColor,
+            backgroundColor: _softMintColor(isDarkMode),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHero(BuildContext context, bool isDarkMode, Color textColor) {
+    final accent = _accentColor(isDarkMode);
+
+    return Container(
+      height: 250,
+      decoration: BoxDecoration(
+        color: _cardColor(isDarkMode),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        boxShadow: AppTheme.profileCardShadow(isDarkMode),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            _heroAsset,
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.12),
+                  Colors.black.withValues(alpha: 0.04),
+                  Colors.black.withValues(alpha: 0.72),
+                ],
+                stops: const [0, 0.45, 1],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 14,
+            top: 14,
+            child: _HeroImageLabel(
+              label: context.tr.translate('profile_shape_before'),
+              accentColor: accent,
+            ),
+          ),
+          Positioned(
+            right: 14,
+            top: 14,
+            child: _HeroImageLabel(
+              label: context.tr.translate('profile_shape_after'),
+              accentColor: accent,
+            ),
+          ),
+          Positioned(
+            left: 18,
+            right: 18,
+            bottom: 18,
             child: Text.rich(
               TextSpan(
                 children: [
                   TextSpan(
-                    text: context.tr.translate('subscription_result_prefix'),
+                    text:
+                        context.tr.translate('subscription_hero_title_prefix'),
                   ),
                   TextSpan(
-                    text: context.tr.translate('subscription_result_time'),
-                    style: TextStyle(
-                      color: accent,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    text: context.tr
+                        .translate('subscription_hero_title_highlight'),
+                    style: TextStyle(color: accent),
                   ),
                 ],
               ),
-              maxLines: 2,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _mutedTextColor(isDarkMode),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 23,
+                fontWeight: FontWeight.w900,
+                height: 1.02,
                 letterSpacing: 0,
+                shadows: [
+                  Shadow(
+                    color: Colors.black54,
+                    blurRadius: 16,
+                    offset: Offset(0, 3),
+                  ),
+                ],
               ),
             ),
           ),
@@ -477,6 +475,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     bool isDarkMode,
     Color textColor,
   ) {
+    final monthlyPlan = _visiblePlans.firstWhere(
+      (plan) => plan.id == PurchaseService.planoMensal,
+    );
+    final annualPlan = _visiblePlans.firstWhere(
+      (plan) => plan.id == PurchaseService.planoAnual,
+    );
+    final monthlyProduct =
+        purchaseService.productForPlan(PurchaseService.planoMensal);
+    final annualProduct =
+        purchaseService.productForPlan(PurchaseService.planoAnual);
+    final annualSavings = _annualSavingsInfo(
+      monthlyProduct: monthlyProduct,
+      monthlyPlan: monthlyPlan,
+      annualProduct: annualProduct,
+      annualPlan: annualPlan,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _visiblePlans.map((plan) {
@@ -504,79 +519,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             monthlyLabel: context.tr.translate('per_month'),
             marketingDescription: _planMarketingDescription(context, plan),
             chargedLabel: _chargedLabel(context, product, plan),
-            savingsHeadline: _savingsAmountLabel(context, plan.savePercentage),
-            savingsSubline:
-                context.tr.translate('subscription_annual_savings_compare'),
+            savingsHeadline: _savingsAmountLabel(context, annualSavings, plan),
             popularLabel: context.tr.translate('subscription_most_chosen'),
-            savingsChipLabel:
-                _savingsPercentLabel(context, plan.savePercentage),
+            savingsChipLabel: _savingsPercentLabel(
+              context,
+              annualSavings,
+              plan,
+            ),
+            freeTrialLabel: _freeTrialLabel(context, product, plan),
             icon: _planIcon(plan),
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildGuaranteeTile(
-    BuildContext context,
-    bool isDarkMode,
-    Color textColor,
-  ) {
-    final accent = _accentColor(isDarkMode);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(15, 8, 12, 8),
-      decoration: BoxDecoration(
-        color: _cardColor(isDarkMode),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
-        boxShadow: AppTheme.profileCardShadow(isDarkMode),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.verified_user_outlined,
-            color: accent,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.tr.translate('subscription_guarantee_title'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: textColor.withValues(alpha: 0.88),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  context.tr.translate('subscription_guarantee_subtitle'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _mutedTextColor(isDarkMode),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: _mutedTextColor(isDarkMode),
-            size: 25,
-          ),
-        ],
-      ),
     );
   }
 
@@ -1255,23 +1209,184 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   String _productPrice(ProductDetails? product, SubscriptionPlan plan) {
-    return product?.price ?? plan.price;
+    return _recurringPricingPhase(product)?.formattedPrice ??
+        product?.price ??
+        plan.price;
   }
 
   String _pricePerMonth(ProductDetails? product, SubscriptionPlan plan) {
-    final raw = product?.rawPrice ?? _fallbackRawPrice(plan);
-    final symbol = product?.currencySymbol ?? 'R\$';
-    if (plan.id == PurchaseService.planoAnual) {
-      return '$symbol 19,90';
-    }
+    final raw = _planRawPrice(product, plan);
+    final symbol = _currencySymbol(product, _recurringPricingPhase(product));
     final monthly = switch (plan.id) {
       PurchaseService.planoAnual => raw / 12,
       PurchaseService.planoMensal => raw,
       PurchaseService.planoSemanal => raw * 52 / 12,
       _ => raw,
     };
-    final value = monthly.toStringAsFixed(2);
-    return '$symbol ${symbol == 'R\$' ? value.replaceAll('.', ',') : value}';
+    return _formatMoney(symbol, monthly);
+  }
+
+  PricingPhaseWrapper? _recurringPricingPhase(ProductDetails? product) {
+    final offer = _androidOffer(product);
+    if (offer == null) return null;
+
+    for (final phase in offer.pricingPhases) {
+      if (phase.recurrenceMode == RecurrenceMode.infiniteRecurring &&
+          phase.priceAmountMicros > 0) {
+        return phase;
+      }
+    }
+
+    for (final phase in offer.pricingPhases.reversed) {
+      if (phase.priceAmountMicros > 0) {
+        return phase;
+      }
+    }
+
+    return null;
+  }
+
+  String? _freeTrialLabel(
+    BuildContext context,
+    ProductDetails? product,
+    SubscriptionPlan plan,
+  ) {
+    final phase = _freeTrialPhase(product);
+    final days = _trialDaysFromBillingPeriod(phase?.billingPeriod) ??
+        (plan.freeTrialDays > 0 ? plan.freeTrialDays : null);
+    if (days != null && days > 0) {
+      return context.tr
+          .translate('subscription_free_trial_days')
+          .replaceAll('{days}', days.toString());
+    }
+
+    return null;
+  }
+
+  PricingPhaseWrapper? _freeTrialPhase(ProductDetails? product) {
+    final offer = _androidOffer(product);
+    if (offer == null) return null;
+
+    for (final phase in offer.pricingPhases) {
+      if (phase.priceAmountMicros == 0 &&
+          phase.recurrenceMode != RecurrenceMode.infiniteRecurring) {
+        return phase;
+      }
+    }
+
+    return null;
+  }
+
+  int? _trialDaysFromBillingPeriod(String? billingPeriod) {
+    if (billingPeriod == null || billingPeriod.isEmpty) return null;
+
+    final dayMatch = RegExp(r'^P(\d+)D$').firstMatch(billingPeriod);
+    if (dayMatch != null) {
+      return int.tryParse(dayMatch.group(1)!);
+    }
+
+    final weekMatch = RegExp(r'^P(\d+)W$').firstMatch(billingPeriod);
+    if (weekMatch != null) {
+      final weeks = int.tryParse(weekMatch.group(1)!);
+      return weeks == null ? null : weeks * 7;
+    }
+
+    return null;
+  }
+
+  SubscriptionOfferDetailsWrapper? _androidOffer(ProductDetails? product) {
+    if (product is! GooglePlayProductDetails) return null;
+
+    final index = product.subscriptionIndex;
+    final offers = product.productDetails.subscriptionOfferDetails;
+    if (index == null ||
+        offers == null ||
+        index < 0 ||
+        index >= offers.length) {
+      return null;
+    }
+
+    return offers[index];
+  }
+
+  double _planRawPrice(ProductDetails? product, SubscriptionPlan plan) {
+    final recurringPhase = _recurringPricingPhase(product);
+    if (recurringPhase != null && recurringPhase.priceAmountMicros > 0) {
+      return recurringPhase.priceAmountMicros / 1000000;
+    }
+    return product?.rawPrice ?? _fallbackRawPrice(plan);
+  }
+
+  _AnnualSavingsInfo? _annualSavingsInfo({
+    required ProductDetails? monthlyProduct,
+    required SubscriptionPlan monthlyPlan,
+    required ProductDetails? annualProduct,
+    required SubscriptionPlan annualPlan,
+  }) {
+    final monthlyPrice = _planRawPrice(monthlyProduct, monthlyPlan);
+    final annualPrice = _planRawPrice(annualProduct, annualPlan);
+    final yearlyMonthlyPrice = monthlyPrice * 12;
+    final savings = yearlyMonthlyPrice - annualPrice;
+
+    if (monthlyPrice <= 0 || annualPrice <= 0 || savings <= 0) {
+      return null;
+    }
+
+    return _AnnualSavingsInfo(
+      amount: savings,
+      percentage: (savings / yearlyMonthlyPrice * 100).round(),
+      currencySymbol: _currencySymbol(
+        annualProduct ?? monthlyProduct,
+        _recurringPricingPhase(annualProduct) ??
+            _recurringPricingPhase(monthlyProduct),
+      ),
+    );
+  }
+
+  String _currencySymbol(
+    ProductDetails? product, [
+    PricingPhaseWrapper? recurringPhase,
+  ]) {
+    final recurringSymbol =
+        _currencySymbolFromFormattedPrice(recurringPhase?.formattedPrice);
+    if (recurringSymbol != null) return recurringSymbol;
+
+    final symbol = product?.currencySymbol.trim();
+    if (symbol == null ||
+        symbol.isEmpty ||
+        symbol.toLowerCase().contains('grátis') ||
+        symbol.toLowerCase().contains('free')) {
+      return 'R\$';
+    }
+    return symbol;
+  }
+
+  String? _currencySymbolFromFormattedPrice(String? formattedPrice) {
+    final price = formattedPrice?.trim();
+    if (price == null || price.isEmpty || !RegExp(r'\d').hasMatch(price)) {
+      return null;
+    }
+
+    final leading = RegExp(r'^\s*([^\d\s]+)').firstMatch(price)?.group(1);
+    if (leading != null && leading.trim().isNotEmpty) {
+      return leading.trim();
+    }
+
+    final trailing = RegExp(r'([^\d\s]+)\s*$').firstMatch(price)?.group(1);
+    if (trailing != null && trailing.trim().isNotEmpty) {
+      return trailing.trim();
+    }
+
+    return null;
+  }
+
+  String _formatMoney(String symbol, double value) {
+    final normalizedSymbol = symbol.trim().isEmpty ? 'R\$' : symbol.trim();
+    final decimalValue = value.toStringAsFixed(2);
+    final formattedValue = normalizedSymbol.contains('R\$')
+        ? decimalValue.replaceAll('.', ',')
+        : decimalValue;
+    return '$normalizedSymbol $formattedValue';
   }
 
   double _fallbackRawPrice(SubscriptionPlan plan) {
@@ -1311,16 +1426,33 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         .replaceAll('{price}', _productPrice(product, plan));
   }
 
-  String _savingsPercentLabel(BuildContext context, int percentage) {
-    if (percentage <= 0) return '';
+  String _savingsPercentLabel(
+    BuildContext context,
+    _AnnualSavingsInfo? savings,
+    SubscriptionPlan plan,
+  ) {
+    if (plan.id != PurchaseService.planoAnual ||
+        savings == null ||
+        savings.percentage <= 0) {
+      return '';
+    }
     return context.tr
         .translate('subscription_economize_percentage')
-        .replaceAll('{percentage}', percentage.toString());
+        .replaceAll('{percentage}', savings.percentage.toString());
   }
 
-  String _savingsAmountLabel(BuildContext context, int percentage) {
-    if (percentage <= 0) return '';
-    return context.tr.translate('subscription_annual_savings_amount');
+  String _savingsAmountLabel(
+    BuildContext context,
+    _AnnualSavingsInfo? savings,
+    SubscriptionPlan plan,
+  ) {
+    if (plan.id != PurchaseService.planoAnual || savings == null) return '';
+    return context.tr
+        .translate('subscription_annual_savings_amount')
+        .replaceAll(
+          '{amount}',
+          _formatMoney(savings.currencySymbol, savings.amount),
+        );
   }
 
   IconData _planIcon(SubscriptionPlan plan) {
@@ -1332,89 +1464,100 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 }
 
-class _TransformationHeroImage extends StatelessWidget {
-  final String assetPath;
+class _HeroImageLabel extends StatelessWidget {
+  final String label;
   final Color accentColor;
-  final Color backgroundColor;
-  final Color borderColor;
 
-  const _TransformationHeroImage({
-    required this.assetPath,
+  const _HeroImageLabel({
+    required this.label,
     required this.accentColor,
-    required this.backgroundColor,
-    required this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
+        color: Colors.black.withValues(alpha: 0.54),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: accentColor.withValues(alpha: 0.64)),
       ),
-      padding: const EdgeInsets.all(6),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(23),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              assetPath,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-            Center(
-              child: Container(
-                width: 3,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.94),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accentColor.withValues(alpha: 0.75),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Center(
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: borderColor),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.10),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.chevron_left_rounded,
-                      color: accentColor,
-                      size: 17,
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: accentColor,
-                      size: 17,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 8.5,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
         ),
       ),
+    );
+  }
+}
+
+class _AnnualSavingsInfo {
+  final double amount;
+  final int percentage;
+  final String currencySymbol;
+
+  const _AnnualSavingsInfo({
+    required this.amount,
+    required this.percentage,
+    required this.currencySymbol,
+  });
+}
+
+class _PremiumBenefitChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color accentColor;
+  final Color textColor;
+  final Color backgroundColor;
+
+  const _PremiumBenefitChip({
+    required this.icon,
+    required this.label,
+    required this.accentColor,
+    required this.textColor,
+    required this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(
+            icon,
+            color: accentColor,
+            size: 17,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textColor.withValues(alpha: 0.82),
+              fontSize: 11.6,
+              fontWeight: FontWeight.w800,
+              height: 1.12,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1439,9 +1582,9 @@ class _PremiumPlanCard extends StatelessWidget {
   final String marketingDescription;
   final String chargedLabel;
   final String savingsHeadline;
-  final String savingsSubline;
   final String popularLabel;
   final String savingsChipLabel;
+  final String? freeTrialLabel;
   final IconData icon;
 
   const _PremiumPlanCard({
@@ -1464,9 +1607,9 @@ class _PremiumPlanCard extends StatelessWidget {
     required this.marketingDescription,
     required this.chargedLabel,
     required this.savingsHeadline,
-    required this.savingsSubline,
     required this.popularLabel,
     required this.savingsChipLabel,
+    required this.freeTrialLabel,
     required this.icon,
   });
 
@@ -1502,10 +1645,18 @@ class _PremiumPlanCard extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  if (freeTrialLabel != null) ...[
+                    _TopBadge(
+                      label: freeTrialLabel!,
+                      icon: Icons.timer_rounded,
+                      accentColor: accentColor,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   _TopBadge(
                     label: popularLabel,
                     icon: Icons.local_fire_department_rounded,
-                    accentColor: accentColor,
+                    accentColor: const Color(0xFF22C55E),
                   ),
                   const Spacer(),
                   _SelectionIndicator(
@@ -1576,62 +1727,21 @@ class _PremiumPlanCard extends StatelessWidget {
                             letterSpacing: 0,
                           ),
                         ),
+                        if (savingsHeadline.isNotEmpty) ...[
+                          const SizedBox(height: 5),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: _SmallSavingsChip(
+                              label: savingsHeadline,
+                              accentColor: accentColor,
+                              isDarkMode: isDarkMode,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  const SizedBox(width: 7),
-                  _SavingsBadge(
-                    label: savingsChipLabel,
-                    accentColor: accentColor,
-                    isDarkMode: isDarkMode,
-                  ),
                 ],
-              ),
-              const SizedBox(height: 7),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: mintColor.withValues(alpha: isDarkMode ? 0.45 : 0.78),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.local_offer_outlined,
-                      color: accentColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: '$savingsHeadline\n',
-                              style: TextStyle(
-                                color: isDarkMode
-                                    ? AppTheme.darkTextColor
-                                    : const Color(0xFF176B5F),
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            TextSpan(text: savingsSubline),
-                          ],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: mutedTextColor,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          height: 1.08,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -1678,16 +1788,29 @@ class _PremiumPlanCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            productTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (freeTrialLabel != null) ...[
+                                _TopBadge(
+                                  label: freeTrialLabel!,
+                                  icon: Icons.timer_rounded,
+                                  accentColor: accentColor,
+                                ),
+                                const SizedBox(height: 5),
+                              ],
+                              Text(
+                                productTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1955,66 +2078,6 @@ class _PriceLine extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SavingsBadge extends StatelessWidget {
-  final String label;
-  final Color accentColor;
-  final bool isDarkMode;
-
-  const _SavingsBadge({
-    required this.label,
-    required this.accentColor,
-    required this.isDarkMode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = label.split(' ');
-    final prefix = parts.isNotEmpty ? parts.first : label;
-    final percentage = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-
-    return Container(
-      width: 62,
-      height: 60,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? accentColor.withValues(alpha: 0.14)
-            : const Color(0xFFE1F7F1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            prefix,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: accentColor,
-              fontSize: 8,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          if (percentage.isNotEmpty)
-            Text(
-              percentage,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: accentColor,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                height: 0.98,
-                letterSpacing: 0,
-              ),
-            ),
-        ],
-      ),
     );
   }
 }

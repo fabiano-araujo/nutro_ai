@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/profile_shape_preview_provider.dart';
+import '../screens/main_navigation.dart';
 import '../theme/app_theme.dart';
 
 class GlobalGenerationFloatingOverlay extends StatelessWidget {
@@ -49,7 +50,8 @@ class _FloatingGenerationCards extends StatefulWidget {
 class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
   static const _horizontalMargin = 16.0;
   static const _topMargin = 12.0;
-  static const _phoneInitialBottom = 154.0;
+  static const _phoneHomeInitialBottom = 154.0;
+  static const _phoneTabInitialBottom = 92.0;
   static const _wideInitialBottom = 24.0;
   static const _cardHeight = 46.0;
   static const _cardSpacing = 8.0;
@@ -63,8 +65,13 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
     required double cardWidth,
     required double cardHeight,
     required bool isWide,
+    required int selectedTabIndex,
   }) {
-    final initialBottom = isWide ? _wideInitialBottom : _phoneInitialBottom;
+    final initialBottom = isWide
+        ? _wideInitialBottom
+        : selectedTabIndex == 0
+            ? _phoneHomeInitialBottom
+            : _phoneTabInitialBottom;
     return Offset(
       overlaySize.width - safeInsets.right - _horizontalMargin - cardWidth,
       overlaySize.height - safeInsets.bottom - initialBottom - cardHeight,
@@ -105,6 +112,7 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
     required EdgeInsets safeInsets,
     required double cardWidth,
     required double cardHeight,
+    required int selectedTabIndex,
   }) {
     final currentPosition = _position ??
         _defaultPosition(
@@ -113,6 +121,7 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
           cardWidth: cardWidth,
           cardHeight: cardHeight,
           isWide: overlaySize.width >= 720,
+          selectedTabIndex: selectedTabIndex,
         );
 
     setState(() {
@@ -168,77 +177,85 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
     final estimatedCardHeight = (cards.length * _cardHeight) +
         ((cards.length - 1).clamp(0, cards.length) * _cardSpacing);
 
-    return Positioned.fill(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final overlaySize = Size(constraints.maxWidth, constraints.maxHeight);
-          final safeInsets = MediaQuery.paddingOf(context);
-          final resolvedPosition = _clampPosition(
-            position: _position ??
-                _defaultPosition(
+    return ValueListenableBuilder<int>(
+      valueListenable: navigationController.selectedIndexNotifier,
+      builder: (context, selectedTabIndex, _) {
+        return Positioned.fill(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final overlaySize =
+                  Size(constraints.maxWidth, constraints.maxHeight);
+              final safeInsets = MediaQuery.paddingOf(context);
+              final resolvedPosition = _clampPosition(
+                position: _position ??
+                    _defaultPosition(
+                      overlaySize: overlaySize,
+                      safeInsets: safeInsets,
+                      cardWidth: maxCardWidth,
+                      cardHeight: estimatedCardHeight,
+                      isWide: isWide,
+                      selectedTabIndex: selectedTabIndex,
+                    ),
+                overlaySize: overlaySize,
+                safeInsets: safeInsets,
+                cardWidth: maxCardWidth,
+                cardHeight: estimatedCardHeight,
+              );
+
+              final cardColumn = ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: maxCardWidth,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < cards.length; i++) ...[
+                      if (i > 0) const SizedBox(height: _cardSpacing),
+                      cards[i],
+                    ],
+                  ],
+                ),
+              );
+
+              final positionedCard = GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: _handlePanStart,
+                onPanUpdate: (details) => _handlePanUpdate(
+                  details: details,
                   overlaySize: overlaySize,
                   safeInsets: safeInsets,
                   cardWidth: maxCardWidth,
                   cardHeight: estimatedCardHeight,
-                  isWide: isWide,
+                  selectedTabIndex: selectedTabIndex,
                 ),
-            overlaySize: overlaySize,
-            safeInsets: safeInsets,
-            cardWidth: maxCardWidth,
-            cardHeight: estimatedCardHeight,
-          );
+                onPanEnd: _handlePanEnd,
+                onPanCancel: () {
+                  setState(() {
+                    _isDragging = false;
+                  });
+                },
+                child: cardColumn,
+              );
 
-          final cardColumn = ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: maxCardWidth,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < cards.length; i++) ...[
-                  if (i > 0) const SizedBox(height: _cardSpacing),
-                  cards[i],
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedPositioned(
+                    duration: _isDragging
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    left: resolvedPosition.dx,
+                    top: resolvedPosition.dy,
+                    child: positionedCard,
+                  ),
                 ],
-              ],
-            ),
-          );
-
-          final positionedCard = GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onPanStart: _handlePanStart,
-            onPanUpdate: (details) => _handlePanUpdate(
-              details: details,
-              overlaySize: overlaySize,
-              safeInsets: safeInsets,
-              cardWidth: maxCardWidth,
-              cardHeight: estimatedCardHeight,
-            ),
-            onPanEnd: _handlePanEnd,
-            onPanCancel: () {
-              setState(() {
-                _isDragging = false;
-              });
+              );
             },
-            child: cardColumn,
-          );
-
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              AnimatedPositioned(
-                duration: _isDragging
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                left: resolvedPosition.dx,
-                top: resolvedPosition.dy,
-                child: positionedCard,
-              ),
-            ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

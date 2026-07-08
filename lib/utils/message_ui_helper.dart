@@ -8,6 +8,25 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Classe utilitária para construir elementos de UI relacionados a mensagens
 class MessageUIHelper {
+  static Widget _buildFormattedMessageText(
+    String message, {
+    required TextStyle style,
+    required bool isDarkMode,
+    required bool absorbPointer,
+  }) {
+    final formattedText = MessageFormatter.buildFormattedText(
+      message,
+      style: style,
+      isDarkMode: isDarkMode,
+    );
+
+    if (!absorbPointer) return formattedText;
+
+    return AbsorbPointer(
+      child: formattedText,
+    );
+  }
+
   /// Constrói o indicador de digitação (três pontos animados)
   static Widget buildTypingIndicator({Color? color}) {
     final indicatorColor = color ?? AppTheme.primaryColor;
@@ -96,7 +115,7 @@ class MessageUIHelper {
     required bool isUser,
     required bool isError,
     required bool isStreaming,
-    required VoidCallback onLongPress,
+    required ValueChanged<Offset> onLongPress,
     Uint8List? imageBytes,
     double bottomSpacing = 8,
   }) {
@@ -142,26 +161,28 @@ class MessageUIHelper {
           ),
           if (hasCaption) ...[
             SizedBox(height: 8),
-            MessageFormatter.buildFormattedText(
+            _buildFormattedMessageText(
               message,
               style: TextStyle(
                 color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                 fontSize: 16,
               ),
               isDarkMode: isDarkMode,
+              absorbPointer: isUser,
             ),
           ],
         ],
       );
     } else {
       // Usar o formatador para mensagens de texto
-      messageContent = MessageFormatter.buildFormattedText(
+      messageContent = _buildFormattedMessageText(
         message,
         style: TextStyle(
           color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
           fontSize: 16,
         ),
         isDarkMode: isDarkMode,
+        absorbPointer: isUser,
       );
     }
 
@@ -170,7 +191,7 @@ class MessageUIHelper {
     if (isUser) {
       final bool imageOnly = imageBytes != null && message.trim().isEmpty;
       return GestureDetector(
-        onLongPress: onLongPress,
+        onLongPressStart: (details) => onLongPress(details.globalPosition),
         child: Align(
           alignment: Alignment.centerRight,
           child: ConstrainedBox(
@@ -209,7 +230,7 @@ class MessageUIHelper {
         isDarkMode ? Color(0xFF3B2532) : Color(0xFFFFF0F0);
 
     return GestureDetector(
-      onLongPress: onLongPress,
+      onLongPressStart: (details) => onLongPress(details.globalPosition),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Container(
