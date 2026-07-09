@@ -93,14 +93,21 @@ class DailyChatSyncService {
 
       final localKey = '$_chatKeyPrefix${scope}_$dateKey';
       final existing = await _storage.getData(localKey);
-      final existingMsgs = existing?['messages'];
-      if (existingMsgs is List && existingMsgs.length >= messages.length) {
-        // Conversa local já está igual/maior — preservar.
+      final incomingDay = _readChatDay(value.cast<String, dynamic>());
+      final existingDay = _readChatDay(existing);
+      if (incomingDay == null || !incomingDay.hasMessages) {
+        skippedInvalid++;
+        continue;
+      }
+      if (existingDay != null &&
+          _compareChatDays(existingDay, incomingDay) >= 0) {
+        // Conversa local já é igual/mais nova — preservar. Isso também cobre
+        // tombstones locais de exclusão para não ressuscitar chat antigo.
         skippedExisting++;
         continue;
       }
 
-      await _storage.saveData(localKey, {'messages': messages});
+      await _storage.saveData(localKey, _serializeChatDay(incomingDay));
       restored++;
     }
 
@@ -151,7 +158,19 @@ class DailyChatSyncService {
       }
 
       final localKey = '$_chatKeyPrefix${scope}_$dateKey';
-      await _storage.saveData(localKey, {'messages': messages});
+      final incomingDay = _readChatDay(day.cast<String, dynamic>());
+      final existingDay = _readChatDay(await _storage.getData(localKey));
+      if (incomingDay == null || !incomingDay.hasMessages) {
+        return false;
+      }
+      if (existingDay != null &&
+          _compareChatDays(existingDay, incomingDay) >= 0) {
+        print(
+            '[DAILY_CHAT_SYNC] restore_date_skip_newer_local date=$dateKey scope=$scope');
+        return false;
+      }
+
+      await _storage.saveData(localKey, _serializeChatDay(incomingDay));
       print(
           '♻️ DailyChatSyncService - conversa de $dateKey restaurada sob demanda (${messages.length} mensagens)');
       return true;
@@ -294,16 +313,17 @@ class DailyChatSyncService {
       if (dateKey == null) continue;
 
       final data = await _storage.getData(key);
-      final msgs = data?['messages'];
-      if (msgs is! List || msgs.isEmpty) continue;
+      final day = _readChatDay(data);
+      if (day == null || (!day.hasMessages && !day.isDeleted)) continue;
 
       final existing = result[dateKey];
-      if (existing is Map &&
-          existing['messages'] is List &&
-          (existing['messages'] as List).length >= msgs.length) {
+      final existingDay = existing is Map
+          ? _readChatDay(existing.cast<String, dynamic>())
+          : null;
+      if (existingDay != null && _compareChatDays(existingDay, day) >= 0) {
         continue;
       }
-      result[dateKey] = {'messages': msgs};
+      result[dateKey] = _serializeChatDay(day);
     }
     return result;
   }
@@ -311,4 +331,88 @@ class DailyChatSyncService {
   bool _isDateKey(String value) {
     return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value);
   }
+
+  _ChatDay? _readChatDay(Map<String, dynamic>? data) {
+    if (data == null) return null;
+
+    final rawMessages = data['messages'];
+    if (rawMessages is! List) return null;
+
+    final messages = List<dynamic>.from(rawMessages);
+    final updatedAt = _readDate(data['updatedAt']) ??
+        _readDate(data['deletedAt']) ??
+        _latestMessageTimestamp(messages);
+    final isDeleted = data['deleted'] == true ||
+        (messages.isEmpty && data['deletedAt'] != null);
+
+    return _ChatDay(
+      messages: messages,
+      updatedAt: updatedAt,
+      isDeleted: isDeleted,
+    );
+  }
+
+  Map<String, dynamic> _serializeChatDay(_ChatDay day) {
+    final updatedAt = day.updatedAt?.toUtc().toIso8601String();
+    return {
+      'messages': day.messages,
+      if (updatedAt != null) 'updatedAt': updatedAt,
+      if (day.isDeleted) ...{
+        'deleted': true,
+        'deletedAt': updatedAt ?? DateTime.now().toUtc().toIso8601String(),
+      },
+    };
+  }
+
+  int _compareChatDays(_ChatDay a, _ChatDay b) {
+    final aUpdated = a.updatedAt;
+    final bUpdated = b.updatedAt;
+    if (aUpdated != null && bUpdated != null) {
+      final byTime = aUpdated.compareTo(bUpdated);
+      if (byTime != 0) return byTime;
+    } else if (aUpdated != null) {
+      return 1;
+    } else if (bUpdated != null) {
+      return -1;
+    }
+
+    final byCount = a.messages.length.compareTo(b.messages.length);
+    if (byCount != 0) return byCount;
+
+    if (a.isDeleted == b.isDeleted) return 0;
+    return a.isDeleted ? 1 : -1;
+  }
+
+  DateTime? _latestMessageTimestamp(List<dynamic> messages) {
+    DateTime? latest;
+    for (final message in messages) {
+      if (message is! Map) continue;
+      final timestamp = _readDate(message['timestamp']);
+      if (timestamp == null) continue;
+      if (latest == null || timestamp.isAfter(latest)) {
+        latest = timestamp;
+      }
+    }
+    return latest;
+  }
+
+  DateTime? _readDate(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is! String || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value.trim());
+  }
+}
+
+class _ChatDay {
+  final List<dynamic> messages;
+  final DateTime? updatedAt;
+  final bool isDeleted;
+
+  const _ChatDay({
+    required this.messages,
+    required this.updatedAt,
+    required this.isDeleted,
+  });
+
+  bool get hasMessages => messages.isNotEmpty;
 }

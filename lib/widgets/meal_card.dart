@@ -54,6 +54,7 @@ class _MealCardState extends State<MealCard> {
 
   // Modo simples (só kcal) vs detalhado (macros completos)
   bool _simpleView = true;
+  bool _loggedFirstBuild = false;
 
   @override
   void initState() {
@@ -1014,6 +1015,15 @@ class _MealCardState extends State<MealCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_loggedFirstBuild) {
+      _loggedFirstBuild = true;
+      assert(() {
+        debugPrint(
+          '[CHAT_FRAME_PERF] meal_card_build_first id=${widget.meal.id} foods=${widget.meal.foods.length} calories=${widget.meal.totalCalories.toStringAsFixed(0)}',
+        );
+        return true;
+      }());
+    }
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;

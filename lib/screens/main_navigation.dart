@@ -19,6 +19,7 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/user_app_state_service.dart';
 import '../services/daily_chat_sync_service.dart';
+import '../services/storage_service.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/free_chat_provider.dart';
 import '../providers/daily_meals_provider.dart';
@@ -127,6 +128,8 @@ class _MainNavigationState extends State<MainNavigation> {
   bool _isResolvingGuestLocalData = false;
   _GuestLocalDataSnapshot? _pendingGuestLocalData;
   Map<String, dynamic> _latestAppState = const <String, dynamic>{};
+  Map<String, List<Map<String, dynamic>>> _initialNutritionChatMessagesByDate =
+      const <String, List<Map<String, dynamic>>>{};
   final UserAppStateService _appStateService = UserAppStateService();
   Stopwatch? _authBootstrapStopwatch;
 
@@ -318,6 +321,8 @@ class _MainNavigationState extends State<MainNavigation> {
       _authBootstrapStopwatch = null;
       _pendingGuestLocalData = null;
       _latestAppState = const <String, dynamic>{};
+      _initialNutritionChatMessagesByDate =
+          const <String, List<Map<String, dynamic>>>{};
       print('[🔄 AUTH_DATA] ========== LOGOUT DETECTADO ==========');
       print('[🔄 AUTH_DATA] Limpando auth de todos os providers...');
 
@@ -454,9 +459,8 @@ class _MainNavigationState extends State<MainNavigation> {
     );
     print('[🔄 AUTH_DATA] ✅ DietPlanProvider configurado');
 
-    // Carregar estado do usuário antes de recriar o diário. Assim o
-    // NutritionAssistantScreen já nasce com chat diário e refeições do
-    // servidor disponíveis no storage/provider.
+    // Carregar app-state antes de recriar o diário. As refeições e dietas
+    // continuam aquecendo em background para não travar o chat inicial.
     await _finishAuthenticatedSetup(
       authKey: authKey,
       token: token,
@@ -539,24 +543,25 @@ class _MainNavigationState extends State<MainNavigation> {
     required MealTypesProvider mealTypesProvider,
     required FoodHistoryProvider foodHistoryProvider,
   }) async {
-    _logChatBootPerf('finish_authenticated_setup_wait_start');
-    await Future.wait([
-      mealsAuthFuture,
-      dietPlanAuthFuture,
-      _loadAppStateFromServer(
-        token,
-        userId,
-        allowLocalAutoSync,
-        authService,
-        creditProvider,
-        dietPlanProvider,
-        nutritionGoalsProvider,
-        freeChatProvider,
-        mealTypesProvider,
-        foodHistoryProvider,
-      ),
-    ]);
-    _logChatBootPerf('finish_authenticated_setup_wait_done');
+    _observeAuthenticatedProviderWarmup(
+      mealsAuthFuture: mealsAuthFuture,
+      dietPlanAuthFuture: dietPlanAuthFuture,
+    );
+
+    _logChatBootPerf('finish_authenticated_setup_app_state_wait_start');
+    await _loadAppStateFromServer(
+      token,
+      userId,
+      allowLocalAutoSync,
+      authService,
+      creditProvider,
+      dietPlanProvider,
+      nutritionGoalsProvider,
+      freeChatProvider,
+      mealTypesProvider,
+      foodHistoryProvider,
+    );
+    _logChatBootPerf('finish_authenticated_setup_app_state_wait_done');
 
     if (!mounted ||
         _configuredAuthKey != authKey ||
@@ -591,6 +596,36 @@ class _MainNavigationState extends State<MainNavigation> {
     print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
   }
 
+  void _observeAuthenticatedProviderWarmup({
+    required Future<void> mealsAuthFuture,
+    required Future<void> dietPlanAuthFuture,
+  }) {
+    Future<void> observe(String name, Future<void> future) async {
+      final stopwatch = Stopwatch()..start();
+      try {
+        await future;
+        _logChatBootPerf('auth_provider_warmup_done', {
+          'provider': name,
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+        });
+      } catch (e) {
+        print('[MainNavigation] Erro no warmup autenticado de $name: $e');
+        _logChatBootPerf('auth_provider_warmup_error', {
+          'provider': name,
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+          'error': e.toString(),
+        });
+      }
+    }
+
+    unawaited(Future.wait([
+      observe('daily_meals', mealsAuthFuture),
+      observe('diet_plan', dietPlanAuthFuture),
+    ]).then((_) {
+      _logChatBootPerf('auth_provider_warmup_all_done');
+    }));
+  }
+
   void _setAuthenticatedAppStateBootstrap(bool value) {
     if (!mounted || _isBootstrappingAuthenticatedAppState == value) {
       return;
@@ -620,6 +655,94 @@ class _MainNavigationState extends State<MainNavigation> {
     return false;
   }
 
+  List<Map<String, dynamic>>? _initialDailyChatMessagesForCurrentDate() {
+    final selectedDate = context.read<DailyMealsProvider>().selectedDate;
+    final dateKey = UserAppStateService.formatDateKey(selectedDate);
+    return _initialNutritionChatMessagesByDate[dateKey];
+  }
+
+  Future<void> _prepareInitialDailyChatMessages({
+    required String scope,
+    required String dateKey,
+  }) async {
+    final storageKey = 'nutrition_chat_${scope}_$dateKey';
+    final rawDay = await StorageService().getData(storageKey);
+    final messages = _normalizeInitialDailyChatMessages(rawDay);
+    _initialNutritionChatMessagesByDate = {
+      if (messages != null) dateKey: messages,
+    };
+  }
+
+  List<Map<String, dynamic>>? _normalizeInitialDailyChatMessages(
+    Map<String, dynamic>? rawDay,
+  ) {
+    if (rawDay == null) {
+      return null;
+    }
+    if (rawDay['deleted'] == true) {
+      return null;
+    }
+
+    final messages = rawDay['messages'];
+    if (messages is! List || messages.isEmpty) {
+      return null;
+    }
+
+    final normalized = messages
+        .whereType<Map>()
+        .map((message) => _normalizeInitialDailyChatMessage(message))
+        .where((message) => !_isRestoredAssistantPlaceholder(message))
+        .toList();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  Map<String, dynamic> _normalizeInitialDailyChatMessage(Map message) {
+    final normalized = <String, dynamic>{
+      'isUser': message['isUser'] == true,
+      'timestamp': _parseInitialDailyChatTimestamp(message['timestamp']) ??
+          DateTime.now(),
+    };
+
+    if (message.containsKey('message')) {
+      normalized['message'] = message['message'];
+    }
+    if (message['hasImage'] == true) {
+      normalized['hasImage'] = true;
+      if (message['imageMimeType'] != null) {
+        normalized['imageMimeType'] = message['imageMimeType'];
+      }
+    }
+    if (message['hadImage'] == true) {
+      normalized['hadImage'] = true;
+    }
+    if (message['notifier'] != null) {
+      normalized['notifier'] = message['notifier'];
+    }
+    // Historico restaurado nunca deve voltar em estado de streaming. Quando
+    // uma geracao antiga ficou pendurada, mostrar isso como progresso trava a
+    // percepcao da tela inicial.
+    normalized['streaming'] = false;
+
+    return normalized;
+  }
+
+  bool _isRestoredAssistantPlaceholder(Map<String, dynamic> message) {
+    if (message['isUser'] == true) {
+      return false;
+    }
+
+    final text = message['message'];
+    final hasText = text is String && text.trim().isNotEmpty;
+    final hasImage = message['hasImage'] == true || message['hadImage'] == true;
+    return !hasText && !hasImage;
+  }
+
+  DateTime? _parseInitialDailyChatTimestamp(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is! String || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value.trim());
+  }
+
   /// Carrega dados do usuário do servidor em uma única chamada.
   Future<void> _loadAppStateFromServer(
     String token,
@@ -634,6 +757,8 @@ class _MainNavigationState extends State<MainNavigation> {
     FoodHistoryProvider foodHistoryProvider,
   ) async {
     final appStateStopwatch = Stopwatch()..start();
+    _initialNutritionChatMessagesByDate =
+        const <String, List<Map<String, dynamic>>>{};
     try {
       print('[MainNavigation] Carregando app-state do usuário do servidor...');
       final selectedDate = context.read<DailyMealsProvider>().selectedDate;
@@ -724,6 +849,10 @@ class _MainNavigationState extends State<MainNavigation> {
       await DailyChatSyncService.instance.restoreFromServer(
         (appState['nutritionChatByDate'] as Map?)?.cast<String, dynamic>(),
         scope: 'user_$userId',
+      );
+      await _prepareInitialDailyChatMessages(
+        scope: 'user_$userId',
+        dateKey: UserAppStateService.formatDateKey(selectedDate),
       );
       DailyChatSyncService.instance.setAuth(token, userId);
       _logChatBootPerf('app_state_apply_done', {
@@ -1441,6 +1570,10 @@ class _MainNavigationState extends State<MainNavigation> {
           isFreeChat: _currentMode == 'free_chat',
           freeChatId: _currentFreeChatId,
           isBootstrappingInitialChat: isInitialChatBootstrapping,
+          initialMessages:
+              _currentMode == 'diary' && !isInitialChatBootstrapping
+                  ? _initialDailyChatMessagesForCurrentDate()
+                  : null,
           onOpenDrawer: onOpenDrawer,
           onOpenMyDiet: () => _onItemTapped(1),
         );

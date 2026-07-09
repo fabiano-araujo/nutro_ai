@@ -77,6 +77,10 @@ class NutritionAssistantController with ChangeNotifier {
   // Flag para saber se o usuário enviou mensagem nesta sessão
   bool _userSentMessage = false;
 
+  // Evita transformar uma tela vazia recém-aberta em exclusão real do chat.
+  bool _currentDateHadStoredChatState = false;
+  bool _emptyChatDeletionPending = false;
+
   // Flag para evitar notifyListeners após o controller ser descartado
   bool _disposed = false;
 
@@ -276,7 +280,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         '🤖 NutritionAssistantController - Construtor: conversationId: $conversationId, showWelcomeMessage: $showWelcomeMessage, toolType: $toolType, storageScope: $storageScope, hasInitialMessages: ${initialMessages != null && initialMessages.isNotEmpty}, selectedDate: ${_formatDateKey(_selectedDate)}');
     if (initialMessages != null) {
       // Prioridade máxima: se mensagens iniciais são fornecidas, usá-las.
-      _messages = List<Map<String, dynamic>>.from(initialMessages);
+      final restoredInitialMessages = _sanitizeRestoredMessages(
+        List<Map<String, dynamic>>.from(initialMessages),
+        source: 'initialMessages',
+      );
+      _messages = restoredInitialMessages;
+      _currentDateHadStoredChatState = _messages.isNotEmpty;
       _logDailyChatTrace('controller_initial_messages', {
         'date': _formatDateKey(_selectedDate),
         'scope': storageScope,
@@ -289,13 +298,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       print('\n');
       print(
           '📊 ==================== AI TUTOR CONTROLLER - MENSAGENS INICIAIS ====================');
-      print('📊 Número total de mensagens: ${initialMessages.length}');
+      print('📊 Número total de mensagens: ${restoredInitialMessages.length}');
 
       // Exibir mensagens para verificação
-      if (initialMessages.isNotEmpty) {
+      if (restoredInitialMessages.isNotEmpty) {
         print('📊 Detalhes das mensagens recebidas:');
-        for (int i = 0; i < initialMessages.length; i++) {
-          var msg = initialMessages[i];
+        for (int i = 0; i < restoredInitialMessages.length; i++) {
+          var msg = restoredInitialMessages[i];
           String prefix = msg['isUser'] == true ? '👤 Usuário:' : '🤖 IA:';
 
           // Obter texto da mensagem
@@ -325,12 +334,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       }
 
       // Verificar a sequência
-      if (initialMessages.length >= 2) {
+      if (restoredInitialMessages.length >= 2) {
         print('📊 Verificação de sequência:');
         bool sequenciaOK = true;
-        for (int i = 0; i < initialMessages.length - 1; i++) {
-          var atual = initialMessages[i];
-          var proximo = initialMessages[i + 1];
+        for (int i = 0; i < restoredInitialMessages.length - 1; i++) {
+          var atual = restoredInitialMessages[i];
+          var proximo = restoredInitialMessages[i + 1];
 
           // Verificar alternância usuário/IA
           if (atual['isUser'] == proximo['isUser']) {
@@ -363,7 +372,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           '📊 ==============================================================================\n');
 
       print(
-          '✅ NutritionAssistantController: Inicializado com ${initialMessages.length} mensagens fornecidas via initialMessages.');
+          '✅ NutritionAssistantController: Inicializado com ${restoredInitialMessages.length} mensagens fornecidas via initialMessages.');
       // Se estamos usando initialMessages, geralmente não queremos carregar uma conversationId separadamente,
       // a menos que seja um caso de uso específico para mesclar/continuar.
       // Por agora, se initialMessages é provido, ele é a fonte da verdade para o estado inicial.
@@ -798,19 +807,24 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     final aiMessageIndex = _messages.length - 1;
     _streamingMessageIndex = aiMessageIndex;
 
-    // Processar a mensagem para obter resposta da IA
-    if (_messages[aiMessageIndex - 1].containsKey('hasImage') &&
-        _messages[aiMessageIndex - 1]['hasImage'] == true) {
-      // Se a mensagem anterior contém uma imagem, processe a imagem
-      final imageBytes = _messages[aiMessageIndex - 1]['imageBytes'];
-      final prompt = trimmedMessage.isEmpty
-          ? "Analyze this image and explain what you see." // Hidden AI prompt; not shown in the user bubble
-          : trimmedMessage;
-      _processImageForAI(imageBytes, prompt, context);
-    } else {
-      // Processar mensagem de texto normal
-      _processMessageForAI(trimmedMessage, context);
-    }
+    // Deixa a bolha do usuário e o placeholder da IA renderizarem antes de
+    // preparar prompt/histórico, que pode fazer trabalho síncrono perceptível.
+    final userMessage = _messages[aiMessageIndex - 1];
+    final hasImageMessage =
+        userMessage.containsKey('hasImage') && userMessage['hasImage'] == true;
+    final imageBytes = hasImageMessage ? userMessage['imageBytes'] : null;
+    final imagePrompt = trimmedMessage.isEmpty
+        ? "Analyze this image and explain what you see." // Hidden AI prompt; not shown in the user bubble
+        : trimmedMessage;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_disposed || !context.mounted) return;
+
+      if (hasImageMessage && imageBytes != null) {
+        unawaited(_processImageForAI(imageBytes, imagePrompt, context));
+      } else {
+        unawaited(_processMessageForAI(trimmedMessage, context));
+      }
+    });
 
     // Salvar o último contexto usado em sendMessage
     _lastContext = context;
@@ -1066,7 +1080,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         onStreamComplete: () {
           _agenticCommandExecutions = 0;
           // Salvar mensagens após cada resposta da IA
-          _saveMessagesForCurrentDate();
+          unawaited(_saveMessagesForCurrentDate(syncNow: true));
         },
       );
     } catch (e) {
@@ -1130,7 +1144,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
             .translate('agent_command_invalid_response');
 
     _finalizeInterceptedMessage(notifier, directMessage);
-    _saveMessagesForCurrentDate();
+    unawaited(_saveMessagesForCurrentDate(syncNow: true));
     return true;
   }
 
@@ -1828,7 +1842,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         ),
         onStreamComplete: () {
           _agenticCommandExecutions = 0;
-          _saveMessagesForCurrentDate();
+          unawaited(_saveMessagesForCurrentDate(syncNow: true));
         },
       );
     } catch (e) {
@@ -1868,7 +1882,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     }
 
     notifyListeners();
-    _saveMessagesForCurrentDate();
+    unawaited(_saveMessagesForCurrentDate(syncNow: true));
   }
 
   /// Processa imagem para a IA
@@ -1968,7 +1982,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         autoRegisterFoods: _shouldAutoRegisterFoods,
         onStreamComplete: () {
           // Salvar mensagens após cada resposta da IA
-          _saveMessagesForCurrentDate();
+          unawaited(_saveMessagesForCurrentDate(syncNow: true));
         },
       );
     } catch (e) {
@@ -2099,7 +2113,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
   void dispose() {
     _disposed = true;
     // Salvar mensagens da data atual antes de destruir
-    _saveMessagesForCurrentDate();
+    unawaited(flushDailyChatState());
 
     _aiStreamSubscription?.cancel();
     // Se o usuário enviou mensagem nesta sessão, checar se deve mostrar rate_app
@@ -2552,7 +2566,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           autoRegisterFoods: _shouldAutoRegisterFoods,
           onStreamComplete: () {
             // Salvar mensagens após cada resposta da IA
-            _saveMessagesForCurrentDate();
+            unawaited(_saveMessagesForCurrentDate(syncNow: true));
           },
         );
 
@@ -2911,14 +2925,96 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       }
     }
 
+    if (_messages.isEmpty) {
+      _emptyChatDeletionPending = true;
+    }
+
     notifyListeners();
-    unawaited(
-      _saveMessagesForCurrentDate().then(
-        (_) => DailyChatSyncService.instance.syncPendingIfNeeded(),
-      ),
-    );
+    unawaited(_saveMessagesForCurrentDate());
     print(
         '🗑️ NutritionAssistantController - Par de mensagens deletado no índice $messageIndex');
+  }
+
+  /// Remove pares de mensagem de alimentos cujo card não existe mais no diário.
+  ///
+  /// Isso corrige históricos antigos restaurados do cache/servidor que ainda
+  /// têm JSON de alimento, mas cuja refeição vinculada já foi apagada ou
+  /// substituída por dados mais novos vindos do servidor.
+  Future<bool> pruneOrphanFoodDiaryMessagePairs({
+    required bool Function(String messageId) hasMealsForMessageId,
+    required bool Function(String messageId) isChatMealDeleted,
+    Duration gracePeriod = const Duration(seconds: 15),
+    DateTime? now,
+    bool syncNow = true,
+  }) async {
+    if (_messages.isEmpty) return false;
+
+    final currentTime = now ?? DateTime.now();
+    final indexesToRemove = <int>{};
+    final orphanMessageIds = <String>[];
+
+    for (var i = 0; i < _messages.length; i++) {
+      final message = _messages[i];
+      if (message['isUser'] == true || message['notifier'] != null) {
+        continue;
+      }
+
+      final text = _messageText(message);
+      if (!FoodJsonParser.containsFoodJson(text)) {
+        continue;
+      }
+
+      final timestamp = message['timestamp'];
+      if (timestamp is! DateTime) {
+        continue;
+      }
+
+      final messageId = 'msg-${timestamp.microsecondsSinceEpoch}';
+      if (hasMealsForMessageId(messageId)) {
+        continue;
+      }
+
+      final wasDeleted = isChatMealDeleted(messageId);
+      final age = currentTime.difference(timestamp);
+      final isRecentOrFuture = age.isNegative || age < gracePeriod;
+      if (!wasDeleted && isRecentOrFuture) {
+        continue;
+      }
+
+      indexesToRemove.add(i);
+      orphanMessageIds.add(messageId);
+      if (i > 0 && _messages[i - 1]['isUser'] == true) {
+        indexesToRemove.add(i - 1);
+      }
+    }
+
+    if (indexesToRemove.isEmpty) {
+      return false;
+    }
+
+    final sortedIndexes = indexesToRemove.toList()
+      ..sort((a, b) => b.compareTo(a));
+    for (final index in sortedIndexes) {
+      if (index >= 0 && index < _messages.length) {
+        _messages.removeAt(index);
+      }
+    }
+
+    if (_messages.isEmpty) {
+      _emptyChatDeletionPending = true;
+    }
+
+    _logDailyChatTrace('prune_orphan_food_messages', {
+      'date': _formatDateKey(_selectedDate),
+      'scope': storageScope,
+      'removedIndexes': sortedIndexes.length,
+      'orphanMessageIds': orphanMessageIds,
+      ..._summarizeMessages(_messages),
+    });
+
+    notifyListeners();
+    await _saveMessagesForCurrentDate(syncNow: syncNow);
+    return true;
   }
 
   /// Formata a data para usar como chave de armazenamento (yyyy-MM-dd)
@@ -2941,6 +3037,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     // Atualizar a data selecionada
     _selectedDate = DateTime(newDate.year, newDate.month, newDate.day);
     _messages = [];
+    _currentDateHadStoredChatState = false;
+    _emptyChatDeletionPending = false;
     _isLoadingMessages = true;
     notifyListeners();
 
@@ -2951,27 +3049,68 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
   }
 
   /// Salva as mensagens da data atual
-  Future<void> _saveMessagesForCurrentDate() async {
+  Future<void> flushDailyChatState() async {
+    await _saveMessagesForCurrentDate(syncNow: true);
+  }
+
+  Future<void> _saveMessagesForCurrentDate({bool syncNow = false}) async {
     final dateKey = _formatDateKey(_selectedDate);
     final storageKey = _buildStorageKey(dateKey);
     if (_messages.isEmpty) {
-      final removed = await _storageService.removeData(storageKey);
-      await DailyChatSyncService.instance.syncDeletedDate(dateKey);
+      if (!_currentDateHadStoredChatState && !_emptyChatDeletionPending) {
+        _logDailyChatTrace('cache_save_skip_empty_untracked', {
+          'date': dateKey,
+          'scope': storageScope,
+          'toolType': toolType,
+          'key': storageKey,
+        });
+        return;
+      }
+
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final saved = await _storageService.saveData(storageKey, {
+        'messages': <Map<String, dynamic>>[],
+        'updatedAt': nowIso,
+        'deletedAt': nowIso,
+        'deleted': true,
+      });
+      if (syncNow) {
+        await DailyChatSyncService.instance.syncDeletedDate(dateKey);
+      } else {
+        DailyChatSyncService.instance.scheduleSync(dateKey: dateKey);
+      }
+      _currentDateHadStoredChatState = true;
+      _emptyChatDeletionPending = false;
       _logDailyChatTrace('cache_save_skip_empty', {
         'date': dateKey,
         'scope': storageScope,
         'toolType': toolType,
         'key': storageKey,
-        'removed': removed,
+        'savedTombstone': saved,
       });
       print(
-          '💾 NutritionAssistantController - Chat vazio removido para data $dateKey (removed=$removed)');
+          '💾 NutritionAssistantController - Chat vazio marcado como removido para data $dateKey (saved=$saved)');
       return;
     }
 
     try {
       // Converter mensagens para formato serializável
-      final messagesData = _messages.map((msg) {
+      final messagesForStorage = _messages
+          .where((message) => !_isRestoredAssistantPlaceholder(message))
+          .toList(growable: false);
+      final droppedPlaceholders = _messages.length - messagesForStorage.length;
+      if (droppedPlaceholders > 0) {
+        _logDailyChatTrace('cache_save_dropped_empty_assistant', {
+          'date': dateKey,
+          'scope': storageScope,
+          'toolType': toolType,
+          'key': storageKey,
+          'dropped': droppedPlaceholders,
+          'remaining': messagesForStorage.length,
+        });
+      }
+
+      final messagesData = messagesForStorage.map((msg) {
         final data = <String, dynamic>{
           'isUser': msg['isUser'],
           'timestamp':
@@ -3009,10 +3148,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         'scope': storageScope,
         'toolType': toolType,
         'key': storageKey,
-        ..._summarizeMessages(_messages),
+        ..._summarizeMessages(messagesForStorage),
       });
-      final saved = await _storageService
-          .saveData(storageKey, {'messages': messagesData});
+      final saved = await _storageService.saveData(storageKey, {
+        'messages': messagesData,
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      });
       print(
           '✅ NutritionAssistantController - Mensagens salvas para data $dateKey: ${messagesData.length} mensagens (saved=$saved)');
       _logDailyChatTrace('cache_save_done', {
@@ -3026,6 +3167,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       // Enviar para o servidor (debounced) para o chat sobreviver a
       // limpeza de dados/reinstalação/troca de aparelho.
       DailyChatSyncService.instance.scheduleSync(dateKey: dateKey);
+      if (syncNow) {
+        await DailyChatSyncService.instance.syncPendingIfNeeded();
+      }
+      _currentDateHadStoredChatState = true;
+      _emptyChatDeletionPending = false;
     } catch (e) {
       print(
           '❌ NutritionAssistantController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
@@ -3047,6 +3193,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     try {
       final dateKey = _formatDateKey(date);
       final storageKey = _buildStorageKey(dateKey);
+      _currentDateHadStoredChatState = false;
+      _emptyChatDeletionPending = false;
       print(
           '[CHAT_LOAD_PERF] load_messages_start date=$dateKey scope=$storageScope showLoading=$showLoading');
       _logDailyChatTrace('load_start', {
@@ -3069,6 +3217,20 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         'hasMessages': _hasMessages(data),
         ..._summarizeStoredChatData(data),
       });
+
+      if (_isDeletedChatMarker(data)) {
+        print(
+            '📭 NutritionAssistantController - Chat removido localmente para data $dateKey');
+        _messages = [];
+        _currentDateHadStoredChatState = true;
+        _logDailyChatTrace('load_deleted_marker', {
+          'date': dateKey,
+          'scope': storageScope,
+          'toolType': toolType,
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+        });
+        return;
+      }
 
       // Fallback de "scope": a conversa pode ter sido salva sob outro escopo
       // de armazenamento (ex.: 'guest', gravado antes de o login terminar de
@@ -3143,7 +3305,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       }
 
       final List<dynamic> messagesData = data!['messages'] ?? [];
-      _messages = messagesData.map((msgData) {
+      _currentDateHadStoredChatState = true;
+      final restoredMessages = messagesData.map((msgData) {
         final msg = <String, dynamic>{
           'isUser': msgData['isUser'] ?? false,
           'timestamp': msgData['timestamp'] != null
@@ -3181,6 +3344,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
         return msg;
       }).toList();
+      _messages = _sanitizeRestoredMessages(
+        restoredMessages,
+        source: 'dateLoad',
+      );
 
       print(
           '✅ NutritionAssistantController - Mensagens carregadas para data $dateKey: ${_messages.length} mensagens');
@@ -3210,6 +3377,67 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     if (data == null) return false;
     final msgs = data['messages'];
     return msgs is List && msgs.isNotEmpty;
+  }
+
+  List<Map<String, dynamic>> _sanitizeRestoredMessages(
+    List<Map<String, dynamic>> messages, {
+    required String source,
+  }) {
+    var removed = 0;
+    var clearedStreaming = 0;
+    final sanitized = <Map<String, dynamic>>[];
+
+    for (final message in messages) {
+      if (_isRestoredAssistantPlaceholder(message)) {
+        removed++;
+        continue;
+      }
+
+      if (message['streaming'] == true) {
+        sanitized.add({
+          ...message,
+          'streaming': false,
+        });
+        clearedStreaming++;
+      } else {
+        sanitized.add(message);
+      }
+    }
+
+    if (removed > 0 || clearedStreaming > 0) {
+      _logDailyChatTrace('restored_messages_sanitized', {
+        'date': _formatDateKey(_selectedDate),
+        'scope': storageScope,
+        'toolType': toolType,
+        'source': source,
+        'removedEmptyAssistant': removed,
+        'clearedStreaming': clearedStreaming,
+        'remaining': sanitized.length,
+      });
+    }
+
+    return sanitized;
+  }
+
+  bool _isRestoredAssistantPlaceholder(Map<String, dynamic> message) {
+    if (message['isUser'] == true) {
+      return false;
+    }
+
+    final text = message['message'];
+    final hasText = text is String && text.trim().isNotEmpty;
+    final hasImage = message['hasImage'] == true || message['hadImage'] == true;
+    final notifier = message['notifier'];
+    final hasNotifierText =
+        notifier is MessageNotifier && notifier.message.trim().isNotEmpty;
+
+    return !hasText && !hasImage && !hasNotifierText;
+  }
+
+  bool _isDeletedChatMarker(Map<String, dynamic>? data) {
+    if (data == null) return false;
+    final msgs = data['messages'];
+    return data['deleted'] == true && msgs is List && msgs.isEmpty;
   }
 
   /// Procura mensagens da MESMA data salvas sob outro "scope" de armazenamento.

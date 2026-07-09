@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:io';
@@ -115,6 +116,7 @@ class NutritionAssistantScreen extends StatefulWidget {
   final VoidCallback? onOpenMyDiet;
   final String? toolType;
   final bool isBootstrappingInitialChat;
+  final List<Map<String, dynamic>>? initialMessages;
 
   const NutritionAssistantScreen({
     Key? key,
@@ -128,6 +130,7 @@ class NutritionAssistantScreen extends StatefulWidget {
     this.onOpenMyDiet,
     this.toolType,
     this.isBootstrappingInitialChat = false,
+    this.initialMessages,
   }) : super(key: key);
 
   @override
@@ -169,8 +172,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   // Usa offset gradual para efeito suave como o AppBar nativo
   final ValueNotifier<double> _headerOffsetNotifier =
       ValueNotifier<double>(0.0); // 0 = visível, negativo = escondido
-  bool _isNutritionHeaderCompact = _useCompactNutritionHeaderByDefault;
+  final ValueNotifier<bool> _nutritionHeaderCompactNotifier =
+      ValueNotifier<bool>(_useCompactNutritionHeaderByDefault);
+  bool get _isNutritionHeaderCompact => _nutritionHeaderCompactNotifier.value;
   double _lastScrollPosition = 0.0;
+  int _ignoreHeaderScrollCollapseUntilMs = 0;
   final GlobalKey _lastAiMessageKey =
       GlobalKey(); // Key para rastrear a última mensagem da IA
   bool _isScrollingProgrammatically =
@@ -220,6 +226,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   bool? _lastLoggedIsLoading;
   bool? _lastLoggedIsLoadingMessages;
   String? _lastChatSurfaceSignature;
+  String? _pendingOrphanFoodPruneSignature;
+  bool _deferRestoredFoodCards = false;
+  static const Duration _orphanFoodPruneGrace = Duration(minutes: 2);
 
   String _formatMealToastDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -328,6 +337,198 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
     _lastChatSurfaceSignature = signature;
     _logChatBootPerf('surface_decision', payload);
+  }
+
+  void _logChatFramePerf(
+    String event, [
+    Map<String, Object?> data = const {},
+  ]) {
+    assert(() {
+      final elapsedMs = _chatBootStopwatch.elapsedMilliseconds;
+      final payload = data.isEmpty ? '' : ' ${jsonEncode(data)}';
+      debugPrint('[CHAT_FRAME_PERF] +${elapsedMs}ms $event$payload');
+      return true;
+    }());
+  }
+
+  bool _hasRestoredFoodJsonMessages(List<Map<String, dynamic>>? messages) {
+    if (messages == null || messages.isEmpty) {
+      return false;
+    }
+    return messages.any((message) {
+      if (message['isUser'] == true || message['notifier'] != null) {
+        return false;
+      }
+      final rawMessage = message['message'];
+      return rawMessage is String &&
+          FoodJsonParser.hasFoodJsonSignal(rawMessage);
+    });
+  }
+
+  void _scheduleRestoredFoodCardRendering() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (!mounted || !_deferRestoredFoodCards) {
+          return;
+        }
+        _logChatBootPerf('restored_food_cards_enable');
+        setState(() {
+          _deferRestoredFoodCards = false;
+        });
+      });
+    });
+  }
+
+  String? _foodDiaryMessageId(Map<String, dynamic> message) {
+    if (message['isUser'] == true || message['notifier'] != null) {
+      return null;
+    }
+
+    final rawMessage = message['message'];
+    if (rawMessage is! String ||
+        !FoodJsonParser.hasFoodJsonSignal(rawMessage)) {
+      return null;
+    }
+
+    final timestamp = message['timestamp'];
+    if (timestamp is! DateTime) {
+      return null;
+    }
+
+    return 'msg-${timestamp.microsecondsSinceEpoch}';
+  }
+
+  bool _isPrunableFoodMessage({
+    required Map<String, dynamic> message,
+    required String messageId,
+    required DailyMealsProvider mealsProvider,
+    required DateTime selectedDate,
+  }) {
+    if (mealsProvider.getMealsByMessageId(messageId).isNotEmpty) {
+      return false;
+    }
+
+    if (mealsProvider.isChatMealDeleted(messageId, date: selectedDate)) {
+      return true;
+    }
+
+    final timestamp = message['timestamp'];
+    if (timestamp is! DateTime) {
+      return false;
+    }
+
+    final age = DateTime.now().difference(timestamp);
+    return age >= _orphanFoodPruneGrace;
+  }
+
+  bool _shouldReconstructMealsOverOrphanChat({
+    required List<Map<String, dynamic>> messages,
+    required DailyMealsProvider mealsProvider,
+    required List<Meal> dayMeals,
+    required bool isLoading,
+    required bool isLoadingMessages,
+    required bool shouldWaitForInitialChatBootstrap,
+  }) {
+    if (widget.isFreeChat ||
+        messages.isEmpty ||
+        isLoading ||
+        isLoadingMessages ||
+        shouldWaitForInitialChatBootstrap ||
+        !mealsProvider.isLoaded ||
+        mealsProvider.isLoadingFromServer) {
+      return false;
+    }
+
+    final selectedDate = mealsProvider.selectedDate;
+    var foodMessageCount = 0;
+    var matchedFoodMessageCount = 0;
+    final prunableIds = <String>[];
+
+    for (final message in messages) {
+      final messageId = _foodDiaryMessageId(message);
+      if (messageId == null) {
+        continue;
+      }
+
+      foodMessageCount++;
+      if (mealsProvider.getMealsByMessageId(messageId).isNotEmpty) {
+        matchedFoodMessageCount++;
+        continue;
+      }
+
+      if (_isPrunableFoodMessage(
+        message: message,
+        messageId: messageId,
+        mealsProvider: mealsProvider,
+        selectedDate: selectedDate,
+      )) {
+        prunableIds.add(messageId);
+      }
+    }
+
+    if (prunableIds.isNotEmpty) {
+      _scheduleOrphanFoodMessagePrune(
+        messageIds: prunableIds,
+        mealsProvider: mealsProvider,
+        selectedDate: selectedDate,
+      );
+    }
+
+    return dayMeals.isNotEmpty &&
+        foodMessageCount > 0 &&
+        matchedFoodMessageCount == 0 &&
+        prunableIds.isNotEmpty;
+  }
+
+  void _scheduleOrphanFoodMessagePrune({
+    required List<String> messageIds,
+    required DailyMealsProvider mealsProvider,
+    required DateTime selectedDate,
+  }) {
+    final selectedDateKey = _formatMealToastDateKey(selectedDate);
+    final ids = List<String>.from(messageIds)..sort();
+    final signature = '$selectedDateKey:${ids.join(',')}';
+    if (_pendingOrphanFoodPruneSignature == signature) {
+      return;
+    }
+
+    _pendingOrphanFoodPruneSignature = signature;
+    _logChatBootPerf('orphan_food_prune_scheduled', {
+      'date': selectedDateKey,
+      'messageIds': ids,
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        return;
+      }
+      if (_formatMealToastDateKey(mealsProvider.selectedDate) !=
+          selectedDateKey) {
+        _pendingOrphanFoodPruneSignature = null;
+        return;
+      }
+
+      final pruned = await _chatController.pruneOrphanFoodDiaryMessagePairs(
+        hasMealsForMessageId: (messageId) =>
+            mealsProvider.getMealsByMessageId(messageId).isNotEmpty,
+        isChatMealDeleted: (messageId) =>
+            mealsProvider.isChatMealDeleted(messageId, date: selectedDate),
+        gracePeriod: _orphanFoodPruneGrace,
+        syncNow: false,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      _pendingOrphanFoodPruneSignature = null;
+      if (pruned) {
+        _hasScrolledToInitialMessages = false;
+        _logChatBootPerf('orphan_food_prune_done', {
+          'date': selectedDateKey,
+          'messageIds': ids,
+        });
+      }
+    });
   }
 
   String _mealAddedToastMessage(DateTime date) {
@@ -524,6 +725,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     print(
         '   - initialToolResponse (Resposta da IA para ferramenta): ${widget.initialToolResponse?.substring(0, math.min(100, widget.initialToolResponse?.length ?? 0))}...');
 
+    _deferRestoredFoodCards = !widget.isFreeChat &&
+        _hasRestoredFoodJsonMessages(widget.initialMessages);
+    if (_deferRestoredFoodCards) {
+      _logChatBootPerf('restored_food_cards_deferred', {
+        'initialMessages': widget.initialMessages?.length ?? 0,
+      });
+      _scheduleRestoredFoodCardRendering();
+    }
+
     nutritionAssistantManager.register(this);
     _animationController = AnimationController(
       duration: Duration(milliseconds: 1000),
@@ -546,8 +756,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     bool isFromTool = false;
     String toolType = 'chat';
     String? conversationIdFromToolData;
-    List<Map<String, dynamic>>?
-        messagesFromToolData; // Histórico completo da ferramenta
+    List<Map<String, dynamic>>? messagesFromToolData =
+        widget.initialMessages; // Histórico inicial
 
     // Verificar se tem JSON de ferramenta (para exibir card e processar)
     if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
@@ -877,6 +1087,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(_chatController.flushDailyChatState());
+    }
+  }
+
+  @override
   void dispose() {
     print('🧹 NutritionAssistantScreen - dispose chamado');
 
@@ -909,6 +1130,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     _scrollController.dispose();
     _messageInputScrollController.dispose();
     _headerOffsetNotifier.dispose();
+    _nutritionHeaderCompactNotifier.dispose();
     _inputFocusNode.dispose();
     _animationController.dispose();
     _chatController.dispose();
@@ -1107,6 +1329,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     // Threshold mínimo para evitar mudanças por micro-movimentos
     if (scrollDelta.abs() < 2) return;
 
+    if (position.userScrollDirection == ScrollDirection.idle) {
+      _lastScrollPosition = currentScrollPosition;
+      return;
+    }
+
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs < _ignoreHeaderScrollCollapseUntilMs) {
+      _lastScrollPosition = currentScrollPosition;
+      return;
+    }
+
     _collapseNutritionHeaderFromUserScroll();
 
     final currentHeaderOffset = _headerOffsetNotifier.value;
@@ -1123,9 +1356,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   void _collapseNutritionHeaderFromUserScroll() {
     if (widget.isFreeChat || _isNutritionHeaderCompact || !mounted) return;
 
-    setState(() {
-      _isNutritionHeaderCompact = true;
-    });
+    _nutritionHeaderCompactNotifier.value = true;
   }
 
   // Método para mostrar o header programaticamente
@@ -1164,9 +1395,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }
 
   void _setNutritionHeaderCompact(bool isCompact) {
-    setState(() {
-      _isNutritionHeaderCompact = isCompact;
-    });
+    if (_nutritionHeaderCompactNotifier.value != isCompact) {
+      _ignoreHeaderScrollCollapseUntilMs =
+          DateTime.now().millisecondsSinceEpoch + 350;
+      _nutritionHeaderCompactNotifier.value = isCompact;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollController.hasClients) return;
+        _lastScrollPosition = _scrollController.offset;
+      });
+    }
     _headerOffsetNotifier.value = 0.0;
   }
 
@@ -1436,15 +1673,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
 
   // Método para lidar com o envio de mensagem (botão Enviar ou Enter)
   Future<void> _handleSendMessage({bool dismissKeyboard = false}) async {
+    if (dismissKeyboard) {
+      _inputFocusNode.unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+
     _endMealToastSuppression();
     final message = _messageController.text.trim();
     final shouldScrollAfterSend =
         message.isNotEmpty || _chatController.hasSelectedImage;
-
-    if (dismissKeyboard && shouldScrollAfterSend) {
-      _inputFocusNode.unfocus();
-      FocusManager.instance.primaryFocus?.unfocus();
-    }
 
     // Incrementar contador de mensagens do usuário se a mensagem não estiver vazia
     if (message.isNotEmpty) {
@@ -2042,11 +2281,26 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           final selectedImageBytes = _chatController.selectedImageBytes;
           final currentlySpeakingMessageIndex =
               _chatController.currentlySpeakingMessageIndex;
+          final contentMealsProvider = Provider.of<DailyMealsProvider>(context);
+          final reconstructedDayMeals = widget.isFreeChat
+              ? const <Meal>[]
+              : contentMealsProvider
+                  .getMealsForDate(contentMealsProvider.selectedDate);
           final hasCachedMessages = messages.isNotEmpty;
           final shouldWaitForInitialChatBootstrap =
               widget.isBootstrappingInitialChat && !hasCachedMessages;
           final shouldBlockChatContent = !hasCachedMessages &&
               (isLoadingMessages || shouldWaitForInitialChatBootstrap);
+          final shouldUseReconstructedMeals =
+              _shouldReconstructMealsOverOrphanChat(
+            messages: messages,
+            mealsProvider: contentMealsProvider,
+            dayMeals: reconstructedDayMeals,
+            isLoading: isLoading,
+            isLoadingMessages: isLoadingMessages,
+            shouldWaitForInitialChatBootstrap:
+                shouldWaitForInitialChatBootstrap,
+          );
           _logChatBuildPerf(
             messageCount: messages.length,
             isLoading: isLoading,
@@ -2055,11 +2309,13 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           );
           final surface = shouldBlockChatContent
               ? 'initial_loader'
-              : messages.isNotEmpty
-                  ? 'message_list'
-                  : _suggestions.isNotEmpty
-                      ? 'suggestions'
-                      : 'empty_or_reconstructed';
+              : shouldUseReconstructedMeals
+                  ? 'reconstructed_meals_orphan_chat'
+                  : messages.isNotEmpty
+                      ? 'message_list'
+                      : _suggestions.isNotEmpty
+                          ? 'suggestions'
+                          : 'empty_or_reconstructed';
           _logChatSurfaceDecision(surface, {
             'messages': messages.length,
             'loading': isLoading,
@@ -2067,6 +2323,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             'bootstrapping': widget.isBootstrappingInitialChat,
             'waitingBootstrap': shouldWaitForInitialChatBootstrap,
             'suggestions': _suggestions.length,
+            'reconstructedMeals': reconstructedDayMeals.length,
+            'orphanFallback': shouldUseReconstructedMeals,
           });
 
           // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
@@ -2109,137 +2367,158 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                         },
                       )
                     else
-                      ValueListenableBuilder<double>(
-                        valueListenable: _headerOffsetNotifier,
-                        builder: (context, headerOffset, _) {
-                          return Consumer<DailyMealsProvider>(
-                            builder: (context, mealsProvider, child) {
-                              const toolbarHeight = 52.0;
-                              final bool hasMeals =
-                                  mealsProvider.todayMeals.isNotEmpty;
-                              final nutritionHeight = hasMeals
-                                  ? (_isNutritionHeaderCompact ? 56.0 : 108.0)
-                                  : 0.0;
-                              final maxHeight = toolbarHeight + nutritionHeight;
-                              final visibleHeight = (maxHeight + headerOffset)
-                                  .clamp(0.0, maxHeight);
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _nutritionHeaderCompactNotifier,
+                        builder: (context, isNutritionHeaderCompact, _) {
+                          return ValueListenableBuilder<double>(
+                            valueListenable: _headerOffsetNotifier,
+                            builder: (context, headerOffset, _) {
+                              return Consumer<DailyMealsProvider>(
+                                builder: (context, mealsProvider, child) {
+                                  const toolbarHeight = 52.0;
+                                  final bool hasMeals =
+                                      mealsProvider.todayMeals.isNotEmpty;
+                                  final nutritionHeight = hasMeals
+                                      ? (isNutritionHeaderCompact
+                                          ? 56.0
+                                          : 108.0)
+                                      : 0.0;
+                                  final maxHeight =
+                                      toolbarHeight + nutritionHeight;
+                                  final visibleHeight =
+                                      (maxHeight + headerOffset)
+                                          .clamp(0.0, maxHeight);
 
-                              return SizedBox(
-                                height: visibleHeight,
-                                child: ClipRect(
-                                  child: OverflowBox(
-                                    maxHeight: maxHeight,
-                                    alignment: Alignment.topCenter,
-                                    child: Transform.translate(
-                                      offset: Offset(0, headerOffset),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          _buildMinimalHeader(
-                                            context,
-                                            isDarkMode: isDarkMode,
-                                            selectedDate:
-                                                mealsProvider.selectedDate,
-                                            onDateTap: () =>
-                                                _showDatePickerSheet(context),
-                                            onSearchTap: () {
-                                              Navigator.push(
+                                  return SizedBox(
+                                    height: visibleHeight,
+                                    child: ClipRect(
+                                      child: OverflowBox(
+                                        maxHeight: maxHeight,
+                                        alignment: Alignment.topCenter,
+                                        child: Transform.translate(
+                                          offset: Offset(0, headerOffset),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              _buildMinimalHeader(
                                                 context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const FoodSearchScreen(),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          if (hasMeals)
-                                            Consumer2<NutritionGoalsProvider,
-                                                DailyMealsProvider>(
-                                              builder: (context,
-                                                  nutritionProvider,
-                                                  mealsProvider,
-                                                  child) {
-                                                final caloriesConsumed =
-                                                    mealsProvider.totalCalories;
-                                                final proteinConsumed =
-                                                    mealsProvider.totalProtein
-                                                        .toInt();
-                                                final carbsConsumed =
-                                                    mealsProvider.totalCarbs
-                                                        .toInt();
-                                                final fatsConsumed =
-                                                    mealsProvider.totalFat
-                                                        .toInt();
-
-                                                void openDailyMeals() {
+                                                isDarkMode: isDarkMode,
+                                                selectedDate:
+                                                    mealsProvider.selectedDate,
+                                                onDateTap: () =>
+                                                    _showDatePickerSheet(
+                                                        context),
+                                                onSearchTap: () {
                                                   Navigator.push(
                                                     context,
                                                     MaterialPageRoute(
                                                       builder: (context) =>
-                                                          const DailyMealsScreen(),
+                                                          const FoodSearchScreen(),
                                                     ),
                                                   );
-                                                }
+                                                },
+                                              ),
+                                              if (hasMeals)
+                                                Consumer2<
+                                                    NutritionGoalsProvider,
+                                                    DailyMealsProvider>(
+                                                  builder: (context,
+                                                      nutritionProvider,
+                                                      mealsProvider,
+                                                      child) {
+                                                    final caloriesConsumed =
+                                                        mealsProvider
+                                                            .totalCalories;
+                                                    final proteinConsumed =
+                                                        mealsProvider
+                                                            .totalProtein
+                                                            .toInt();
+                                                    final carbsConsumed =
+                                                        mealsProvider.totalCarbs
+                                                            .toInt();
+                                                    final fatsConsumed =
+                                                        mealsProvider.totalFat
+                                                            .toInt();
 
-                                                if (_isNutritionHeaderCompact) {
-                                                  return MiniNutritionCard(
-                                                    caloriesConsumed:
-                                                        caloriesConsumed,
-                                                    caloriesGoal:
-                                                        nutritionProvider
-                                                            .caloriesGoal,
-                                                    proteinConsumed:
-                                                        proteinConsumed,
-                                                    proteinGoal:
-                                                        nutritionProvider
-                                                            .proteinGoal,
-                                                    carbsConsumed:
-                                                        carbsConsumed,
-                                                    carbsGoal: nutritionProvider
-                                                        .carbsGoal,
-                                                    fatsConsumed: fatsConsumed,
-                                                    fatsGoal: nutritionProvider
-                                                        .fatGoal,
-                                                    onTap: openDailyMeals,
-                                                    onExpand: () =>
-                                                        _setNutritionHeaderCompact(
-                                                            false),
-                                                  );
-                                                }
+                                                    void openDailyMeals() {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              const DailyMealsScreen(),
+                                                        ),
+                                                      );
+                                                    }
 
-                                                return NutritionCard(
-                                                  hasConfiguredGoals:
-                                                      nutritionProvider
-                                                          .hasConfiguredGoals,
-                                                  onEditGoals:
-                                                      _openGoalWizardFromChat,
-                                                  caloriesConsumed:
-                                                      caloriesConsumed,
-                                                  caloriesGoal:
-                                                      nutritionProvider
-                                                          .caloriesGoal,
-                                                  proteinConsumed:
-                                                      proteinConsumed,
-                                                  proteinGoal: nutritionProvider
-                                                      .proteinGoal,
-                                                  carbsConsumed: carbsConsumed,
-                                                  carbsGoal: nutritionProvider
-                                                      .carbsGoal,
-                                                  fatsConsumed: fatsConsumed,
-                                                  fatsGoal:
-                                                      nutritionProvider.fatGoal,
-                                                  onTap: openDailyMeals,
-                                                  onMinimize: () =>
-                                                      _setNutritionHeaderCompact(
-                                                          true),
-                                                );
-                                              },
-                                            ),
-                                        ],
+                                                    if (isNutritionHeaderCompact) {
+                                                      return MiniNutritionCard(
+                                                        caloriesConsumed:
+                                                            caloriesConsumed,
+                                                        caloriesGoal:
+                                                            nutritionProvider
+                                                                .caloriesGoal,
+                                                        proteinConsumed:
+                                                            proteinConsumed,
+                                                        proteinGoal:
+                                                            nutritionProvider
+                                                                .proteinGoal,
+                                                        carbsConsumed:
+                                                            carbsConsumed,
+                                                        carbsGoal:
+                                                            nutritionProvider
+                                                                .carbsGoal,
+                                                        fatsConsumed:
+                                                            fatsConsumed,
+                                                        fatsGoal:
+                                                            nutritionProvider
+                                                                .fatGoal,
+                                                        onTap: openDailyMeals,
+                                                        onExpand: () =>
+                                                            _setNutritionHeaderCompact(
+                                                                false),
+                                                      );
+                                                    }
+
+                                                    return NutritionCard(
+                                                      hasConfiguredGoals:
+                                                          nutritionProvider
+                                                              .hasConfiguredGoals,
+                                                      onEditGoals:
+                                                          _openGoalWizardFromChat,
+                                                      caloriesConsumed:
+                                                          caloriesConsumed,
+                                                      caloriesGoal:
+                                                          nutritionProvider
+                                                              .caloriesGoal,
+                                                      proteinConsumed:
+                                                          proteinConsumed,
+                                                      proteinGoal:
+                                                          nutritionProvider
+                                                              .proteinGoal,
+                                                      carbsConsumed:
+                                                          carbsConsumed,
+                                                      carbsGoal:
+                                                          nutritionProvider
+                                                              .carbsGoal,
+                                                      fatsConsumed:
+                                                          fatsConsumed,
+                                                      fatsGoal:
+                                                          nutritionProvider
+                                                              .fatGoal,
+                                                      onTap: openDailyMeals,
+                                                      onMinimize: () =>
+                                                          _setNutritionHeaderCompact(
+                                                              true),
+                                                    );
+                                                  },
+                                                ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                },
                               );
                             },
                           );
@@ -2251,7 +2530,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                       child: Stack(
                         children: [
                           // ListView (só renderiza quando há mensagens)
-                          if (!shouldBlockChatContent && messages.isNotEmpty)
+                          if (!shouldBlockChatContent &&
+                              messages.isNotEmpty &&
+                              !shouldUseReconstructedMeals)
                             ListView.builder(
                               controller: _scrollController,
                               padding: EdgeInsets.all(16),
@@ -2263,60 +2544,72 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                       ? 1
                                       : 0),
                               itemBuilder: (context, index) {
+                                final itemStopwatch = Stopwatch()..start();
+                                _logChatFramePerf('item_start', {
+                                  'index': index,
+                                  'messageCount': messages.length,
+                                  'toolCard': _shouldShowToolCard,
+                                });
+                                Widget builtItem;
                                 // Mostrar o card de ferramentas como primeiro item
                                 if (_shouldShowToolCard && index == 0) {
-                                  return _buildToolCard(isDarkMode);
-                                }
-
-                                // Ajustar índice para compensar o card de ferramentas
-                                final adjustedIndex =
-                                    _shouldShowToolCard ? index - 1 : index;
-
-                                if (adjustedIndex < messages.length) {
-                                  // Verificar se é a última mensagem da IA
-                                  final isAiMessage = messages[adjustedIndex]
-                                          ['isUser'] ==
-                                      false;
-                                  int lastAiMessageIndex = -1;
-                                  for (int i = messages.length - 1;
-                                      i >= 0;
-                                      i--) {
-                                    if (messages[i]['isUser'] == false) {
-                                      lastAiMessageIndex = i;
-                                      break;
-                                    }
-                                  }
-                                  final isLastAiMessage = isAiMessage &&
-                                      adjustedIndex == lastAiMessageIndex;
-
-                                  final messageBubble = _buildMessageBubble(
-                                    messageData: messages[adjustedIndex]
-                                            .containsKey('notifier')
-                                        ? messages[adjustedIndex]['notifier']
-                                        : messages[adjustedIndex],
-                                    isUser: messages[adjustedIndex]['isUser'],
-                                    timestamp: messages[adjustedIndex]
-                                        ['timestamp'],
-                                    isDarkMode: isDarkMode,
-                                    index: adjustedIndex,
-                                    currentlySpeakingMessageIndex:
-                                        currentlySpeakingMessageIndex,
-                                  );
-
-                                  // Se for a última mensagem da IA, adicionar a key para rastreamento
-                                  if (isLastAiMessage) {
-                                    return Container(
-                                      key: _lastAiMessageKey,
-                                      child: messageBubble,
-                                    );
-                                  }
-
-                                  return messageBubble;
+                                  builtItem = _buildToolCard(isDarkMode);
                                 } else {
-                                  // Exibir botões de ação após a última mensagem da IA
-                                  return _buildActionButtons(
-                                      currentlySpeakingMessageIndex);
+                                  // Ajustar índice para compensar o card de ferramentas
+                                  final adjustedIndex =
+                                      _shouldShowToolCard ? index - 1 : index;
+
+                                  if (adjustedIndex < messages.length) {
+                                    // Verificar se é a última mensagem da IA
+                                    final isAiMessage = messages[adjustedIndex]
+                                            ['isUser'] ==
+                                        false;
+                                    int lastAiMessageIndex = -1;
+                                    for (int i = messages.length - 1;
+                                        i >= 0;
+                                        i--) {
+                                      if (messages[i]['isUser'] == false) {
+                                        lastAiMessageIndex = i;
+                                        break;
+                                      }
+                                    }
+                                    final isLastAiMessage = isAiMessage &&
+                                        adjustedIndex == lastAiMessageIndex;
+
+                                    final messageBubble = _buildMessageBubble(
+                                      messageData: messages[adjustedIndex]
+                                              .containsKey('notifier')
+                                          ? messages[adjustedIndex]['notifier']
+                                          : messages[adjustedIndex],
+                                      isUser: messages[adjustedIndex]['isUser'],
+                                      timestamp: messages[adjustedIndex]
+                                          ['timestamp'],
+                                      isDarkMode: isDarkMode,
+                                      index: adjustedIndex,
+                                      currentlySpeakingMessageIndex:
+                                          currentlySpeakingMessageIndex,
+                                    );
+
+                                    // Se for a última mensagem da IA, adicionar a key para rastreamento
+                                    builtItem = isLastAiMessage
+                                        ? Container(
+                                            key: _lastAiMessageKey,
+                                            child: messageBubble,
+                                          )
+                                        : messageBubble;
+                                  } else {
+                                    // Exibir botões de ação após a última mensagem da IA
+                                    builtItem = _buildActionButtons(
+                                        currentlySpeakingMessageIndex);
+                                  }
                                 }
+
+                                _logChatFramePerf('item_done', {
+                                  'index': index,
+                                  'elapsedMs':
+                                      itemStopwatch.elapsedMilliseconds,
+                                });
+                                return builtItem;
                               },
                             ),
 
@@ -2375,6 +2668,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                 backgroundColor: currentScaffoldBackgroundColor,
                               ),
                             )
+                          else if (shouldUseReconstructedMeals)
+                            Positioned.fill(
+                              child: _buildReconstructedMealsView(
+                                meals: reconstructedDayMeals,
+                                mealsProvider: contentMealsProvider,
+                                isDarkMode: isDarkMode,
+                                backgroundColor: currentScaffoldBackgroundColor,
+                              ),
+                            )
                           else if (messages.isEmpty && _suggestions.isEmpty)
                             Positioned.fill(
                               child: Consumer<DailyMealsProvider>(
@@ -2428,6 +2730,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                           currentScaffoldBackgroundColor,
                                     );
                                   }
+
                                   _logChatSurfaceDecision(
                                     'welcome_empty',
                                     {
@@ -3409,6 +3712,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required int index,
     required int? currentlySpeakingMessageIndex,
   }) {
+    final bubbleStopwatch = Stopwatch()..start();
+    _logChatFramePerf('bubble_start', {
+      'index': index,
+      'isUser': isUser,
+    });
     // Verifica se estamos usando o notificador ou mensagem direta
     final bool usingNotifier = messageData is MessageNotifier;
     final bool isError = usingNotifier
@@ -3441,10 +3749,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     // Verificar se a mensagem contém JSON de alimentos (apenas para mensagens da IA).
     // No modo conversa livre, isso nunca deve montar FoodJsonDisplay, pois esse
     // widget registra a refeição no diário ao ser renderizado.
-    final bool hasFoodJson =
-        !isUser && FoodJsonParser.containsFoodJson(message);
     final bool canRenderFoodDiaryCards = !widget.isFreeChat;
-    final bool shouldRenderFoodCard = canRenderFoodDiaryCards && hasFoodJson;
+    final bool hasFoodJsonSignal =
+        !isUser && FoodJsonParser.hasFoodJsonSignal(message);
+    final bool deferFoodCard =
+        _deferRestoredFoodCards && hasFoodJsonSignal && !usingNotifier;
+    final bool hasFoodJson = hasFoodJsonSignal &&
+        (deferFoodCard ? true : FoodJsonParser.containsFoodJson(message));
+    final bool shouldRenderFoodCard =
+        canRenderFoodDiaryCards && hasFoodJson && !deferFoodCard;
     final foodMessageId = 'msg-${timestamp.microsecondsSinceEpoch}';
     final String displayMessage = AppAgentService.sanitizeDisplayMessage(
       message,
@@ -3456,17 +3769,32 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         if (!canRenderFoodDiaryCards) {
           return _getReadableMessage(content);
         }
+        if (deferFoodCard) {
+          return '';
+        }
         return FoodJsonParser.removeJsonCandidateFromMessage(content);
       },
     );
+    _logChatFramePerf('bubble_parsed', {
+      'index': index,
+      'elapsedMs': bubbleStopwatch.elapsedMilliseconds,
+      'messageLength': message.length,
+      'hasFoodJson': hasFoodJson,
+      'shouldRenderFoodCard': shouldRenderFoodCard,
+      'deferFoodCard': deferFoodCard,
+      'displayLength': displayMessage.length,
+    });
 
     // Se for notificador, vamos usar um ChangeNotifierProvider para atualizar apenas este widget
     if (usingNotifier) {
-      return ChangeNotifierProvider.value(
+      final bubble = ChangeNotifierProvider.value(
         value: messageData as MessageNotifier,
         child: Consumer<MessageNotifier>(
           builder: (context, notifier, _) {
-            final hasJsonInNotifier =
+            final hasJsonSignalInNotifier =
+                !isUser && FoodJsonParser.hasFoodJsonSignal(notifier.message);
+            final hasJsonInNotifier = hasJsonSignalInNotifier &&
+                !notifier.isStreaming &&
                 FoodJsonParser.containsFoodJson(notifier.message);
             final showsMealCard = canRenderFoodDiaryCards &&
                 hasJsonInNotifier &&
@@ -3505,7 +3833,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                   ),
                 if (canRenderFoodDiaryCards && !isUser && !notifier.isStreaming)
                   _buildFoodDiaryCardForMessage(
-                    hasFoodJson: hasJsonInNotifier,
+                    hasFoodJson: showsMealCard,
                     message: notifier.message,
                     isDarkMode: isDarkMode,
                     foodMessageId: foodMessageId,
@@ -3517,6 +3845,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           },
         ),
       );
+      _logChatFramePerf('bubble_done', {
+        'index': index,
+        'elapsedMs': bubbleStopwatch.elapsedMilliseconds,
+        'usingNotifier': true,
+      });
+      return bubble;
     } else {
       // Se não for notificador, usamos a forma tradicional
       // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
@@ -3529,7 +3863,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         isStreaming: isStreaming,
       );
 
-      return Column(
+      final bubble = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -3553,7 +3887,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             ),
           if (canRenderFoodDiaryCards && !isUser && !isStreaming)
             _buildFoodDiaryCardForMessage(
-              hasFoodJson: hasFoodJson,
+              hasFoodJson: shouldRenderFoodCard,
               message: message,
               isDarkMode: isDarkMode,
               foodMessageId: foodMessageId,
@@ -3562,6 +3896,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           if (contextualActions != null) contextualActions,
         ],
       );
+      _logChatFramePerf('bubble_done', {
+        'index': index,
+        'elapsedMs': bubbleStopwatch.elapsedMilliseconds,
+        'usingNotifier': false,
+      });
+      return bubble;
     }
   }
 
@@ -3684,7 +4024,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     return Container(
       color: backgroundColor,
       alignment: Alignment.center,
-      child: const CircularProgressIndicator.adaptive(),
+      child: const SizedBox(
+        width: 28,
+        height: 28,
+        child: CircularProgressIndicator.adaptive(strokeWidth: 3),
+      ),
     );
   }
 

@@ -104,7 +104,6 @@ class DailyMealsProvider extends ChangeNotifier {
     if (_isLoadingFromServer) return;
 
     _isLoadingFromServer = true;
-    notifyListeners();
     print('[DailyMealsProvider] Carregando resumo leve do servidor...');
 
     try {
@@ -141,7 +140,7 @@ class DailyMealsProvider extends ChangeNotifier {
     }
     _markSummaryMonthsLoaded(from, to);
 
-    await _saveToPreferences();
+    unawaited(_saveToPreferences());
     print(
         '[DailyMealsProvider] ${summaries.length} resumo(s) diário(s) carregado(s)');
   }
@@ -194,7 +193,7 @@ class DailyMealsProvider extends ChangeNotifier {
 
       _applyServerSummary(summary, includeMeals: true);
       _loadedDetailDateKeys.add(dateKey);
-      await _saveToPreferences();
+      unawaited(_saveToPreferences());
       notifyListeners();
     } catch (e) {
       print('[DailyMealsProvider] Erro ao carregar dia $dateKey: $e');
@@ -272,7 +271,6 @@ class DailyMealsProvider extends ChangeNotifier {
 
     _isSyncing = true;
     _syncRequestedWhileSyncing = false;
-    notifyListeners();
     print('[DailyMealsProvider] Sincronizando com servidor...');
 
     final pendingDateKeys = _pendingSyncDateKeys.toList()..sort();
@@ -1283,9 +1281,9 @@ class DailyMealsProvider extends ChangeNotifier {
     );
 
     _markDateLocallyModified(dateKey);
-    _saveToPreferences();
-    _syncNowOrSchedule(); // Sync com servidor
     notifyListeners();
+    unawaited(_saveToPreferences());
+    _scheduleSync(); // Sync debounced para manter a UI responsiva.
   }
 
   /// Remove uma refeição pelo tipo
@@ -1307,9 +1305,9 @@ class DailyMealsProvider extends ChangeNotifier {
       _markChatMealDeletedForDate(dateKey, messageId);
     }
     _markDateLocallyModified(dateKey);
-    _saveToPreferences();
-    _syncNowOrSchedule(); // Sync com servidor
     notifyListeners();
+    unawaited(_saveToPreferences());
+    _scheduleSync(); // Sync debounced para manter a UI responsiva.
   }
 
   void updateGoals({

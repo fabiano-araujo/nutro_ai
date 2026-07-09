@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/credit_model.dart';
 import '../services/api_service.dart';
@@ -43,7 +45,7 @@ class CreditProvider extends ChangeNotifier {
       creditsRemaining: CreditModel.dailyCredits,
       lastResetDate: DateTime.now(),
     );
-    _saveCredits();
+    unawaited(_saveCredits());
     notifyListeners();
   }
 
@@ -69,10 +71,10 @@ class CreditProvider extends ChangeNotifier {
 
   /// Consome a quantidade especificada de créditos
   /// Retorna true se há créditos suficientes, false caso contrário
-  Future<bool> _consumeCredits(int amount) async {
+  Future<bool> _consumeCredits(int amount) {
     // Verificar se temos créditos suficientes
     if (_creditModel.creditsRemaining < amount) {
-      return false;
+      return Future.value(false);
     }
 
     // Atualizar o modelo com a quantidade reduzida
@@ -82,9 +84,9 @@ class CreditProvider extends ChangeNotifier {
 
     // Notificar os ouvintes e salvar
     notifyListeners();
-    await _saveCredits();
+    unawaited(_saveCredits());
 
-    return true;
+    return Future.value(true);
   }
 
   /// Adiciona créditos após assistir um anúncio premiado

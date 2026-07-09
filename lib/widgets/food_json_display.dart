@@ -38,6 +38,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
     with AutomaticKeepAliveClientMixin {
   List<Meal> _meals = const [];
   bool _isAdded = false;
+  bool _loggedFirstBuild = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -45,6 +46,10 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   @override
   void initState() {
     super.initState();
+    _logFramePerf('init_start', {
+      'messageId': widget.messageId,
+      'messageLength': widget.message.length,
+    });
     _parseMeals();
     // Adicionar automaticamente após o frame atual para garantir acesso ao contexto
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -108,6 +113,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   }
 
   void _parseMeals() {
+    final stopwatch = Stopwatch()..start();
     final fallbackMealType = AIInteractionHelper.getMealTypeByTime();
     final entries = FoodJsonParser.parseMealEntriesFromMessage(
       widget.message,
@@ -124,6 +130,12 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           messageId: _messageIdForParsedMeal(0, 1),
         ),
       ];
+      _logFramePerf('parse_done', {
+        'messageId': widget.messageId,
+        'elapsedMs': stopwatch.elapsedMilliseconds,
+        'entries': 0,
+        'meals': _meals.length,
+      });
       return;
     }
 
@@ -139,6 +151,26 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
         messageId: _messageIdForParsedMeal(index, entries.length),
       );
     });
+    _logFramePerf('parse_done', {
+      'messageId': widget.messageId,
+      'elapsedMs': stopwatch.elapsedMilliseconds,
+      'entries': entries.length,
+      'meals': _meals.length,
+      'foods': _meals.fold<int>(0, (sum, meal) => sum + meal.foods.length),
+    });
+  }
+
+  void _logFramePerf(
+    String event, [
+    Map<String, Object?> data = const {},
+  ]) {
+    assert(() {
+      final payload = data.isEmpty
+          ? ''
+          : ' ${data.entries.map((entry) => '${entry.key}=${entry.value}').join(' ')}';
+      debugPrint('[CHAT_FRAME_PERF] food_json_$event$payload');
+      return true;
+    }());
   }
 
   void _handleMealTypeChanged(int index, MealType newType) {
@@ -389,6 +421,14 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   Widget build(BuildContext context) {
     super.build(context);
     final visibleMeals = _meals.where((meal) => meal.foods.isNotEmpty).toList();
+    if (!_loggedFirstBuild) {
+      _loggedFirstBuild = true;
+      _logFramePerf('build_first', {
+        'messageId': widget.messageId,
+        'visibleMeals': visibleMeals.length,
+        'isAdded': _isAdded,
+      });
+    }
     if (visibleMeals.isEmpty) {
       return SizedBox.shrink();
     }
