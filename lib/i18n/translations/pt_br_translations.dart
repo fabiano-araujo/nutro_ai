@@ -1284,11 +1284,12 @@ final Map<String, String> ptBRTranslations = {
   'preferences': 'Preferências',
   'notification_settings_title': 'Gerenciar minhas notificações',
   'meal_reminders': 'Lembretes de Refeição',
-  'meal_reminders_description': 'Receba notificações para suas refeições.',
+  'meal_reminders_description':
+      'Receba avisos somente quando um registro estiver faltando.',
   'meal_time': 'Horário da refeição',
   'meal_reminder_times': 'Horários das refeições',
   'meal_reminder_times_hint':
-      'Os lembretes usam o horário cadastrado em cada refeição.',
+      'O Nutro AI aprende seus horários, evita avisos já resolvidos e protege sua sequência no fim do dia.',
   'add_meal_short': 'Adicionar',
   'weight_reminders': 'Lembretes de peso',
   'weight_reminder_config_title': 'Configurar lembrete de peso',
@@ -1299,7 +1300,8 @@ final Map<String, String> ptBRTranslations = {
   'personalized_tip_time': 'Horário das dicas personalizadas',
   'notifications_all_disabled': 'Desativadas',
   'notifications_enabled_count': '{count} ativas',
-  'notification_meal_schedule': 'Nos horários cadastrados em suas refeições',
+  'notification_meal_schedule':
+      'Após seus horários habituais, somente se faltar registro',
   'notification_weight_schedule': '{count}x por semana em {days} às {time}',
   'notification_tip_schedule': 'Todos os dias às {time}',
   'notification_permission_denied':
@@ -1311,6 +1313,20 @@ final Map<String, String> ptBRTranslations = {
   'notification_meal_title_named': 'Hora de {meal}',
   'notification_meal_body_named':
       'Registre {meal} no Nutro AI para acompanhar seus macros.',
+  'notification_smart_meal_title': 'Esqueceu de registrar {meal}?',
+  'notification_smart_meal_body_habit':
+      'Você costuma registrar por volta de {time}. Toque para adicionar agora.',
+  'notification_smart_meal_body_configured':
+      'O horário de {meal} já passou. Registre agora para manter o diário em dia.',
+  'notification_streak_risk_title': 'Falta 1 hora para manter sua sequência',
+  'notification_streak_risk_body':
+      'Você está há {count} dias registrando refeições. Registre uma hoje para não perder a sequência.',
+  'notification_comeback_title': 'Que tal retomar seu diário hoje?',
+  'notification_comeback_body':
+      'Sem culpa: registre sua próxima refeição e continue de onde parou.',
+  'notification_meal_name_morning_snack': 'Lanche da manhã',
+  'notification_meal_name_afternoon_snack': 'Lanche da tarde',
+  'notification_meal_name_supper': 'Ceia',
   'notification_weight_title': 'Hora de atualizar seu peso',
   'notification_weight_body':
       'Registre seu peso semanal para manter o progresso preciso.',
@@ -1592,6 +1608,8 @@ final Map<String, String> ptBRTranslations = {
   'edit_all_foods': 'Editar todos os alimentos',
   'edit_all_foods_desc': 'Edite nome e quantidade de todos os itens',
   'add_food': 'Adicionar alimento',
+  'food_nutrition_lookup_failed':
+      'Não foi possível calcular os nutrientes. O alimento não foi adicionado. Tente novamente.',
   'save_all': 'Salvar tudo',
   'meal_added': 'Refeição adicionada',
   'meal_added_success': 'Refeição adicionada com sucesso!',

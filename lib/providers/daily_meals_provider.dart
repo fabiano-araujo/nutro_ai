@@ -966,6 +966,47 @@ class DailyMealsProvider extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  /// Restaura cards que vieram junto do snapshot da conversa sem registra-los
+  /// como uma nova refeicao do usuario. Isso mantem o modo offline consistente
+  /// quando o chat chega antes do endpoint de refeicoes.
+  Future<void> restoreMealsFromChatSnapshot(
+    DateTime date,
+    List<Meal> snapshotMeals,
+  ) async {
+    await ready;
+    if (snapshotMeals.isEmpty) return;
+
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final dateKey = _formatDate(normalizedDate);
+    final meals = _mealsByDate[dateKey] ??= <Meal>[];
+    var changed = false;
+
+    for (final snapshotMeal in snapshotMeals) {
+      if (snapshotMeal.foods.isEmpty ||
+          _isChatMealDeletedForDate(dateKey, snapshotMeal.messageId)) {
+        continue;
+      }
+      if (_findMealIndexByMessageId(meals, snapshotMeal.messageId) != -1) {
+        continue;
+      }
+
+      meals.add(
+        _normalizeMeal(
+          snapshotMeal.copyWith(
+            dateTime: _dateTimeOnDay(normalizedDate, snapshotMeal.dateTime),
+          ),
+        ),
+      );
+      changed = true;
+    }
+
+    if (!changed) return;
+    _markDateLocallyModified(dateKey);
+    await _saveToPreferences();
+    _scheduleSync();
+    notifyListeners();
+  }
+
   bool isChatMealDeleted(String? messageId, {DateTime? date}) {
     final dateKey = _formatDate(date ?? _selectedDate);
     return _isChatMealDeletedForDate(dateKey, messageId);
@@ -1056,7 +1097,7 @@ class DailyMealsProvider extends ChangeNotifier {
 
     final meals = _mealsByDate[dateKey]!;
     final normalizedMeal = _normalizeMeal(
-      meal.copyWith(dateTime: _selectedDate),
+      meal.copyWith(dateTime: _dateTimeOnDay(_selectedDate, meal.dateTime)),
     );
     if (_isChatMealDeletedForDate(dateKey, normalizedMeal.messageId)) {
       return;
@@ -1114,6 +1155,19 @@ class DailyMealsProvider extends ChangeNotifier {
     _saveToPreferences();
     _scheduleSync(); // Sync com servidor
     notifyListeners();
+  }
+
+  DateTime _dateTimeOnDay(DateTime day, DateTime time) {
+    return DateTime(
+      day.year,
+      day.month,
+      day.day,
+      time.hour,
+      time.minute,
+      time.second,
+      time.millisecond,
+      time.microsecond,
+    );
   }
 
   void addFoodToMeal(MealType type, Food food) {

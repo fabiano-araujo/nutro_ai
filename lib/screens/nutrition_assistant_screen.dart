@@ -57,6 +57,7 @@ import '../widgets/header_streak_badge.dart';
 import '../widgets/reward_ad_dialog.dart';
 import '../services/app_agent_service.dart';
 import '../services/auth_service.dart';
+import '../utils/chat_timeline_builder.dart';
 
 // Singleton para gerenciar o estado da tela NutritionAssistant em toda a aplicação
 // Este padrão de design é usado para resolver o problema do ciclo de vida
@@ -227,8 +228,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   bool? _lastLoggedIsLoadingMessages;
   String? _lastChatSurfaceSignature;
   String? _pendingOrphanFoodPruneSignature;
+  final Set<String> _scheduledMealSnapshotRestores = <String>{};
+  final Set<String> _scheduledMealSnapshotBackfills = <String>{};
+  final Set<String> _scheduledLegacyMealMigrations = <String>{};
   bool _deferRestoredFoodCards = false;
-  static const Duration _orphanFoodPruneGrace = Duration(minutes: 2);
 
   String _formatMealToastDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -385,9 +388,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     }
 
     final rawMessage = message['message'];
-    if (rawMessage is! String ||
-        !FoodJsonParser.hasFoodJsonSignal(rawMessage)) {
+    final snapshots = message['mealSnapshots'];
+    final hasSnapshots = snapshots is List && snapshots.isNotEmpty;
+    if ((rawMessage is! String ||
+            !FoodJsonParser.hasFoodJsonSignal(rawMessage)) &&
+        !hasSnapshots) {
       return null;
+    }
+
+    final storedId = message['id']?.toString().trim();
+    if (storedId != null && storedId.isNotEmpty) {
+      return storedId;
     }
 
     final timestamp = message['timestamp'];
@@ -398,33 +409,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     return 'msg-${timestamp.microsecondsSinceEpoch}';
   }
 
-  bool _isPrunableFoodMessage({
-    required Map<String, dynamic> message,
-    required String messageId,
-    required DailyMealsProvider mealsProvider,
-    required DateTime selectedDate,
-  }) {
-    if (mealsProvider.getMealsByMessageId(messageId).isNotEmpty) {
-      return false;
-    }
-
-    if (mealsProvider.isChatMealDeleted(messageId, date: selectedDate)) {
-      return true;
-    }
-
-    final timestamp = message['timestamp'];
-    if (timestamp is! DateTime) {
-      return false;
-    }
-
-    final age = DateTime.now().difference(timestamp);
-    return age >= _orphanFoodPruneGrace;
-  }
-
-  bool _shouldReconstructMealsOverOrphanChat({
+  void _scheduleDeletedFoodMessagePruneIfNeeded({
     required List<Map<String, dynamic>> messages,
     required DailyMealsProvider mealsProvider,
-    required List<Meal> dayMeals,
     required bool isLoading,
     required bool isLoadingMessages,
     required bool shouldWaitForInitialChatBootstrap,
@@ -436,12 +423,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         shouldWaitForInitialChatBootstrap ||
         !mealsProvider.isLoaded ||
         mealsProvider.isLoadingFromServer) {
-      return false;
+      return;
     }
 
     final selectedDate = mealsProvider.selectedDate;
-    var foodMessageCount = 0;
-    var matchedFoodMessageCount = 0;
     final prunableIds = <String>[];
 
     for (final message in messages) {
@@ -450,18 +435,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         continue;
       }
 
-      foodMessageCount++;
       if (mealsProvider.getMealsByMessageId(messageId).isNotEmpty) {
-        matchedFoodMessageCount++;
         continue;
       }
 
-      if (_isPrunableFoodMessage(
-        message: message,
-        messageId: messageId,
-        mealsProvider: mealsProvider,
-        selectedDate: selectedDate,
-      )) {
+      if (mealsProvider.isChatMealDeleted(messageId, date: selectedDate)) {
         prunableIds.add(messageId);
       }
     }
@@ -473,11 +451,53 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         selectedDate: selectedDate,
       );
     }
+  }
 
-    return dayMeals.isNotEmpty &&
-        foodMessageCount > 0 &&
-        matchedFoodMessageCount == 0 &&
-        prunableIds.isNotEmpty;
+  List<Meal> _findUnrepresentedDayMeals({
+    required List<Map<String, dynamic>> messages,
+    required DailyMealsProvider mealsProvider,
+    required List<Meal> dayMeals,
+  }) {
+    if (widget.isFreeChat || dayMeals.isEmpty || messages.isEmpty) {
+      return const <Meal>[];
+    }
+
+    final representedMealIds = <String>{};
+    for (final message in messages) {
+      final messageId = _foodDiaryMessageId(message);
+      if (messageId == null) continue;
+      representedMealIds.addAll(
+        mealsProvider
+            .getMealsByMessageId(messageId)
+            .map((meal) => meal.id.toString()),
+      );
+    }
+
+    return dayMeals
+        .where((meal) => !representedMealIds.contains(meal.id.toString()))
+        .toList(growable: false);
+  }
+
+  void _scheduleLegacyMealMigration(
+    List<Meal> unrepresentedMeals,
+    DateTime selectedDate,
+  ) {
+    final recoverableIds = unrepresentedMeals
+        .map((meal) => ChatTimelineBuilder.mealMessageGroupId(meal.messageId))
+        .whereType<String>()
+        .where((id) => RegExp(r'^msg-\d+$').hasMatch(id))
+        .toSet()
+        .toList()
+      ..sort();
+    if (recoverableIds.isEmpty) return;
+
+    final signature =
+        '${_formatMealToastDateKey(selectedDate)}:${recoverableIds.join(',')}';
+    if (!_scheduledLegacyMealMigrations.add(signature)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _chatController.recoverLegacyMealSnapshotMessages(unrepresentedMeals);
+    });
   }
 
   void _scheduleOrphanFoodMessagePrune({
@@ -513,7 +533,6 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             mealsProvider.getMealsByMessageId(messageId).isNotEmpty,
         isChatMealDeleted: (messageId) =>
             mealsProvider.isChatMealDeleted(messageId, date: selectedDate),
-        gracePeriod: _orphanFoodPruneGrace,
         syncNow: false,
       );
 
@@ -2291,16 +2310,29 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               widget.isBootstrappingInitialChat && !hasCachedMessages;
           final shouldBlockChatContent = !hasCachedMessages &&
               (isLoadingMessages || shouldWaitForInitialChatBootstrap);
-          final shouldUseReconstructedMeals =
-              _shouldReconstructMealsOverOrphanChat(
+          _scheduleDeletedFoodMessagePruneIfNeeded(
             messages: messages,
             mealsProvider: contentMealsProvider,
-            dayMeals: reconstructedDayMeals,
             isLoading: isLoading,
             isLoadingMessages: isLoadingMessages,
             shouldWaitForInitialChatBootstrap:
                 shouldWaitForInitialChatBootstrap,
           );
+          final unrepresentedDayMeals = _findUnrepresentedDayMeals(
+            messages: messages,
+            mealsProvider: contentMealsProvider,
+            dayMeals: reconstructedDayMeals,
+          );
+          _scheduleLegacyMealMigration(
+            unrepresentedDayMeals,
+            contentMealsProvider.selectedDate,
+          );
+          final timelineItems = ChatTimelineBuilder.build(
+            messages: messages,
+            unrepresentedMeals: unrepresentedDayMeals,
+          );
+          final lastAiMessageIndex =
+              messages.lastIndexWhere((message) => message['isUser'] == false);
           _logChatBuildPerf(
             messageCount: messages.length,
             isLoading: isLoading,
@@ -2309,13 +2341,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           );
           final surface = shouldBlockChatContent
               ? 'initial_loader'
-              : shouldUseReconstructedMeals
-                  ? 'reconstructed_meals_orphan_chat'
-                  : messages.isNotEmpty
-                      ? 'message_list'
-                      : _suggestions.isNotEmpty
-                          ? 'suggestions'
-                          : 'empty_or_reconstructed';
+              : messages.isNotEmpty
+                  ? 'message_timeline'
+                  : _suggestions.isNotEmpty
+                      ? 'suggestions'
+                      : 'empty_or_reconstructed';
           _logChatSurfaceDecision(surface, {
             'messages': messages.length,
             'loading': isLoading,
@@ -2324,7 +2354,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             'waitingBootstrap': shouldWaitForInitialChatBootstrap,
             'suggestions': _suggestions.length,
             'reconstructedMeals': reconstructedDayMeals.length,
-            'orphanFallback': shouldUseReconstructedMeals,
+            'unrepresentedMeals': unrepresentedDayMeals.length,
+            'timelineItems': timelineItems.length,
           });
 
           // Fazer scroll para as mensagens carregadas inicialmente (apenas uma vez)
@@ -2530,14 +2561,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                       child: Stack(
                         children: [
                           // ListView (só renderiza quando há mensagens)
-                          if (!shouldBlockChatContent &&
-                              messages.isNotEmpty &&
-                              !shouldUseReconstructedMeals)
+                          if (!shouldBlockChatContent && messages.isNotEmpty)
                             ListView.builder(
                               controller: _scrollController,
                               padding: EdgeInsets.all(16),
                               // Adicionar +1 para o card de ferramentas quando existir
-                              itemCount: messages.length +
+                              itemCount: timelineItems.length +
                                   (_shouldShowToolCard ? 1 : 0) +
                                   (messages.isNotEmpty &&
                                           !messages.last['isUser']
@@ -2556,47 +2585,61 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   builtItem = _buildToolCard(isDarkMode);
                                 } else {
                                   // Ajustar índice para compensar o card de ferramentas
-                                  final adjustedIndex =
+                                  var adjustedIndex =
                                       _shouldShowToolCard ? index - 1 : index;
 
-                                  if (adjustedIndex < messages.length) {
-                                    // Verificar se é a última mensagem da IA
-                                    final isAiMessage = messages[adjustedIndex]
-                                            ['isUser'] ==
-                                        false;
-                                    int lastAiMessageIndex = -1;
-                                    for (int i = messages.length - 1;
-                                        i >= 0;
-                                        i--) {
-                                      if (messages[i]['isUser'] == false) {
-                                        lastAiMessageIndex = i;
-                                        break;
-                                      }
+                                  if (adjustedIndex < timelineItems.length) {
+                                    final timelineItem =
+                                        timelineItems[adjustedIndex];
+                                    if (timelineItem.isMessage) {
+                                      final messageIndex =
+                                          timelineItem.messageIndex!;
+                                      // Verificar se é a última mensagem da IA
+                                      final isAiMessage = messages[messageIndex]
+                                              ['isUser'] ==
+                                          false;
+                                      final isLastAiMessage = isAiMessage &&
+                                          messageIndex == lastAiMessageIndex;
+
+                                      final messageBubble = _buildMessageBubble(
+                                        messageData: messages[messageIndex]
+                                                .containsKey('notifier')
+                                            ? messages[messageIndex]['notifier']
+                                            : messages[messageIndex],
+                                        isUser: messages[messageIndex]
+                                            ['isUser'],
+                                        timestamp: messages[messageIndex]
+                                            ['timestamp'],
+                                        isDarkMode: isDarkMode,
+                                        index: messageIndex,
+                                        currentlySpeakingMessageIndex:
+                                            currentlySpeakingMessageIndex,
+                                      );
+
+                                      // Se for a última mensagem da IA, adicionar a key para rastreamento
+                                      builtItem = isLastAiMessage
+                                          ? Container(
+                                              key: _lastAiMessageKey,
+                                              child: messageBubble,
+                                            )
+                                          : messageBubble;
+                                    } else {
+                                      builtItem = Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: timelineItem.meals
+                                            .map(
+                                              (meal) =>
+                                                  _buildReconstructedMealCard(
+                                                meal: meal,
+                                                mealsProvider:
+                                                    contentMealsProvider,
+                                                keyPrefix: 'missing-chat-meal',
+                                              ),
+                                            )
+                                            .toList(growable: false),
+                                      );
                                     }
-                                    final isLastAiMessage = isAiMessage &&
-                                        adjustedIndex == lastAiMessageIndex;
-
-                                    final messageBubble = _buildMessageBubble(
-                                      messageData: messages[adjustedIndex]
-                                              .containsKey('notifier')
-                                          ? messages[adjustedIndex]['notifier']
-                                          : messages[adjustedIndex],
-                                      isUser: messages[adjustedIndex]['isUser'],
-                                      timestamp: messages[adjustedIndex]
-                                          ['timestamp'],
-                                      isDarkMode: isDarkMode,
-                                      index: adjustedIndex,
-                                      currentlySpeakingMessageIndex:
-                                          currentlySpeakingMessageIndex,
-                                    );
-
-                                    // Se for a última mensagem da IA, adicionar a key para rastreamento
-                                    builtItem = isLastAiMessage
-                                        ? Container(
-                                            key: _lastAiMessageKey,
-                                            child: messageBubble,
-                                          )
-                                        : messageBubble;
                                   } else {
                                     // Exibir botões de ação após a última mensagem da IA
                                     builtItem = _buildActionButtons(
@@ -2665,15 +2708,6 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                           if (shouldBlockChatContent)
                             Positioned.fill(
                               child: _buildInitialChatLoadingView(
-                                backgroundColor: currentScaffoldBackgroundColor,
-                              ),
-                            )
-                          else if (shouldUseReconstructedMeals)
-                            Positioned.fill(
-                              child: _buildReconstructedMealsView(
-                                meals: reconstructedDayMeals,
-                                mealsProvider: contentMealsProvider,
-                                isDarkMode: isDarkMode,
                                 backgroundColor: currentScaffoldBackgroundColor,
                               ),
                             )
@@ -3755,10 +3789,19 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     final bool deferFoodCard =
         _deferRestoredFoodCards && hasFoodJsonSignal && !usingNotifier;
     final bool hasFoodJson = hasFoodJsonSignal &&
-        (deferFoodCard ? true : FoodJsonParser.containsFoodJson(message));
+        (deferFoodCard ? true : FoodJsonParser.hasCompleteFoodJson(message));
     final bool shouldRenderFoodCard =
         canRenderFoodDiaryCards && hasFoodJson && !deferFoodCard;
-    final foodMessageId = 'msg-${timestamp.microsecondsSinceEpoch}';
+    final messageRecord = index >= 0 && index < _chatController.messages.length
+        ? _chatController.messages[index]
+        : const <String, dynamic>{};
+    final storedMessageId = messageRecord['id']?.toString().trim();
+    final foodMessageId = storedMessageId == null || storedMessageId.isEmpty
+        ? 'msg-${timestamp.microsecondsSinceEpoch}'
+        : storedMessageId;
+    final rawMealSnapshots = messageRecord['mealSnapshots'];
+    final hasMealSnapshots =
+        rawMealSnapshots is List && rawMealSnapshots.isNotEmpty;
     final String displayMessage = AppAgentService.sanitizeDisplayMessage(
       message,
       autoRegisterFoods: shouldRenderFoodCard,
@@ -3795,9 +3838,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 !isUser && FoodJsonParser.hasFoodJsonSignal(notifier.message);
             final hasJsonInNotifier = hasJsonSignalInNotifier &&
                 !notifier.isStreaming &&
-                FoodJsonParser.containsFoodJson(notifier.message);
+                FoodJsonParser.hasCompleteFoodJson(notifier.message);
             final showsMealCard = canRenderFoodDiaryCards &&
-                hasJsonInNotifier &&
+                (hasJsonInNotifier || hasMealSnapshots) &&
                 !notifier.isStreaming;
             final cleanMessage = notifier.displayMessage;
             final contextualActions = _buildContextualMessageActions(
@@ -3838,6 +3881,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     isDarkMode: isDarkMode,
                     foodMessageId: foodMessageId,
                     messageIndex: index,
+                    messageTimestamp: timestamp,
                   ),
                 if (contextualActions != null) contextualActions,
               ],
@@ -3856,7 +3900,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       // Se tem JSON e o texto limpo está vazio, só mostra o FoodJsonDisplay
       final bool showMessageBubble =
           displayMessage.trim().isNotEmpty || isStreaming || imageBytes != null;
-      final bool showsMealCard = shouldRenderFoodCard && !isStreaming;
+      final bool showsMealCard =
+          (shouldRenderFoodCard || hasMealSnapshots) && !isStreaming;
       final contextualActions = _buildContextualMessageActions(
         rawMessage: message,
         isUser: isUser,
@@ -3892,6 +3937,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               isDarkMode: isDarkMode,
               foodMessageId: foodMessageId,
               messageIndex: index,
+              messageTimestamp: timestamp,
             ),
           if (contextualActions != null) contextualActions,
         ],
@@ -3911,65 +3957,193 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required bool isDarkMode,
     required String foodMessageId,
     required int messageIndex,
+    required DateTime messageTimestamp,
   }) {
     return Consumer<DailyMealsProvider>(
       builder: (context, mealsProvider, _) {
+        final cachedMeals = mealsProvider.getMealsByMessageId(foodMessageId);
+        final snapshotMeals = _readMealSnapshots(messageIndex);
+        final visibleMeals =
+            cachedMeals.isNotEmpty ? cachedMeals : snapshotMeals;
+
+        if (cachedMeals.isNotEmpty && snapshotMeals.isEmpty) {
+          _scheduleMealSnapshotBackfill(
+            messageId: foodMessageId,
+            meals: cachedMeals,
+          );
+        } else if (cachedMeals.isEmpty && snapshotMeals.isNotEmpty) {
+          _scheduleMealSnapshotRestore(
+            messageId: foodMessageId,
+            meals: snapshotMeals,
+            mealsProvider: mealsProvider,
+          );
+        }
+
+        if (visibleMeals.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(visibleMeals.length, (index) {
+              final meal = visibleMeals[index];
+
+              return Padding(
+                padding: EdgeInsets.only(top: index == 0 ? 0 : 12),
+                child: MealCard(
+                  key: ValueKey('persisted-$foodMessageId-${meal.id}'),
+                  meal: meal,
+                  topContentPadding: 16,
+                  onMealUpdated: (updatedMeal) {
+                    final updatedMeals = List<Meal>.from(visibleMeals);
+                    if (updatedMeal.foods.isEmpty) {
+                      mealsProvider.deleteMeal(
+                        updatedMeal.id,
+                        messageId: updatedMeal.messageId,
+                      );
+                      updatedMeals.removeAt(index);
+                      if (updatedMeals.isEmpty) {
+                        _chatController.deleteMessagePair(messageIndex);
+                      } else {
+                        _chatController.persistMealSnapshotsForMessage(
+                          messageId: foodMessageId,
+                          meals: updatedMeals,
+                        );
+                      }
+                    } else {
+                      mealsProvider.updateMeal(updatedMeal);
+                      updatedMeals[index] = updatedMeal;
+                      _chatController.persistMealSnapshotsForMessage(
+                        messageId: foodMessageId,
+                        meals: updatedMeals,
+                      );
+                    }
+                  },
+                  onDelete: () {
+                    mealsProvider.deleteMeal(
+                      meal.id,
+                      messageId: meal.messageId,
+                    );
+                    final remainingMeals = List<Meal>.from(visibleMeals)
+                      ..removeAt(index);
+                    if (remainingMeals.isEmpty) {
+                      _chatController.deleteMessagePair(messageIndex);
+                    } else {
+                      _chatController.persistMealSnapshotsForMessage(
+                        messageId: foodMessageId,
+                        meals: remainingMeals,
+                      );
+                    }
+                  },
+                ),
+              );
+            }),
+          );
+        }
+
         if (hasFoodJson) {
           return FoodJsonDisplay(
             key: ValueKey(foodMessageId),
             message: message,
             isDarkMode: isDarkMode,
             selectedDate: mealsProvider.selectedDate,
+            messageTimestamp: messageTimestamp,
             messageId: foodMessageId,
+            onMealsPersisted: (meals) {
+              _chatController.persistMealSnapshotsForMessage(
+                messageId: foodMessageId,
+                meals: meals,
+              );
+            },
             onDeleteMessage: () {
               _chatController.deleteMessagePair(messageIndex);
             },
           );
         }
 
-        final cachedMeals = mealsProvider.getMealsByMessageId(foodMessageId);
-        if (cachedMeals.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: List.generate(cachedMeals.length, (index) {
-            final meal = cachedMeals[index];
-
-            return Padding(
-              padding: EdgeInsets.only(top: index == 0 ? 0 : 12),
-              child: MealCard(
-                key: ValueKey('cached-$foodMessageId-${meal.id}'),
-                meal: meal,
-                topContentPadding: 16,
-                onMealUpdated: (updatedMeal) {
-                  if (updatedMeal.foods.isEmpty) {
-                    mealsProvider.deleteMeal(
-                      updatedMeal.id,
-                      messageId: updatedMeal.messageId,
-                    );
-                    if (cachedMeals.length == 1) {
-                      _chatController.deleteMessagePair(messageIndex);
-                    }
-                  } else {
-                    mealsProvider.updateMeal(updatedMeal);
-                  }
-                },
-                onDelete: () {
-                  mealsProvider.deleteMeal(
-                    meal.id,
-                    messageId: meal.messageId,
-                  );
-                  if (cachedMeals.length == 1) {
-                    _chatController.deleteMessagePair(messageIndex);
-                  }
-                },
-              ),
-            );
-          }),
-        );
+        return const SizedBox.shrink();
       },
+    );
+  }
+
+  List<Meal> _readMealSnapshots(int messageIndex) {
+    if (messageIndex < 0 || messageIndex >= _chatController.messages.length) {
+      return const <Meal>[];
+    }
+    final rawSnapshots =
+        _chatController.messages[messageIndex]['mealSnapshots'];
+    if (rawSnapshots is! List || rawSnapshots.isEmpty) {
+      return const <Meal>[];
+    }
+
+    final meals = <Meal>[];
+    for (final snapshot in rawSnapshots) {
+      try {
+        if (snapshot is Map<String, dynamic>) {
+          meals.add(Meal.fromJson(snapshot));
+        } else if (snapshot is Map) {
+          meals.add(Meal.fromJson(Map<String, dynamic>.from(snapshot)));
+        }
+      } catch (error) {
+        debugPrint('[CHAT_SNAPSHOT] invalid_meal_snapshot error=$error');
+      }
+    }
+    return meals;
+  }
+
+  void _scheduleMealSnapshotBackfill({
+    required String messageId,
+    required List<Meal> meals,
+  }) {
+    if (!_scheduledMealSnapshotBackfills.add(messageId)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _chatController.persistMealSnapshotsForMessage(
+        messageId: messageId,
+        meals: meals,
+      );
+    });
+  }
+
+  void _scheduleMealSnapshotRestore({
+    required String messageId,
+    required List<Meal> meals,
+    required DailyMealsProvider mealsProvider,
+  }) {
+    final selectedDate = mealsProvider.selectedDate;
+    final signature = '${_formatMealToastDateKey(selectedDate)}:$messageId';
+    if (!_scheduledMealSnapshotRestores.add(signature)) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await mealsProvider.restoreMealsFromChatSnapshot(selectedDate, meals);
+      _scheduledMealSnapshotRestores.remove(signature);
+    });
+  }
+
+  Widget _buildReconstructedMealCard({
+    required Meal meal,
+    required DailyMealsProvider mealsProvider,
+    required String keyPrefix,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: MealCard(
+        key: ValueKey('$keyPrefix-${meal.id}'),
+        meal: meal,
+        topContentPadding: 16,
+        onMealUpdated: (updatedMeal) {
+          if (updatedMeal.foods.isEmpty) {
+            mealsProvider.deleteMeal(
+              updatedMeal.id,
+              messageId: updatedMeal.messageId,
+            );
+          } else {
+            mealsProvider.updateMeal(updatedMeal);
+          }
+        },
+        onDelete: () => mealsProvider.deleteMeal(
+          meal.id,
+          messageId: meal.messageId,
+        ),
+      ),
     );
   }
 
@@ -3991,27 +4165,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         itemCount: meals.length,
         itemBuilder: (context, index) {
           final meal = meals[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: MealCard(
-              key: ValueKey('reconstructed-${meal.id}'),
-              meal: meal,
-              topContentPadding: 16,
-              onMealUpdated: (updatedMeal) {
-                if (updatedMeal.foods.isEmpty) {
-                  mealsProvider.deleteMeal(
-                    updatedMeal.id,
-                    messageId: updatedMeal.messageId,
-                  );
-                } else {
-                  mealsProvider.updateMeal(updatedMeal);
-                }
-              },
-              onDelete: () => mealsProvider.deleteMeal(
-                meal.id,
-                messageId: meal.messageId,
-              ),
-            ),
+          return _buildReconstructedMealCard(
+            meal: meal,
+            mealsProvider: mealsProvider,
+            keyPrefix: 'reconstructed',
           );
         },
       ),
@@ -4673,39 +4830,74 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }
 
   // Bottom sheet com o calendário semanal para trocar de data
-  void _showDatePickerSheet(BuildContext context) {
+  Future<void> _showDatePickerSheet(BuildContext context) async {
+    _inputFocusNode.canRequestFocus = false;
+    _inputFocusNode.unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    if (!mounted || !context.mounted) return;
+
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Consumer<DailyMealsProvider>(
-          builder: (context, mealsProvider, child) {
-            return MonthCalendarSheet(
-              selectedDate: mealsProvider.selectedDate,
-              hasMeals: mealsProvider.hasMealsOn,
-              onVisibleMonthChanged: (month) {
-                mealsProvider.ensureMonthSummariesLoaded(month);
-              },
-              onDaySelected: (date) async {
-                Navigator.of(sheetContext).pop();
-                _clearSuggestions();
-                _beginMealToastSuppressionForDate(date, mealsProvider);
-                _dismissMealAddedToast();
-                _showHeader();
-                mealsProvider.setSelectedDate(date);
-                await _chatController.changeSelectedDate(date);
-                _scrollToLastAiResponse();
-              },
-            );
-          },
-        );
-      },
-    );
+    try {
+      final selectedDate = await showModalBottomSheet<DateTime>(
+        context: context,
+        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        sheetAnimationStyle: const AnimationStyle(
+          reverseDuration: Duration.zero,
+        ),
+        isScrollControlled: true,
+        builder: (sheetContext) {
+          return Consumer<DailyMealsProvider>(
+            builder: (context, mealsProvider, child) {
+              return MonthCalendarSheet(
+                selectedDate: mealsProvider.selectedDate,
+                hasMeals: mealsProvider.hasMealsOn,
+                onVisibleMonthChanged: (month) {
+                  mealsProvider.ensureMonthSummariesLoaded(month);
+                },
+                onDaySelected: (date) {
+                  _inputFocusNode.unfocus();
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+                  Navigator.of(sheetContext).pop(date);
+                },
+              );
+            },
+          );
+        },
+      );
+
+      if (selectedDate == null || !mounted || !context.mounted) {
+        return;
+      }
+
+      // O fechamento não tem animação e este frame garante que a rota do
+      // calendário saiu antes de reconstruirmos o chat pesado.
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || !context.mounted) return;
+
+      _inputFocusNode.unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+      if (!mounted || !context.mounted) return;
+
+      final mealsProvider = context.read<DailyMealsProvider>();
+      _clearSuggestions();
+      _beginMealToastSuppressionForDate(selectedDate, mealsProvider);
+      _dismissMealAddedToast();
+      _showHeader();
+      mealsProvider.setSelectedDate(selectedDate);
+      await _chatController.changeSelectedDate(selectedDate);
+      if (!mounted) return;
+      _scrollToLastAiResponse();
+    } finally {
+      if (mounted) {
+        _inputFocusNode.canRequestFocus = true;
+      }
+    }
   }
 
   // Chip de ação compacto estilo ChatGPT (pill shape)

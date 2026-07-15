@@ -17,7 +17,9 @@ class FoodJsonDisplay extends StatefulWidget {
   final String message;
   final bool isDarkMode;
   final DateTime selectedDate;
+  final DateTime? messageTimestamp;
   final String? messageId; // ID da mensagem do chat para vinculação
+  final ValueChanged<List<Meal>>? onMealsPersisted;
   final VoidCallback?
       onDeleteMessage; // Callback para excluir a mensagem do chat
 
@@ -26,7 +28,9 @@ class FoodJsonDisplay extends StatefulWidget {
     required this.message,
     required this.isDarkMode,
     required this.selectedDate,
+    this.messageTimestamp,
     this.messageId,
+    this.onMealsPersisted,
     this.onDeleteMessage,
   }) : super(key: key);
 
@@ -73,6 +77,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
             _isAdded = true;
             _meals = existingMeals;
           });
+          widget.onMealsPersisted?.call(existingMeals);
           return;
         }
       }
@@ -215,6 +220,10 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
       _meals = updatedMeals;
     });
 
+    if (_meals.isNotEmpty) {
+      widget.onMealsPersisted?.call(_meals);
+    }
+
     if (shouldDeleteMessage) {
       widget.onDeleteMessage?.call();
     }
@@ -243,6 +252,8 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
     if (_meals.isEmpty) {
       widget.onDeleteMessage?.call();
+    } else {
+      widget.onMealsPersisted?.call(_meals);
     }
   }
 
@@ -260,7 +271,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
       // Criar cópia da refeição com a data selecionada e messageId
       final mealToAdd = meal.copyWith(
-        dateTime: widget.selectedDate,
+        dateTime: _mealDateTime(),
         id: '$timestamp-$i',
         messageId: _messageIdForMeal(i),
       );
@@ -294,6 +305,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
         _meals = addedMeals;
       });
     }
+    widget.onMealsPersisted?.call(addedMeals);
 
     AdManager.maybeShowMealDoneInterstitial();
 
@@ -305,6 +317,20 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
   String? _messageIdForMeal(int index) {
     return _messageIdForParsedMeal(index, _meals.length);
+  }
+
+  DateTime _mealDateTime() {
+    final time = widget.messageTimestamp ?? widget.selectedDate;
+    return DateTime(
+      widget.selectedDate.year,
+      widget.selectedDate.month,
+      widget.selectedDate.day,
+      time.hour,
+      time.minute,
+      time.second,
+      time.millisecond,
+      time.microsecond,
+    );
   }
 
   String? _messageIdForParsedMeal(int index, int mealCount) {
@@ -411,6 +437,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
               .toList();
         });
       }
+      widget.onMealsPersisted?.call(_meals);
     } catch (e) {
       // Silencioso — não bloqueia o usuário se o post-processing falhar
       debugPrint('[FoodJsonDisplay] Erro no processamento de favoritos: $e');

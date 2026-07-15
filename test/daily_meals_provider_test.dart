@@ -67,6 +67,54 @@ void main() {
     expect(provider.lastMealAdditionDate, isNull);
   });
 
+  test('restores chat snapshots offline without counting a new meal', () async {
+    final provider = DailyMealsProvider();
+    await provider.ready;
+    final selectedDate = DateTime(2026, 7, 8);
+    final originalCardTime = DateTime(2026, 7, 7, 13, 42, 15);
+    provider.setSelectedDate(selectedDate);
+
+    await provider.restoreMealsFromChatSnapshot(selectedDate, [
+      Meal(
+        id: 'snapshot-meal',
+        type: MealType.lunch,
+        foods: [_food('frango')],
+        dateTime: originalCardTime,
+        messageId: 'msg-${originalCardTime.microsecondsSinceEpoch}',
+      ),
+    ]);
+
+    expect(provider.todayMeals, hasLength(1));
+    expect(provider.mealAdditionVersion, 0);
+    expect(
+        provider.todayMeals.single.dateTime, DateTime(2026, 7, 8, 13, 42, 15));
+
+    await provider.restoreMealsFromChatSnapshot(selectedDate, [
+      provider.todayMeals.single,
+    ]);
+    expect(provider.todayMeals, hasLength(1));
+  });
+
+  test('preserves the chat card time when adding it to a selected day',
+      () async {
+    final provider = DailyMealsProvider();
+    await provider.ready;
+    provider.setSelectedDate(DateTime(2026, 7, 8));
+
+    provider.addMeal(
+      Meal(
+        id: 'timed-meal',
+        type: MealType.snack,
+        foods: [_food('banana')],
+        dateTime: DateTime(2026, 1, 1, 16, 25, 30),
+        messageId: 'msg-1',
+      ),
+    );
+
+    expect(
+        provider.todayMeals.single.dateTime, DateTime(2026, 7, 8, 16, 25, 30));
+  });
+
   test('updates chat meal totals by message id when card id changes', () async {
     final provider = DailyMealsProvider();
     await provider.ready;

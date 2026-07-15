@@ -140,7 +140,7 @@ class DietPlanProvider extends ChangeNotifier {
       'description': 'Alternativa rápida para testar geração de dietas',
     },
     {
-      'id': 'google/gemini-2.5-flash-lite-preview-09-2025',
+      'id': 'google/gemini-2.5-flash-lite',
       'name': 'Gemini 2.5 Flash Lite',
       'description': 'Modelo leve para testes com menor custo',
     },

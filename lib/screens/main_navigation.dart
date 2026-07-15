@@ -20,7 +20,10 @@ import '../services/api_service.dart';
 import '../services/user_app_state_service.dart';
 import '../services/daily_chat_sync_service.dart';
 import '../services/storage_service.dart';
+import '../services/notification_service.dart';
+import '../services/behavioral_reminder_planner.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../i18n/language_controller.dart';
 import '../providers/free_chat_provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/streak_provider.dart';
@@ -100,7 +103,8 @@ class MainNavigation extends StatefulWidget {
   _MainNavigationState createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationState extends State<MainNavigation>
+    with WidgetsBindingObserver {
   // Credenciais usadas apenas em modo desenvolvedor (kDebugMode) para
   // oferecer login automático ao abrir o app.
   static const String _devAutoLoginEmail = 'fabiano.araujo2056@gmail.com';
@@ -132,10 +136,22 @@ class _MainNavigationState extends State<MainNavigation> {
       const <String, List<Map<String, dynamic>>>{};
   final UserAppStateService _appStateService = UserAppStateService();
   Stopwatch? _authBootstrapStopwatch;
+  Timer? _behavioralNotificationDebounce;
+  Timer? _behavioralDayRolloverTimer;
+  DailyMealsProvider? _notificationMealsProvider;
+  MealTypesProvider? _notificationMealTypesProvider;
+  StreakProvider? _notificationStreakProvider;
+  LanguageController? _notificationLanguageController;
+  bool _behavioralNotificationSyncRunning = false;
+  bool _behavioralNotificationSyncRequested = false;
+  bool _forceBehavioralNotificationSync = false;
+  bool _refreshBehavioralNotificationTimeZone = false;
+  int _behavioralNotificationSessionRevision = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Configurar callback do controlador de navegação
     navigationController.tabChangeCallback = _onItemTapped;
@@ -150,9 +166,237 @@ class _MainNavigationState extends State<MainNavigation> {
       // Configurar sync de refeições com auth
       _setupMealsSyncAuth();
 
+      // Reconciliar lembretes condicionais depois que os providers existem.
+      _setupBehavioralNotifications();
+
       // Em modo desenvolvedor, oferecer login automático na conta de testes.
       _maybeOfferDevAutoLogin();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _scheduleBehavioralNotificationSync(
+        force: true,
+        refreshTimeZone: true,
+      );
+    }
+  }
+
+  void _setupBehavioralNotifications() {
+    if (_notificationMealsProvider != null) return;
+
+    _notificationMealsProvider = context.read<DailyMealsProvider>()
+      ..addListener(_onBehavioralNotificationStateChanged);
+    _notificationMealTypesProvider = context.read<MealTypesProvider>()
+      ..addListener(_onBehavioralNotificationStateChanged);
+    _notificationStreakProvider = context.read<StreakProvider>()
+      ..addListener(_onBehavioralNotificationStateChanged);
+    _notificationLanguageController = context.read<LanguageController>()
+      ..addListener(_onBehavioralNotificationLanguageChanged);
+
+    _scheduleBehavioralNotificationSync(force: true);
+  }
+
+  void _onBehavioralNotificationStateChanged() {
+    _scheduleBehavioralNotificationSync();
+  }
+
+  void _onBehavioralNotificationLanguageChanged() {
+    _scheduleBehavioralNotificationSync(force: true);
+  }
+
+  void _scheduleBehavioralNotificationSync({
+    bool force = false,
+    bool refreshTimeZone = false,
+  }) {
+    if (!mounted) return;
+    _forceBehavioralNotificationSync |= force;
+    _refreshBehavioralNotificationTimeZone |= refreshTimeZone;
+    _behavioralNotificationDebounce?.cancel();
+    _behavioralNotificationDebounce = Timer(
+      const Duration(milliseconds: 350),
+      _drainBehavioralNotificationSync,
+    );
+  }
+
+  Future<void> _drainBehavioralNotificationSync() async {
+    if (_behavioralNotificationSyncRunning) {
+      _behavioralNotificationSyncRequested = true;
+      return;
+    }
+
+    _behavioralNotificationSyncRunning = true;
+    try {
+      do {
+        _behavioralNotificationSyncRequested = false;
+        final force = _forceBehavioralNotificationSync;
+        final refreshTimeZone = _refreshBehavioralNotificationTimeZone;
+        _forceBehavioralNotificationSync = false;
+        _refreshBehavioralNotificationTimeZone = false;
+        await _syncBehavioralNotifications(
+          force: force,
+          refreshTimeZone: refreshTimeZone,
+        );
+      } while (_behavioralNotificationSyncRequested && mounted);
+    } finally {
+      _behavioralNotificationSyncRunning = false;
+    }
+  }
+
+  Future<void> _syncBehavioralNotifications({
+    required bool force,
+    required bool refreshTimeZone,
+  }) async {
+    final sessionRevision = _behavioralNotificationSessionRevision;
+    final mealsProvider = _notificationMealsProvider;
+    final mealTypesProvider = _notificationMealTypesProvider;
+    final streakProvider = _notificationStreakProvider;
+    if (mealsProvider == null ||
+        mealTypesProvider == null ||
+        streakProvider == null) {
+      return;
+    }
+
+    await Future.wait([
+      mealsProvider.ready,
+      mealTypesProvider.ensureLoaded(),
+    ]);
+    if (!mounted || sessionRevision != _behavioralNotificationSessionRevision) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final entries = <BehavioralMealEntry>[];
+    final daysWithMeals = <String>{};
+    for (var daysAgo = 0;
+        daysAgo <= BehavioralReminderPlanner.habitLookbackDays;
+        daysAgo++) {
+      final day = today.subtract(Duration(days: daysAgo));
+      if (mealsProvider.hasMealsOn(day)) {
+        daysWithMeals.add(_notificationDateKey(day));
+      }
+      for (final meal in mealsProvider.getMealsForDate(day)) {
+        if (meal.foods.isEmpty) continue;
+        entries.add(
+          BehavioralMealEntry(
+            recordedAt: DateTime(
+              day.year,
+              day.month,
+              day.day,
+              meal.dateTime.hour,
+              meal.dateTime.minute,
+              meal.dateTime.second,
+            ),
+            mealType: meal.type.name,
+          ),
+        );
+      }
+    }
+
+    final hasMealsToday = mealsProvider.hasMealsOn(today);
+    final localStreak = mealsProvider.getCurrentRegistrationStreak();
+    final backendStreak = streakProvider.registrationStreak;
+    final currentStreak =
+        localStreak > backendStreak ? localStreak : backendStreak;
+    var registrationLastDate = streakProvider.streak?.registrationLastDate;
+    if (hasMealsToday) {
+      registrationLastDate = today;
+    } else if (registrationLastDate == null && currentStreak > 0) {
+      registrationLastDate = today.subtract(const Duration(days: 1));
+    }
+
+    final reminderContext = BehavioralReminderContext(
+      now: now,
+      mealSlots: [
+        for (final mealType in mealTypesProvider.mealTypes)
+          BehavioralMealSlot(
+            id: mealType.id,
+            name: _localizedNotificationMealName(mealType),
+            order: mealType.order,
+            configuredTime: mealType.reminderTime,
+          ),
+      ],
+      mealEntries: entries,
+      daysWithMeals: daysWithMeals,
+      hasMealsToday: hasMealsToday,
+      currentRegistrationStreak: currentStreak,
+      registrationLastDate: registrationLastDate,
+      isStreakProtected: streakProvider.isFreezeActive,
+    );
+    _scheduleBehavioralDayRollover(now);
+
+    try {
+      if (sessionRevision != _behavioralNotificationSessionRevision) {
+        return;
+      }
+      await NotificationService().syncBehavioralReminders(
+        reminderContext,
+        force: force,
+        refreshTimeZone: refreshTimeZone,
+      );
+    } catch (e) {
+      debugPrint('[MainNavigation] Erro ao reconciliar lembretes: $e');
+    }
+  }
+
+  void _scheduleBehavioralDayRollover(DateTime now) {
+    _behavioralDayRolloverTimer?.cancel();
+    final nextDay = DateTime(now.year, now.month, now.day + 1, 0, 1);
+    final delay = nextDay.difference(now);
+    if (delay <= Duration.zero) return;
+    _behavioralDayRolloverTimer = Timer(delay, () {
+      _scheduleBehavioralNotificationSync(
+        force: true,
+        refreshTimeZone: true,
+      );
+    });
+  }
+
+  String _localizedNotificationMealName(MealTypeConfig mealType) {
+    switch (mealType.id) {
+      case 'breakfast':
+        return context.tr.translate('breakfast');
+      case 'morning_snack':
+        return context.tr.translate('notification_meal_name_morning_snack');
+      case 'lunch':
+        return context.tr.translate('lunch');
+      case 'afternoon_snack':
+        return context.tr.translate('notification_meal_name_afternoon_snack');
+      case 'dinner':
+        return context.tr.translate('dinner');
+      case 'supper':
+        return context.tr.translate('notification_meal_name_supper');
+      default:
+        return mealType.name;
+    }
+  }
+
+  String _notificationDateKey(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day';
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _behavioralNotificationDebounce?.cancel();
+    _behavioralDayRolloverTimer?.cancel();
+    _notificationMealsProvider
+        ?.removeListener(_onBehavioralNotificationStateChanged);
+    _notificationMealTypesProvider
+        ?.removeListener(_onBehavioralNotificationStateChanged);
+    _notificationStreakProvider
+        ?.removeListener(_onBehavioralNotificationStateChanged);
+    _notificationLanguageController
+        ?.removeListener(_onBehavioralNotificationLanguageChanged);
+    if (navigationController.tabChangeCallback == _onItemTapped) {
+      navigationController.tabChangeCallback = null;
+    }
+    super.dispose();
   }
 
   void _logChatBootPerf(String event, [Map<String, Object?> data = const {}]) {
@@ -281,6 +525,10 @@ class _MainNavigationState extends State<MainNavigation> {
         if (_configuredAuthKey == authKey) {
           return;
         }
+        _behavioralNotificationSessionRevision++;
+        unawaited(
+          NotificationService().clearBehavioralReminders(forgetContext: true),
+        );
         _configuredAuthKey = authKey;
         _authBootstrapStopwatch = Stopwatch()..start();
         _logChatBootPerf('auth_bootstrap_start', {
@@ -356,6 +604,14 @@ class _MainNavigationState extends State<MainNavigation> {
       mealTypesProvider.clearAuth();
       foodHistoryProvider.clearAuth();
       DailyChatSyncService.instance.clearAuth();
+
+      // Nao deixe alertas personalizados da conta anterior sobreviverem ao
+      // logout. Novos registros como convidado voltam a gerar um plano novo.
+      _behavioralNotificationSessionRevision++;
+      _behavioralNotificationDebounce?.cancel();
+      unawaited(
+        NotificationService().clearBehavioralReminders(forgetContext: true),
+      );
 
       // Forçar recriação do NutritionAssistantScreen para limpar estado visual
       print('[🔄 AUTH_DATA] Forçando recriação do NutritionAssistantScreen...');

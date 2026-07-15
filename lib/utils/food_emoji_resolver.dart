@@ -1,4 +1,11 @@
+const int _foodEmojiCacheLimit = 512;
+final Map<String, String> _normalizedFoodNameCache = <String, String>{};
+final Map<String, String> _resolvedFoodEmojiCache = <String, String>{};
+
 String _normalizeFoodName(String value) {
+  final cached = _normalizedFoodNameCache[value];
+  if (cached != null) return cached;
+
   const replacements = {
     'á': 'a',
     'à': 'a',
@@ -30,19 +37,28 @@ String _normalizeFoodName(String value) {
     normalized = normalized.replaceAll(from, to);
   });
 
-  return normalized
+  final result = normalized
       .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
+
+  if (_normalizedFoodNameCache.length >= _foodEmojiCacheLimit * 2) {
+    _normalizedFoodNameCache.clear();
+  }
+  _normalizedFoodNameCache[value] = result;
+  return result;
 }
 
-int _foodTermScore(String normalizedName, String term) {
+int _foodTermScore(String paddedNormalizedName, String term) {
   final normalizedTerm = _normalizeFoodName(term);
   if (normalizedTerm.isEmpty) return -1;
 
-  final hasMatch = RegExp(
-    '(^| )${RegExp.escape(normalizedTerm)}( |s(?= |\$)|es(?= |\$)|\$)',
-  ).hasMatch(normalizedName);
+  // Os nomes ja estao normalizados para palavras separadas por espaco. Uma
+  // busca com padding preserva os mesmos limites da regex anterior sem
+  // recompilar centenas de expressoes para cada alimento/cartao.
+  final hasMatch = paddedNormalizedName.contains(' $normalizedTerm ') ||
+      paddedNormalizedName.contains(' ${normalizedTerm}s ') ||
+      paddedNormalizedName.contains(' ${normalizedTerm}es ');
 
   return hasMatch ? normalizedTerm.length : -1;
 }
@@ -55,6 +71,9 @@ String resolveFoodEmoji(String name, {String? preferred}) {
   }
 
   final normalized = _normalizeFoodName(name);
+  final cachedEmoji = _resolvedFoodEmojiCache[normalized];
+  if (cachedEmoji != null) return cachedEmoji;
+  final paddedNormalized = ' $normalized ';
   const emojiMatchers = <MapEntry<List<String>, String>>[
     MapEntry([
       'ovo cozido',
@@ -456,7 +475,7 @@ String resolveFoodEmoji(String name, {String? preferred}) {
 
   for (final entry in emojiMatchers) {
     for (final term in entry.key) {
-      final score = _foodTermScore(normalized, term);
+      final score = _foodTermScore(paddedNormalized, term);
       if (score > bestScore) {
         bestScore = score;
         bestEmoji = entry.value;
@@ -464,5 +483,10 @@ String resolveFoodEmoji(String name, {String? preferred}) {
     }
   }
 
-  return bestEmoji ?? '🍽️';
+  final resolved = bestEmoji ?? '🍽️';
+  if (_resolvedFoodEmojiCache.length >= _foodEmojiCacheLimit) {
+    _resolvedFoodEmojiCache.clear();
+  }
+  _resolvedFoodEmojiCache[normalized] = resolved;
+  return resolved;
 }

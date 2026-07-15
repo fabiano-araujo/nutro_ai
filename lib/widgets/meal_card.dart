@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../screens/food_page.dart';
+import '../screens/food_search_screen.dart';
 import '../providers/meal_types_provider.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
@@ -17,6 +18,8 @@ import '../services/favorite_food_service.dart';
 import '../util/app_constants.dart';
 import '../i18n/language_controller.dart';
 import '../utils/food_json_parser.dart';
+import '../utils/food_edit_helper.dart';
+import '../utils/ui_utils.dart';
 import '../widgets/food_icon.dart';
 import '../utils/food_emoji_resolver.dart';
 
@@ -25,6 +28,9 @@ class MealCard extends StatefulWidget {
   final VoidCallback? onEditFood;
   final Function(MealType)? onMealTypeChanged;
   final VoidCallback? onAddFood;
+  final VoidCallback? onBarcodeScan;
+  final Future<Food?> Function(Food food, String description)?
+      foodNutritionResolver;
   final Function(Meal)? onMealUpdated;
   final VoidCallback? onDelete;
   final double topContentPadding;
@@ -35,6 +41,8 @@ class MealCard extends StatefulWidget {
     this.onEditFood,
     this.onMealTypeChanged,
     this.onAddFood,
+    this.onBarcodeScan,
+    this.foodNutritionResolver,
     this.onMealUpdated,
     this.onDelete,
     this.topContentPadding = 16,
@@ -79,6 +87,8 @@ class _MealCardState extends State<MealCard> {
       final x = a[i];
       final y = b[i];
       if (x.name != y.name) return true;
+      if (x.amount != y.amount) return true;
+      if (x.emoji != y.emoji) return true;
       if (x.source != y.source) return true;
       if (x.sourceId != y.sourceId) return true;
       if (x.calories != y.calories) return true;
@@ -103,6 +113,35 @@ class _MealCardState extends State<MealCard> {
       _currentMeal = _currentMeal.copyWith(foods: newFoods);
     });
     _notifyMealUpdated();
+  }
+
+  void _appendFood(Food food) {
+    if (!mounted) return;
+    setState(() {
+      _currentMeal = _currentMeal.copyWith(
+        foods: [..._currentMeal.foods, food],
+      );
+    });
+    _notifyMealUpdated();
+  }
+
+  void _openBarcodeScanner() {
+    final customAction = widget.onBarcodeScan;
+    if (customAction != null) {
+      customAction();
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FoodSearchScreen(
+          selectedMealType: _currentMeal.type,
+          openBarcodeScannerOnStart: true,
+          onFoodAdded: _appendFood,
+        ),
+      ),
+    );
   }
 
   /// Mostra BottomSheet para selecionar o tipo de refeição
@@ -230,46 +269,6 @@ class _MealCardState extends State<MealCard> {
     );
   }
 
-  /// Busca informações nutricionais da IA para um alimento a partir de sua descrição
-  Future<void> _fetchNutritionFromAI(int index, String foodDescription) async {
-    setState(() {
-      _loadingFoods[index] = true;
-      _pendingFoodDescriptions[index] = foodDescription;
-    });
-
-    try {
-      final updatedFood = await _generateFoodNutritionFromAI(
-        _currentMeal.foods[index],
-        foodDescription,
-      );
-
-      if (updatedFood != null) {
-        setState(() {
-          final List<Food> updatedFoods = List.from(_currentMeal.foods);
-          updatedFoods[index] = updatedFood;
-          _currentMeal = _currentMeal.copyWith(foods: updatedFoods);
-          _loadingFoods[index] = false;
-          _pendingFoodDescriptions.remove(index);
-        });
-
-        _notifyMealUpdated();
-        return;
-      }
-
-      print('IA nao retornou macros validos para: $foodDescription');
-    } catch (e) {
-      print('Erro ao buscar nutrição da IA: $e');
-      // Em erro, apenas mantemos o loading false
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingFoods[index] = false;
-          _pendingFoodDescriptions.remove(index);
-        });
-      }
-    }
-  }
-
   Future<Food?> _regenerateFoodNutritionForItem(
     int index,
     Food food,
@@ -281,8 +280,7 @@ class _MealCardState extends State<MealCard> {
     });
 
     try {
-      final updatedFood =
-          await _generateFoodNutritionFromAI(food, foodDescription);
+      final updatedFood = await _resolveFoodNutrition(food, foodDescription);
       if (updatedFood != null && mounted && index < _currentMeal.foods.length) {
         setState(() {
           final updatedFoods = List<Food>.from(_currentMeal.foods);
@@ -299,6 +297,25 @@ class _MealCardState extends State<MealCard> {
           _pendingFoodDescriptions.remove(index);
         });
       }
+    }
+  }
+
+  Future<Food?> _resolveFoodNutrition(
+    Food food,
+    String foodDescription,
+  ) async {
+    try {
+      final resolver = widget.foodNutritionResolver;
+      if (resolver != null) {
+        return await resolver(food, foodDescription);
+      }
+      return await _generateFoodNutritionFromAI(food, foodDescription);
+    } catch (error) {
+      debugPrint(
+        '[MealCard] Falha ao resolver nutrientes de "$foodDescription": '
+        '$error',
+      );
+      return null;
     }
   }
 
@@ -329,7 +346,7 @@ class _MealCardState extends State<MealCard> {
       }
 
       final parsedDescription =
-          _parseEditedFoodDescription(foodDescription, originalFood);
+          FoodEditHelper.parseDescription(foodDescription, originalFood);
       final requestedName = parsedDescription.name;
       final requestedAmount = parsedDescription.amount;
       final mealEntries = FoodJsonParser.parseMealEntriesFromMessage(
@@ -420,53 +437,13 @@ class _MealCardState extends State<MealCard> {
         same(left.fat, right.fat);
   }
 
-  ({String? amount, String name}) _parseEditedFoodDescription(
-    String foodDescription,
-    Food fallbackFood,
-  ) {
-    final description = foodDescription.trim().replaceAll(RegExp(r'\s+'), ' ');
-    if (description.isEmpty) {
-      return (amount: fallbackFood.amount, name: fallbackFood.name);
-    }
-
-    final leadingAmountMatch = RegExp(
-      r'^((?:\d+(?:[.,]\d+)?|\d+\s*/\s*\d+)\s*'
-      r'(?:fl\s*oz|gramas?|g|mililitros?|ml|quilos?|kg|litros?|l|'
-      r'copos?|xicaras?|fatias?|unidades?|colheres?|scoops?|cups?|'
-      r'tbsp|tsp|oz)?)\s+(.+)$',
-      caseSensitive: false,
-    ).firstMatch(description);
-
-    if (leadingAmountMatch != null) {
-      final amount = leadingAmountMatch.group(1)?.trim();
-      var name = leadingAmountMatch.group(2)?.trim() ?? '';
-      name = name.replaceFirst(
-        RegExp(r'^(de|da|do|dos|das)\s+', caseSensitive: false),
-        '',
-      );
-      if (name.isNotEmpty) {
-        return (amount: amount, name: name);
-      }
-    }
-
-    return (amount: fallbackFood.amount, name: description);
-  }
-
   Food _applyEditedFoodDescriptionLocally(
     Food originalFood,
     String foodDescription,
   ) {
-    final parsed = _parseEditedFoodDescription(foodDescription, originalFood);
-    final name = parsed.name.trim();
-    if (name.isEmpty) return originalFood;
-
-    return originalFood.copyWith(
-      name: name,
-      amount: parsed.amount ?? originalFood.amount,
-      emoji: _getFoodEmoji(name),
-      source: FoodSource.ai,
-      clearSourceId: true,
-      clearAiNutrients: true,
+    return FoodEditHelper.applyDescriptionLocally(
+      originalFood,
+      foodDescription,
     );
   }
 
@@ -548,6 +525,24 @@ class _MealCardState extends State<MealCard> {
                   color: Colors.grey[400],
                   borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+              // Adicionar alimento
+              ListTile(
+                leading: Icon(Icons.add_rounded, color: iconNeutral),
+                title: Text(context.tr.translate('add_food')),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showEditAllFoodsBottomSheet(startWithEmptyFood: true);
+                },
+              ),
+              // Ler código de barras
+              ListTile(
+                leading: Icon(Icons.qr_code_scanner, color: iconNeutral),
+                title: Text(context.tr.translate('barcode')),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _openBarcodeScanner();
+                },
               ),
               // Editar alimentos
               ListTile(
@@ -633,7 +628,9 @@ class _MealCardState extends State<MealCard> {
     }
   }
 
-  Future<void> _showEditAllFoodsBottomSheet() async {
+  Future<void> _showEditAllFoodsBottomSheet({
+    bool startWithEmptyFood = false,
+  }) async {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final result = await showModalBottomSheet<_EditAllFoodsResult>(
       context: context,
@@ -646,6 +643,7 @@ class _MealCardState extends State<MealCard> {
           foods: _currentMeal.foods,
           isDarkMode: isDarkMode,
           buildFoodDescription: _buildFoodDescription,
+          startWithEmptyFood: startWithEmptyFood,
         );
       },
     );
@@ -655,35 +653,102 @@ class _MealCardState extends State<MealCard> {
   }
 
   /// Aplica todas as edições de uma vez
-  void _applyAllEdits(
+  Future<void> _applyAllEdits(
     List<Food> editedFoods,
     List<String> descriptions,
-  ) {
-    final changedDescriptions = <int, String>{};
-    final updatedFoods = List<Food>.from(editedFoods);
+  ) async {
+    final pendingResolutions = <_PendingFoodResolution>[];
+    final updatedFoods = <Food>[];
 
     for (int i = 0; i < editedFoods.length && i < descriptions.length; i++) {
+      final food = editedFoods[i];
       final newDescription = descriptions[i].trim();
-      final initialText =
-          _buildFoodDescription(editedFoods[i].amount, editedFoods[i].name);
+      final initialText = _buildFoodDescription(food.amount, food.name);
 
-      if (newDescription.isEmpty) continue;
+      if (newDescription.isEmpty) {
+        // Linhas novas que permaneceram vazias não viram alimentos inválidos.
+        if (food.name.trim().isNotEmpty) updatedFoods.add(food);
+        continue;
+      }
 
       // Se a descrição mudou, manda para a IA depois de aplicar remoções.
       if (newDescription != initialText) {
-        updatedFoods[i] =
-            _applyEditedFoodDescriptionLocally(editedFoods[i], newDescription);
-        changedDescriptions[i] = newDescription;
+        final isNewFood = food.name.trim().isEmpty &&
+            !_hasUsableGeneratedNutrition(food.primaryNutrient);
+        final updatedFood = _applyEditedFoodDescriptionLocally(
+          food,
+          newDescription,
+        );
+        pendingResolutions.add(
+          _PendingFoodResolution(
+            index: updatedFoods.length,
+            food: updatedFood,
+            description: newDescription,
+            removeOnFailure: isNewFood,
+          ),
+        );
+        updatedFoods.add(updatedFood);
+      } else {
+        updatedFoods.add(food);
       }
     }
 
     setState(() {
       _currentMeal = _currentMeal.copyWith(foods: updatedFoods);
+      for (final pending in pendingResolutions) {
+        _loadingFoods[pending.index] = true;
+        _pendingFoodDescriptions[pending.index] = pending.description;
+      }
+    });
+
+    if (pendingResolutions.isEmpty) {
+      _notifyMealUpdated();
+      return;
+    }
+
+    final resolvedFoods = await Future.wait(
+      pendingResolutions.map(
+        (pending) => _resolveFoodNutrition(
+          pending.food,
+          pending.description,
+        ),
+      ),
+    );
+    if (!mounted) return;
+
+    final finalFoods = List<Food>.from(updatedFoods);
+    final failedNewFoodIndexes = <int>[];
+
+    for (var i = 0; i < pendingResolutions.length; i++) {
+      final pending = pendingResolutions[i];
+      final resolvedFood = resolvedFoods[i];
+      if (resolvedFood != null &&
+          _hasUsableGeneratedNutrition(resolvedFood.primaryNutrient)) {
+        finalFoods[pending.index] = resolvedFood;
+      } else if (pending.removeOnFailure) {
+        failedNewFoodIndexes.add(pending.index);
+      }
+    }
+
+    for (final index in failedNewFoodIndexes.reversed) {
+      finalFoods.removeAt(index);
+    }
+
+    setState(() {
+      _currentMeal = _currentMeal.copyWith(foods: finalFoods);
+      for (final pending in pendingResolutions) {
+        _loadingFoods.remove(pending.index);
+        _pendingFoodDescriptions.remove(pending.index);
+      }
     });
     _notifyMealUpdated();
 
-    for (final entry in changedDescriptions.entries) {
-      _fetchNutritionFromAI(entry.key, entry.value);
+    if (failedNewFoodIndexes.isNotEmpty) {
+      UIUtils.showPrimarySnackBar(
+        context,
+        context.tr.translate('food_nutrition_lookup_failed'),
+        duration: const Duration(seconds: 4),
+      );
     }
   }
 
@@ -1480,16 +1545,32 @@ class _EditAllFoodsResult {
   });
 }
 
+class _PendingFoodResolution {
+  final int index;
+  final Food food;
+  final String description;
+  final bool removeOnFailure;
+
+  const _PendingFoodResolution({
+    required this.index,
+    required this.food,
+    required this.description,
+    required this.removeOnFailure,
+  });
+}
+
 class _EditAllFoodsSheet extends StatefulWidget {
   final List<Food> foods;
   final bool isDarkMode;
   final String Function(String? amount, String name) buildFoodDescription;
+  final bool startWithEmptyFood;
 
   const _EditAllFoodsSheet({
     Key? key,
     required this.foods,
     required this.isDarkMode,
     required this.buildFoodDescription,
+    this.startWithEmptyFood = false,
   }) : super(key: key);
 
   @override
@@ -1499,6 +1580,7 @@ class _EditAllFoodsSheet extends StatefulWidget {
 class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
   late final List<Food> _editableFoods;
   final List<TextEditingController> _controllers = [];
+  final List<FocusNode> _focusNodes = [];
   bool _closing = false;
 
   @override
@@ -1511,6 +1593,10 @@ class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
           text: widget.buildFoodDescription(food.amount, food.name),
         ),
       );
+      _focusNodes.add(FocusNode());
+    }
+    if (widget.startWithEmptyFood) {
+      _appendEmptyFood(requestFocus: true, rebuild: false);
     }
   }
 
@@ -1519,7 +1605,34 @@ class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
     for (final controller in _controllers) {
       controller.dispose();
     }
+    for (final focusNode in _focusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
+  }
+
+  void _appendEmptyFood({
+    bool requestFocus = true,
+    bool rebuild = true,
+  }) {
+    final focusNode = FocusNode();
+    void append() {
+      _editableFoods.add(Food(name: '', emoji: '🍽️'));
+      _controllers.add(TextEditingController());
+      _focusNodes.add(focusNode);
+    }
+
+    if (rebuild) {
+      setState(append);
+    } else {
+      append();
+    }
+
+    if (requestFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) focusNode.requestFocus();
+      });
+    }
   }
 
   void _close([_EditAllFoodsResult? result]) {
@@ -1547,10 +1660,12 @@ class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
     if (index < 0 || index >= _editableFoods.length) return;
     FocusManager.instance.primaryFocus?.unfocus();
     final removedController = _controllers.removeAt(index);
+    final removedFocusNode = _focusNodes.removeAt(index);
     setState(() {
       _editableFoods.removeAt(index);
     });
     removedController.dispose();
+    removedFocusNode.dispose();
   }
 
   @override
@@ -1607,7 +1722,9 @@ class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
                           Expanded(
                             child: TextField(
                               controller: _controllers[index],
-                              autofocus: index == 0,
+                              focusNode: _focusNodes[index],
+                              autofocus:
+                                  index == 0 && !widget.startWithEmptyFood,
                               decoration: InputDecoration(
                                 prefixIcon: Padding(
                                   padding:
@@ -1697,6 +1814,33 @@ class _EditAllFoodsSheetState extends State<_EditAllFoodsSheet> {
                       ),
                     );
                   },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _appendEmptyFood,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(
+                        color: colorScheme.primary.withValues(alpha: 0.55),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 22),
+                    label: Text(
+                      context.tr.translate('add_food'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               Padding(
@@ -3158,12 +3302,32 @@ class _FoodItemState extends State<_FoodItem> {
     final newDescription = result.description.trim();
     if (newDescription.isEmpty) return;
 
+    final parsedDescription =
+        FoodEditHelper.parseDescription(newDescription, sourceFood);
+    final newName = parsedDescription.name.trim();
+    final newAmount =
+        (parsedDescription.amount ?? sourceFood.amount ?? '').trim();
     final oldName = sourceFood.name.trim();
     final oldAmount = (sourceFood.amount ?? '').trim();
-    final oldDescription = _buildFoodDescription(oldAmount, oldName);
-    if (_normalizeFoodDescription(newDescription) ==
-        _normalizeFoodDescription(oldDescription)) {
+    final nameChanged = _normalizeFoodDescription(newName) !=
+        _normalizeFoodDescription(oldName);
+    final amountChanged = _normalizeFoodDescription(newAmount) !=
+        _normalizeFoodDescription(oldAmount);
+    if (!nameChanged && !amountChanged) {
       return;
+    }
+
+    if (amountChanged &&
+        FoodEditHelper.sameFoodNameForServingEdit(newName, oldName)) {
+      final scaledFood = FoodEditHelper.applyMetricServing(
+        food: sourceFood,
+        name: newName,
+        amount: newAmount,
+      );
+      if (scaledFood != null) {
+        widget.onSwap?.call(scaledFood);
+        return;
+      }
     }
 
     final localFood =
@@ -3186,71 +3350,14 @@ class _FoodItemState extends State<_FoodItem> {
         .trim();
   }
 
-  ({String? amount, String name}) _parseEditedFoodDescription(
-    String foodDescription,
-    Food fallbackFood,
-  ) {
-    final description = foodDescription.trim().replaceAll(RegExp(r'\s+'), ' ');
-    if (description.isEmpty) {
-      return (amount: fallbackFood.amount, name: fallbackFood.name);
-    }
-
-    final leadingAmountMatch = RegExp(
-      r'^((?:\d+(?:[.,]\d+)?|\d+\s*/\s*\d+)\s*'
-      r'(?:fl\s*oz|gramas?|g|mililitros?|ml|quilos?|kg|litros?|l|'
-      r'copos?|xicaras?|fatias?|unidades?|colheres?|scoops?|cups?|'
-      r'tbsp|tsp|oz)?)\s+(.+)$',
-      caseSensitive: false,
-    ).firstMatch(description);
-
-    if (leadingAmountMatch != null) {
-      final amount = leadingAmountMatch.group(1)?.trim();
-      var name = leadingAmountMatch.group(2)?.trim() ?? '';
-      name = name.replaceFirst(
-        RegExp(r'^(de|da|do|dos|das)\s+', caseSensitive: false),
-        '',
-      );
-      if (name.isNotEmpty) {
-        return (amount: amount, name: name);
-      }
-    }
-
-    return (amount: fallbackFood.amount, name: description);
-  }
-
   Food _applyEditedFoodDescriptionLocally(
     Food originalFood,
     String foodDescription,
   ) {
-    final parsed = _parseEditedFoodDescription(foodDescription, originalFood);
-    final name = parsed.name.trim();
-    if (name.isEmpty) return originalFood;
-
-    return originalFood.copyWith(
-      name: name,
-      amount: parsed.amount ?? originalFood.amount,
-      emoji: resolveFoodEmoji(name),
-      source: FoodSource.ai,
-      clearSourceId: true,
-      clearAiNutrients: true,
+    return FoodEditHelper.applyDescriptionLocally(
+      originalFood,
+      foodDescription,
     );
-  }
-
-  String _buildFoodDescription(String? amount, String name) {
-    final amountStr = (amount ?? '').trim();
-    final nameStr = name.trim();
-
-    if (amountStr.isEmpty) return nameStr;
-    if (nameStr.isEmpty) return amountStr;
-
-    if (amountStr.toLowerCase().contains(nameStr.toLowerCase())) {
-      return amountStr;
-    }
-    if (nameStr.toLowerCase().contains(amountStr.toLowerCase())) {
-      return nameStr;
-    }
-
-    return '$amountStr $nameStr';
   }
 
   void _openFoodPage() {

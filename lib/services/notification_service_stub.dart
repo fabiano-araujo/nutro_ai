@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/notification_preferences.dart';
+import 'behavioral_reminder_planner.dart';
 
 Future<void> firebaseMessagingBackgroundHandler(dynamic message) async {}
 
@@ -77,6 +78,14 @@ class NotificationService {
   Future<bool> requestNotificationPermissions() async => false;
 
   Future<void> syncScheduledNotifications() async {}
+
+  Future<void> syncBehavioralReminders(
+    BehavioralReminderContext context, {
+    bool force = false,
+    bool refreshTimeZone = false,
+  }) async {}
+
+  Future<void> clearBehavioralReminders({bool forgetContext = false}) async {}
 
   Future<void> cancelAllLocalNotifications() async {}
 

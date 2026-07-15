@@ -82,6 +82,128 @@ void main() {
     controller.dispose();
   });
 
+  test('never prunes an old food turn without an explicit deletion tombstone',
+      () async {
+    final foodTimestamp = DateTime(2026, 7, 8, 8);
+    final controller = _controllerWithMessages([
+      _msg(true, '200 g de cuscuz',
+          foodTimestamp.subtract(const Duration(seconds: 2))),
+      _msg(false, _foodJson('cuscuz'), foodTimestamp),
+    ]);
+
+    final pruned = await controller.pruneOrphanFoodDiaryMessagePairs(
+      hasMealsForMessageId: (_) => false,
+      isChatMealDeleted: (_) => false,
+      now: foodTimestamp.add(const Duration(days: 30)),
+      syncNow: false,
+    );
+
+    expect(pruned, isFalse);
+    expect(controller.messages, hasLength(2));
+    expect(controller.messages.first['message'], '200 g de cuscuz');
+    controller.dispose();
+  });
+
+  test('persists meal snapshot with the user message that generated it',
+      () async {
+    final userTimestamp = DateTime(2026, 7, 8, 12);
+    final assistantTimestamp = userTimestamp.add(const Duration(seconds: 1));
+    final messageId = 'msg-${assistantTimestamp.microsecondsSinceEpoch}';
+    final controller = _controllerWithMessages([
+      _msg(true, '150 g de frango', userTimestamp),
+      _msg(false, _foodJson('frango'), assistantTimestamp),
+    ]);
+
+    controller.persistMealSnapshotsForMessage(
+      messageId: messageId,
+      meals: [
+        Meal(
+          id: 'meal-frango',
+          type: MealType.lunch,
+          foods: [_food('frango', calories: 248, protein: 46)],
+          dateTime: assistantTimestamp,
+          messageId: messageId,
+        ),
+      ],
+    );
+    await controller.flushDailyChatState();
+
+    final assistant = controller.messages[1];
+    expect(assistant['id'], messageId);
+    expect(assistant['sourceUserMessage'], '150 g de frango');
+    expect(assistant['sourceUserMessageId'], controller.messages.first['id']);
+    expect(assistant['mealSnapshots'], hasLength(1));
+
+    final stored =
+        await StorageService().getData('nutrition_chat_user_1_2026-07-08');
+    final storedAssistant = (stored!['messages'] as List)[1] as Map;
+    expect(storedAssistant['sourceUserMessage'], '150 g de frango');
+    expect(storedAssistant['mealSnapshots'], hasLength(1));
+    controller.dispose();
+  });
+
+  test('recovers a legacy meal card after its real nearby user message', () {
+    final userTimestamp = DateTime(2026, 7, 8, 9);
+    final cardTimestamp = userTimestamp.add(const Duration(seconds: 2));
+    final nextTimestamp = userTimestamp.add(const Duration(minutes: 10));
+    final messageId = 'msg-${cardTimestamp.microsecondsSinceEpoch}';
+    final controller = _controllerWithMessages([
+      _msg(true, 'pão com café', userTimestamp),
+      _msg(true, 'quanto falta?', nextTimestamp),
+    ]);
+
+    controller.recoverLegacyMealSnapshotMessages([
+      Meal(
+        id: 'legacy-meal',
+        type: MealType.breakfast,
+        foods: [_food('pão', calories: 70)],
+        dateTime: DateTime(2026, 7, 8),
+        messageId: messageId,
+      ),
+    ]);
+
+    expect(controller.messages, hasLength(3));
+    expect(controller.messages[0]['message'], 'pão com café');
+    expect(controller.messages[1]['id'], messageId);
+    expect(controller.messages[1]['mealSnapshots'], hasLength(1));
+    expect(controller.messages[1]['sourceUserMessage'], 'pão com café');
+    expect(controller.messages[2]['message'], 'quanto falta?');
+    controller.dispose();
+  });
+
+  test('reconstructs a factual user bubble when the legacy prompt was lost',
+      () {
+    final cardTimestamp = DateTime(2026, 7, 8, 9);
+    final messageId = 'msg-${cardTimestamp.microsecondsSinceEpoch}';
+    final controller = _controllerWithMessages([
+      _msg(true, 'mensagem muito posterior',
+          cardTimestamp.add(const Duration(hours: 1))),
+    ]);
+
+    controller.recoverLegacyMealSnapshotMessages([
+      Meal(
+        id: 'legacy-meal',
+        type: MealType.breakfast,
+        foods: [
+          _food('pão', calories: 70),
+          _food('café', calories: 2),
+        ],
+        dateTime: DateTime(2026, 7, 8),
+        messageId: messageId,
+      ),
+    ]);
+
+    expect(controller.messages, hasLength(3));
+    expect(controller.messages[0]['isUser'], isTrue);
+    expect(controller.messages[0]['message'], 'pão, café');
+    expect(controller.messages[0]['sourceUserReconstructed'], isTrue);
+    expect(controller.messages[1]['id'], messageId);
+    expect(controller.messages[1]['replyToMessageId'],
+        controller.messages[0]['id']);
+    expect(controller.messages[2]['message'], 'mensagem muito posterior');
+    controller.dispose();
+  });
+
   test('drops restored empty streaming assistant placeholder', () {
     final controller = _controllerWithMessages([
       _msg(true, 'Oi', DateTime(2026, 7, 8, 15, 54, 32)),
@@ -117,6 +239,75 @@ void main() {
         await StorageService().getData('nutrition_chat_user_1_2026-07-08');
     expect(data?['deleted'], isTrue);
     expect(data?['messages'], isEmpty);
+    controller.dispose();
+  });
+
+  test('changes the visible date before saving the previous conversation',
+      () async {
+    final selectedDate = DateTime(2026, 7, 7);
+    final previousMessages = [
+      _msg(true, 'Goiaba', DateTime(2026, 7, 8, 12)),
+      _msg(false, _foodJson('goiaba'), DateTime(2026, 7, 8, 12, 0, 1)),
+    ];
+    await StorageService().saveData(
+      'nutrition_chat_user_1_2026-07-07',
+      {
+        'messages': [
+          _storedMsg(true, 'Cuscuz', DateTime(2026, 7, 7, 10)),
+          _storedMsg(
+              false, 'Refeição registrada.', DateTime(2026, 7, 7, 10, 0, 1)),
+        ],
+      },
+    );
+    final controller = _controllerWithMessages(previousMessages);
+
+    final dateChange = controller.changeSelectedDate(selectedDate);
+
+    expect(controller.selectedDate, selectedDate);
+    expect(controller.messages, isEmpty);
+    expect(controller.isLoadingMessages, isTrue);
+
+    await dateChange;
+
+    expect(controller.selectedDate, selectedDate);
+    expect(controller.messages, hasLength(2));
+    expect(controller.messages.first['message'], 'Cuscuz');
+    final savedPrevious =
+        await StorageService().getData('nutrition_chat_user_1_2026-07-08');
+    expect(savedPrevious?['messages'], hasLength(previousMessages.length));
+    expect(controller.isLoadingMessages, isFalse);
+    controller.dispose();
+  });
+
+  test('keeps the latest day when date loads overlap', () async {
+    await StorageService().saveData(
+      'nutrition_chat_user_1_2026-07-07',
+      {
+        'messages': [
+          _storedMsg(true, 'Mensagem do dia 7', DateTime(2026, 7, 7, 10)),
+        ],
+      },
+    );
+    await StorageService().saveData(
+      'nutrition_chat_user_1_2026-07-06',
+      {
+        'messages': [
+          _storedMsg(true, 'Mensagem do dia 6', DateTime(2026, 7, 6, 10)),
+        ],
+      },
+    );
+    final controller = _controllerWithMessages([
+      _msg(true, 'Mensagem do dia 8', DateTime(2026, 7, 8, 10)),
+    ]);
+
+    final firstChange = controller.changeSelectedDate(DateTime(2026, 7, 7));
+    final latestChange = controller.changeSelectedDate(DateTime(2026, 7, 6));
+    await Future.wait([firstChange, latestChange]);
+
+    expect(controller.selectedDate, DateTime(2026, 7, 6));
+    expect(controller.messages, hasLength(1));
+    expect(controller.messages.single['message'], 'Mensagem do dia 6');
+    expect(controller.isLoadingMessages, isFalse);
     controller.dispose();
   });
 

@@ -78,6 +78,45 @@ void main() {
     expect(day['deleted'], isTrue);
     expect(day['messages'], isEmpty);
   });
+
+  test('keeps turn ids, source message and meal snapshots in server payload',
+      () async {
+    await storage.saveData('nutrition_chat_user_1_2026-07-08', {
+      'messages': [
+        {
+          ..._msg(true, '150 g de frango', '2026-07-08T12:00:00.000Z'),
+          'id': 'usr-1',
+          'turnId': 'turn-1',
+        },
+        {
+          ..._msg(false, '', '2026-07-08T12:00:01.000Z'),
+          'id': 'msg-1',
+          'turnId': 'turn-1',
+          'replyToMessageId': 'usr-1',
+          'sourceUserMessage': '150 g de frango',
+          'mealSnapshots': [
+            {
+              'id': 'meal-1',
+              'type': 'lunch',
+              'foods': <Map<String, dynamic>>[],
+              'dateTime': '2026-07-08T12:00:01.000Z',
+              'messageId': 'msg-1',
+            },
+          ],
+        },
+      ],
+      'updatedAt': '2026-07-08T12:00:02.000Z',
+    });
+
+    final snapshot = await service.buildSnapshotForDates(['2026-07-08']);
+    final messages =
+        (snapshot['2026-07-08'] as Map)['messages'] as List<dynamic>;
+    final assistant = messages[1] as Map;
+
+    expect(assistant['replyToMessageId'], 'usr-1');
+    expect(assistant['sourceUserMessage'], '150 g de frango');
+    expect(assistant['mealSnapshots'], hasLength(1));
+  });
 }
 
 Map<String, dynamic> _msg(bool isUser, String message, String timestamp) {

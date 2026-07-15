@@ -792,6 +792,8 @@ final Map<String, String> itITTranslations = {
   'edit_all_foods': 'Modifica tutti gli alimenti',
   'edit_all_foods_desc': 'Modifica nome e quantità di tutti gli elementi',
   'add_food': 'Aggiungi alimento',
+  'food_nutrition_lookup_failed':
+      'Impossibile calcolare i nutrienti. L’alimento non è stato aggiunto. Riprova.',
   'save_all': 'Salva tutto',
   'add_meal': 'Aggiungi pasto',
   'meal_added': 'Pasto aggiunto',
@@ -1149,7 +1151,7 @@ final Map<String, String> itITTranslations = {
   'meal_time': 'Orario del pasto',
   'meal_reminder_times': 'Orari dei pasti',
   'meal_reminder_times_hint':
-      'I promemoria usano l’orario salvato per ogni pasto.',
+      'Nutro AI impara i tuoi orari, evita avvisi già risolti e protegge la tua serie a fine giornata.',
   'add_meal_short': 'Aggiungi',
   'weight_reminders': 'Promemoria peso',
   'weight_reminder_config_title': 'Configura promemoria peso',
@@ -1167,7 +1169,8 @@ final Map<String, String> itITTranslations = {
   'personalized_tip_time': 'Orario dei consigli personalizzati',
   'notifications_all_disabled': 'Disattivate',
   'notifications_enabled_count': '{count} attive',
-  'notification_meal_schedule': 'Agli orari salvati per i tuoi pasti',
+  'notification_meal_schedule':
+      'Dopo i tuoi orari abituali, solo se manca una registrazione',
   'notification_weight_schedule': '{count}x a settimana il {days} alle {time}',
   'notification_tip_schedule': 'Ogni giorno alle {time}',
   'notification_permission_denied':
@@ -1178,6 +1181,20 @@ final Map<String, String> itITTranslations = {
   'notification_meal_title_named': 'È ora di {meal}',
   'notification_meal_body_named':
       'Registra {meal} in Nutro AI per monitorare i tuoi macro.',
+  'notification_smart_meal_title': 'Hai dimenticato di registrare {meal}?',
+  'notification_smart_meal_body_habit':
+      'Di solito lo registri verso le {time}. Tocca per aggiungerlo ora.',
+  'notification_smart_meal_body_configured':
+      'L’orario di {meal} è passato. Registralo per aggiornare il diario.',
+  'notification_streak_risk_title': 'Manca 1 ora per mantenere la tua serie',
+  'notification_streak_risk_body':
+      'Registri i pasti da {count} giorni. Registrane uno oggi per mantenere la serie.',
+  'notification_comeback_title': 'Riprendiamo il tuo diario oggi?',
+  'notification_comeback_body':
+      'Senza sensi di colpa: registra il prossimo pasto e riparti da lì.',
+  'notification_meal_name_morning_snack': 'Spuntino mattutino',
+  'notification_meal_name_afternoon_snack': 'Spuntino pomeridiano',
+  'notification_meal_name_supper': 'Spuntino serale',
   'notification_weight_title': 'È ora di aggiornare il peso',
   'notification_weight_body':
       'Registra il peso settimanale per mantenere preciso il progresso.',

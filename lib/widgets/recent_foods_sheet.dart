@@ -15,10 +15,14 @@ class RecentFoodsSheet extends StatefulWidget {
   /// Callback quando uma refeição inteira é selecionada (repete refeição)
   final void Function(RepeatableMeal meal) onMealSelected;
 
+  /// Permite substituir a fonte de dados em testes de widget.
+  final FavoriteFoodService? serviceOverride;
+
   const RecentFoodsSheet({
     super.key,
     required this.onFoodSelected,
     required this.onMealSelected,
+    this.serviceOverride,
   });
 
   @override
@@ -78,6 +82,12 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
   }
 
   void _initService() {
+    if (widget.serviceOverride != null) {
+      _service = widget.serviceOverride;
+      _loadAll();
+      return;
+    }
+
     final authService = Provider.of<AuthService>(context, listen: false);
     final token = authService.token;
     if (token != null && token.isNotEmpty) {
@@ -354,7 +364,7 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final bgColor =
-        isDarkMode ? const Color(0xFF1E1E1E) : AppTheme.backgroundColor;
+        isDarkMode ? const Color(0xFF151515) : AppTheme.backgroundColor;
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     final subtitleColor =
         isDarkMode ? Colors.grey[400] : AppTheme.textSecondaryColor;
@@ -372,25 +382,32 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
         expand: false,
         builder: (context, scrollController) {
           return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             child: Container(
-              decoration: BoxDecoration(color: bgColor),
+              decoration: BoxDecoration(
+                color: bgColor,
+                border: Border(
+                  top: BorderSide(
+                    color: isDarkMode
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.04),
+                  ),
+                ),
+              ),
               child: Column(
                 children: [
-                  // Handle bar
                   Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
+                    margin: const EdgeInsets.only(top: 10),
+                    width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[400],
+                      color: subtitleColor?.withValues(alpha: 0.45),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 8),
-
+                  const SizedBox(height: 10),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 12, 14),
                     child: Row(
                       children: [
                         Expanded(
@@ -401,59 +418,75 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
                                 l10n.translate('quick_add_food'),
                                 style: TextStyle(
                                   color: textColor,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 3),
                               Text(
                                 l10n.translate('values_per_serving'),
                                 style: TextStyle(
                                   color: subtitleColor,
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        IconButton(
+                          tooltip: l10n.translate('close'),
+                          onPressed: () => Navigator.pop(context),
+                          style: IconButton.styleFrom(
+                            backgroundColor: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.07)
+                                : Colors.white,
+                            foregroundColor: subtitleColor,
+                          ),
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                        ),
                       ],
                     ),
                   ),
-
-                  // Tab bar
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      height: 48,
+                      padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: isDarkMode
                             ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDarkMode
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.06),
-                        ),
+                            : AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(15),
                       ),
                       child: TabBar(
                         controller: _tabController,
                         labelColor: AppTheme.onPrimaryFor(isDarkMode),
                         unselectedLabelColor: subtitleColor,
                         indicator: BoxDecoration(
-                          color:
-                              isDarkMode ? Colors.white : AppTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(10),
+                          color: isDarkMode
+                              ? AppTheme.primaryColorDarkMode
+                              : AppTheme.primaryColor,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: isDarkMode ? 0.08 : 0.18,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
                         indicatorSize: TabBarIndicatorSize.tab,
                         dividerColor: Colors.transparent,
                         labelStyle: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                         unselectedLabelStyle: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                         tabs: [
@@ -479,8 +512,6 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
                       ),
                     ),
                   ),
-
-                  // Tab content
                   Expanded(
                     child: NotificationListener<ScrollUpdateNotification>(
                       onNotification: (notification) {
@@ -608,7 +639,7 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
     return ListView.builder(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
       itemCount: foods.length,
       itemBuilder: (context, index) {
         final food = foods[index];
@@ -630,6 +661,11 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
     bool isDarkMode, {
     required bool isRecent,
   }) {
+    final usageText = food.usageCount != null && food.usageCount! > 1
+        ? _tr('used_times', {'count': food.usageCount.toString()})
+        : _tr('ready_to_add');
+    final servingText = _formatServing(food.baseAmount, food.baseUnit);
+
     return Dismissible(
       key: ValueKey('${isRecent ? 'recent' : 'favorite'}_${food.id}'),
       direction: DismissDirection.endToStart,
@@ -660,30 +696,31 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
                     children: [
                       Text(
                         food.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: textColor,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          height: 1.2,
+                          height: 1.18,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       Text(
-                        food.usageCount != null && food.usageCount! > 1
-                            ? _tr('used_times',
-                                {'count': food.usageCount.toString()})
-                            : _tr('ready_to_add'),
+                        '${_tr('serving')} $servingText  •  $usageText',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: subtitleColor,
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                _CompactActionButton(
+                const SizedBox(width: 10),
+                _QuickActionButton(
                   label: _tr('add'),
                   icon: Icons.add_rounded,
                   isDarkMode: isDarkMode,
@@ -691,46 +728,28 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _NutritionInfoChip(
-                  label: _tr('serving'),
-                  value: _formatServing(food.baseAmount, food.baseUnit),
-                  icon: Icons.scale_rounded,
-                  color: isDarkMode
-                      ? const Color(0xFFAEB7CE)
-                      : AppTheme.textSecondaryColor,
-                  isDarkMode: isDarkMode,
-                ),
-                _NutritionInfoChip(
+            _MacroSummaryBar(
+              isDarkMode: isDarkMode,
+              metrics: [
+                _MacroMetricData(
                   label: _tr('calories'),
                   value: '${food.calories} kcal',
-                  icon: MacroTheme.caloriesIcon,
                   color: MacroTheme.caloriesColor,
-                  isDarkMode: isDarkMode,
                 ),
-                _NutritionInfoChip(
+                _MacroMetricData(
                   label: _tr('protein_full'),
                   value: '${_formatNumber(food.protein)} g',
-                  icon: MacroTheme.proteinIcon,
                   color: MacroTheme.proteinColor,
-                  isDarkMode: isDarkMode,
                 ),
-                _NutritionInfoChip(
+                _MacroMetricData(
                   label: _tr('carbs'),
                   value: '${_formatNumber(food.carbs)} g',
-                  icon: MacroTheme.carbsIcon,
                   color: MacroTheme.carbsColor,
-                  isDarkMode: isDarkMode,
                 ),
-                _NutritionInfoChip(
+                _MacroMetricData(
                   label: _tr('fat'),
                   value: '${_formatNumber(food.fat)} g',
-                  icon: MacroTheme.fatIcon,
                   color: MacroTheme.fatColor,
-                  isDarkMode: isDarkMode,
                 ),
               ],
             ),
@@ -816,7 +835,7 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
     return ListView.builder(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
       itemCount: _meals.length,
       itemBuilder: (context, index) {
         final meal = _meals[index];
@@ -839,6 +858,8 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
         : _localizedMealType(meal.type);
     final foodNames =
         meal.foodNames.isNotEmpty ? meal.foodNames : _tr('meal_foods_title');
+    final details =
+        dateStr.isEmpty ? foodNames : '$foodNames  •  ${_tr('date')} $dateStr';
 
     return Dismissible(
       key: ValueKey('meal_${meal.id}'),
@@ -870,16 +891,18 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
                     children: [
                       Text(
                         title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: textColor,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          height: 1.2,
+                          height: 1.18,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        foodNames,
+                        details,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -892,8 +915,8 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                _CompactActionButton(
+                const SizedBox(width: 10),
+                _QuickActionButton(
                   label: _tr('repeat'),
                   icon: Icons.replay_rounded,
                   isDarkMode: isDarkMode,
@@ -901,48 +924,29 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _NutritionInfoChip(
+            _MacroSummaryBar(
+              isDarkMode: isDarkMode,
+              metrics: [
+                _MacroMetricData(
                   label: _tr('calories'),
                   value: '${meal.calories} kcal',
-                  icon: MacroTheme.caloriesIcon,
                   color: MacroTheme.caloriesColor,
-                  isDarkMode: isDarkMode,
                 ),
-                _NutritionInfoChip(
+                _MacroMetricData(
                   label: _tr('protein_full'),
                   value: '${_formatNumber(meal.protein)} g',
-                  icon: MacroTheme.proteinIcon,
                   color: MacroTheme.proteinColor,
-                  isDarkMode: isDarkMode,
                 ),
-                _NutritionInfoChip(
+                _MacroMetricData(
                   label: _tr('carbs'),
                   value: '${_formatNumber(meal.carbs)} g',
-                  icon: MacroTheme.carbsIcon,
                   color: MacroTheme.carbsColor,
-                  isDarkMode: isDarkMode,
                 ),
-                _NutritionInfoChip(
+                _MacroMetricData(
                   label: _tr('fat'),
                   value: '${_formatNumber(meal.fat)} g',
-                  icon: MacroTheme.fatIcon,
                   color: MacroTheme.fatColor,
-                  isDarkMode: isDarkMode,
                 ),
-                if (dateStr.isNotEmpty)
-                  _NutritionInfoChip(
-                    label: _tr('date'),
-                    value: dateStr,
-                    icon: Icons.event_rounded,
-                    color: isDarkMode
-                        ? const Color(0xFFAEB7CE)
-                        : AppTheme.textSecondaryColor,
-                    isDarkMode: isDarkMode,
-                  ),
               ],
             ),
           ],
@@ -1013,32 +1017,23 @@ class _RecentItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor = isDarkMode
         ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.06);
-    final shadowColor = Colors.black.withValues(alpha: isDarkMode ? 0 : 0.04);
+        : AppTheme.dividerColor.withValues(alpha: 0.8);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 9),
       child: Material(
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           onLongPress: onLongPress,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: borderColor),
-              boxShadow: [
-                if (!isDarkMode)
-                  BoxShadow(
-                    color: shadowColor,
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-              ],
             ),
             child: child,
           ),
@@ -1060,30 +1055,30 @@ class _EmojiBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: isDarkMode
-            ? Colors.white.withValues(alpha: 0.06)
+            ? Colors.white.withValues(alpha: 0.07)
             : AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(13),
       ),
       child: Center(
         child: Text(
           emoji,
-          style: const TextStyle(fontSize: 24),
+          style: const TextStyle(fontSize: 22),
         ),
       ),
     );
   }
 }
 
-class _CompactActionButton extends StatelessWidget {
+class _QuickActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool isDarkMode;
 
-  const _CompactActionButton({
+  const _QuickActionButton({
     required this.label,
     required this.icon,
     required this.isDarkMode,
@@ -1091,46 +1086,119 @@ class _CompactActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isDarkMode ? Colors.white : AppTheme.primaryColor;
-    final fgColor = AppTheme.onPrimaryFor(isDarkMode);
+    final showLabel = MediaQuery.sizeOf(context).width >= 350;
+    final backgroundColor =
+        (isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor)
+            .withValues(alpha: isDarkMode ? 0.18 : 0.12);
+    final foregroundColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryDarkColor;
+
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: Container(
+          height: 40,
+          constraints: const BoxConstraints(minWidth: 40),
+          padding: EdgeInsets.symmetric(horizontal: showLabel ? 12 : 9.5),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: showLabel ? 18 : 21,
+                color: foregroundColor,
+              ),
+              if (showLabel) ...[
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: foregroundColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroMetricData {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _MacroMetricData({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+}
+
+class _MacroSummaryBar extends StatelessWidget {
+  final List<_MacroMetricData> metrics;
+  final bool isDarkMode;
+
+  const _MacroSummaryBar({
+    required this.metrics,
+    required this.isDarkMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dividerColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppTheme.dividerColor.withValues(alpha: 0.9);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(999),
+        color: isDarkMode
+            ? Colors.white.withValues(alpha: 0.045)
+            : AppTheme.surfaceColor.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: fgColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: fgColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+          for (var index = 0; index < metrics.length; index++) ...[
+            Expanded(
+              child: _MacroMetric(
+                data: metrics[index],
+                isDarkMode: isDarkMode,
+              ),
             ),
-          ),
+            if (index < metrics.length - 1)
+              Container(
+                width: 1,
+                height: 27,
+                color: dividerColor,
+              ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _NutritionInfoChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
+class _MacroMetric extends StatelessWidget {
+  final _MacroMetricData data;
   final bool isDarkMode;
 
-  const _NutritionInfoChip({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
+  const _MacroMetric({
+    required this.data,
     required this.isDarkMode,
   });
 
@@ -1141,41 +1209,47 @@ class _NutritionInfoChip extends StatelessWidget {
     final valueColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.16 : 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: isDarkMode ? 0.24 : 0.18),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          MacroTheme.iconBadge(
-            icon: icon,
-            color: color,
-            isDarkMode: isDarkMode,
-            size: 24,
-            iconSize: 13,
-          ),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: labelColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  height: 1,
+    return Semantics(
+      label: '${data.label}: ${data.value}',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: data.color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    data.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: labelColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                data.value,
+                maxLines: 1,
                 style: TextStyle(
                   color: valueColor,
                   fontSize: 12,
@@ -1183,9 +1257,9 @@ class _NutritionInfoChip extends StatelessWidget {
                   height: 1,
                 ),
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1201,13 +1275,13 @@ class _SwipeDeleteBackground extends StatelessWidget {
     final color =
         isDarkMode ? const Color(0xFFB3261E) : const Color(0xFFDC362E);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 9),
       child: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.end,

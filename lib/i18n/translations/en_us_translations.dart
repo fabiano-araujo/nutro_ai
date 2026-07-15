@@ -1089,10 +1089,11 @@ final Map<String, String> enUSTranslations = {
   'preferences': 'Preferences',
   'notification_settings_title': 'Manage my notifications',
   'meal_reminders': 'Meal Reminders',
-  'meal_reminders_description': 'Get notified for your meals.',
+  'meal_reminders_description': 'Get notified only when a meal log is missing.',
   'meal_time': 'Meal time',
   'meal_reminder_times': 'Meal times',
-  'meal_reminder_times_hint': 'Reminders use the time saved for each meal.',
+  'meal_reminder_times_hint':
+      'Nutro AI learns your routine, skips completed logs, and protects your streak late in the day.',
   'add_meal_short': 'Add',
   'weight_reminders': 'Weight reminders',
   'weight_reminder_config_title': 'Set weight reminder',
@@ -1103,7 +1104,8 @@ final Map<String, String> enUSTranslations = {
   'personalized_tip_time': 'Personalized tips time',
   'notifications_all_disabled': 'Off',
   'notifications_enabled_count': '{count} on',
-  'notification_meal_schedule': 'At the times saved for your meals',
+  'notification_meal_schedule':
+      'After your usual times, only when a log is missing',
   'notification_weight_schedule': '{count}x/week on {days} at {time}',
   'notification_tip_schedule': 'Every day at {time}',
   'notification_permission_denied':
@@ -1114,6 +1116,20 @@ final Map<String, String> enUSTranslations = {
   'notification_meal_title_named': 'Time for {meal}',
   'notification_meal_body_named':
       'Log {meal} in Nutro AI to track your macros.',
+  'notification_smart_meal_title': 'Forgot to log {meal}?',
+  'notification_smart_meal_body_habit':
+      'You usually log it around {time}. Tap to add it now.',
+  'notification_smart_meal_body_configured':
+      'Your {meal} time has passed. Log it now to keep your diary up to date.',
+  'notification_streak_risk_title': '1 hour left to keep your streak',
+  'notification_streak_risk_body':
+      'You have logged meals for {count} days. Log one today to keep your streak.',
+  'notification_comeback_title': 'Ready to get back to your diary?',
+  'notification_comeback_body':
+      'No guilt: log your next meal and pick up where you left off.',
+  'notification_meal_name_morning_snack': 'Morning snack',
+  'notification_meal_name_afternoon_snack': 'Afternoon snack',
+  'notification_meal_name_supper': 'Evening snack',
   'notification_weight_title': 'Time to update your weight',
   'notification_weight_body':
       'Log your weekly weight to keep progress accurate.',
@@ -1384,6 +1400,8 @@ final Map<String, String> enUSTranslations = {
   'edit_all_foods': 'Edit all foods',
   'edit_all_foods_desc': 'Edit name and amount of all items',
   'add_food': 'Add food',
+  'food_nutrition_lookup_failed':
+      'Nutrients could not be calculated. The food was not added. Please try again.',
   'save_all': 'Save all',
   'meal_added': 'Meal added',
   'meal_added_success': 'Meal added successfully!',

@@ -799,6 +799,8 @@ final Map<String, String> deDETranslations = {
   'edit_all_foods': 'Alle Lebensmittel bearbeiten',
   'edit_all_foods_desc': 'Name und Menge aller Elemente bearbeiten',
   'add_food': 'Lebensmittel hinzufügen',
+  'food_nutrition_lookup_failed':
+      'Die Nährwerte konnten nicht berechnet werden. Das Lebensmittel wurde nicht hinzugefügt. Bitte erneut versuchen.',
   'save_all': 'Alles speichern',
   'add_meal': 'Mahlzeit hinzufügen',
   'meal_added': 'Mahlzeit hinzugefügt',
@@ -1159,7 +1161,7 @@ final Map<String, String> deDETranslations = {
   'meal_time': 'Mahlzeitzeit',
   'meal_reminder_times': 'Mahlzeitenzeiten',
   'meal_reminder_times_hint':
-      'Erinnerungen nutzen die Zeit, die bei jeder Mahlzeit gespeichert ist.',
+      'Nutro AI lernt deine Zeiten, vermeidet erledigte Hinweise und schützt deine Serie am Tagesende.',
   'add_meal_short': 'Hinzufügen',
   'weight_reminders': 'Gewichtserinnerungen',
   'weight_reminder_config_title': 'Gewichtserinnerung einstellen',
@@ -1177,7 +1179,8 @@ final Map<String, String> deDETranslations = {
   'personalized_tip_time': 'Zeit für personalisierte Tipps',
   'notifications_all_disabled': 'Aus',
   'notifications_enabled_count': '{count} aktiv',
-  'notification_meal_schedule': 'Zu den gespeicherten Zeiten deiner Mahlzeiten',
+  'notification_meal_schedule':
+      'Nach deinen üblichen Zeiten, nur wenn ein Eintrag fehlt',
   'notification_weight_schedule': '{count}x pro Woche am {days} um {time}',
   'notification_tip_schedule': 'Jeden Tag um {time}',
   'notification_permission_denied':
@@ -1190,6 +1193,20 @@ final Map<String, String> deDETranslations = {
   'notification_meal_title_named': 'Zeit für {meal}',
   'notification_meal_body_named':
       'Trage {meal} in Nutro AI ein, um deine Makros zu verfolgen.',
+  'notification_smart_meal_title': '{meal} noch nicht eingetragen?',
+  'notification_smart_meal_body_habit':
+      'Du trägst es meist gegen {time} ein. Tippe, um es jetzt hinzuzufügen.',
+  'notification_smart_meal_body_configured':
+      'Die Zeit für {meal} ist vorbei. Trage es ein, um dein Tagebuch aktuell zu halten.',
+  'notification_streak_risk_title': 'Noch 1 Stunde, um deine Serie zu halten',
+  'notification_streak_risk_body':
+      'Du trägst seit {count} Tagen Mahlzeiten ein. Trage heute eine ein, um deine Serie zu halten.',
+  'notification_comeback_title': 'Heute wieder ins Ernährungstagebuch?',
+  'notification_comeback_body':
+      'Ohne schlechtes Gewissen: Trage deine nächste Mahlzeit ein und mach weiter.',
+  'notification_meal_name_morning_snack': 'Vormittagssnack',
+  'notification_meal_name_afternoon_snack': 'Nachmittagssnack',
+  'notification_meal_name_supper': 'Abendsnack',
   'notification_weight_title': 'Zeit, dein Gewicht zu aktualisieren',
   'notification_weight_body':
       'Trage dein Wochengewicht ein, damit dein Fortschritt genau bleibt.',

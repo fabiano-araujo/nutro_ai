@@ -41,6 +41,13 @@ class FoodJsonParser {
         RegExp(r'"meals"\s*:', caseSensitive: false).hasMatch(normalized);
   }
 
+  /// Confirma que o payload nutricional esta completo sem criar modelos de
+  /// comida nem resolver emojis. Ideal para decidir a UI antes do parse real.
+  static bool hasCompleteFoodJson(String message) {
+    if (!hasFoodJsonSignal(message)) return false;
+    return extractFoodJson(message) != null;
+  }
+
   /// Detecta o início de um JSON de refeição ainda incompleto no stream.
   /// Isso permite esconder o payload bruto antes do JSON estar completo.
   static int? findFoodJsonCandidateStart(String message) {

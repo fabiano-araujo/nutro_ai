@@ -16,6 +16,7 @@ import '../models/notification_preferences.dart';
 import '../screens/main_navigation.dart';
 import '../screens/social_hub_screen.dart';
 import '../util/app_constants.dart';
+import 'behavioral_reminder_planner.dart';
 
 /// Handler de mensagens em background - deve ser top-level
 @pragma('vm:entry-point')
@@ -35,8 +36,6 @@ class _ScheduledReminder {
     required this.bodyKey,
     required this.payloadType,
     this.weekday,
-    this.mealId,
-    this.mealName,
   });
 
   final int id;
@@ -46,8 +45,6 @@ class _ScheduledReminder {
   final String bodyKey;
   final String payloadType;
   final int? weekday;
-  final String? mealId;
-  final String? mealName;
 }
 
 /// Service para gerenciar notificacoes push e lembretes locais.
@@ -57,32 +54,45 @@ class NotificationService {
   NotificationService._internal();
 
   static const String _preferencesKey = 'notification_preferences';
-  static const String _mealTypesKey = 'meal_types_config';
   static const String _androidChannelId = 'nutro_ai_reminders';
   static const String _androidChannelName = 'Nutro AI lembretes';
   static const String _androidChannelDescription =
-      'Lembretes de refeicao, peso e dicas personalizadas.';
+      'Lembretes inteligentes de refeicao, sequencia, peso e dicas.';
   static const String _androidPushChannelId = 'social';
   static const String _androidPushChannelName = 'Nutro AI';
   static const String _androidPushChannelDescription =
       'Notificacoes de social, dieta e atualizacoes do app.';
 
-  static final List<int> _localNotificationIds = <int>[
+  static final List<int> _recurringNotificationIds = <int>[
+    // IDs legados de lembretes diarios de refeicao. Eles precisam ser
+    // cancelados na migracao para o novo plano one-shot.
     for (var index = 0; index < 100; index++) 1000 + index,
     for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++)
       200 + weekday,
     301,
   ];
+  static final List<int> _behavioralNotificationIds = <int>[
+    for (var day = 0; day < BehavioralReminderPlanner.defaultHorizonDays; day++)
+      for (var slot = 0; slot < BehavioralReminderPlanner.maxMealSlots; slot++)
+        BehavioralReminderPlanner.mealReminderBaseId + (day * 10) + slot,
+    BehavioralReminderPlanner.comebackReminderId,
+    BehavioralReminderPlanner.streakReminderId,
+  ];
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  final BehavioralReminderPlanner _behavioralPlanner =
+      const BehavioralReminderPlanner();
 
   String? _fcmToken;
   String? _authToken;
   bool _isInitialized = false;
   bool _localNotificationsInitialized = false;
   bool _timeZoneInitialized = false;
+  BehavioralReminderContext? _latestBehavioralContext;
+  String? _lastBehavioralPlanFingerprint;
+  Future<void> _behavioralOperationQueue = Future<void>.value();
 
   String? get fcmToken => _fcmToken;
   bool get isInitialized => _isInitialized;
@@ -195,8 +205,8 @@ class NotificationService {
     );
   }
 
-  Future<void> _initializeTimeZone() async {
-    if (_timeZoneInitialized) return;
+  Future<void> _initializeTimeZone({bool force = false}) async {
+    if (_timeZoneInitialized && !force) return;
 
     tz_data.initializeTimeZones();
 
@@ -205,7 +215,9 @@ class NotificationService {
       tz.setLocalLocation(tz.getLocation(localTimeZone.identifier));
     } catch (e) {
       print('[NotificationService] Error resolving local timezone: $e');
-      tz.setLocalLocation(tz.UTC);
+      if (!_timeZoneInitialized) {
+        tz.setLocalLocation(tz.UTC);
+      }
     }
 
     _timeZoneInitialized = true;
@@ -293,8 +305,12 @@ class NotificationService {
       Future.delayed(const Duration(milliseconds: 300), () {
         socialTabController.changeTab(3);
       });
-    } else if (type == 'streak_risk' || type == 'meal_reminder') {
-      navigationController.changeTab(1);
+    } else if (type == 'streak_risk' ||
+        type == 'meal_reminder' ||
+        type == 'missed_meal' ||
+        type == 'comeback_reminder') {
+      // O diario/assistente e o caminho mais curto para registrar a refeicao.
+      navigationController.changeTab(0);
     } else if (type == 'diet_generation_completed' ||
         type == 'diet_generation_failed' ||
         screen == '/diet') {
@@ -517,10 +533,17 @@ class NotificationService {
 
   Future<void> syncScheduledNotifications() async {
     await _initializeLocalNotifications();
-    await _cancelManagedLocalNotifications();
+    await _cancelRecurringLocalNotifications();
 
     final preferences = await getPreferences();
+    if (!preferences.mealReminders) {
+      await clearBehavioralReminders();
+    }
+
     if (!preferences.hasAnyEnabled || !await _areNotificationsAllowed()) {
+      if (preferences.mealReminders) {
+        await clearBehavioralReminders();
+      }
       return;
     }
 
@@ -530,7 +553,6 @@ class NotificationService {
         _parseTimeParts(preferences.personalizedTipTime) ?? const [17, 30];
 
     final reminders = <_ScheduledReminder>[
-      if (preferences.mealReminders) ...await _mealRemindersFromSettings(),
       if (preferences.weightReminders)
         for (final weekday in preferences.weightReminderWeekdays)
           _ScheduledReminder(
@@ -556,23 +578,104 @@ class NotificationService {
     for (final reminder in reminders) {
       await _scheduleReminder(reminder);
     }
+
+    final behavioralContext = _latestBehavioralContext;
+    if (preferences.mealReminders && behavioralContext != null) {
+      await syncBehavioralReminders(behavioralContext, force: true);
+    }
   }
 
   Future<void> cancelAllLocalNotifications() async {
     await _initializeLocalNotifications();
-    await _cancelManagedLocalNotifications();
+    await _cancelRecurringLocalNotifications();
+    await clearBehavioralReminders(forgetContext: true);
     await _savePreferences(NotificationPreferences.defaults);
   }
 
+  /// Reconcilia refeicoes esquecidas, retomada e streak com o estado atual.
+  /// Todos esses alertas sao one-shot: registrar/editar uma refeicao dispara
+  /// um novo plano, cancelando imediatamente os avisos que deixaram de valer.
+  Future<void> syncBehavioralReminders(
+    BehavioralReminderContext context, {
+    bool force = false,
+    bool refreshTimeZone = false,
+  }) {
+    return _enqueueBehavioralOperation(
+      () => _syncBehavioralRemindersNow(
+        context,
+        force: force,
+        refreshTimeZone: refreshTimeZone,
+      ),
+    );
+  }
+
+  Future<void> _syncBehavioralRemindersNow(
+    BehavioralReminderContext context, {
+    required bool force,
+    required bool refreshTimeZone,
+  }) async {
+    await _initializeLocalNotifications();
+    if (refreshTimeZone) {
+      await _initializeTimeZone(force: true);
+    }
+
+    final freshContext = context.copyWith(now: DateTime.now());
+    _latestBehavioralContext = freshContext;
+    final preferences = await getPreferences();
+    if (!preferences.mealReminders || !await _areNotificationsAllowed()) {
+      await _cancelBehavioralLocalNotifications();
+      _lastBehavioralPlanFingerprint = null;
+      return;
+    }
+
+    final plan = _behavioralPlanner.plan(freshContext);
+    final fingerprint = plan.map((reminder) => reminder.fingerprint).join('\n');
+    if (!force && fingerprint == _lastBehavioralPlanFingerprint) {
+      return;
+    }
+
+    await _cancelBehavioralLocalNotifications();
+    for (final reminder in plan) {
+      await _scheduleBehavioralReminder(reminder);
+    }
+    _lastBehavioralPlanFingerprint = fingerprint;
+    print(
+      '[NotificationService] ${plan.length} behavioral reminder(s) scheduled',
+    );
+  }
+
+  Future<void> clearBehavioralReminders({bool forgetContext = false}) {
+    return _enqueueBehavioralOperation(
+      () => _clearBehavioralRemindersNow(forgetContext: forgetContext),
+    );
+  }
+
+  Future<void> _clearBehavioralRemindersNow({
+    required bool forgetContext,
+  }) async {
+    await _initializeLocalNotifications();
+    await _cancelBehavioralLocalNotifications();
+    _lastBehavioralPlanFingerprint = null;
+    if (forgetContext) {
+      _latestBehavioralContext = null;
+    }
+  }
+
+  Future<void> _enqueueBehavioralOperation(
+    Future<void> Function() operation,
+  ) {
+    final result = _behavioralOperationQueue.then((_) => operation());
+    _behavioralOperationQueue = result.catchError(
+      (Object error, StackTrace stackTrace) {
+        print('[NotificationService] Behavioral operation error: $error');
+      },
+    );
+    return result;
+  }
+
   Future<void> _scheduleReminder(_ScheduledReminder reminder) async {
-    final title = _replaceMealPlaceholder(
-      await _translate(reminder.titleKey),
-      reminder.mealName,
-    );
-    final body = _replaceMealPlaceholder(
-      await _translate(reminder.bodyKey),
-      reminder.mealName,
-    );
+    final title = await _translate(reminder.titleKey);
+    final body = await _translate(reminder.bodyKey);
     final scheduledDate = reminder.weekday == null
         ? _nextDailyTime(reminder.hour, reminder.minute)
         : _nextWeeklyTime(reminder.weekday!, reminder.hour, reminder.minute);
@@ -590,146 +693,48 @@ class NotificationService {
       payload: jsonEncode({
         'type': reminder.payloadType,
         'screen': reminder.payloadType,
-        if (reminder.mealId != null) 'mealId': reminder.mealId,
-        if (reminder.mealName != null) 'mealName': reminder.mealName,
       }),
     );
   }
 
-  Future<List<_ScheduledReminder>> _mealRemindersFromSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final rawMealTypes = prefs.getString(_mealTypesKey);
-    final meals = <Map<String, dynamic>>[];
-
-    if (rawMealTypes != null && rawMealTypes.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(rawMealTypes);
-        if (decoded is List) {
-          meals.addAll(decoded.whereType<Map>().map(
-                (meal) => meal.cast<String, dynamic>(),
-              ));
-        }
-      } catch (e) {
-        print('[NotificationService] Error parsing meal reminder times: $e');
-      }
+  Future<void> _scheduleBehavioralReminder(
+    BehavioralReminder reminder,
+  ) async {
+    final title = _replaceArguments(
+      await _translate(reminder.titleKey),
+      reminder.arguments,
+    );
+    final body = _replaceArguments(
+      await _translate(reminder.bodyKey),
+      reminder.arguments,
+    );
+    final value = reminder.scheduledAt;
+    final scheduledDate = tz.TZDateTime(
+      tz.local,
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      value.minute,
+      value.second,
+    );
+    if (!scheduledDate.isAfter(tz.TZDateTime.now(tz.local))) {
+      return;
     }
 
-    if (meals.isEmpty) {
-      meals.addAll(_defaultMealTypesForReminders());
-    }
-
-    meals.sort((a, b) {
-      final aOrder = int.tryParse(a['order']?.toString() ?? '') ?? 0;
-      final bOrder = int.tryParse(b['order']?.toString() ?? '') ?? 0;
-      return aOrder.compareTo(bOrder);
-    });
-
-    final reminders = <_ScheduledReminder>[];
-    for (var index = 0; index < meals.length && index < 100; index++) {
-      final meal = meals[index];
-      final id = meal['id']?.toString() ?? 'meal_$index';
-      final name = meal['name']?.toString().trim().isNotEmpty == true
-          ? meal['name'].toString().trim()
-          : 'Refeição';
-      final time = _resolveMealReminderTime(meal, index);
-      final timeParts = _parseTimeParts(time);
-      if (timeParts == null) continue;
-
-      reminders.add(
-        _ScheduledReminder(
-          id: 1000 + index,
-          hour: timeParts[0],
-          minute: timeParts[1],
-          titleKey: 'notification_meal_title_named',
-          bodyKey: 'notification_meal_body_named',
-          payloadType: 'meal_reminder',
-          mealId: id,
-          mealName: name,
-        ),
-      );
-    }
-
-    return reminders;
-  }
-
-  List<Map<String, dynamic>> _defaultMealTypesForReminders() {
-    return const [
-      {
-        'id': 'breakfast',
-        'name': 'Café da Manhã',
-        'order': 0,
-        'reminderTime': '07:00',
-      },
-      {
-        'id': 'lunch',
-        'name': 'Almoço',
-        'order': 1,
-        'reminderTime': '12:00',
-      },
-      {
-        'id': 'afternoon_snack',
-        'name': 'Lanche da Tarde',
-        'order': 2,
-        'reminderTime': '15:00',
-      },
-      {
-        'id': 'dinner',
-        'name': 'Jantar',
-        'order': 3,
-        'reminderTime': '19:00',
-      },
-      {
-        'id': 'supper',
-        'name': 'Ceia',
-        'order': 4,
-        'reminderTime': '21:00',
-      },
-    ];
-  }
-
-  String _resolveMealReminderTime(Map<String, dynamic> meal, int index) {
-    final configuredTime =
-        _normalizeTime(meal['reminderTime']) ?? _normalizeTime(meal['time']);
-    if (configuredTime != null) return configuredTime;
-
-    final id = meal['id']?.toString() ?? '';
-    switch (id) {
-      case 'breakfast':
-        return '07:00';
-      case 'morning_snack':
-        return '10:00';
-      case 'lunch':
-        return '12:00';
-      case 'afternoon_snack':
-        return '15:00';
-      case 'dinner':
-        return '19:00';
-      case 'supper':
-        return '21:00';
-    }
-
-    const fallbackTimes = [
-      '07:00',
-      '10:00',
-      '12:00',
-      '15:00',
-      '19:00',
-      '21:00',
-      '22:00',
-      '23:00',
-    ];
-
-    if (index >= 0 && index < fallbackTimes.length) {
-      return fallbackTimes[index];
-    }
-
-    return '12:00';
-  }
-
-  String? _normalizeTime(Object? value) {
-    final parts = _parseTimeParts(value?.toString());
-    if (parts == null) return null;
-    return '${parts[0].toString().padLeft(2, '0')}:${parts[1].toString().padLeft(2, '0')}';
+    await _localNotifications.zonedSchedule(
+      id: reminder.id,
+      title: title,
+      body: body,
+      scheduledDate: scheduledDate,
+      notificationDetails: await _notificationDetails(),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: jsonEncode({
+        'type': reminder.payloadType,
+        'screen': '/diary',
+        ...reminder.payload,
+      }),
+    );
   }
 
   List<int>? _parseTimeParts(String? value) {
@@ -753,12 +758,12 @@ class NotificationService {
     return [hour, minute];
   }
 
-  String _replaceMealPlaceholder(String text, String? mealName) {
-    if (mealName == null || mealName.trim().isEmpty) {
-      return text.replaceAll('{meal}', 'sua refeição');
+  String _replaceArguments(String text, Map<String, String> arguments) {
+    var result = text;
+    for (final entry in arguments.entries) {
+      result = result.replaceAll('{${entry.key}}', entry.value);
     }
-
-    return text.replaceAll('{meal}', mealName);
+    return result;
   }
 
   tz.TZDateTime _nextDailyTime(int hour, int minute) {
@@ -767,7 +772,14 @@ class NotificationService {
         tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
 
     if (!scheduledDate.isAfter(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+      scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day + 1,
+        hour,
+        minute,
+      );
     }
 
     return scheduledDate;
@@ -775,14 +787,27 @@ class NotificationService {
 
   tz.TZDateTime _nextWeeklyTime(int weekday, int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-
-    while (scheduledDate.weekday != weekday || !scheduledDate.isAfter(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    for (var dayOffset = 0; dayOffset <= 7; dayOffset++) {
+      final scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day + dayOffset,
+        hour,
+        minute,
+      );
+      if (scheduledDate.weekday == weekday && scheduledDate.isAfter(now)) {
+        return scheduledDate;
+      }
     }
-
-    return scheduledDate;
+    return tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day + 7,
+      hour,
+      minute,
+    );
   }
 
   Future<NotificationDetails> _notificationDetails() async {
@@ -836,8 +861,14 @@ class NotificationService {
     return true;
   }
 
-  Future<void> _cancelManagedLocalNotifications() async {
-    for (final id in _localNotificationIds) {
+  Future<void> _cancelRecurringLocalNotifications() async {
+    for (final id in _recurringNotificationIds) {
+      await _localNotifications.cancel(id: id);
+    }
+  }
+
+  Future<void> _cancelBehavioralLocalNotifications() async {
+    for (final id in _behavioralNotificationIds) {
       await _localNotifications.cancel(id: id);
     }
   }

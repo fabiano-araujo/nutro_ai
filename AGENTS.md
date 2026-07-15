@@ -55,7 +55,7 @@ This file guides coding agents working in this repository.
 4. `MainNavigation` uses `IndexedStack`; screens stay alive and lifecycle-sensitive logic relies on this behavior.
 5. Localization is mandatory for user-facing text (`lib/i18n/`, `LanguageController`).
 6. Model aliases/quality labels are resolved server-side in AI controller/config; keep client and server naming aligned when changing model options.
-7. Chat voice input now records raw audio client-side and sends it to `POST /ai/transcribe-audio`; the server transcribes with `google/gemini-2.5-flash-lite-preview-09-2025`.
+7. Chat voice input now records raw audio client-side and sends it to `POST /ai/transcribe-audio`; the server transcribes with `google/gemini-2.5-flash-lite`.
 8. Agentic chat may emit app commands that the Flutter app executes locally before asking the backend for a final natural-language reply. Current command families include nutrition status, weekly summary, weight status, diet generation, diet-generation preference setup/status, and nutrition-goal setup/status updates.
 9. Agentic chat requests can return `{"app_command": {...}}` or `{"app_commands":[...]}` from the backend for app-scoped actions/data. The Flutter chat executes the command(s) via providers, sends the result back to the server in a second request, and only the final natural-language answer should remain visible to the user.
 10. Agentic follow-up prompts now include `[APP_CURRENT_STATE_BEGIN]... [APP_CURRENT_STATE_END]` with the latest structured app state so the backend can decide the next step without relying on fragile local heuristics.

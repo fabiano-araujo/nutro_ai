@@ -30,8 +30,15 @@ import '../widgets/native_ad_widget.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   final MealType? selectedMealType;
+  final bool openBarcodeScannerOnStart;
+  final ValueChanged<Food>? onFoodAdded;
 
-  const FoodSearchScreen({Key? key, this.selectedMealType}) : super(key: key);
+  const FoodSearchScreen({
+    Key? key,
+    this.selectedMealType,
+    this.openBarcodeScannerOnStart = false,
+    this.onFoodAdded,
+  }) : super(key: key);
 
   @override
   State<FoodSearchScreen> createState() => _FoodSearchScreenState();
@@ -160,6 +167,11 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     _tabController = TabController(length: 3, vsync: this);
     _selectedMealType = widget.selectedMealType;
     _loadServerData();
+    if (widget.openBarcodeScannerOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openBarcodeScanner();
+      });
+    }
   }
 
   Future<void> _loadServerData() async {
@@ -1287,6 +1299,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         builder: (context) => FoodPage(
           food: food,
           selectedMealType: _selectedMealType,
+          onFoodAdded: widget.onFoodAdded,
           barcode: _pendingBarcode,
           barcodeMarket: _pendingBarcodeMarket,
           catalogSource: catalogSource,
@@ -1320,7 +1333,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       ),
     );
 
-    if (!mounted || barcode == null || barcode.isEmpty) return;
+    if (!mounted) return;
+    if (barcode == null || barcode.isEmpty) {
+      if (widget.openBarcodeScannerOnStart) {
+        Navigator.pop(context);
+      }
+      return;
+    }
 
     _onBarcodeSubmitted(barcode);
   }
@@ -1420,6 +1439,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           food: Food(name: foodName),
           foodUrl: foodUrl,
           selectedMealType: _selectedMealType,
+          onFoodAdded: widget.onFoodAdded,
           barcode: _pendingBarcode,
           barcodeMarket: _pendingBarcodeMarket,
           catalogSource: 'fatsecret',
@@ -1665,8 +1685,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
-    final showBarcodeWebView = _activeSearchIsBarcode && !kIsWeb;
-    final barcodeWebViewHeight = MediaQuery.of(context).size.height * 0.5;
+    final showBarcodeCaptchaWebView =
+        _activeSearchIsBarcode && _barcodeCaptchaDetected && !kIsWeb;
 
     final tabBar = TabBar(
       controller: _tabController,
@@ -1698,27 +1718,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          if (showBarcodeWebView)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: barcodeWebViewHeight,
-              child: _buildFatSecretWebView(visible: true),
-            )
-          else
-            Positioned.fill(
-              child: _buildFatSecretWebView(visible: false),
-            ),
-          Positioned(
-            top: showBarcodeWebView ? barcodeWebViewHeight : 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+          Positioned.fill(
             child: Container(
               color: backgroundColor,
               child: SafeArea(
-                top: !showBarcodeWebView,
                 bottom: false,
                 child: NestedScrollView(
                   headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -1874,6 +1877,11 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                         ),
                 ),
               ),
+            ),
+          ),
+          Positioned.fill(
+            child: _buildFatSecretWebView(
+              visible: showBarcodeCaptchaWebView,
             ),
           ),
         ],
@@ -2243,6 +2251,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
             builder: (context) => FoodPage(
               food: food,
               selectedMealType: _selectedMealType,
+              onFoodAdded: widget.onFoodAdded,
             ),
           ),
         );
@@ -2283,6 +2292,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
               food: food,
               foodUrl: foodUrl,
               selectedMealType: _selectedMealType,
+              onFoodAdded: widget.onFoodAdded,
               catalogSource: 'fatsecret',
             ),
           ),
@@ -2465,6 +2475,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
             builder: (context) => FoodPage(
               food: food,
               selectedMealType: _selectedMealType,
+              onFoodAdded: widget.onFoodAdded,
             ),
           ),
         );
@@ -2482,9 +2493,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   }
 
   void _addFoodToMeal(Food food, MealType mealType) {
-    // Add to meal
-    Provider.of<DailyMealsProvider>(context, listen: false)
-        .addFoodToMeal(mealType, food);
+    final onFoodAdded = widget.onFoodAdded;
+    if (onFoodAdded != null) {
+      onFoodAdded(food);
+    } else {
+      Provider.of<DailyMealsProvider>(context, listen: false)
+          .addFoodToMeal(mealType, food);
+    }
 
     // Add to history (recents and frequency)
     final historyProvider =

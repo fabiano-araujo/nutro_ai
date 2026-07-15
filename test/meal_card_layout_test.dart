@@ -135,6 +135,297 @@ void main() {
     expect(updatedMeal!.foods.first.amount, '200 g');
   });
 
+  testWidgets('food can be added from editor and meal card options',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Meal? updatedMeal;
+    var barcodeScanRequested = false;
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => MealTypesProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+          ),
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: MealCard(
+                meal: _overflowRegressionMeal(),
+                onMealUpdated: (meal) => updatedMeal = meal,
+                onBarcodeScan: () => barcodeScanRequested = true,
+                foodNutritionResolver: (_, __) async => _food(
+                  name: 'banana',
+                  amount: '1 unidade',
+                  emoji: '🍌',
+                  calories: 89,
+                  protein: 1.1,
+                  carbs: 23,
+                  fat: 0.3,
+                ),
+                onDelete: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Adicionar alimento'), findsOneWidget);
+    expect(find.text('Código de Barras'), findsOneWidget);
+    await tester.tap(find.text('Código de Barras'));
+    await tester.pumpAndSettle();
+    expect(barcodeScanRequested, isTrue);
+
+    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Editar alimentos'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.widgetWithText(OutlinedButton, 'Adicionar alimento'),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.widgetWithText(OutlinedButton, 'Adicionar alimento'),
+    );
+    await tester.pump();
+    expect(find.byType(TextField), findsNWidgets(4));
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Cancelar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adicionar alimento'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNWidgets(4));
+    await tester.enterText(find.byType(TextField).last, '1 banana');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Salvar'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(updatedMeal, isNotNull);
+    expect(updatedMeal!.foods, hasLength(4));
+    expect(updatedMeal!.foods.last.name, 'banana');
+    expect(updatedMeal!.foods.last.amount, '1 unidade');
+    expect(updatedMeal!.foods.last.calories, 89);
+  });
+
+  testWidgets('failed nutrition lookup never persists a zero-calorie draft',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Meal? updatedMeal;
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => MealTypesProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+          ),
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: MealCard(
+                meal: _overflowRegressionMeal(),
+                onMealUpdated: (meal) => updatedMeal = meal,
+                foodNutritionResolver: (_, __) async => null,
+                onDelete: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adicionar alimento'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).last, 'Ovo');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(updatedMeal, isNotNull);
+    expect(updatedMeal!.foods, hasLength(3));
+    expect(
+      updatedMeal!.foods.any((food) => food.name.toLowerCase() == 'ovo'),
+      isFalse,
+    );
+    expect(find.text('0 kcal'), findsNothing);
+    expect(
+      find.text(
+        'Não foi possível calcular os nutrientes. '
+        'O alimento não foi adicionado. Tente novamente.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('card resyncs when its parent changes only the food amount',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final mealNotifier = ValueNotifier<Meal>(_amountSyncMeal());
+    addTearDown(mealNotifier.dispose);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => MealTypesProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+          ),
+          home: Scaffold(
+            body: ValueListenableBuilder<Meal>(
+              valueListenable: mealNotifier,
+              builder: (context, meal, _) {
+                return SizedBox(
+                  width: 360,
+                  child: MealCard(meal: meal, onDelete: () {}),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+    expect(find.text('100'), findsOneWidget);
+
+    final original = mealNotifier.value;
+    final updatedFood = original.foods.first.copyWith(amount: '160 g');
+    mealNotifier.value = original.copyWith(foods: [updatedFood]);
+    await tester.pump();
+
+    expect(find.text('160 g'), findsOneWidget);
+  });
+
+  testWidgets('individual editor persists a 160 g egg serving immediately',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Meal? updatedMeal;
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthService()),
+          ChangeNotifierProvider(create: (_) => MealTypesProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+          ),
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: MealCard(
+                meal: _amountSyncMeal(),
+                onMealUpdated: (meal) => updatedMeal = meal,
+                onDelete: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ovo').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    await tester.tap(find.byIcon(Icons.edit_note_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar Alimento'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '160 g de ovos');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(updatedMeal, isNotNull);
+    expect(updatedMeal!.foods.single.name, 'ovos');
+    expect(updatedMeal!.foods.single.amount, '160 g');
+    expect(updatedMeal!.foods.single.source, FoodSource.manual);
+    expect(updatedMeal!.foods.single.calories, 448);
+    expect(find.text('160 g'), findsOneWidget);
+  });
+
   testWidgets('AI source option shows the food portion', (tester) async {
     tester.view.physicalSize = const Size(390, 900);
     tester.view.devicePixelRatio = 1;
@@ -325,6 +616,24 @@ Meal _aiPortionMeal() {
         protein: 2.6,
         carbs: 14,
         fat: 0.6,
+      ),
+    ],
+  );
+}
+
+Meal _amountSyncMeal() {
+  return Meal(
+    id: 'meal-amount-sync',
+    type: MealType.breakfast,
+    foods: [
+      _food(
+        name: 'ovo',
+        amount: '100',
+        emoji: '*',
+        calories: 280,
+        protein: 20,
+        carbs: 2,
+        fat: 20,
       ),
     ],
   );

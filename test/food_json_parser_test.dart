@@ -127,6 +127,16 @@ void main() {
       expect(entries[1].mealType.name, 'dinner');
       expect(entries[1].foods.map((food) => food.name), ['cuscuz', 'leite']);
     });
+
+    test('detects complete payload without requiring a full food parse', () {
+      const complete =
+          '{"mealType":"snack","foods":[{"name":"banana","portion":"1 unidade","macros":{"calories":89,"protein":1,"carbohydrate":23,"fat":0.3}}]}';
+      const incomplete = '{"mealType":"snack","foods":[';
+
+      expect(FoodJsonParser.hasCompleteFoodJson(complete), isTrue);
+      expect(FoodJsonParser.hasFoodJsonSignal(incomplete), isTrue);
+      expect(FoodJsonParser.hasCompleteFoodJson(incomplete), isFalse);
+    });
   });
 
   group('FoodJsonParser.parseServingFromPortion', () {

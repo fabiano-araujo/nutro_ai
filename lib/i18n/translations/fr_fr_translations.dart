@@ -800,6 +800,8 @@ final Map<String, String> frFRTranslations = {
   'edit_all_foods': 'Modifier tous les aliments',
   'edit_all_foods_desc': 'Modifier le nom et la quantité de tous les éléments',
   'add_food': 'Ajouter un aliment',
+  'food_nutrition_lookup_failed':
+      'Les nutriments n’ont pas pu être calculés. L’aliment n’a pas été ajouté. Réessayez.',
   'save_all': 'Tout enregistrer',
   'add_meal': 'Ajouter un repas',
   'meal_added': 'Repas ajouté',
@@ -1162,7 +1164,7 @@ final Map<String, String> frFRTranslations = {
   'meal_time': 'Heure du repas',
   'meal_reminder_times': 'Horaires des repas',
   'meal_reminder_times_hint':
-      'Les rappels utilisent l’heure enregistrée pour chaque repas.',
+      'Nutro AI apprend vos habitudes, évite les rappels déjà réglés et protège votre série en fin de journée.',
   'add_meal_short': 'Ajouter',
   'weight_reminders': 'Rappels de poids',
   'weight_reminder_config_title': 'Configurer le rappel de poids',
@@ -1180,7 +1182,8 @@ final Map<String, String> frFRTranslations = {
   'personalized_tip_time': 'Heure des conseils personnalisés',
   'notifications_all_disabled': 'Désactivées',
   'notifications_enabled_count': '{count} actives',
-  'notification_meal_schedule': 'Aux horaires enregistrés pour vos repas',
+  'notification_meal_schedule':
+      'Après vos horaires habituels, seulement si une saisie manque',
   'notification_weight_schedule': '{count}x par semaine le {days} à {time}',
   'notification_tip_schedule': 'Tous les jours à {time}',
   'notification_permission_denied':
@@ -1192,6 +1195,21 @@ final Map<String, String> frFRTranslations = {
   'notification_meal_title_named': 'C’est l’heure de {meal}',
   'notification_meal_body_named':
       'Notez {meal} dans Nutro AI pour suivre vos macros.',
+  'notification_smart_meal_title': 'Vous avez oublié de noter {meal} ?',
+  'notification_smart_meal_body_habit':
+      'Vous le notez habituellement vers {time}. Touchez pour l’ajouter.',
+  'notification_smart_meal_body_configured':
+      'L’heure de {meal} est passée. Notez-le pour garder votre journal à jour.',
+  'notification_streak_risk_title':
+      'Plus qu’une heure pour conserver votre série',
+  'notification_streak_risk_body':
+      'Vous notez vos repas depuis {count} jours. Notez-en un aujourd’hui pour conserver votre série.',
+  'notification_comeback_title': 'On reprend votre journal aujourd’hui ?',
+  'notification_comeback_body':
+      'Sans culpabilité : notez votre prochain repas et reprenez où vous en étiez.',
+  'notification_meal_name_morning_snack': 'Collation du matin',
+  'notification_meal_name_afternoon_snack': 'Goûter',
+  'notification_meal_name_supper': 'Collation du soir',
   'notification_weight_title': 'Il est temps de mettre à jour votre poids',
   'notification_weight_body':
       'Notez votre poids hebdomadaire pour garder un suivi précis.',

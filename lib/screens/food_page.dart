@@ -35,6 +35,7 @@ class FoodPage extends StatefulWidget {
   final String? barcode;
   final String? barcodeMarket;
   final String? catalogSource;
+  final ValueChanged<Food>? onFoodAdded;
 
   const FoodPage({
     Key? key,
@@ -44,6 +45,7 @@ class FoodPage extends StatefulWidget {
     this.barcode,
     this.barcodeMarket,
     this.catalogSource,
+    this.onFoodAdded,
   }) : super(key: key);
 
   @override
@@ -1304,9 +1306,13 @@ class _FoodPageState extends State<FoodPage> {
           .toList(),
     );
 
-    // Add to meal
-    Provider.of<DailyMealsProvider>(context, listen: false)
-        .addFoodToMeal(mealType, scaledFood);
+    final onFoodAdded = widget.onFoodAdded;
+    if (onFoodAdded != null) {
+      onFoodAdded(scaledFood);
+    } else {
+      Provider.of<DailyMealsProvider>(context, listen: false)
+          .addFoodToMeal(mealType, scaledFood);
+    }
 
     // Add to history (recents and frequency)
     final historyProvider =

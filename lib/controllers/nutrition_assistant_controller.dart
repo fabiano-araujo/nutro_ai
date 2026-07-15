@@ -29,6 +29,7 @@ import '../providers/nutrition_goals_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../services/app_agent_service.dart';
 import '../utils/food_json_parser.dart';
+import '../models/meal_model.dart';
 
 /// Controller para gerenciar o estado e a lógica do Assistente de Nutrição
 class NutritionAssistantController with ChangeNotifier {
@@ -51,6 +52,8 @@ class NutritionAssistantController with ChangeNotifier {
 
   // Data selecionada atual para as mensagens (formato yyyy-MM-dd)
   DateTime _selectedDate = DateTime.now();
+  int _dateChangeRequestId = 0;
+  static const Duration _dateChangeLoadingLead = Duration(milliseconds: 120);
 
   // Estados de carregamento
   bool _isLoading = false;
@@ -103,6 +106,315 @@ class NutritionAssistantController with ChangeNotifier {
   bool get isRecording => _isRecording;
   bool get hasSelectedImage => _hasSelectedImage;
   Uint8List? get selectedImageBytes => _selectedImageBytes;
+
+  String _defaultMessageId(bool isUser, DateTime timestamp) {
+    return '${isUser ? 'usr' : 'msg'}-${timestamp.microsecondsSinceEpoch}';
+  }
+
+  DateTime _messageTimestamp(Map<String, dynamic> message) {
+    final value = message['timestamp'];
+    if (value is DateTime) return value;
+    if (value is String) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) return parsed;
+    }
+    return DateTime.now();
+  }
+
+  void _ensureMessageIdentityAndLinks(
+    List<Map<String, dynamic>> messages,
+  ) {
+    Map<String, dynamic>? latestUserMessage;
+
+    for (final message in messages) {
+      final isUser = message['isUser'] == true;
+      final timestamp = _messageTimestamp(message);
+      message['timestamp'] = timestamp;
+
+      final existingId = message['id']?.toString().trim();
+      if (existingId == null || existingId.isEmpty) {
+        message['id'] = _defaultMessageId(isUser, timestamp);
+      }
+
+      if (isUser) {
+        final existingTurnId = message['turnId']?.toString().trim();
+        if (existingTurnId == null || existingTurnId.isEmpty) {
+          message['turnId'] = 'turn-${timestamp.microsecondsSinceEpoch}';
+        }
+        latestUserMessage = message;
+        continue;
+      }
+
+      if (message['recoveredLegacyMealCard'] == true &&
+          message['sourceUserMessageId'] == null) {
+        continue;
+      }
+      if (latestUserMessage == null) continue;
+      final turnId = message['turnId']?.toString().trim();
+      if (turnId == null || turnId.isEmpty) {
+        message['turnId'] = latestUserMessage['turnId'];
+      }
+      final replyTo = message['replyToMessageId']?.toString().trim();
+      if (replyTo == null || replyTo.isEmpty) {
+        message['replyToMessageId'] = latestUserMessage['id'];
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _restoreEmbeddedSourceMessages(
+    List<Map<String, dynamic>> messages,
+  ) {
+    final knownIds = messages
+        .map((message) => message['id']?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final restored = <Map<String, dynamic>>[];
+
+    for (final message in messages) {
+      if (message['isUser'] != true) {
+        var sourceMessage = message['sourceUserMessage'];
+        if (message['recoveredLegacyMealCard'] == true &&
+            (sourceMessage is! String || sourceMessage.trim().isEmpty)) {
+          final recoveredPrompt =
+              _buildRecoveredMealPrompt(message['mealSnapshots']);
+          if (recoveredPrompt != null) {
+            final assistantId = message['id']?.toString() ??
+                'msg-${_messageTimestamp(message).microsecondsSinceEpoch}';
+            final recoveredUserId = 'usr-recovered-$assistantId';
+            final recoveredUserTimestamp = _messageTimestamp(message)
+                .subtract(const Duration(milliseconds: 1));
+            message['turnId'] = 'turn-recovered-$assistantId';
+            message['replyToMessageId'] = recoveredUserId;
+            message['sourceUserMessage'] = recoveredPrompt;
+            message['sourceUserMessageId'] = recoveredUserId;
+            message['sourceUserTimestamp'] =
+                recoveredUserTimestamp.toIso8601String();
+            message['sourceUserReconstructed'] = true;
+            sourceMessage = recoveredPrompt;
+          }
+        }
+        final sourceHadImage = message['sourceUserHadImage'] == true;
+        final sourceMessageId =
+            message['sourceUserMessageId']?.toString().trim();
+        if (((sourceMessage is String && sourceMessage.trim().isNotEmpty) ||
+                sourceHadImage) &&
+            sourceMessageId != null &&
+            sourceMessageId.isNotEmpty &&
+            !knownIds.contains(sourceMessageId)) {
+          final sourceTimestamp = DateTime.tryParse(
+                  message['sourceUserTimestamp']?.toString() ?? '') ??
+              _messageTimestamp(message)
+                  .subtract(const Duration(milliseconds: 1));
+          restored.add({
+            'id': sourceMessageId,
+            'turnId': message['turnId'] ??
+                'turn-${sourceTimestamp.microsecondsSinceEpoch}',
+            'isUser': true,
+            'message': sourceMessage is String ? sourceMessage : '',
+            'timestamp': sourceTimestamp,
+            if (sourceHadImage) 'hadImage': true,
+            'restoredFromMealSnapshot': true,
+            if (message['sourceUserReconstructed'] == true)
+              'sourceUserReconstructed': true,
+          });
+          knownIds.add(sourceMessageId);
+        }
+      }
+      restored.add(message);
+    }
+    return restored;
+  }
+
+  String? _buildRecoveredMealPrompt(dynamic rawSnapshots) {
+    if (rawSnapshots is! List) return null;
+    final foodNames = <String>[];
+    final seen = <String>{};
+
+    for (final rawSnapshot in rawSnapshots) {
+      try {
+        final snapshot = rawSnapshot is Map<String, dynamic>
+            ? rawSnapshot
+            : rawSnapshot is Map
+                ? Map<String, dynamic>.from(rawSnapshot)
+                : null;
+        if (snapshot == null) continue;
+        final meal = Meal.fromJson(snapshot);
+        for (final food in meal.foods) {
+          final name = food.name.trim();
+          if (name.isNotEmpty && seen.add(name.toLowerCase())) {
+            foodNames.add(name);
+          }
+        }
+      } catch (_) {
+        // Um snapshot invalido nao deve impedir a recuperacao dos demais.
+      }
+    }
+    if (foodNames.isEmpty) return null;
+    return foodNames.join(', ');
+  }
+
+  /// Persiste o estado final dos cards dentro da propria resposta do chat.
+  /// Assim o turno completo (usuario + resposta + refeicoes editadas) continua
+  /// renderizavel offline e tambem via snapshot sincronizado do chat.
+  void persistMealSnapshotsForMessage({
+    required String messageId,
+    required List<Meal> meals,
+  }) {
+    if (messageId.trim().isEmpty || meals.isEmpty) return;
+    _ensureMessageIdentityAndLinks(_messages);
+
+    final messageIndex = _messages.indexWhere((message) {
+      if (message['isUser'] == true) return false;
+      return message['id']?.toString() == messageId;
+    });
+    if (messageIndex == -1) return;
+
+    final assistantMessage = _messages[messageIndex];
+    final snapshots =
+        meals.map((meal) => meal.toJson()).toList(growable: false);
+    final previousSnapshots = assistantMessage['mealSnapshots'];
+    var changed = jsonEncode(previousSnapshots) != jsonEncode(snapshots);
+    if (changed) {
+      assistantMessage['mealSnapshots'] = snapshots;
+    }
+
+    final replyToMessageId = assistantMessage['replyToMessageId']?.toString();
+    Map<String, dynamic>? sourceUserMessage;
+    if (replyToMessageId != null && replyToMessageId.isNotEmpty) {
+      for (final candidate in _messages) {
+        if (candidate['isUser'] == true &&
+            candidate['id']?.toString() == replyToMessageId) {
+          sourceUserMessage = candidate;
+          break;
+        }
+      }
+    }
+    if (sourceUserMessage == null) {
+      for (var index = messageIndex - 1; index >= 0; index--) {
+        if (_messages[index]['isUser'] == true) {
+          sourceUserMessage = _messages[index];
+          break;
+        }
+      }
+    }
+
+    if (sourceUserMessage != null) {
+      final sourceId = sourceUserMessage['id'];
+      final sourceTimestamp =
+          _messageTimestamp(sourceUserMessage).toIso8601String();
+      if (assistantMessage['sourceUserMessageId'] != sourceId) {
+        assistantMessage['sourceUserMessageId'] = sourceId;
+        changed = true;
+      }
+      if (assistantMessage['sourceUserTimestamp'] != sourceTimestamp) {
+        assistantMessage['sourceUserTimestamp'] = sourceTimestamp;
+        changed = true;
+      }
+      final sourceText = sourceUserMessage['message'];
+      if (sourceText is String &&
+          sourceText.trim().isNotEmpty &&
+          assistantMessage['sourceUserMessage'] != sourceText) {
+        assistantMessage['sourceUserMessage'] = sourceText;
+        changed = true;
+      }
+      if (sourceUserMessage['hasImage'] == true ||
+          sourceUserMessage['hadImage'] == true) {
+        if (assistantMessage['sourceUserHadImage'] != true) {
+          assistantMessage['sourceUserHadImage'] = true;
+          changed = true;
+        }
+      }
+    }
+
+    if (!changed) return;
+    notifyListeners();
+    unawaited(_saveMessagesForCurrentDate());
+  }
+
+  /// Converte refeicoes antigas, que sobreviveram apenas no diario, em
+  /// mensagens de card na posicao original da conversa. Quando a mensagem
+  /// original ja foi perdida, cria uma bolha factual apenas com os nomes dos
+  /// alimentos que continuam armazenados no proprio card.
+  void recoverLegacyMealSnapshotMessages(List<Meal> meals) {
+    if (meals.isEmpty) return;
+    _ensureMessageIdentityAndLinks(_messages);
+
+    final grouped = <String, List<Meal>>{};
+    for (final meal in meals) {
+      final rawId = meal.messageId?.trim();
+      if (rawId == null || rawId.isEmpty) continue;
+      final withoutMealSuffix = rawId.split('#meal-').first;
+      final legacyMatch =
+          RegExp(r'^(msg-\d+)-\d+$').firstMatch(withoutMealSuffix);
+      final groupId = legacyMatch?.group(1) ?? withoutMealSuffix;
+      if (!RegExp(r'^msg-\d+$').hasMatch(groupId)) continue;
+      (grouped[groupId] ??= <Meal>[]).add(meal);
+    }
+    if (grouped.isEmpty) return;
+
+    var changed = false;
+    for (final entry in grouped.entries) {
+      if (_messages.any((message) => message['id'] == entry.key)) {
+        continue;
+      }
+      final micros = int.tryParse(entry.key.substring('msg-'.length));
+      if (micros == null) continue;
+      final timestamp = DateTime.fromMicrosecondsSinceEpoch(micros);
+
+      Map<String, dynamic>? sourceUserMessage;
+      Duration? closestDistance;
+      for (final candidate in _messages) {
+        if (candidate['isUser'] != true) continue;
+        final candidateTimestamp = _messageTimestamp(candidate);
+        if (candidateTimestamp.isAfter(timestamp)) continue;
+        final distance = timestamp.difference(candidateTimestamp);
+        if (distance > const Duration(minutes: 5)) continue;
+        if (closestDistance == null || distance < closestDistance) {
+          sourceUserMessage = candidate;
+          closestDistance = distance;
+        }
+      }
+
+      final recoveredMessage = <String, dynamic>{
+        'id': entry.key,
+        'isUser': false,
+        'message': '',
+        'timestamp': timestamp,
+        'mealSnapshots':
+            entry.value.map((meal) => meal.toJson()).toList(growable: false),
+        'recoveredLegacyMealCard': true,
+      };
+      if (sourceUserMessage != null) {
+        recoveredMessage['turnId'] = sourceUserMessage['turnId'];
+        recoveredMessage['replyToMessageId'] = sourceUserMessage['id'];
+        recoveredMessage['sourceUserMessageId'] = sourceUserMessage['id'];
+        recoveredMessage['sourceUserTimestamp'] =
+            _messageTimestamp(sourceUserMessage).toIso8601String();
+        final sourceText = sourceUserMessage['message'];
+        if (sourceText is String && sourceText.trim().isNotEmpty) {
+          recoveredMessage['sourceUserMessage'] = sourceText;
+        }
+      }
+
+      final insertionIndex = _messages.indexWhere(
+        (message) => _messageTimestamp(message).isAfter(timestamp),
+      );
+      if (insertionIndex == -1) {
+        _messages.add(recoveredMessage);
+      } else {
+        _messages.insert(insertionIndex, recoveredMessage);
+      }
+      changed = true;
+    }
+
+    if (!changed) return;
+    _messages = _restoreEmbeddedSourceMessages(_messages);
+    _ensureMessageIdentityAndLinks(_messages);
+    notifyListeners();
+    unawaited(_saveMessagesForCurrentDate());
+  }
+
   String? get currentConversationId => _currentConversationId;
   int? get currentlySpeakingMessageIndex => _currentlySpeakingMessageIndex;
   DateTime get selectedDate => _selectedDate;
@@ -744,6 +1056,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     // Cria cópias locais dos dados da imagem para não perder referência
     final bool enviandoImagem = _hasSelectedImage;
     final Uint8List? imagemBytes = _selectedImageBytes;
+    final userTimestamp = DateTime.now();
+    final userMessageId = _defaultMessageId(true, userTimestamp);
+    final turnId = 'turn-${userTimestamp.microsecondsSinceEpoch}';
 
     // Adicionar mensagem do usuário
     if (enviandoImagem && imagemBytes != null) {
@@ -754,7 +1069,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
             trimmedMessage, // Removido texto padrão, agora envia string vazia quando não há mensagem
         'hasImage': true,
         'imageBytes': imagemBytes,
-        'timestamp': DateTime.now(),
+        'id': userMessageId,
+        'turnId': turnId,
+        'timestamp': userTimestamp,
       });
 
       // Resetar a imagem selecionada
@@ -767,7 +1084,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       _messages.add({
         'isUser': true,
         'message': trimmedMessage,
-        'timestamp': DateTime.now(),
+        'id': userMessageId,
+        'turnId': turnId,
+        'timestamp': userTimestamp,
       });
     }
 
@@ -788,10 +1107,14 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     unawaited(_saveMessagesForCurrentDate());
 
     // Adiciona a mensagem com o notifier em vez do conteúdo direto
+    final assistantTimestamp = DateTime.now();
     _messages.add({
       'isUser': false,
       'notifier': _messageNotifier,
-      'timestamp': DateTime.now(),
+      'id': _defaultMessageId(false, assistantTimestamp),
+      'turnId': turnId,
+      'replyToMessageId': userMessageId,
+      'timestamp': assistantTimestamp,
     });
     _logDailyChatTrace('assistant_placeholder_added', {
       'date': _formatDateKey(_selectedDate),
@@ -950,7 +1273,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
       // Para fluxos principais do app, usar Gemini Flash Lite com provider automático
       if (toolType == 'chat') {
-        quality = 'google/gemini-2.5-flash-lite-preview-09-2025';
+        quality = 'google/gemini-2.5-flash-lite';
         provider = '';
         print('📱 Usando modelo Gemini 2.5 Flash Lite para o chat inicial');
       } else if (toolType == 'my_diet') {
@@ -958,12 +1281,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         provider = ''; // Deixar o OpenRouter escolher o provider
         print('📱 Usando modelo Gemini Flash para Minha Dieta');
       } else if (toolType == 'free_chat') {
-        quality = 'google/gemini-2.5-flash-lite-preview-09-2025';
+        quality = 'google/gemini-2.5-flash-lite';
         provider =
             ''; // Deixar vazio para escolher automaticamente (geralmente o mais barato/disponível)
         print('📱 Usando modelo Gemini 2.5 Flash Lite para Free Chat');
       } else if (toolType == macroGoalsToolType) {
-        quality = 'google/gemini-2.5-flash-lite-preview-09-2025';
+        quality = 'google/gemini-2.5-flash-lite';
         provider = '';
         print(
             '📱 Usando modelo Gemini 2.5 Flash Lite para conversa de metas/macros');
@@ -1874,11 +2197,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     if (streamingIndex != null &&
         streamingIndex < _messages.length &&
         _messages[streamingIndex]['notifier'] == notifier) {
-      _messages[streamingIndex] = {
-        'isUser': false,
-        'message': finalContent,
-        'timestamp': _messages[streamingIndex]['timestamp'],
-      };
+      final finalizedMessage =
+          Map<String, dynamic>.from(_messages[streamingIndex]);
+      finalizedMessage
+        ..remove('notifier')
+        ..['isUser'] = false
+        ..['message'] = finalContent;
+      _messages[streamingIndex] = finalizedMessage;
     }
 
     notifyListeners();
@@ -1920,7 +2245,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
       // Para imagens, usar modelo específico e agent free-image
       String quality =
-          'google/gemini-2.5-flash-lite-preview-09-2025'; // Modelo específico para análise de imagem e quantidade dos alimentos
+          'google/gemini-2.5-flash-lite'; // Modelo específico para análise de imagem e quantidade dos alimentos
       String agentType =
           'free-image'; // Agent especializado em análise de imagem
       String provider =
@@ -2935,11 +3260,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         '🗑️ NutritionAssistantController - Par de mensagens deletado no índice $messageIndex');
   }
 
-  /// Remove pares de mensagem de alimentos cujo card não existe mais no diário.
-  ///
-  /// Isso corrige históricos antigos restaurados do cache/servidor que ainda
-  /// têm JSON de alimento, mas cuja refeição vinculada já foi apagada ou
-  /// substituída por dados mais novos vindos do servidor.
+  /// Remove pares de mensagem apenas quando ha um tombstone de exclusao.
+  /// Ausencia temporaria da refeicao nunca pode apagar a conversa: o sync do
+  /// diario e o sync do chat sao independentes e podem concluir em momentos
+  /// diferentes.
   Future<bool> pruneOrphanFoodDiaryMessagePairs({
     required bool Function(String messageId) hasMealsForMessageId,
     required bool Function(String messageId) isChatMealDeleted,
@@ -2949,7 +3273,6 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
   }) async {
     if (_messages.isEmpty) return false;
 
-    final currentTime = now ?? DateTime.now();
     final indexesToRemove = <int>{};
     final orphanMessageIds = <String>[];
 
@@ -2969,17 +3292,15 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         continue;
       }
 
-      final messageId = 'msg-${timestamp.microsecondsSinceEpoch}';
+      final storedMessageId = message['id']?.toString().trim();
+      final messageId = storedMessageId == null || storedMessageId.isEmpty
+          ? 'msg-${timestamp.microsecondsSinceEpoch}'
+          : storedMessageId;
       if (hasMealsForMessageId(messageId)) {
         continue;
       }
 
-      final wasDeleted = isChatMealDeleted(messageId);
-      final age = currentTime.difference(timestamp);
-      final isRecentOrFuture = age.isNegative || age < gracePeriod;
-      if (!wasDeleted && isRecentOrFuture) {
-        continue;
-      }
+      if (!isChatMealDeleted(messageId)) continue;
 
       indexesToRemove.add(i);
       orphanMessageIds.add(messageId);
@@ -3028,24 +3349,48 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
   /// Muda a data selecionada e carrega as mensagens dessa data
   Future<void> changeSelectedDate(DateTime newDate) async {
+    final normalizedDate = DateTime(newDate.year, newDate.month, newDate.day);
+    if (_formatDateKey(normalizedDate) == _formatDateKey(_selectedDate)) {
+      return;
+    }
+
     print(
-        '📅 NutritionAssistantController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(newDate)}');
+        '📅 NutritionAssistantController - Mudando data de ${_formatDateKey(_selectedDate)} para ${_formatDateKey(normalizedDate)}');
 
-    // Salvar mensagens da data atual antes de mudar
-    await _saveMessagesForCurrentDate();
+    // A persistência captura a data e as mensagens atuais antes do primeiro
+    // await. Ela pode continuar em paralelo sem segurar o primeiro frame da
+    // nova data.
+    final savePreviousDate = _saveMessagesForCurrentDate();
+    final requestId = ++_dateChangeRequestId;
 
-    // Atualizar a data selecionada
-    _selectedDate = DateTime(newDate.year, newDate.month, newDate.day);
+    // Atualizar a interface imediatamente. Em dias com conversa grande,
+    // esperar o SharedPreferences aqui fazia a data anterior permanecer
+    // visível enquanto todo o JSON era salvo.
+    _selectedDate = normalizedDate;
     _messages = [];
     _currentDateHadStoredChatState = false;
     _emptyChatDeletionPending = false;
     _isLoadingMessages = true;
     notifyListeners();
 
-    // Carregar mensagens da nova data
-    await _loadMessagesForDate(_selectedDate, showLoading: true);
+    // Reserva alguns frames para a UI desenhar o indicador antes de ler e
+    // decodificar a conversa. Caches locais pequenos podem concluir entre dois
+    // frames e, sem isso, o estado de loading nunca chega a ficar visível.
+    await Future<void>.delayed(_dateChangeLoadingLead);
+    if (!_isCurrentDateLoad(normalizedDate, requestId)) {
+      await savePreviousDate;
+      return;
+    }
 
-    notifyListeners();
+    // O carregamento da nova data também começa sem esperar a gravação da
+    // anterior, pois cada operação usa uma chave independente.
+    final loadSelectedDate = _loadMessagesForDate(
+      normalizedDate,
+      showLoading: true,
+      dateChangeRequestId: requestId,
+    );
+
+    await Future.wait([savePreviousDate, loadSelectedDate]);
   }
 
   /// Salva as mensagens da data atual
@@ -3079,8 +3424,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       } else {
         DailyChatSyncService.instance.scheduleSync(dateKey: dateKey);
       }
-      _currentDateHadStoredChatState = true;
-      _emptyChatDeletionPending = false;
+      if (_formatDateKey(_selectedDate) == dateKey) {
+        _currentDateHadStoredChatState = true;
+        _emptyChatDeletionPending = false;
+      }
       _logDailyChatTrace('cache_save_skip_empty', {
         'date': dateKey,
         'scope': storageScope,
@@ -3098,6 +3445,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       final messagesForStorage = _messages
           .where((message) => !_isRestoredAssistantPlaceholder(message))
           .toList(growable: false);
+      _ensureMessageIdentityAndLinks(messagesForStorage);
       final droppedPlaceholders = _messages.length - messagesForStorage.length;
       if (droppedPlaceholders > 0) {
         _logDailyChatTrace('cache_save_dropped_empty_assistant', {
@@ -3119,6 +3467,24 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
         if (msg.containsKey('message')) {
           data['message'] = msg['message'];
+        }
+
+        for (final metadataKey in const [
+          'id',
+          'turnId',
+          'replyToMessageId',
+          'mealSnapshots',
+          'sourceUserMessage',
+          'sourceUserMessageId',
+          'sourceUserTimestamp',
+          'sourceUserHadImage',
+          'sourceUserReconstructed',
+          'restoredFromMealSnapshot',
+          'recoveredLegacyMealCard',
+        ]) {
+          if (msg.containsKey(metadataKey) && msg[metadataKey] != null) {
+            data[metadataKey] = msg[metadataKey];
+          }
         }
 
         if (msg.containsKey('hasImage') && msg['hasImage'] == true) {
@@ -3170,11 +3536,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       if (syncNow) {
         await DailyChatSyncService.instance.syncPendingIfNeeded();
       }
-      _currentDateHadStoredChatState = true;
-      _emptyChatDeletionPending = false;
+      if (_formatDateKey(_selectedDate) == dateKey) {
+        _currentDateHadStoredChatState = true;
+        _emptyChatDeletionPending = false;
+      }
     } catch (e) {
       print(
-          '❌ NutritionAssistantController - Erro ao salvar mensagens para data ${_formatDateKey(_selectedDate)}: $e');
+          '❌ NutritionAssistantController - Erro ao salvar mensagens para data $dateKey: $e');
     }
   }
 
@@ -3182,6 +3550,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
   Future<void> _loadMessagesForDate(
     DateTime date, {
     bool showLoading = false,
+    int? dateChangeRequestId,
   }) async {
     final stopwatch = Stopwatch()..start();
     if (showLoading) {
@@ -3206,6 +3575,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       });
 
       var data = await _storageService.getData(storageKey);
+      if (!_isCurrentDateLoad(date, dateChangeRequestId)) return;
       print(
           '[CHAT_LOAD_PERF] primary_cache_read elapsedMs=${stopwatch.elapsedMilliseconds} hasMessages=${_hasMessages(data)}');
       _logDailyChatTrace('cache_read_done', {
@@ -3239,6 +3609,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       // data em outros escopos e reaproveitamos a conversa existente.
       if (!_hasMessages(data)) {
         final fallback = await _findMessagesInOtherScopes(dateKey, storageKey);
+        if (!_isCurrentDateLoad(date, dateChangeRequestId)) return;
         if (fallback != null) {
           data = fallback;
           print(
@@ -3268,6 +3639,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         });
         final restored = await DailyChatSyncService.instance
             .restoreDateFromServer(dateKey, scope: storageScope);
+        if (!_isCurrentDateLoad(date, dateChangeRequestId)) return;
         _logDailyChatTrace('server_restore_done', {
           'date': dateKey,
           'scope': storageScope,
@@ -3277,6 +3649,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         });
         if (restored) {
           data = await _storageService.getData(storageKey);
+          if (!_isCurrentDateLoad(date, dateChangeRequestId)) return;
           _logDailyChatTrace('server_restored_cache_read', {
             'date': dateKey,
             'scope': storageScope,
@@ -3316,6 +3689,25 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
         if (msgData.containsKey('message')) {
           msg['message'] = msgData['message'];
+        }
+
+        for (final metadataKey in const [
+          'id',
+          'turnId',
+          'replyToMessageId',
+          'mealSnapshots',
+          'sourceUserMessage',
+          'sourceUserMessageId',
+          'sourceUserTimestamp',
+          'sourceUserHadImage',
+          'sourceUserReconstructed',
+          'restoredFromMealSnapshot',
+          'recoveredLegacyMealCard',
+        ]) {
+          if (msgData.containsKey(metadataKey) &&
+              msgData[metadataKey] != null) {
+            msg[metadataKey] = msgData[metadataKey];
+          }
         }
 
         if (msgData['hasImage'] == true) {
@@ -3363,13 +3755,25 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     } catch (e) {
       print(
           '❌ NutritionAssistantController - Erro ao carregar mensagens para data ${_formatDateKey(date)}: $e');
-      _messages = [];
+      if (_isCurrentDateLoad(date, dateChangeRequestId)) {
+        _messages = [];
+      }
     } finally {
-      _isLoadingMessages = false;
-      if (!_disposed) {
+      if (_isCurrentDateLoad(date, dateChangeRequestId)) {
+        _isLoadingMessages = false;
+      }
+      if (!_disposed && _isCurrentDateLoad(date, dateChangeRequestId)) {
         notifyListeners();
       }
     }
+  }
+
+  bool _isCurrentDateLoad(DateTime date, int? requestId) {
+    if (_disposed) return false;
+    if (requestId != null && requestId != _dateChangeRequestId) {
+      return false;
+    }
+    return _formatDateKey(date) == _formatDateKey(_selectedDate);
   }
 
   /// Verdadeiro se [data] contém uma lista de mensagens não vazia.
@@ -3416,7 +3820,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       });
     }
 
-    return sanitized;
+    _ensureMessageIdentityAndLinks(sanitized);
+    final withEmbeddedSources = _restoreEmbeddedSourceMessages(sanitized);
+    _ensureMessageIdentityAndLinks(withEmbeddedSources);
+    return withEmbeddedSources;
   }
 
   bool _isRestoredAssistantPlaceholder(Map<String, dynamic> message) {
@@ -3430,8 +3837,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     final notifier = message['notifier'];
     final hasNotifierText =
         notifier is MessageNotifier && notifier.message.trim().isNotEmpty;
+    final snapshots = message['mealSnapshots'];
+    final hasMealSnapshots = snapshots is List && snapshots.isNotEmpty;
 
-    return !hasText && !hasImage && !hasNotifierText;
+    return !hasText && !hasImage && !hasNotifierText && !hasMealSnapshots;
   }
 
   bool _isDeletedChatMarker(Map<String, dynamic>? data) {
