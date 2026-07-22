@@ -18,8 +18,9 @@ This file guides coding agents working in this repository.
 - Entry point: `lib/main.dart`
   - Initializes Firebase, notifications, ads, auth restore, providers, theme, and i18n.
 - Main navigation: `lib/screens/main_navigation.dart`
-  - Uses `IndexedStack` with 4 tabs:
+  - Uses `IndexedStack` with 5 tabs:
     - `NutritionAssistantScreen`
+    - `DailyMealsScreen`
     - `PersonalizedDietScreen`
     - `SocialHubScreen`
     - `ProfileTabWrapper` (Profile/Login by auth state)

@@ -308,7 +308,7 @@ class _MyAppState extends State<MyApp> {
                   if (states.contains(WidgetState.selected)) {
                     return const IconThemeData(color: AppTheme.primaryColor);
                   }
-                  return null;
+                  return const IconThemeData(color: AppTheme.textLightColor);
                 }),
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
@@ -318,7 +318,11 @@ class _MyAppState extends State<MyApp> {
                       color: AppTheme.primaryColor,
                     );
                   }
-                  return null;
+                  return const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textLightColor,
+                  );
                 }),
               ),
             ),
@@ -346,7 +350,11 @@ class _MyAppState extends State<MyApp> {
                       color: AppTheme.primaryColorDarkMode,
                     );
                   }
-                  return null;
+                  return const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.darkDisabledTextColor,
+                  );
                 }),
               ),
             ),
@@ -365,7 +373,7 @@ class _MyAppState extends State<MyApp> {
                 child: child ?? const SizedBox.shrink(),
                 onOpenDietGeneration: () {
                   navigatorKey.currentState?.popUntil((route) => route.isFirst);
-                  navigationController.changeTab(1);
+                  navigationController.changeTab(2);
                   unawaited(
                     context
                         .read<DietPlanProvider>()

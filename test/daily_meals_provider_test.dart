@@ -325,6 +325,97 @@ void main() {
       isTrue,
     );
   });
+
+  test('reload replaces a chat card and keeps unrelated meals intact',
+      () async {
+    final provider = DailyMealsProvider();
+    await provider.ready;
+    provider.setSelectedDate(DateTime(2026, 7, 8));
+    const messageId = 'msg-1800000000000005';
+
+    provider.addMeal(
+      Meal(
+        id: 'original-chat-meal',
+        type: MealType.breakfast,
+        messageId: messageId,
+        foods: [
+          _food('pao frances', calories: 130),
+          _food('ovo adicionado pelo usuario', calories: 122),
+        ],
+      ),
+    );
+    provider.addMeal(
+      Meal(
+        id: 'unrelated-manual-meal',
+        type: MealType.dinner,
+        foods: [_food('salada', calories: 50)],
+      ),
+    );
+    final additionVersionBeforeReload = provider.mealAdditionVersion;
+
+    provider.replaceChatMealsForMessage(messageId, [
+      Meal(
+        id: 'regenerated-card-id',
+        type: MealType.breakfast,
+        messageId: messageId,
+        foods: [_food('pao branco', calories: 130)],
+      ),
+    ]);
+
+    final reloadedCard = provider.getMealsByMessageId(messageId);
+    expect(reloadedCard, hasLength(1));
+    expect(reloadedCard.single.id, 'original-chat-meal');
+    expect(reloadedCard.single.foods, hasLength(1));
+    expect(reloadedCard.single.foods.single.name, 'pao branco');
+    expect(provider.todayMeals, hasLength(2));
+    expect(
+      provider.todayMeals.any((meal) => meal.id == 'unrelated-manual-meal'),
+      isTrue,
+    );
+    expect(provider.totalCalories, 180);
+    expect(provider.mealAdditionVersion, additionVersionBeforeReload);
+  });
+
+  test('reload removes obsolete meals from a multi-meal chat response',
+      () async {
+    final provider = DailyMealsProvider();
+    await provider.ready;
+    provider.setSelectedDate(DateTime(2026, 7, 8));
+    const messageId = 'msg-1800000000000006';
+
+    provider.addMeal(
+      Meal(
+        id: 'old-breakfast',
+        type: MealType.breakfast,
+        messageId: '$messageId#meal-0',
+        foods: [_food('pao', calories: 130)],
+      ),
+    );
+    provider.addMeal(
+      Meal(
+        id: 'old-snack',
+        type: MealType.snack,
+        messageId: '$messageId#meal-1',
+        foods: [_food('banana', calories: 105)],
+      ),
+    );
+
+    provider.replaceChatMealsForMessage(messageId, [
+      Meal(
+        id: 'new-breakfast',
+        type: MealType.breakfast,
+        messageId: messageId,
+        foods: [_food('cuscuz', calories: 180)],
+      ),
+    ]);
+
+    expect(provider.getMealsByMessageId(messageId), hasLength(1));
+    expect(provider.getMealsByMessageId(messageId).single.messageId, messageId);
+    expect(provider.getMealsByMessageId(messageId).single.foods.single.name,
+        'cuscuz');
+    expect(provider.todayMeals, hasLength(1));
+    expect(provider.totalCalories, 180);
+  });
 }
 
 Food _food(

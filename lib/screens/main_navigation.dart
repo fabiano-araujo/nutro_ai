@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
 import 'nutrition_assistant_screen.dart';
+import 'daily_meals_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
@@ -1492,9 +1493,9 @@ class _MainNavigationState extends State<MainNavigation>
 
   void _openSocialOverview() {
     setState(() {
-      _selectedIndex = 2;
+      _selectedIndex = 3;
     });
-    navigationController.updateSelectedIndex(2);
+    navigationController.updateSelectedIndex(3);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       socialTabController.changeTab(0);
     });
@@ -1765,7 +1766,7 @@ class _MainNavigationState extends State<MainNavigation>
 
   /// Constrói as abas sob demanda e mantém as telas já abertas vivas.
   /// Isso evita que uma troca na NavigationBar reconstrua chat, dieta,
-  /// social e perfil no mesmo frame.
+  /// diário, social e perfil no mesmo frame.
   Widget _buildTabStack({required VoidCallback? onOpenDrawer}) {
     final authService = context.watch<AuthService>();
     final isInitialChatBootstrapping =
@@ -1774,7 +1775,7 @@ class _MainNavigationState extends State<MainNavigation>
 
     return IndexedStack(
       index: _selectedIndex,
-      children: List.generate(4, (index) {
+      children: List.generate(5, (index) {
         return _LazyNavigationTab(
           key: ValueKey('main_navigation_tab_$index'),
           isSelected: _selectedIndex == index,
@@ -1831,9 +1832,11 @@ class _MainNavigationState extends State<MainNavigation>
                   ? _initialDailyChatMessagesForCurrentDate()
                   : null,
           onOpenDrawer: onOpenDrawer,
-          onOpenMyDiet: () => _onItemTapped(1),
+          onOpenMyDiet: () => _onItemTapped(2),
         );
       case 1:
+        return const DailyMealsScreen(showBackButton: false);
+      case 2:
         return PersonalizedDietScreen(
           onOpenDrawer: onOpenDrawer,
           onSearchPressed: () {
@@ -1845,9 +1848,9 @@ class _MainNavigationState extends State<MainNavigation>
             );
           },
         );
-      case 2:
-        return SocialHubScreen(onOpenDrawer: onOpenDrawer);
       case 3:
+        return SocialHubScreen(onOpenDrawer: onOpenDrawer);
+      case 4:
         return ProfileTabWrapper(
           onOpenDrawer: onOpenDrawer,
           onOpenSocialHub: _openSocialOverview,
@@ -1871,6 +1874,11 @@ class _MainNavigationState extends State<MainNavigation>
           icon: Icon(Icons.home_outlined),
           selectedIcon: Icon(Icons.home),
           label: context.tr.translate('home'),
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.menu_book_outlined),
+          selectedIcon: Icon(Icons.menu_book),
+          label: context.tr.translate('diary'),
         ),
         NavigationDestination(
           icon: Icon(Icons.ramen_dining_outlined),
@@ -2193,7 +2201,7 @@ class _MainNavigationState extends State<MainNavigation>
     );
   }
 
-  /// Itens de navegação (Início, Minha Dieta, Social, Perfil) exibidos no
+  /// Itens de navegação (Início, Diário, Minha Dieta, Social, Perfil) exibidos no
   /// rodapé do painel lateral quando o layout é de tela larga.
   Widget _buildSidePanelNavItems(bool isDarkMode) {
     final items = <_SidePanelNavItem>[
@@ -2201,6 +2209,11 @@ class _MainNavigationState extends State<MainNavigation>
         icon: Icons.home_outlined,
         activeIcon: Icons.home,
         label: context.tr.translate('home'),
+      ),
+      _SidePanelNavItem(
+        icon: Icons.menu_book_outlined,
+        activeIcon: Icons.menu_book,
+        label: context.tr.translate('diary'),
       ),
       _SidePanelNavItem(
         icon: Icons.ramen_dining_outlined,

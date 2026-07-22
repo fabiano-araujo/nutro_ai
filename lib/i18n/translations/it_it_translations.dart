@@ -187,7 +187,7 @@ final Map<String, String> itITTranslations = {
   'chat_action_view_my_diet_ui': 'Vedi in La Mia Dieta',
   'chat_diet_personalization_question':
       'Posso generare una dieta standard ora. Se vuoi personalizzarla, dimmi in una frase: vegetariana o vegana, intolleranze o allergie, condizioni di salute, cibi che preferisci o eviti e routine. Vuoi aggiungere qualcosa o genero quella standard?',
-  'chat_action_continue_macros_chat': 'Regola gli obiettivi con IA',
+  'chat_action_continue_macros_chat': 'Regola obiettivi e macro con IA',
   'chat_goal_setup_chat_prompt':
       'Voglio configurare i miei obiettivi nutrizionali in chat. Usa i comandi dell\'app quando serve, fai una domanda alla volta e inizia da eta, altezza, peso e genere.',
   'chat_macro_edit_chat_prompt':
@@ -271,6 +271,10 @@ final Map<String, String> itITTranslations = {
   'camera': 'Fotocamera',
   'edit_message': 'Modifica messaggio',
   'edit_your_message': 'Modifica il tuo messaggio',
+  'delete_message': 'Elimina messaggio',
+  'delete_message_title': 'Eliminare il messaggio?',
+  'delete_message_confirmation':
+      'Questo messaggio e la risposta correlata verranno eliminati. Questa azione non può essere annullata.',
   'select_text': 'Seleziona testo',
   'select_text_title': 'Seleziona testo',
   'copy_all': 'Copia tutto',
@@ -279,6 +283,8 @@ final Map<String, String> itITTranslations = {
   'save_and_resend': 'Salva e reinvia',
   'wait_response_before_edit':
       'Attendi che la risposta finisca prima di modificare.',
+  'wait_response_before_delete':
+      'Attendi che la risposta finisca prima di eliminare.',
   'message_required_before_resend':
       'Inserisci un messaggio prima di reinviare.',
   'message_edit_failed': 'Impossibile modificare il messaggio ora.',
@@ -591,7 +597,8 @@ final Map<String, String> itITTranslations = {
   'profile_plan_free': 'Piano gratuito',
   'profile_plan_premium': 'Piano Premium',
   'profile_nutrition_goals_subtitle': 'Definisci gli obiettivi e seguili',
-  'profile_tracking_apps_subtitle': 'Connetti dispositivi e app',
+  'profile_tracking_apps_subtitle':
+      'Sincronizza le attività con Health Connect',
   'profile_edit_profile_subtitle': 'Aggiorna i tuoi dati personali',
   'profile_shape_preview_subtitle':
       'Carica una tua foto e guarda un’anteprima di come potrebbe evolvere il tuo fisico.',
@@ -609,6 +616,8 @@ final Map<String, String> itITTranslations = {
   'profile_shape_source_title': 'Scegli la foto',
   'profile_shape_original_label': 'Foto originale',
   'profile_shape_result_label': 'Anteprima generata',
+  'profile_shape_previous_result_show': 'Mostra ultima generazione',
+  'profile_shape_previous_result_hide': 'Nascondi ultima generazione',
   'profile_shape_generate': 'Genera la mia anteprima',
   'profile_shape_generating': 'Generazione...',
   'profile_shape_apply_profile': 'Usa come foto profilo',
@@ -660,6 +669,8 @@ final Map<String, String> itITTranslations = {
 
   // Nutrition Card
   'remaining': 'rimanenti',
+  'diary_calories_consumed_short': 'Consumate',
+  'diary_calories_burned_short': 'Bruciate',
   'exceeded': 'eccesso',
   'calories': 'Calorie',
   'protein': 'Proteine',
@@ -867,23 +878,84 @@ final Map<String, String> itITTranslations = {
   'diet_outdated_generate_new': 'Genera nuova dieta',
 
   // Tracciamento attività
-  'automatic_tracking_apps_title': 'App di tracciamento automatico',
+  'automatic_tracking_apps_title': 'Monitoraggio automatico',
   'tracking_activities_title': 'Attività',
   'water': 'Acqua',
   'water_glasses': 'bicchieri',
+  'water_challenge': 'Sfida Acqua',
+  'water_goal': 'Obiettivo',
+  'water_goal_dialog_title': 'Sfide',
+  'water_goal_dialog_subtitle': 'Monitora il tuo consumo giornaliero',
+  'water_daily_goal': 'Obiettivo giornaliero',
+  'water_glasses_title': 'Bicchieri',
+  'water_recommended': 'Consigliato',
+  'water_confirm': 'Conferma',
+  'water_above_recommended_warning':
+      'Oltre la quantità consigliata per te ({amount}).',
   'tracking_activity_kcal_spent': '0 kcal  Spese',
   'tracking_kcal_spent_suffix': 'kcal  Spese',
   'tracking_activity_card_message':
       'Sincronizza con Health Connect per seguire calorie bruciate, passi e allenamenti della giornata.',
   'tracking_action_connect': 'Connetti',
-  'tracking_refresh': 'Aggiorna',
+  'tracking_refresh': 'Sincronizza ora',
   'tracking_syncing': 'Sincronizzazione...',
   'tracking_add_activity': 'App di tracciamento',
+  'tracking_add_activity_button': "Aggiungi un'attività",
+  'activity_screen_title': 'Attività',
+  'activity_tab_recent': 'Recenti',
+  'activity_tab_all': 'Tutte le attività',
+  'activity_tab_mine': 'Le mie attività',
+  'activity_search_hint': "Cerca un'attività",
+  'activity_no_results': 'Nessuna attività trovata.',
+  'activity_no_recent': 'Non hai ancora registrato attività recenti.',
+  'activity_no_custom': 'Non hai ancora creato attività personalizzate.',
+  'activity_create_custom': 'Crea attività',
+  'activity_custom_name': "Nome dell'attività",
+  'activity_custom_name_invalid': 'Inserisci almeno 2 caratteri.',
+  'activity_intensity': 'Intensità',
+  'activity_intensity_light': 'Leggera',
+  'activity_intensity_moderate': 'Moderata',
+  'activity_intensity_intense': 'Intensa',
+  'activity_delete_custom_title': "Eliminare l'attività?",
+  'activity_delete_custom_message':
+      '“{name}” verrà rimossa dalla lista. Le registrazioni precedenti resteranno disponibili.',
+  'activity_duration': 'Durata',
+  'activity_calories': 'Calorie bruciate',
+  'activity_calories_estimated': "Stima basata sul peso e sull'intensità.",
+  'activity_invalid_duration': 'Inserisci una durata da 1 a 1.440 minuti.',
+  'activity_invalid_calories': 'Inserisci un valore calorico valido.',
+  'activity_save': 'Registra attività',
+  'activity_saved': 'Attività aggiunta al Diario.',
+  'activity_daily_message':
+      "Cammina o registra un'attività fisica per calcolare le calorie bruciate.",
+  'activity_name_abdominals': 'Addominali',
+  'activity_name_aerobics': 'Aerobica',
+  'activity_name_squat': 'Squat',
+  'activity_name_aikido': 'Aikido',
+  'activity_name_stretching': 'Stretching',
+  'activity_name_masonry': 'Muratura',
+  'activity_name_aquagym': 'Aquagym',
+  'activity_name_archery': 'Tiro con l’arco',
+  'activity_name_badminton': 'Badminton',
+  'activity_name_pull_ups': 'Trazioni',
+  'activity_name_basketball': 'Pallacanestro',
+  'activity_name_baseball': 'Baseball',
+  'activity_name_walking': 'Camminata',
+  'activity_name_running': 'Corsa',
+  'activity_name_cycling': 'Ciclismo',
+  'activity_name_swimming': 'Nuoto',
+  'activity_name_weight_training': 'Allenamento con i pesi',
+  'activity_name_football': 'Calcio',
+  'activity_name_yoga': 'Yoga',
+  'activity_name_pilates': 'Pilates',
+  'activity_name_dance': 'Danza',
+  'activity_name_boxing': 'Pugilato',
+  'activity_name_crossfit': 'CrossFit',
+  'activity_name_elliptical': 'Ellittica',
+  'activity_name_rowing': 'Canottaggio',
+  'activity_name_jump_rope': 'Salto con la corda',
   'tracking_health_connect_name': 'Health Connect',
-  'tracking_health_connect_heading':
-      'Sincronizza le tue app con Health Connect',
-  'tracking_health_connect_body':
-      'Gestisci le connessioni delle app salute e fitness in un unico posto. Concedi accesso a Nutro AI e sincronizza l\'app o il dispositivo che usi già.',
+  'tracking_open_health_connect': 'Apri Health Connect',
   'configure_health_connect': 'Configura Health Connect',
   'tracking_syncing_health_connect':
       'Sincronizzazione dei dati di Health Connect...',
@@ -896,7 +968,8 @@ final Map<String, String> itITTranslations = {
       'Permesso non concesso. Attiva l\'accesso in Health Connect.',
   'tracking_permission_needed':
       'Consenti l\'accesso a Health Connect per leggere passi, esercizi e calorie bruciate.',
-  'tracking_no_activity_data': 'Nessuna attività trovata per questo giorno.',
+  'tracking_no_activity_data':
+      'Nessun dato di attività trovato oggi. Controlla in Health Connect che la tua app condivida i dati.',
   'tracking_activity_synced_message':
       '{steps} passi e {minutes} min di esercizi sincronizzati oggi.',
   'tracking_synced_today': 'Sincronizzato oggi',
@@ -905,21 +978,28 @@ final Map<String, String> itITTranslations = {
   'tracking_metric_minutes': 'min',
   'tracking_steps_short': 'passi',
   'tracking_minutes_short': 'min',
-  'tracking_permission_active_calories': 'Calorie attive',
+  'tracking_permission_active_calories': 'Calorie bruciate',
   'tracking_permission_steps': 'Passi',
   'tracking_permission_exercises': 'Esercizi',
-  'tracking_permission_body_measures': 'Misure corporee',
-  'popular_tracking_apps': 'App più usate',
-  'tracking_desc_all_day': 'Passi, allenamenti e calorie giornaliere',
-  'tracking_desc_wearables': 'Wearable, allenamenti e metriche corporee',
-  'tracking_desc_running': 'Corse, pedalate ed esercizi',
-  'tracking_desc_body': 'Peso, composizione corporea e salute',
+  'popular_tracking_apps': 'App e dispositivi',
+  'tracking_sources_intro':
+      'Collega la tua app o il tuo orologio a Health Connect. Nutro AI rileva automaticamente i dati condivisi.',
+  'tracking_desc_huawei_health':
+      'Apri Huawei Health. La sincronizzazione diretta richiede l\'autorizzazione Huawei Health Kit.',
+  'tracking_desc_fitbit_health_connect':
+      'Attiva Health Connect nelle connessioni Fitbit o Google Health.',
+  'tracking_desc_garmin_health_connect':
+      'Condivide i dati tramite Health Connect su Android 14 o versioni successive.',
+  'tracking_desc_polar_health_connect':
+      'Attiva Health Connect nelle impostazioni generali di Polar Flow.',
+  'tracking_source_data_detected': 'Dati rilevati oggi',
   'tracking_action_open': 'Apri',
   'tracking_action_install': 'Installa',
   'tracking_installed': 'Installata',
-  'tracking_store': 'Play Store',
+  'tracking_store': 'Store ufficiale',
   'tracking_app_opened': 'Apertura di {app}.',
-  'tracking_app_store_opened': 'Apertura del Play Store per installare {app}.',
+  'tracking_app_store_opened':
+      'Apertura dello store ufficiale per installare {app}.',
   'tracking_app_open_error': 'Impossibile aprire {app}.',
   'tracking_not_available': 'Questa funzione è disponibile su Android.',
 
@@ -981,6 +1061,30 @@ final Map<String, String> itITTranslations = {
   'nutrition_goals_macros_per_day': 'Proteine, carboidrati e grassi al giorno',
   'nutrition_goals_calculation_data': 'Dati usati nel calcolo',
   'nutrition_goals_calculation_data_hint': 'Tocca una riga per modificarla.',
+  'calorie_editor_title': 'Modifica calorie',
+  'calorie_editor_subtitle':
+      'Imposta il tuo obiettivo giornaliero. L’app lo confronta con le calorie di mantenimento prima di aggiornare l’obiettivo.',
+  'calorie_editor_daily_target': 'Obiettivo calorico giornaliero',
+  'calorie_editor_invalid_value': 'Inserisci un valore tra 500 e 10.000 kcal.',
+  'calorie_editor_maintenance_label': 'Calorie di mantenimento stimate',
+  'calorie_editor_maintenance_hint':
+      'Calcolate in base a sesso, età, peso, altezza e livello di attività.',
+  'calorie_editor_result_title': 'Con questo valore, il tuo obiettivo sarà',
+  'calorie_editor_goal_lose_fast': 'Perdere peso rapidamente',
+  'calorie_editor_goal_lose_slowly': 'Perdere peso lentamente',
+  'calorie_editor_goal_maintain': 'Mantenere il peso',
+  'calorie_editor_goal_gain_slowly': 'Aumentare peso lentamente',
+  'calorie_editor_goal_gain_fast': 'Aumentare peso rapidamente',
+  'calorie_editor_difference':
+      'Questo valore è del {percent}% {direction} le calorie di mantenimento.',
+  'calorie_editor_difference_neutral':
+      'Questo valore è vicino alle calorie di mantenimento.',
+  'calorie_editor_direction_below': 'sotto',
+  'calorie_editor_direction_above': 'sopra',
+  'calorie_editor_macros_hint':
+      'I macro verranno ricalcolati mantenendo la distribuzione attuale.',
+  'calorie_editor_confirm': 'Conferma valore e obiettivo',
+  'calorie_editor_saved': 'Calorie e obiettivo aggiornati con successo!',
   'streak_checkin_action': 'Aggiorna streak',
   'streak_checkin_success': 'Streak aggiornato con successo.',
   'streak_checkin_error': 'Impossibile aggiornare il tuo streak adesso.',

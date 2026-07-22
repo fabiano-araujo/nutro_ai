@@ -101,7 +101,8 @@ final Map<String, String> deDETranslations = {
   'profile_plan_free': 'Kostenloser Plan',
   'profile_plan_premium': 'Premium-Plan',
   'profile_nutrition_goals_subtitle': 'Ziele festlegen und verfolgen',
-  'profile_tracking_apps_subtitle': 'Geräte und Apps verbinden',
+  'profile_tracking_apps_subtitle':
+      'Aktivitäten mit Health Connect synchronisieren',
   'profile_edit_profile_subtitle': 'Persönliche Daten aktualisieren',
   'profile_shape_preview_subtitle':
       'Laden Sie Ihr Foto hoch und sehen Sie eine Vorschau, wie sich Ihre Form entwickeln könnte.',
@@ -119,6 +120,8 @@ final Map<String, String> deDETranslations = {
   'profile_shape_source_title': 'Foto auswählen',
   'profile_shape_original_label': 'Originalfoto',
   'profile_shape_result_label': 'Generierte Vorschau',
+  'profile_shape_previous_result_show': 'Letzte Generierung anzeigen',
+  'profile_shape_previous_result_hide': 'Letzte Generierung ausblenden',
   'profile_shape_generate': 'Meine Vorschau generieren',
   'profile_shape_generating': 'Wird generiert...',
   'profile_shape_apply_profile': 'Als Profilfoto verwenden',
@@ -352,7 +355,7 @@ final Map<String, String> deDETranslations = {
   'chat_action_view_my_diet_ui': 'In Meine Diät ansehen',
   'chat_diet_personalization_question':
       'Ich kann jetzt eine Standard-Diaet erstellen. Wenn du sie personalisieren moechtest, sag mir in einem Satz: vegetarisch oder vegan, Unvertraeglichkeiten oder Allergien, gesundheitliche Themen, bevorzugte oder vermiedene Lebensmittel und Routine. Moechtest du etwas ergaenzen oder soll ich die Standard-Diaet erstellen?',
-  'chat_action_continue_macros_chat': 'Ziele mit KI anpassen',
+  'chat_action_continue_macros_chat': 'Ziele und Makros mit KI anpassen',
   'chat_goal_setup_chat_prompt':
       'Ich mochte meine Ernahrungsziele im Chat einrichten. Nutze bei Bedarf die App-Befehle, stelle jeweils nur eine Frage und beginne mit Alter, Grosse, Gewicht und Geschlecht.',
   'chat_macro_edit_chat_prompt':
@@ -438,6 +441,10 @@ final Map<String, String> deDETranslations = {
   'camera': 'Kamera',
   'edit_message': 'Nachricht bearbeiten',
   'edit_your_message': 'Bearbeite deine Nachricht',
+  'delete_message': 'Nachricht löschen',
+  'delete_message_title': 'Nachricht löschen?',
+  'delete_message_confirmation':
+      'Diese Nachricht und die zugehörige Antwort werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
   'select_text': 'Text auswählen',
   'select_text_title': 'Text auswählen',
   'copy_all': 'Alles kopieren',
@@ -446,6 +453,8 @@ final Map<String, String> deDETranslations = {
   'save_and_resend': 'Speichern und erneut senden',
   'wait_response_before_edit':
       'Warte, bis die Antwort fertig ist, bevor du sie bearbeitest.',
+  'wait_response_before_delete':
+      'Warte, bis die Antwort fertig ist, bevor du sie löschst.',
   'message_required_before_resend':
       'Gib eine Nachricht ein, bevor du erneut sendest.',
   'message_edit_failed': 'Die Nachricht konnte jetzt nicht bearbeitet werden.',
@@ -667,6 +676,8 @@ final Map<String, String> deDETranslations = {
 
   // Nutrition Card
   'remaining': 'übrig',
+  'diary_calories_consumed_short': 'Verbraucht',
+  'diary_calories_burned_short': 'Verbrannt',
   'exceeded': 'über',
   'calories': 'Kalorien',
   'protein': 'Proteine',
@@ -830,23 +841,85 @@ final Map<String, String> deDETranslations = {
   'meal_tips_error': 'Tipps konnten gerade nicht generiert werden.',
 
   // Aktivitäts-Tracking
-  'automatic_tracking_apps_title': 'Apps für automatisches Tracking',
+  'automatic_tracking_apps_title': 'Automatisches Tracking',
   'tracking_activities_title': 'Aktivitäten',
   'water': 'Wasser',
   'water_glasses': 'Gläser',
+  'water_challenge': 'Wasser-Challenge',
+  'water_goal': 'Ziel',
+  'water_goal_dialog_title': 'Herausforderungen',
+  'water_goal_dialog_subtitle': 'Verfolge deinen täglichen Konsum',
+  'water_daily_goal': 'Tagesziel',
+  'water_glasses_title': 'Gläser',
+  'water_recommended': 'Empfohlen',
+  'water_confirm': 'Bestätigen',
+  'water_above_recommended_warning':
+      'Über der für dich empfohlenen Menge ({amount}).',
   'tracking_activity_kcal_spent': '0 kcal  Verbraucht',
   'tracking_kcal_spent_suffix': 'kcal  Verbraucht',
   'tracking_activity_card_message':
       'Synchronisiere mit Health Connect, um verbrannte Kalorien, Schritte und Übungen deines Tages zu verfolgen.',
   'tracking_action_connect': 'Verbinden',
-  'tracking_refresh': 'Aktualisieren',
+  'tracking_refresh': 'Jetzt synchronisieren',
   'tracking_syncing': 'Synchronisieren...',
   'tracking_add_activity': 'Tracking-Apps',
+  'tracking_add_activity_button': 'Aktivität hinzufügen',
+  'activity_screen_title': 'Aktivität',
+  'activity_tab_recent': 'Zuletzt',
+  'activity_tab_all': 'Alle Aktivitäten',
+  'activity_tab_mine': 'Meine Aktivitäten',
+  'activity_search_hint': 'Aktivität suchen',
+  'activity_no_results': 'Keine Aktivitäten gefunden.',
+  'activity_no_recent': 'Du hast noch keine aktuellen Aktivitäten erfasst.',
+  'activity_no_custom': 'Du hast noch keine eigenen Aktivitäten erstellt.',
+  'activity_create_custom': 'Aktivität erstellen',
+  'activity_custom_name': 'Name der Aktivität',
+  'activity_custom_name_invalid': 'Gib mindestens 2 Zeichen ein.',
+  'activity_intensity': 'Intensität',
+  'activity_intensity_light': 'Leicht',
+  'activity_intensity_moderate': 'Mittel',
+  'activity_intensity_intense': 'Intensiv',
+  'activity_delete_custom_title': 'Aktivität löschen?',
+  'activity_delete_custom_message':
+      '„{name}“ wird aus deiner Liste entfernt. Frühere Einträge bleiben erhalten.',
+  'activity_duration': 'Dauer',
+  'activity_calories': 'Verbrannte Kalorien',
+  'activity_calories_estimated':
+      'Schätzung anhand deines Gewichts und der Intensität.',
+  'activity_invalid_duration': 'Gib eine Dauer von 1 bis 1.440 Minuten ein.',
+  'activity_invalid_calories': 'Gib einen gültigen Kalorienwert ein.',
+  'activity_save': 'Aktivität erfassen',
+  'activity_saved': 'Aktivität zum Tagebuch hinzugefügt.',
+  'activity_daily_message':
+      'Gehe spazieren oder erfasse eine Aktivität, um verbrannte Kalorien zu berechnen.',
+  'activity_name_abdominals': 'Bauchmuskeltraining',
+  'activity_name_aerobics': 'Aerobic',
+  'activity_name_squat': 'Kniebeugen',
+  'activity_name_aikido': 'Aikido',
+  'activity_name_stretching': 'Dehnen',
+  'activity_name_masonry': 'Maurerarbeit',
+  'activity_name_aquagym': 'Aquagym',
+  'activity_name_archery': 'Bogenschießen',
+  'activity_name_badminton': 'Badminton',
+  'activity_name_pull_ups': 'Klimmzüge',
+  'activity_name_basketball': 'Basketball',
+  'activity_name_baseball': 'Baseball',
+  'activity_name_walking': 'Gehen',
+  'activity_name_running': 'Laufen',
+  'activity_name_cycling': 'Radfahren',
+  'activity_name_swimming': 'Schwimmen',
+  'activity_name_weight_training': 'Krafttraining',
+  'activity_name_football': 'Fußball',
+  'activity_name_yoga': 'Yoga',
+  'activity_name_pilates': 'Pilates',
+  'activity_name_dance': 'Tanzen',
+  'activity_name_boxing': 'Boxen',
+  'activity_name_crossfit': 'CrossFit',
+  'activity_name_elliptical': 'Crosstrainer',
+  'activity_name_rowing': 'Rudern',
+  'activity_name_jump_rope': 'Seilspringen',
   'tracking_health_connect_name': 'Health Connect',
-  'tracking_health_connect_heading':
-      'Synchronisiere deine Apps mit Health Connect',
-  'tracking_health_connect_body':
-      'Verwalte die Verbindungen deiner Gesundheits- und Fitness-Apps an einem Ort. Gewähre Nutro AI Zugriff und synchronisiere die App oder das Gerät, das du bereits nutzt.',
+  'tracking_open_health_connect': 'Health Connect öffnen',
   'configure_health_connect': 'Health Connect konfigurieren',
   'tracking_syncing_health_connect':
       'Health-Connect-Daten werden synchronisiert...',
@@ -860,7 +933,7 @@ final Map<String, String> deDETranslations = {
   'tracking_permission_needed':
       'Erlaube Health Connect den Zugriff auf Schritte, Übungen und verbrannte Kalorien.',
   'tracking_no_activity_data':
-      'Für diesen Tag wurden noch keine Aktivitäten gefunden.',
+      'Heute wurden keine Aktivitätsdaten gefunden. Prüfe in Health Connect, ob deine App Daten teilt.',
   'tracking_activity_synced_message':
       '{steps} Schritte und {minutes} Min. Übungen heute synchronisiert.',
   'tracking_synced_today': 'Heute synchronisiert',
@@ -869,22 +942,28 @@ final Map<String, String> deDETranslations = {
   'tracking_metric_minutes': 'min',
   'tracking_steps_short': 'Schritte',
   'tracking_minutes_short': 'min',
-  'tracking_permission_active_calories': 'Aktive Kalorien',
+  'tracking_permission_active_calories': 'Verbrannte Kalorien',
   'tracking_permission_steps': 'Schritte',
   'tracking_permission_exercises': 'Übungen',
-  'tracking_permission_body_measures': 'Körpermessungen',
-  'popular_tracking_apps': 'Meistgenutzte Apps',
-  'tracking_desc_all_day': 'Schritte, Trainings und Tageskalorien',
-  'tracking_desc_wearables': 'Uhren, Trainings und Körpermetriken',
-  'tracking_desc_running': 'Läufe, Fahrten und Übungen',
-  'tracking_desc_body': 'Gewicht, Körperzusammensetzung und Gesundheit',
+  'popular_tracking_apps': 'Apps und Geräte',
+  'tracking_sources_intro':
+      'Verbinde deine App oder Uhr mit Health Connect. Nutro AI erkennt freigegebene Daten automatisch.',
+  'tracking_desc_huawei_health':
+      'Öffne Huawei Health. Die direkte Synchronisierung erfordert eine Freigabe für Huawei Health Kit.',
+  'tracking_desc_fitbit_health_connect':
+      'Aktiviere Health Connect in den Verbindungen von Fitbit oder Google Health.',
+  'tracking_desc_garmin_health_connect':
+      'Teilt Daten über Health Connect ab Android 14.',
+  'tracking_desc_polar_health_connect':
+      'Aktiviere Health Connect in den allgemeinen Einstellungen von Polar Flow.',
+  'tracking_source_data_detected': 'Heute Daten erkannt',
   'tracking_action_open': 'Öffnen',
   'tracking_action_install': 'Installieren',
   'tracking_installed': 'Installiert',
-  'tracking_store': 'Play Store',
+  'tracking_store': 'Offizieller Store',
   'tracking_app_opened': '{app} wird geöffnet.',
   'tracking_app_store_opened':
-      'Play Store wird geöffnet, um {app} zu installieren.',
+      'Der offizielle Store wird geöffnet, um {app} zu installieren.',
   'tracking_app_open_error': '{app} konnte nicht geöffnet werden.',
   'tracking_not_available': 'Diese Funktion ist auf Android verfügbar.',
 
@@ -989,6 +1068,31 @@ final Map<String, String> deDETranslations = {
   'nutrition_goals_calculation_data': 'Daten fuer die Berechnung',
   'nutrition_goals_calculation_data_hint':
       'Tippe auf eine Zeile, um sie zu aendern.',
+  'calorie_editor_title': 'Kalorien bearbeiten',
+  'calorie_editor_subtitle':
+      'Lege dein Tagesziel fest. Die App vergleicht es mit deinem Erhaltungsbedarf, bevor sie dein Ziel aktualisiert.',
+  'calorie_editor_daily_target': 'Tägliches Kalorienziel',
+  'calorie_editor_invalid_value':
+      'Gib einen Wert zwischen 500 und 10.000 kcal ein.',
+  'calorie_editor_maintenance_label': 'Geschätzter Kalorienbedarf',
+  'calorie_editor_maintenance_hint':
+      'Berechnet aus Geschlecht, Alter, Gewicht, Größe und Aktivitätsniveau.',
+  'calorie_editor_result_title': 'Mit diesem Wert wird dein Ziel',
+  'calorie_editor_goal_lose_fast': 'Schnell abnehmen',
+  'calorie_editor_goal_lose_slowly': 'Langsam abnehmen',
+  'calorie_editor_goal_maintain': 'Gewicht halten',
+  'calorie_editor_goal_gain_slowly': 'Langsam zunehmen',
+  'calorie_editor_goal_gain_fast': 'Schnell zunehmen',
+  'calorie_editor_difference':
+      'Dieses Ziel liegt {percent} % {direction} deinem Erhaltungsbedarf.',
+  'calorie_editor_difference_neutral':
+      'Dieses Ziel liegt nahe an deinem Erhaltungsbedarf.',
+  'calorie_editor_direction_below': 'unter',
+  'calorie_editor_direction_above': 'über',
+  'calorie_editor_macros_hint':
+      'Die Makros werden mit der aktuellen Verteilung neu berechnet.',
+  'calorie_editor_confirm': 'Kalorienziel bestätigen',
+  'calorie_editor_saved': 'Kalorien und Ziel erfolgreich aktualisiert!',
   'streak_checkin_action': 'Streak aktualisieren',
   'streak_checkin_success': 'Streak erfolgreich aktualisiert.',
   'streak_checkin_error':

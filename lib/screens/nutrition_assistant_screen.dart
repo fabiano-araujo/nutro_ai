@@ -99,6 +99,7 @@ enum _MessageOptionAction {
   edit,
   speak,
   regenerate,
+  delete,
 }
 
 class NutritionAssistantScreen extends StatefulWidget {
@@ -230,6 +231,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   String? _pendingOrphanFoodPruneSignature;
   final Set<String> _scheduledMealSnapshotRestores = <String>{};
   final Set<String> _scheduledMealSnapshotBackfills = <String>{};
+  final Set<String> _scheduledEmptyMealReplacements = <String>{};
   final Set<String> _scheduledLegacyMealMigrations = <String>{};
   bool _deferRestoredFoodCards = false;
 
@@ -1764,6 +1766,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     );
   }
 
+  void _openBarcodeScanner() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FoodSearchScreen(
+          openBarcodeScannerOnStart: true,
+        ),
+      ),
+    );
+  }
+
   String _translateOrFallback(String key, String fallback) {
     final translated = AppLocalizations.of(context).translate(key);
     return translated == key ? fallback : translated;
@@ -1799,8 +1812,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       context: context,
       barrierDismissible: true,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.black.withValues(alpha: 0.08),
-      transitionDuration: const Duration(milliseconds: 140),
+      barrierColor: Colors.black.withValues(alpha: 0.16),
+      transitionDuration: const Duration(milliseconds: 180),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         return _buildMessageOptionsOverlay(
           dialogContext: dialogContext,
@@ -1818,7 +1831,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         return FadeTransition(
           opacity: curved,
           child: ScaleTransition(
-            scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
+            scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
             alignment: Alignment.topRight,
             child: child,
           ),
@@ -1845,9 +1858,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }) {
     final media = MediaQuery.of(dialogContext);
     final availableWidth = media.size.width - 32;
-    final menuWidth = math.min(344.0, availableWidth);
-    final actionCount = isUser ? 3 : 4;
-    final estimatedHeight = 58.0 + (actionCount * 62.0) + 20.0;
+    final menuWidth = math.min(328.0, availableWidth);
+    final actionCount = isUser ? 4 : 5;
+    final estimatedHeight = 52.0 + (actionCount * 54.0) + 30.0;
     final safeTop = media.padding.top + 8;
     final safeBottom = media.padding.bottom + media.viewInsets.bottom + 16;
     final maxLeft = math.max(16.0, media.size.width - menuWidth - 16);
@@ -1896,26 +1909,35 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }) {
     final theme = Theme.of(dialogContext);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final backgroundColor = isDarkMode ? const Color(0xFF242424) : Colors.white;
+    final backgroundColor =
+        isDarkMode ? AppTheme.darkComponentColor : AppTheme.cardColor;
     final borderColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.08);
-    final primaryText = isDarkMode ? Colors.white : Colors.black87;
-    final secondaryText = isDarkMode ? Colors.white54 : Colors.black45;
+        ? AppTheme.darkBorderColor.withValues(alpha: 0.72)
+        : AppTheme.dividerColor;
+    final primaryText =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    final secondaryText =
+        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
+    final accentColor =
+        isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
+    final dangerColor =
+        isDarkMode ? const Color(0xFFFF8A8A) : AppTheme.errorColor;
 
     final actions = <Widget>[
       _buildMessageOptionButton(
         icon: Icons.content_copy_rounded,
         label: _translateOrFallback('copy', 'Copiar'),
         textColor: primaryText,
-        iconColor: primaryText,
+        iconColor: accentColor,
+        iconBackgroundColor: accentColor.withValues(alpha: 0.12),
         onTap: () => Navigator.of(dialogContext).pop(_MessageOptionAction.copy),
       ),
       _buildMessageOptionButton(
         icon: Icons.notes_rounded,
         label: _translateOrFallback('select_text', 'Selecionar texto'),
         textColor: primaryText,
-        iconColor: primaryText,
+        iconColor: accentColor,
+        iconBackgroundColor: accentColor.withValues(alpha: 0.12),
         onTap: () =>
             Navigator.of(dialogContext).pop(_MessageOptionAction.selectText),
       ),
@@ -1924,7 +1946,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           icon: Icons.edit_outlined,
           label: _translateOrFallback('edit_message', 'Editar mensagem'),
           textColor: primaryText,
-          iconColor: primaryText,
+          iconColor: accentColor,
+          iconBackgroundColor: accentColor.withValues(alpha: 0.12),
           onTap: () =>
               Navigator.of(dialogContext).pop(_MessageOptionAction.edit),
         )
@@ -1935,7 +1958,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               : Icons.volume_up_outlined,
           label: _translateOrFallback('speak_aloud', 'Ler em voz alta'),
           textColor: primaryText,
-          iconColor: primaryText,
+          iconColor: accentColor,
+          iconBackgroundColor: accentColor.withValues(alpha: 0.12),
           onTap: () =>
               Navigator.of(dialogContext).pop(_MessageOptionAction.speak),
         ),
@@ -1946,44 +1970,79 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             'Gerar resposta novamente',
           ),
           textColor: primaryText,
-          iconColor: primaryText,
+          iconColor: accentColor,
+          iconBackgroundColor: accentColor.withValues(alpha: 0.12),
           onTap: () =>
               Navigator.of(dialogContext).pop(_MessageOptionAction.regenerate),
         ),
       ],
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Divider(height: 1, thickness: 1, color: borderColor),
+      ),
+      _buildMessageOptionButton(
+        icon: Icons.delete_outline_rounded,
+        label: _translateOrFallback('delete_message', 'Excluir mensagem'),
+        textColor: dangerColor,
+        iconColor: dangerColor,
+        iconBackgroundColor: dangerColor.withValues(alpha: 0.12),
+        onTap: () =>
+            Navigator.of(dialogContext).pop(_MessageOptionAction.delete),
+      ),
     ];
 
     return Material(
       color: backgroundColor,
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(color: borderColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDarkMode ? 0.38 : 0.16),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
+              color: Colors.black.withValues(alpha: isDarkMode ? 0.34 : 0.11),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 18, right: 18, bottom: 14),
-              child: Text(
-                timestampLabel,
-                style: TextStyle(
-                  color: secondaryText,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(
+                      Icons.schedule_rounded,
+                      size: 16,
+                      color: accentColor,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      timestampLabel,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+            Divider(height: 1, thickness: 1, color: borderColor),
+            const SizedBox(height: 5),
             ...actions,
           ],
         ),
@@ -1996,18 +2055,27 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required String label,
     required Color textColor,
     required Color iconColor,
+    required Color iconBackgroundColor,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: SizedBox(
-        height: 62,
+        height: 54,
         child: Row(
           children: [
-            const SizedBox(width: 18),
-            Icon(icon, size: 30, color: iconColor),
-            const SizedBox(width: 24),
+            const SizedBox(width: 8),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: iconBackgroundColor,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
@@ -2015,13 +2083,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
           ],
         ),
       ),
@@ -2095,7 +2162,140 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           });
         }
         break;
+      case _MessageOptionAction.delete:
+        await _confirmAndDeleteMessage(messageIndex);
+        break;
     }
+  }
+
+  Future<void> _confirmAndDeleteMessage(int messageIndex) async {
+    if (_chatController.isLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_translateOrFallback(
+            'wait_response_before_delete',
+            'Aguarde a resposta terminar antes de excluir.',
+          )),
+        ),
+      );
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final isDarkMode = theme.brightness == Brightness.dark;
+        final dangerColor =
+            isDarkMode ? const Color(0xFFFF8A8A) : AppTheme.errorColor;
+        final primaryText =
+            isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+        final secondaryText = isDarkMode
+            ? AppTheme.darkMutedTextColor
+            : AppTheme.textSecondaryColor;
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            decoration: AppTheme.profileCardDecoration(
+              isDarkMode,
+              radius: 24,
+              color:
+                  isDarkMode ? AppTheme.darkComponentColor : AppTheme.cardColor,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: dangerColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    color: dangerColor,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  _translateOrFallback(
+                    'delete_message_title',
+                    'Excluir mensagem?',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: primaryText,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _translateOrFallback(
+                    'delete_message_confirmation',
+                    'Esta mensagem e a resposta relacionada serão excluídas. Essa ação não pode ser desfeita.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: secondaryText,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryText,
+                          side: BorderSide(
+                            color: isDarkMode
+                                ? AppTheme.darkBorderColor
+                                : AppTheme.dividerColor,
+                          ),
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          _translateOrFallback('cancel', 'Cancelar'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: dangerColor,
+                          foregroundColor: AppTheme.onColor(dangerColor),
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          _translateOrFallback('delete', 'Excluir'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || shouldDelete != true) return;
+    _chatController.deleteMessagePair(messageIndex);
   }
 
   Future<void> _showEditMessageDialog({
@@ -2330,6 +2530,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           final timelineItems = ChatTimelineBuilder.build(
             messages: messages,
             unrepresentedMeals: unrepresentedDayMeals,
+          );
+          final shouldShowAssistantActions =
+              ChatTimelineBuilder.shouldShowAssistantActions(
+            messages: messages,
+            isLoading: isLoading,
           );
           final lastAiMessageIndex =
               messages.lastIndexWhere((message) => message['isUser'] == false);
@@ -2568,10 +2773,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                               // Adicionar +1 para o card de ferramentas quando existir
                               itemCount: timelineItems.length +
                                   (_shouldShowToolCard ? 1 : 0) +
-                                  (messages.isNotEmpty &&
-                                          !messages.last['isUser']
-                                      ? 1
-                                      : 0),
+                                  (shouldShowAssistantActions ? 1 : 0),
                               itemBuilder: (context, index) {
                                 final itemStopwatch = Stopwatch()..start();
                                 _logChatFramePerf('item_start', {
@@ -3243,7 +3445,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                     horizontal: 4, vertical: 2),
                                 child: Row(
                                   children: [
-                                    // Botão "+" — Galeria, Câmera, Recentes e favoritos
+                                    // Botão "+" — mídia e atalhos para alimentos
                                     IconButton(
                                       icon: Icon(Icons.add,
                                           color: isDarkMode
@@ -3336,6 +3538,30 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                           Navigator.pop(
                                                               context);
                                                           _openRecentFoodsSheet();
+                                                        },
+                                                      ),
+                                                      ListTile(
+                                                        leading: Icon(
+                                                            Icons
+                                                                .qr_code_scanner,
+                                                            color: isDarkMode
+                                                                ? Colors.white70
+                                                                : AppTheme
+                                                                    .textSecondaryColor),
+                                                        title: Text(
+                                                            context.tr
+                                                                .translate(
+                                                                    'barcode'),
+                                                            style: TextStyle(
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white
+                                                                    : AppTheme
+                                                                        .textPrimaryColor)),
+                                                        onTap: () {
+                                                          Navigator.pop(
+                                                              context);
+                                                          _openBarcodeScanner();
                                                         },
                                                       ),
                                                     ],
@@ -3879,6 +4105,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     hasFoodJson: showsMealCard,
                     message: notifier.message,
                     isDarkMode: isDarkMode,
+                    isError: notifier.isError,
                     foodMessageId: foodMessageId,
                     messageIndex: index,
                     messageTimestamp: timestamp,
@@ -3935,6 +4162,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               hasFoodJson: shouldRenderFoodCard,
               message: message,
               isDarkMode: isDarkMode,
+              isError: isError,
               foodMessageId: foodMessageId,
               messageIndex: index,
               messageTimestamp: timestamp,
@@ -3955,16 +4183,34 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required bool hasFoodJson,
     required String message,
     required bool isDarkMode,
+    required bool isError,
     required String foodMessageId,
     required int messageIndex,
     required DateTime messageTimestamp,
   }) {
     return Consumer<DailyMealsProvider>(
       builder: (context, mealsProvider, _) {
+        final messageRecord =
+            messageIndex >= 0 && messageIndex < _chatController.messages.length
+                ? _chatController.messages[messageIndex]
+                : const <String, dynamic>{};
+        final replaceExistingMeals =
+            messageRecord['replaceExistingMeals'] == true;
         final cachedMeals = mealsProvider.getMealsByMessageId(foodMessageId);
         final snapshotMeals = _readMealSnapshots(messageIndex);
         final visibleMeals =
             cachedMeals.isNotEmpty ? cachedMeals : snapshotMeals;
+
+        if (replaceExistingMeals &&
+            !hasFoodJson &&
+            !isError &&
+            messageRecord['notifier'] == null) {
+          _scheduleEmptyMealReplacement(
+            messageId: foodMessageId,
+            mealsProvider: mealsProvider,
+          );
+          return const SizedBox.shrink();
+        }
 
         if (cachedMeals.isNotEmpty && snapshotMeals.isEmpty) {
           _scheduleMealSnapshotBackfill(
@@ -3979,7 +4225,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           );
         }
 
-        if (visibleMeals.isNotEmpty) {
+        if (visibleMeals.isNotEmpty && !(replaceExistingMeals && hasFoodJson)) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: List.generate(visibleMeals.length, (index) {
@@ -4039,13 +4285,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         }
 
         if (hasFoodJson) {
+          final revision = messageRecord['regenerationRevision'] ?? 0;
           return FoodJsonDisplay(
-            key: ValueKey(foodMessageId),
+            key: ValueKey('$foodMessageId-$revision'),
             message: message,
             isDarkMode: isDarkMode,
             selectedDate: mealsProvider.selectedDate,
             messageTimestamp: messageTimestamp,
             messageId: foodMessageId,
+            replaceExistingMeals: replaceExistingMeals,
             onMealsPersisted: (meals) {
               _chatController.persistMealSnapshotsForMessage(
                 messageId: foodMessageId,
@@ -4115,6 +4363,31 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       if (!mounted) return;
       await mealsProvider.restoreMealsFromChatSnapshot(selectedDate, meals);
       _scheduledMealSnapshotRestores.remove(signature);
+    });
+  }
+
+  void _scheduleEmptyMealReplacement({
+    required String messageId,
+    required DailyMealsProvider mealsProvider,
+  }) {
+    final selectedDate = mealsProvider.selectedDate;
+    final dateKey = _formatMealToastDateKey(selectedDate);
+    final signature = '$dateKey:$messageId';
+    if (!_scheduledEmptyMealReplacements.add(signature)) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _formatMealToastDateKey(mealsProvider.selectedDate) != dateKey) {
+        _scheduledEmptyMealReplacements.remove(signature);
+        return;
+      }
+
+      mealsProvider.replaceChatMealsForMessage(messageId, const <Meal>[]);
+      _chatController.persistMealSnapshotsForMessage(
+        messageId: messageId,
+        meals: const <Meal>[],
+      );
+      _scheduledEmptyMealReplacements.remove(signature);
     });
   }
 

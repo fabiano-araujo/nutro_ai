@@ -30,7 +30,7 @@ class HealthPermissionsRationaleActivity : Activity() {
 
         val body = TextView(this).apply {
             text = "O Nutro AI usa dados do Health Connect somente para mostrar, dentro do app, " +
-                "calorias gastas, passos, exercícios e medidas corporais que ajudam no acompanhamento " +
+                "calorias gastas, passos e exercícios que ajudam no acompanhamento " +
                 "nutricional. Esses dados não são vendidos. Você pode permitir, negar ou remover o " +
                 "acesso a qualquer momento nas configurações do Health Connect."
             textSize = 16f

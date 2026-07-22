@@ -26,8 +26,6 @@
     <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.READ_STEPS" />
-    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
-    <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
     
     <application
         android:label="Nutro AI"
@@ -114,18 +112,10 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
-        <package android:name="com.google.android.apps.fitness" />
-        <package android:name="com.sec.android.app.shealth" />
+        <package android:name="com.huawei.health" />
         <package android:name="com.fitbit.FitbitMobile" />
         <package android:name="com.garmin.android.apps.connectmobile" />
-        <package android:name="com.strava" />
-        <package android:name="com.huawei.health" />
-        <package android:name="com.xiaomi.wearable" />
-        <package android:name="com.huami.watch.hmwatchmanager" />
         <package android:name="fi.polar.polarflow" />
-        <package android:name="com.withings.wiscale2" />
-        <package android:name="com.nike.plusgps" />
-        <package android:name="com.runtastic.android" />
         <package android:name="com.android.vending" />
         <intent>
             <action android:name="android.intent.action.VIEW" />

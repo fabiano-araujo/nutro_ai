@@ -31,9 +31,7 @@ class TrackingAppLauncher {
   }
 
   Future<TrackingAppLaunchResult> openAppOrStore(String packageName) async {
-    if (!_isAndroid) {
-      return _openPlayStoreWeb(packageName);
-    }
+    if (!_isAndroid) return TrackingAppLaunchResult.unsupported;
 
     try {
       final result = await _channel.invokeMethod<String>(
@@ -46,9 +44,28 @@ class TrackingAppLauncher {
     }
   }
 
+  Future<TrackingAppLaunchResult> openOfficialStore(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      return TrackingAppLaunchResult.failed;
+    }
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      return launched
+          ? TrackingAppLaunchResult.openedStore
+          : TrackingAppLaunchResult.failed;
+    } on PlatformException {
+      return TrackingAppLaunchResult.failed;
+    }
+  }
+
   Future<TrackingAppLaunchResult> openHealthConnect() async {
     if (!_isAndroid) {
-      return _openPlayStoreWeb('com.google.android.apps.healthdata');
+      return TrackingAppLaunchResult.unsupported;
     }
 
     try {
@@ -105,7 +122,7 @@ class TrackingAppLauncher {
 
   Future<ActivityTrackingSummary> readHealthSummary(DateTime date) async {
     final start = DateTime(date.year, date.month, date.day);
-    final end = start.add(const Duration(days: 1));
+    final end = DateTime(date.year, date.month, date.day + 1);
 
     if (!_isAndroid) {
       return ActivityTrackingSummary.unsupported(
@@ -229,8 +246,6 @@ class ActivityTrackingSummary {
   final int? steps;
   final int exerciseCount;
   final int exerciseMinutes;
-  final double? weightKg;
-  final double? bodyFatPercentage;
   final List<String> dataOrigins;
   final String? errorMessage;
 
@@ -248,8 +263,6 @@ class ActivityTrackingSummary {
     required this.steps,
     required this.exerciseCount,
     required this.exerciseMinutes,
-    required this.weightKg,
-    required this.bodyFatPercentage,
     required this.dataOrigins,
     this.errorMessage,
   });
@@ -284,8 +297,6 @@ class ActivityTrackingSummary {
       steps: _intValue(map['steps']),
       exerciseCount: _intValue(map['exerciseCount']) ?? 0,
       exerciseMinutes: _intValue(map['exerciseMinutes']) ?? 0,
-      weightKg: _doubleValue(map['weightKg']),
-      bodyFatPercentage: _doubleValue(map['bodyFatPercentage']),
       dataOrigins: HealthConnectStatus._stringList(map['dataOrigins']),
       errorMessage: map['errorMessage']?.toString(),
     );
@@ -309,8 +320,6 @@ class ActivityTrackingSummary {
       steps: null,
       exerciseCount: 0,
       exerciseMinutes: 0,
-      weightKg: null,
-      bodyFatPercentage: null,
       dataOrigins: const [],
     );
   }
@@ -334,8 +343,6 @@ class ActivityTrackingSummary {
       steps: null,
       exerciseCount: 0,
       exerciseMinutes: 0,
-      weightKg: null,
-      bodyFatPercentage: null,
       dataOrigins: const [],
       errorMessage: errorMessage,
     );
@@ -350,6 +357,7 @@ class ActivityTrackingSummary {
       exerciseMinutes > 0 ||
       exerciseCount > 0;
   bool get needsProviderUpdate => sdkStatus == 'provider_update_required';
+  bool get isUnsupported => sdkStatus == 'unsupported';
   bool get isUnavailable =>
       sdkStatus == 'unavailable' ||
       sdkStatus == 'unsupported' ||

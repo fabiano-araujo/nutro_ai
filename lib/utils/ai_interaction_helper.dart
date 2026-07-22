@@ -289,12 +289,16 @@ class AIInteractionHelper {
         // Devemos verificar se o índice ainda é válido e se a mensagem existe
         if (streamingMessageIndex < messages.length &&
             messages[streamingMessageIndex]['notifier'] == messageNotifier) {
-          // Converter de notificador para mensagem normal na lista local
-          messages[streamingMessageIndex] = {
-            'isUser': false,
-            'message': responseContent,
-            'timestamp': messages[streamingMessageIndex]['timestamp'],
-          };
+          // Converter de notificador para mensagem normal sem descartar a
+          // identidade do turno/card nem metadados de uma regeneracao.
+          final finalizedMessage = Map<String, dynamic>.from(
+            messages[streamingMessageIndex],
+          );
+          finalizedMessage
+            ..remove('notifier')
+            ..['isUser'] = false
+            ..['message'] = responseContent;
+          messages[streamingMessageIndex] = finalizedMessage;
         } else {
           print(
               '⚠️ AIInteractionHelper - Índice de streaming ($streamingMessageIndex) inválido ou notifier diferente ao concluir. Não atualizando a lista local diretamente.');

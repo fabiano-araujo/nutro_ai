@@ -261,7 +261,7 @@ class NutritionAssistantController with ChangeNotifier {
     required String messageId,
     required List<Meal> meals,
   }) {
-    if (messageId.trim().isEmpty || meals.isEmpty) return;
+    if (messageId.trim().isEmpty) return;
     _ensureMessageIdentityAndLinks(_messages);
 
     final messageIndex = _messages.indexWhere((message) {
@@ -274,9 +274,15 @@ class NutritionAssistantController with ChangeNotifier {
     final snapshots =
         meals.map((meal) => meal.toJson()).toList(growable: false);
     final previousSnapshots = assistantMessage['mealSnapshots'];
-    var changed = jsonEncode(previousSnapshots) != jsonEncode(snapshots);
-    if (changed) {
+    var changed = false;
+    if (snapshots.isEmpty) {
+      changed = assistantMessage.remove('mealSnapshots') != null;
+    } else if (jsonEncode(previousSnapshots) != jsonEncode(snapshots)) {
       assistantMessage['mealSnapshots'] = snapshots;
+      changed = true;
+    }
+    if (assistantMessage.remove('replaceExistingMeals') != null) {
+      changed = true;
     }
 
     final replyToMessageId = assistantMessage['replyToMessageId']?.toString();
@@ -2981,6 +2987,23 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
     if (lastUserMessageIndex == -1) return true; // Nada a fazer, não é um erro
 
+    _ensureMessageIdentityAndLinks(_messages);
+    final previousAssistantMessages = _messages
+        .skip(lastUserMessageIndex + 1)
+        .where((message) => message['isUser'] != true)
+        .map((message) => Map<String, dynamic>.from(message))
+        .toList(growable: false);
+    final previousResponse = previousAssistantMessages.isEmpty
+        ? null
+        : previousAssistantMessages.first;
+    final replacesMealCard = previousAssistantMessages.any((message) {
+      if (message['replaceExistingMeals'] == true) return true;
+      final snapshots = message['mealSnapshots'];
+      if (snapshots is List && snapshots.isNotEmpty) return true;
+      final content = message['message'];
+      return content is String && FoodJsonParser.hasFoodJsonSignal(content);
+    });
+
     // Verificar se há créditos suficientes
     final creditProvider = Provider.of<CreditProvider>(context, listen: false);
     final hasSufficientCredits;
@@ -3158,20 +3181,49 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       return false; // Não havia créditos suficientes
     }
 
-    // Remover a última resposta da IA
+    // Remover todas as partes da resposta anterior deste turno. O placeholder
+    // abaixo reutiliza a identidade do card, permitindo que o diario troque a
+    // refeicao existente em vez de somar uma nova.
     if (_messages.length > lastUserMessageIndex + 1) {
-      _messages.removeAt(lastUserMessageIndex + 1);
+      _messages.removeRange(lastUserMessageIndex + 1, _messages.length);
     }
 
     // Criar um novo notificador para a mensagem que vamos receber
     _messageNotifier = MessageNotifier();
 
-    // Adicionar uma nova resposta vazia da IA
-    _messages.add({
-      'isUser': false,
-      'notifier': _messageNotifier,
-      'timestamp': DateTime.now(),
-    });
+    // Adicionar uma nova resposta vazia da IA, mantendo id, turno e horario da
+    // resposta substituida. mealSnapshots sai temporariamente para o JSON novo
+    // ser realmente processado quando o stream terminar.
+    final userRecord = _messages[lastUserMessageIndex];
+    final assistantTimestamp = previousResponse == null
+        ? DateTime.now()
+        : _messageTimestamp(previousResponse);
+    final replacementRevision =
+        (previousResponse?['regenerationRevision'] as int? ?? 0) + 1;
+    final replacementMessage = previousResponse == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(previousResponse);
+    replacementMessage
+      ..remove('message')
+      ..remove('mealSnapshots')
+      ..remove('error')
+      ..remove('streaming')
+      ..remove('recoveredLegacyMealCard')
+      ..remove('notifier')
+      ..['isUser'] = false
+      ..['notifier'] = _messageNotifier
+      ..['id'] = previousResponse?['id'] ??
+          _defaultMessageId(false, assistantTimestamp)
+      ..['turnId'] = userRecord['turnId']
+      ..['replyToMessageId'] = userRecord['id']
+      ..['timestamp'] = assistantTimestamp
+      ..['regenerationRevision'] = replacementRevision;
+    if (replacesMealCard) {
+      replacementMessage['replaceExistingMeals'] = true;
+    } else {
+      replacementMessage.remove('replaceExistingMeals');
+    }
+    _messages.add(replacementMessage);
 
     _isLoading = true;
     notifyListeners();

@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../providers/activity_tracking_provider.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
@@ -8,9 +11,9 @@ import '../models/meal_model.dart';
 import '../models/food_model.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
-import '../widgets/nutrition_card.dart';
 import '../widgets/month_calendar_sheet.dart';
 import '../widgets/food_icon.dart';
+import '../widgets/daily_activity_water_section.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
 import 'food_search_screen.dart';
@@ -71,149 +74,49 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        automaticallyImplyLeading: false, // Don't show default back button
-        leading: widget.showBackButton
-            ? IconButton(
-                icon: Icon(Icons.arrow_back,
-                    color: textColor.withValues(alpha: 0.85)),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
-        title: Consumer<DailyMealsProvider>(
-          builder: (context, mealsProvider, child) {
-            final appLocalizations = AppLocalizations.of(context);
-            final selectedDate = mealsProvider.selectedDate;
-            final today = DateTime.now();
-
-            // Normalizar as datas para comparação (zerar horas)
-            final normalizedToday =
-                DateTime(today.year, today.month, today.day);
-            final normalizedSelected = DateTime(
-                selectedDate.year, selectedDate.month, selectedDate.day);
-
-            // Calcular a diferença em dias
-            final difference =
-                normalizedSelected.difference(normalizedToday).inDays;
-
-            // Determinar o texto baseado na diferença
-            String dateText;
-            if (difference == 0) {
-              dateText = appLocalizations.translate('today');
-            } else if (difference == -1) {
-              dateText = appLocalizations.translate('yesterday');
-            } else if (difference == 1) {
-              dateText = appLocalizations.translate('tomorrow');
-            } else {
-              dateText =
-                  '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}';
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  appLocalizations.translate('meals_diary'),
-                  style: AppTheme.headingLarge.copyWith(
-                    color: textColor.withValues(alpha: 0.85),
-                    fontSize: 20,
-                  ),
-                ),
-                InkWell(
-                  onTap: () => _showDatePickerSheet(context),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          dateText,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                            color: textColor.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(
-                          Icons.keyboard_arrow_down,
-                          size: 16,
-                          color: textColor.withValues(alpha: 0.7),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-      body: Consumer2<DailyMealsProvider, NutritionGoalsProvider>(
-        builder: (context, mealsProvider, goalsProvider, child) {
+      body: Consumer3<DailyMealsProvider, NutritionGoalsProvider,
+          ActivityTrackingProvider>(
+        builder: (
+          context,
+          mealsProvider,
+          goalsProvider,
+          activityProvider,
+          child,
+        ) {
           return SingleChildScrollView(
             child: Column(
               children: [
-                SizedBox(height: 8),
-
-                // Nutrition summary header with edit button
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context).translate('daily_goals'),
-                        style: AppTheme.headingMedium.copyWith(
-                          color: textColor.withValues(alpha: 0.85),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                _DiaryNutritionHero(
+                  selectedDate: mealsProvider.selectedDate,
+                  caloriesConsumed: mealsProvider.totalCalories,
+                  caloriesGoal: goalsProvider.caloriesGoal,
+                  caloriesBurned: activityProvider.totalCaloriesBurned,
+                  proteinConsumed: mealsProvider.totalProtein.toInt(),
+                  proteinGoal: goalsProvider.proteinGoal,
+                  carbsConsumed: mealsProvider.totalCarbs.toInt(),
+                  carbsGoal: goalsProvider.carbsGoal,
+                  fatsConsumed: mealsProvider.totalFat.toInt(),
+                  fatsGoal: goalsProvider.fatGoal,
+                  isDarkMode: isDarkMode,
+                  textColor: textColor,
+                  showBackButton: widget.showBackButton,
+                  onBack: () => Navigator.pop(context),
+                  onEditGoals: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NutritionGoalsScreen(),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const NutritionGoalsScreen(),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(Icons.edit,
-                              color: textColor.withValues(alpha: 0.85),
-                              size: 24),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 8),
-
-                // Nutrition summary card
-                GestureDetector(
-                  onTap: () {
-                    // Card is already on this screen, no navigation needed
+                    );
                   },
-                  child: NutritionCard(
-                    caloriesConsumed: mealsProvider.totalCalories,
-                    caloriesGoal: goalsProvider.caloriesGoal,
-                    proteinConsumed: mealsProvider.totalProtein.toInt(),
-                    proteinGoal: goalsProvider.proteinGoal,
-                    carbsConsumed: mealsProvider.totalCarbs.toInt(),
-                    carbsGoal: goalsProvider.carbsGoal,
-                    fatsConsumed: mealsProvider.totalFat.toInt(),
-                    fatsGoal: goalsProvider.fatGoal,
-                    profileStyle: true,
+                  onPreviousDay: () => mealsProvider.setSelectedDate(
+                    mealsProvider.selectedDate
+                        .subtract(const Duration(days: 1)),
                   ),
+                  onNextDay: () => mealsProvider.setSelectedDate(
+                    mealsProvider.selectedDate.add(const Duration(days: 1)),
+                  ),
+                  onDateTap: () => _showDatePickerSheet(context),
                 ),
 
                 SizedBox(height: 12),
@@ -255,6 +158,13 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
 
                 // Meals list
                 _buildMealsList(mealsProvider, isDarkMode, textColor),
+
+                SizedBox(height: 16),
+
+                // Daily activity and hydration tracking
+                DailyActivityWaterSection(
+                  selectedDate: mealsProvider.selectedDate,
+                ),
 
                 SizedBox(height: 16),
 
@@ -1116,5 +1026,462 @@ class _SubNutrientRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _DiaryNutritionHero extends StatelessWidget {
+  final DateTime selectedDate;
+  final int caloriesConsumed;
+  final int caloriesGoal;
+  final int caloriesBurned;
+  final int proteinConsumed;
+  final int proteinGoal;
+  final int carbsConsumed;
+  final int carbsGoal;
+  final int fatsConsumed;
+  final int fatsGoal;
+  final bool isDarkMode;
+  final Color textColor;
+  final bool showBackButton;
+  final VoidCallback onBack;
+  final VoidCallback onEditGoals;
+  final VoidCallback onPreviousDay;
+  final VoidCallback onNextDay;
+  final VoidCallback onDateTap;
+
+  const _DiaryNutritionHero({
+    required this.selectedDate,
+    required this.caloriesConsumed,
+    required this.caloriesGoal,
+    required this.caloriesBurned,
+    required this.proteinConsumed,
+    required this.proteinGoal,
+    required this.carbsConsumed,
+    required this.carbsGoal,
+    required this.fatsConsumed,
+    required this.fatsGoal,
+    required this.isDarkMode,
+    required this.textColor,
+    required this.showBackButton,
+    required this.onBack,
+    required this.onEditGoals,
+    required this.onPreviousDay,
+    required this.onNextDay,
+    required this.onDateTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final materialL10n = MaterialLocalizations.of(context);
+    final today = DateTime.now();
+    final isToday = selectedDate.year == today.year &&
+        selectedDate.month == today.month &&
+        selectedDate.day == today.day;
+    final dayLabel = isToday
+        ? '${l10n.translate('today')}, ${materialL10n.formatShortMonthDay(selectedDate)}'
+        : materialL10n.formatMediumDate(selectedDate);
+    final availableCalories = caloriesGoal + caloriesBurned;
+    final remaining = math.max(0, availableCalories - caloriesConsumed);
+    final rawProgress =
+        availableCalories <= 0 ? 0.0 : caloriesConsumed / availableCalories;
+    final progress = rawProgress.clamp(0.0, 1.0);
+    final isOverGoal =
+        availableCalories > 0 && caloriesConsumed > availableCalories;
+    final accentColor = isOverGoal
+        ? AppTheme.errorColor
+        : (isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor);
+    final surfaceColor =
+        isDarkMode ? const Color(0xFF121F1F) : const Color(0xFFF0FBFA);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        12,
+        MediaQuery.paddingOf(context).top + 6,
+        12,
+        20,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDarkMode
+              ? const [Color(0xFF16302E), Color(0xFF111819)]
+              : const [Color(0xFFD9F8F5), Color(0xFFF7FBFA)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              if (showBackButton)
+                IconButton(
+                  onPressed: onBack,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  color: textColor.withValues(alpha: 0.86),
+                )
+              else
+                const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.translate('meals_diary'),
+                  style: AppTheme.headingLarge.copyWith(
+                    color: textColor.withValues(alpha: 0.92),
+                    fontSize: 21,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: onEditGoals,
+                tooltip: l10n.translate('daily_goals'),
+                icon: const Icon(Icons.tune_rounded),
+                color: textColor.withValues(alpha: 0.86),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              _DiaryDateButton(
+                icon: Icons.chevron_left_rounded,
+                onPressed: onPreviousDay,
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: onDateTap,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.calendar_month_rounded,
+                            size: 18, color: accentColor),
+                        const SizedBox(width: 7),
+                        Flexible(
+                          child: Text(
+                            dayLabel.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              color: textColor.withValues(alpha: 0.9),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.7,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              _DiaryDateButton(
+                icon: Icons.chevron_right_rounded,
+                onPressed: onNextDay,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 154,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 62,
+                  child: _DiarySideMetric(
+                    key: const ValueKey('diary-calories-consumed'),
+                    label: l10n.translate('diary_calories_consumed_short'),
+                    value: '$caloriesConsumed',
+                    textColor: textColor,
+                  ),
+                ),
+                Expanded(
+                  child: CustomPaint(
+                    painter: _CalorieArcPainter(
+                      progress: progress,
+                      color: accentColor,
+                      trackColor: accentColor.withValues(alpha: 0.18),
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 26),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              l10n.translate('remaining'),
+                              style: GoogleFonts.inter(
+                                color: textColor.withValues(alpha: 0.68),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '$remaining',
+                              style: GoogleFonts.poppins(
+                                color: textColor,
+                                fontSize: 42,
+                                height: 1.1,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -1.4,
+                              ),
+                            ),
+                            Text(
+                              '$caloriesGoal kcal',
+                              style: GoogleFonts.inter(
+                                color: textColor.withValues(alpha: 0.62),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 62,
+                  child: _DiarySideMetric(
+                    key: const ValueKey('diary-calories-burned'),
+                    label: l10n.translate('diary_calories_burned_short'),
+                    value: '$caloriesBurned',
+                    textColor: textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _DiaryMacroCard(
+                  label: l10n.translate('carbs_short'),
+                  consumed: carbsConsumed,
+                  goal: carbsGoal,
+                  color: MacroTheme.carbsColor,
+                  surfaceColor: surfaceColor,
+                  textColor: textColor,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _DiaryMacroCard(
+                  label: l10n.translate('protein_short'),
+                  consumed: proteinConsumed,
+                  goal: proteinGoal,
+                  color: MacroTheme.proteinColor,
+                  surfaceColor: surfaceColor,
+                  textColor: textColor,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _DiaryMacroCard(
+                  label: l10n.translate('fats_short'),
+                  consumed: fatsConsumed,
+                  goal: fatsGoal,
+                  color: MacroTheme.fatColor,
+                  surfaceColor: surfaceColor,
+                  textColor: textColor,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiaryDateButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _DiaryDateButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(icon, size: 27),
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.76),
+    );
+  }
+}
+
+class _DiarySideMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color textColor;
+
+  const _DiarySideMetric({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          maxLines: 2,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(
+            color: textColor.withValues(alpha: 0.6),
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: GoogleFonts.poppins(
+              color: textColor.withValues(alpha: 0.9),
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DiaryMacroCard extends StatelessWidget {
+  final String label;
+  final int consumed;
+  final int goal;
+  final Color color;
+  final Color surfaceColor;
+  final Color textColor;
+  final bool isDarkMode;
+
+  const _DiaryMacroCard({
+    required this.label,
+    required this.consumed,
+    required this.goal,
+    required this.color,
+    required this.surfaceColor,
+    required this.textColor,
+    required this.isDarkMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = goal <= 0 ? 0.0 : (consumed / goal).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.07)
+              : Colors.white.withValues(alpha: 0.9),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              color: textColor.withValues(alpha: 0.86),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '$consumed/$goal g',
+              style: GoogleFonts.inter(
+                color: textColor.withValues(alpha: 0.62),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 5,
+              backgroundColor: color.withValues(alpha: 0.14),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalorieArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color trackColor;
+
+  const _CalorieArcPainter({
+    required this.progress,
+    required this.color,
+    required this.trackColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const startAngle = math.pi * 0.82;
+    const sweepAngle = math.pi * 1.36;
+    final strokeWidth = math.min(14.0, size.width * 0.07);
+    final radius = math.min(size.width * 0.42, size.height * 0.45);
+    final center = Offset(size.width / 2, size.height * 0.55);
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    final progressPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [color.withValues(alpha: 0.72), color],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, startAngle, sweepAngle, false, trackPaint);
+    if (progress > 0) {
+      canvas.drawArc(
+          rect, startAngle, sweepAngle * progress, false, progressPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CalorieArcPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.trackColor != trackColor;
   }
 }

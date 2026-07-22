@@ -712,6 +712,30 @@ class DailyMealsProvider extends ChangeNotifier {
     _changeWaterForDate(date, -1);
   }
 
+  void setWaterGlassesForDate(DateTime date, int glasses) {
+    final dateKey = _formatDate(date);
+    final current = _waterByDate[dateKey] ?? 0;
+    final next = glasses.clamp(0, 999).toInt();
+    if (next == current) return;
+
+    _waterByDate[dateKey] = next;
+    _markDateLocallyModified(dateKey);
+    _saveWaterToPreferences();
+    _scheduleSync();
+    notifyListeners();
+  }
+
+  void updateWaterGoal(int glasses, {DateTime? date}) {
+    final nextGoal = glasses.clamp(1, 999).toInt();
+    if (nextGoal == waterGoal) return;
+
+    waterGoal = nextGoal;
+    _markDateLocallyModified(_formatDate(date ?? _selectedDate));
+    _saveWaterToPreferences();
+    _scheduleSync();
+    notifyListeners();
+  }
+
   void _changeWaterForDate(DateTime date, int delta) {
     final dateKey = _formatDate(date);
     final current = _waterByDate[dateKey] ?? 0;
@@ -1088,6 +1112,91 @@ class DailyMealsProvider extends ChangeNotifier {
 
     return meals
         .indexWhere((m) => _chatMessageGroupId(m.messageId) == targetGroupId);
+  }
+
+  /// Substitui de forma atomica todas as refeicoes pertencentes a um card do
+  /// chat. O reload da resposta reutiliza o mesmo [messageId], portanto os
+  /// totais do diario sao recalculados sem manter a versao anterior do card.
+  /// Refeicoes manuais ou cards de outras mensagens nao sao alterados.
+  void replaceChatMealsForMessage(
+    String messageId,
+    List<Meal> replacementMeals,
+  ) {
+    final groupId = _chatMessageGroupId(messageId);
+    if (groupId == null) return;
+
+    final dateKey = _formatDate(_selectedDate);
+    final meals = _mealsByDate[dateKey] ??= <Meal>[];
+    final existingGroup = meals
+        .where((meal) => _chatMessageGroupId(meal.messageId) == groupId)
+        .toList(growable: false);
+    final insertionIndex = meals.indexWhere(
+      (meal) => _chatMessageGroupId(meal.messageId) == groupId,
+    );
+    final existingByIdentity = <String, Meal>{
+      for (final meal in existingGroup)
+        if (_chatMealIdentity(meal.messageId) != null)
+          _chatMealIdentity(meal.messageId)!: meal,
+    };
+
+    final normalizedReplacements = <Meal>[];
+    for (var index = 0; index < replacementMeals.length; index++) {
+      final replacement = replacementMeals[index];
+      if (replacement.foods.isEmpty) continue;
+
+      final replacementMessageId =
+          replacementMeals.length == 1 ? groupId : '$groupId#meal-$index';
+      final existing =
+          existingByIdentity[_chatMealIdentity(replacementMessageId)];
+      normalizedReplacements.add(
+        _normalizeMeal(
+          replacement.copyWith(
+            id: existing?.id ?? replacement.id,
+            dateTime: _dateTimeOnDay(
+              _selectedDate,
+              existing?.dateTime ?? replacement.dateTime,
+            ),
+            messageId: replacementMessageId,
+          ),
+        ),
+      );
+    }
+
+    final previousJson = jsonEncode(
+      existingGroup.map((meal) => meal.toJson()).toList(growable: false),
+    );
+    final replacementJson = jsonEncode(
+      normalizedReplacements
+          .map((meal) => meal.toJson())
+          .toList(growable: false),
+    );
+
+    meals.removeWhere(
+      (meal) => _chatMessageGroupId(meal.messageId) == groupId,
+    );
+    final targetIndex = insertionIndex == -1
+        ? meals.length
+        : insertionIndex > meals.length
+            ? meals.length
+            : insertionIndex;
+    meals.insertAll(targetIndex, normalizedReplacements);
+
+    final deletedIds = _deletedChatMealIdsByDate[dateKey];
+    final deletedCountBefore = deletedIds?.length ?? 0;
+    deletedIds?.removeWhere(
+      (identity) => _chatMessageGroupId(identity) == groupId,
+    );
+    final clearedDeletion = (deletedIds?.length ?? 0) != deletedCountBefore;
+    if (deletedIds != null && deletedIds.isEmpty) {
+      _deletedChatMealIdsByDate.remove(dateKey);
+    }
+
+    if (previousJson == replacementJson && !clearedDeletion) return;
+
+    _markDateLocallyModified(dateKey);
+    unawaited(_saveToPreferences());
+    _scheduleSync();
+    notifyListeners();
   }
 
   /// Adiciona uma refeição completa ao dia selecionado

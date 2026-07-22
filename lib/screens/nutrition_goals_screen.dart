@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
+import 'calorie_goal_edit_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
 import 'diet_type_selection_screen.dart';
 import 'free_chat_screen.dart';
@@ -219,9 +220,9 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               ),
               Tooltip(
                 message: AppLocalizations.of(context)
-                    .translate('edit_macronutrients'),
+                    .translate('calorie_editor_title'),
                 child: InkWell(
-                  onTap: _openMacroEditor,
+                  onTap: _openCalorieEditor,
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
                     width: 40,
@@ -232,7 +233,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
                       border: Border.all(color: _borderColor(isDarkMode)),
                     ),
                     child: Icon(
-                      Icons.tune_rounded,
+                      Icons.edit_rounded,
                       color: textColor,
                       size: 20,
                     ),
@@ -242,15 +243,44 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
             ],
           ),
           const SizedBox(height: 18),
-          Text(
-            AppLocalizations.of(context).translate(
-              'nutrition_goals_macros_per_day',
-            ),
-            style: TextStyle(
-              color: _mutedTextColor(isDarkMode),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context).translate(
+                    'nutrition_goals_macros_per_day',
+                  ),
+                  style: TextStyle(
+                    color: _mutedTextColor(isDarkMode),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: AppLocalizations.of(context)
+                    .translate('edit_macronutrients'),
+                child: InkWell(
+                  onTap: _openMacroEditor,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: _secondarySurfaceColor(isDarkMode),
+                      borderRadius: BorderRadius.circular(11),
+                      border: Border.all(color: _borderColor(isDarkMode)),
+                    ),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: textColor,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           _buildMacroSummary(provider, isDarkMode),
@@ -420,6 +450,17 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     showMacroEditBottomSheet(
       context: context,
       provider: context.read<NutritionGoalsProvider>(),
+    );
+  }
+
+  void _openCalorieEditor() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CalorieGoalEditScreen(
+          provider: context.read<NutritionGoalsProvider>(),
+        ),
+      ),
     );
   }
 

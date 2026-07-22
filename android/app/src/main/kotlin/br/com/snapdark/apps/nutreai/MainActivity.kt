@@ -8,11 +8,9 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
-import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
-import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -43,9 +41,7 @@ class MainActivity : FlutterActivity() {
             HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
             HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
             HealthPermission.getReadPermission(StepsRecord::class),
-            HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-            HealthPermission.getReadPermission(WeightRecord::class),
-            HealthPermission.getReadPermission(BodyFatRecord::class)
+            HealthPermission.getReadPermission(ExerciseSessionRecord::class)
         )
     }
 
@@ -66,19 +62,19 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "isAppInstalled" -> {
                     val packageName = call.argument<String>("packageName")
-                    if (packageName.isNullOrBlank()) {
-                        result.success(false)
-                    } else {
-                        result.success(isPackageInstalled(packageName))
-                    }
+                    result.success(
+                        !packageName.isNullOrBlank() && isPackageInstalled(packageName)
+                    )
                 }
                 "openAppOrStore" -> {
                     val packageName = call.argument<String>("packageName")
-                    if (packageName.isNullOrBlank()) {
-                        result.success("failed")
-                    } else {
-                        result.success(openAppOrStore(packageName))
-                    }
+                    result.success(
+                        if (packageName.isNullOrBlank()) {
+                            "failed"
+                        } else {
+                            openAppOrStore(packageName)
+                        }
+                    )
                 }
                 "openHealthConnect" -> {
                     result.success(openHealthConnect())
@@ -200,20 +196,14 @@ class MainActivity : FlutterActivity() {
             return "opened_app"
         }
 
-        return if (openPlayStore(packageName)) {
-            "opened_store"
-        } else {
-            "failed"
-        }
+        return if (openPlayStore(packageName)) "opened_store" else "failed"
     }
 
     private fun openHealthConnect(): String {
         val sdkStatus = HealthConnectClient.getSdkStatus(this)
-        val permissionIntent = Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS")
-            .putExtra(Intent.EXTRA_PACKAGE_NAME, packageName)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (startExternalActivity(permissionIntent)) {
-            return "opened_app"
+
+        if (sdkStatus == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+            return if (openHealthConnectStore()) "opened_store" else "failed"
         }
 
         val settingsIntents = listOf(
@@ -229,10 +219,11 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        if (sdkStatus == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
-            if (openHealthConnectStore()) {
-                return "opened_store"
-            }
+        val permissionIntent = Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS")
+            .putExtra(Intent.EXTRA_PACKAGE_NAME, packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (startExternalActivity(permissionIntent)) {
+            return "opened_app"
         }
 
         val healthConnectPackage = "com.google.android.apps.healthdata"
@@ -393,8 +384,6 @@ class MainActivity : FlutterActivity() {
         var steps: Long? = null
         var exerciseCount = 0
         var exerciseMinutes = 0L
-        var weightKg: Double? = null
-        var bodyFatPercentage: Double? = null
 
         val metrics = mutableSetOf<androidx.health.connect.client.aggregate.AggregateMetric<*>>()
         if (granted.contains(HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class))) {
@@ -405,9 +394,6 @@ class MainActivity : FlutterActivity() {
         }
         if (granted.contains(HealthPermission.getReadPermission(StepsRecord::class))) {
             metrics.add(StepsRecord.COUNT_TOTAL)
-        }
-        if (granted.contains(HealthPermission.getReadPermission(WeightRecord::class))) {
-            metrics.add(WeightRecord.WEIGHT_AVG)
         }
 
         if (metrics.isNotEmpty()) {
@@ -422,7 +408,6 @@ class MainActivity : FlutterActivity() {
             totalCalories = aggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]
                 ?.inKilocalories
             steps = aggregate[StepsRecord.COUNT_TOTAL]
-            weightKg = aggregate[WeightRecord.WEIGHT_AVG]?.inKilograms
             dataOrigins.addAll(aggregate.dataOrigins.map { it.packageName })
         }
 
@@ -455,20 +440,6 @@ class MainActivity : FlutterActivity() {
             dataOrigins.addAll(response.records.map { it.metadata.dataOrigin.packageName })
         }
 
-        if (granted.contains(HealthPermission.getReadPermission(BodyFatRecord::class))) {
-            val historyStart = end.minus(Duration.ofDays(30))
-            val response = client.readRecords(
-                ReadRecordsRequest<BodyFatRecord>(
-                    timeRangeFilter = TimeRangeFilter.between(historyStart, end),
-                    ascendingOrder = false,
-                    pageSize = 1
-                )
-            )
-            val latestBodyFat = response.records.firstOrNull()
-            bodyFatPercentage = latestBodyFat?.percentage?.value
-            latestBodyFat?.metadata?.dataOrigin?.packageName?.let { dataOrigins.add(it) }
-        }
-
         val missing = healthPermissions - granted
 
         return mapOf(
@@ -485,8 +456,6 @@ class MainActivity : FlutterActivity() {
             "steps" to steps,
             "exerciseCount" to exerciseCount,
             "exerciseMinutes" to exerciseMinutes,
-            "weightKg" to weightKg,
-            "bodyFatPercentage" to bodyFatPercentage,
             "dataOrigins" to dataOrigins.toList().sorted()
         )
     }
@@ -511,8 +480,6 @@ class MainActivity : FlutterActivity() {
             "steps" to null,
             "exerciseCount" to 0,
             "exerciseMinutes" to 0,
-            "weightKg" to null,
-            "bodyFatPercentage" to null,
             "dataOrigins" to emptyList<String>(),
             "errorMessage" to errorMessage
         )

@@ -48,7 +48,8 @@ class _FloatingGenerationCards extends StatefulWidget {
 }
 
 class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
-  static const _horizontalMargin = 16.0;
+  static const _leftMargin = 16.0;
+  static const _rightMargin = 4.0;
   static const _topMargin = 12.0;
   static const _phoneHomeInitialBottom = 154.0;
   static const _phoneTabInitialBottom = 92.0;
@@ -73,7 +74,7 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
             ? _phoneHomeInitialBottom
             : _phoneTabInitialBottom;
     return Offset(
-      overlaySize.width - safeInsets.right - _horizontalMargin - cardWidth,
+      overlaySize.width - safeInsets.right - _rightMargin - cardWidth,
       overlaySize.height - safeInsets.bottom - initialBottom - cardHeight,
     );
   }
@@ -85,9 +86,9 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
     required double cardWidth,
     required double cardHeight,
   }) {
-    final minLeft = safeInsets.left + _horizontalMargin;
+    final minLeft = safeInsets.left + _leftMargin;
     final maxLeft =
-        overlaySize.width - safeInsets.right - _horizontalMargin - cardWidth;
+        overlaySize.width - safeInsets.right - _rightMargin - cardWidth;
     final minTop = safeInsets.top + _topMargin;
     final maxTop =
         overlaySize.height - safeInsets.bottom - _topMargin - cardHeight;

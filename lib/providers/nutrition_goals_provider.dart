@@ -184,6 +184,7 @@ class NutritionGoalsProvider extends ChangeNotifier {
   int get fatGoal => _useCalculatedGoals && !_useExplicitMacroGoals
       ? _calculateFat()
       : _manualFatGoal;
+  int get maintenanceCalories => _calculateTDEE().round();
   Map<String, int> get macroGramTargets => {
         'carbs': carbsGoal,
         'protein': proteinGoal,
@@ -733,6 +734,64 @@ class NutritionGoalsProvider extends ChangeNotifier {
     _saveToPreferences();
     _markPendingServerSync();
     notifyListeners();
+  }
+
+  /// Saves a user-defined calorie target and keeps the current macro split.
+  ///
+  /// The fitness goal is supplied by [inferFitnessGoalForCalories], so the
+  /// objective shown throughout the app stays aligned with the manual target.
+  void updateManualCalorieGoal({
+    required int calories,
+    required FitnessGoal fitnessGoal,
+  }) {
+    _markStateMutation();
+    _manualCaloriesGoal = calories;
+    _fitnessGoal = fitnessGoal;
+    _hasExplicitFitnessGoal = true;
+    _useCalculatedGoals = false;
+    _useExplicitMacroGoals = false;
+
+    final grams = calculateMacroGramsFromPercentages(
+      carbsPercentage: _carbsPercentage.toDouble(),
+      proteinPercentage: _proteinPercentage.toDouble(),
+      fatPercentage: _fatPercentage.toDouble(),
+      calorieTarget: calories,
+    );
+    _manualCarbsGoal = grams['carbs']!.round();
+    _manualProteinGoal = grams['protein']!.round();
+    _manualFatGoal = grams['fat']!.round();
+
+    _saveToPreferences();
+    _markPendingServerSync();
+    notifyListeners();
+  }
+
+  double calorieDeltaPercentage(int calorieTarget) {
+    final maintenance = maintenanceCalories;
+    if (maintenance <= 0) {
+      return 0;
+    }
+    return ((calorieTarget - maintenance) / maintenance) * 100;
+  }
+
+  /// Maps a manual calorie target to the closest objective supported by the
+  /// app. Midpoints between the existing -20%, -10%, 0%, +10% and +20%
+  /// presets determine each range.
+  FitnessGoal inferFitnessGoalForCalories(int calorieTarget) {
+    final delta = calorieDeltaPercentage(calorieTarget);
+    if (delta <= -15) {
+      return FitnessGoal.loseWeight;
+    }
+    if (delta <= -5) {
+      return FitnessGoal.loseWeightSlowly;
+    }
+    if (delta < 5) {
+      return FitnessGoal.maintainWeight;
+    }
+    if (delta < 15) {
+      return FitnessGoal.gainWeightSlowly;
+    }
+    return FitnessGoal.gainWeight;
   }
 
   Map<String, double> calculateMacroGramsFromPercentages({

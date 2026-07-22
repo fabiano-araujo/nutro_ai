@@ -56,6 +56,15 @@ class ChatTimelineBuilder {
   }) {
     final items = <ChatTimelineItem>[];
     DateTime? lastMessageTimestamp;
+    final inFlightReplacementIds = messages
+        .where(
+          (message) =>
+              message['replaceExistingMeals'] == true &&
+              message['notifier'] != null,
+        )
+        .map((message) => mealMessageGroupId(message['id']?.toString()))
+        .whereType<String>()
+        .toSet();
 
     for (var index = 0; index < messages.length; index++) {
       final timestamp = _readDate(messages[index]['timestamp']) ??
@@ -73,6 +82,7 @@ class ChatTimelineBuilder {
     final groupedMeals = <String, List<Meal>>{};
     for (final meal in unrepresentedMeals) {
       final groupId = mealMessageGroupId(meal.messageId) ?? 'meal:${meal.id}';
+      if (inFlightReplacementIds.contains(groupId)) continue;
       (groupedMeals[groupId] ??= <Meal>[]).add(meal);
     }
 
@@ -99,6 +109,15 @@ class ChatTimelineBuilder {
       return a._stableOrder.compareTo(b._stableOrder);
     });
     return items;
+  }
+
+  /// Os atalhos de copiar, ouvir e regenerar pertencem somente a uma resposta
+  /// concluida. Durante o streaming eles somem junto com a resposta anterior.
+  static bool shouldShowAssistantActions({
+    required List<Map<String, dynamic>> messages,
+    required bool isLoading,
+  }) {
+    return !isLoading && messages.isNotEmpty && messages.last['isUser'] != true;
   }
 
   static String? mealMessageGroupId(String? messageId) {

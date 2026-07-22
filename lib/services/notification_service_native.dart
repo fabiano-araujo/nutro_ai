@@ -301,7 +301,7 @@ class NotificationService {
     if (type == 'friend_request' ||
         type == 'friend_accepted' ||
         type == 'buddy_ping') {
-      navigationController.changeTab(2);
+      navigationController.changeTab(3);
       Future.delayed(const Duration(milliseconds: 300), () {
         socialTabController.changeTab(3);
       });
@@ -309,14 +309,14 @@ class NotificationService {
         type == 'meal_reminder' ||
         type == 'missed_meal' ||
         type == 'comeback_reminder') {
-      // O diario/assistente e o caminho mais curto para registrar a refeicao.
-      navigationController.changeTab(0);
+      // O diário é o caminho mais curto para registrar a refeição.
+      navigationController.changeTab(1);
     } else if (type == 'diet_generation_completed' ||
         type == 'diet_generation_failed' ||
         screen == '/diet') {
-      navigationController.changeTab(1);
+      navigationController.changeTab(2);
     } else if (type == 'weight_reminder') {
-      navigationController.changeTab(3);
+      navigationController.changeTab(4);
     } else if (type == 'personalized_tip') {
       navigationController.changeTab(0);
     }

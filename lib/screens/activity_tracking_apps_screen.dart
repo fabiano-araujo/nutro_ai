@@ -1,6 +1,7 @@
-import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../i18n/app_localizations_extension.dart';
@@ -9,120 +10,88 @@ import '../services/tracking_app_launcher.dart';
 import '../theme/app_theme.dart';
 
 class ActivityTrackingAppsScreen extends StatefulWidget {
-  const ActivityTrackingAppsScreen({Key? key}) : super(key: key);
+  const ActivityTrackingAppsScreen({super.key});
 
   @override
   State<ActivityTrackingAppsScreen> createState() =>
       _ActivityTrackingAppsScreenState();
 }
 
-class _ActivityTrackingAppsScreenState
-    extends State<ActivityTrackingAppsScreen> {
-  final TrackingAppLauncher _launcher = TrackingAppLauncher();
+class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
+    with WidgetsBindingObserver {
   final Map<String, bool> _installedApps = {};
+  final Set<String> _appsBeingOpened = {};
+  bool _isOpeningHealthConnect = false;
   bool _isLoadingApps = true;
+  bool _refreshWhenResumed = false;
 
-  static const List<_TrackingAppInfo> _apps = [
+  static const List<_TrackingAppInfo> _trackingApps = [
     _TrackingAppInfo(
-      name: 'Google Fit',
-      packageName: 'com.google.android.apps.fitness',
+      name: 'Huawei Saúde',
+      packageName: 'com.huawei.health',
       icon: Icons.favorite_rounded,
-      color: Color(0xFF2DAA57),
-      descriptionKey: 'tracking_desc_all_day',
-    ),
-    _TrackingAppInfo(
-      name: 'Samsung Health',
-      packageName: 'com.sec.android.app.shealth',
-      icon: Icons.monitor_heart_rounded,
-      color: Color(0xFF1E88E5),
-      descriptionKey: 'tracking_desc_all_day',
+      color: Color(0xFFE53955),
+      descriptionKey: 'tracking_desc_huawei_health',
+      supportsHealthConnect: false,
+      installUrl: 'https://consumer.huawei.com/br/mobileservices/health/',
     ),
     _TrackingAppInfo(
       name: 'Fitbit',
       packageName: 'com.fitbit.FitbitMobile',
       icon: Icons.grid_view_rounded,
-      color: Color(0xFF00B0B9),
-      descriptionKey: 'tracking_desc_wearables',
+      color: Color(0xFF00A9B5),
+      descriptionKey: 'tracking_desc_fitbit_health_connect',
     ),
     _TrackingAppInfo(
       name: 'Garmin Connect',
       packageName: 'com.garmin.android.apps.connectmobile',
       icon: Icons.watch_rounded,
-      color: Color(0xFF1F2937),
-      descriptionKey: 'tracking_desc_wearables',
-    ),
-    _TrackingAppInfo(
-      name: 'Strava',
-      packageName: 'com.strava',
-      icon: Icons.terrain_rounded,
-      color: Color(0xFFFC4C02),
-      descriptionKey: 'tracking_desc_running',
-    ),
-    _TrackingAppInfo(
-      name: 'Huawei Health',
-      packageName: 'com.huawei.health',
-      icon: Icons.health_and_safety_rounded,
-      color: Color(0xFFD32F2F),
-      descriptionKey: 'tracking_desc_wearables',
-    ),
-    _TrackingAppInfo(
-      name: 'Mi Fitness',
-      packageName: 'com.xiaomi.wearable',
-      icon: Icons.directions_walk_rounded,
-      color: Color(0xFFFF6900),
-      descriptionKey: 'tracking_desc_wearables',
-    ),
-    _TrackingAppInfo(
-      name: 'Zepp',
-      packageName: 'com.huami.watch.hmwatchmanager',
-      icon: Icons.watch_outlined,
-      color: Color(0xFF00A878),
-      descriptionKey: 'tracking_desc_wearables',
+      color: Color(0xFF1778B8),
+      descriptionKey: 'tracking_desc_garmin_health_connect',
     ),
     _TrackingAppInfo(
       name: 'Polar Flow',
       packageName: 'fi.polar.polarflow',
       icon: Icons.fitness_center_rounded,
-      color: Color(0xFFB91C1C),
-      descriptionKey: 'tracking_desc_running',
-    ),
-    _TrackingAppInfo(
-      name: 'Withings',
-      packageName: 'com.withings.wiscale2',
-      icon: Icons.monitor_weight_rounded,
-      color: Color(0xFF8E949B),
-      descriptionKey: 'tracking_desc_body',
-    ),
-    _TrackingAppInfo(
-      name: 'Nike Run Club',
-      packageName: 'com.nike.plusgps',
-      icon: Icons.directions_run_rounded,
-      color: Color(0xFF111111),
-      descriptionKey: 'tracking_desc_running',
-    ),
-    _TrackingAppInfo(
-      name: 'adidas Running',
-      packageName: 'com.runtastic.android',
-      icon: Icons.speed_rounded,
-      color: Color(0xFF111827),
-      descriptionKey: 'tracking_desc_running',
+      color: Color(0xFFD71937),
+      descriptionKey: 'tracking_desc_polar_health_connect',
     ),
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadInstalledApps();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<ActivityTrackingProvider>().loadForDate(DateTime.now());
+      unawaited(_loadInstalledApps());
+      unawaited(_refreshHealthData());
     });
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+
+    unawaited(_loadInstalledApps());
+    if (!_refreshWhenResumed) return;
+
+    _refreshWhenResumed = false;
+    unawaited(_refreshHealthData());
+  }
+
   Future<void> _loadInstalledApps() async {
+    final provider = context.read<ActivityTrackingProvider>();
     final entries = await Future.wait(
-      _apps.map((app) async {
-        final installed = await _launcher.isAppInstalled(app.packageName);
+      _trackingApps.map((app) async {
+        final installed =
+            await provider.isTrackingAppInstalled(app.packageName);
         return MapEntry(app.packageName, installed);
       }),
     );
@@ -136,54 +105,162 @@ class _ActivityTrackingAppsScreenState
     });
   }
 
+  Future<void> _refreshHealthData({bool showFeedback = false}) async {
+    final provider = context.read<ActivityTrackingProvider>();
+    if (provider.isLoading || provider.isRequestingPermissions) return;
+
+    await provider.loadForDate(DateTime.now(), force: true);
+    if (!mounted || !showFeedback) return;
+
+    _showMessage(
+      provider.errorMessage == null
+          ? _healthSummaryMessage(provider)
+          : _syncErrorMessage(),
+    );
+  }
+
   Future<void> _configureHealthConnect(
     ActivityTrackingProvider provider,
   ) async {
     final status = await provider.requestPermissionsAndLoad(DateTime.now());
     if (!mounted) return;
 
-    String message;
     if (status.hasAllPermissions) {
-      message = context.tr.translate('tracking_permission_granted');
-    } else if (status.hasAnyPermission) {
-      message = context.tr.translate('tracking_permission_partial');
-    } else if (status.needsProviderUpdate || !status.isAvailable) {
-      message = context.tr.translate('tracking_health_update_required');
-      await provider.openHealthConnect();
-    } else {
-      message = context.tr.translate('tracking_permission_denied');
+      _showMessage(context.tr.translate('tracking_permission_granted'));
+      return;
+    }
+    if (status.hasAnyPermission) {
+      _showMessage(context.tr.translate('tracking_permission_partial'));
+      return;
+    }
+    if (status.needsProviderUpdate || !status.isAvailable) {
+      _showMessage(context.tr.translate('tracking_health_update_required'));
+      await _openHealthConnect(provider);
+      return;
     }
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    _showMessage(context.tr.translate('tracking_permission_denied'));
   }
 
-  Future<void> _openApp(_TrackingAppInfo app) async {
-    final result = await _launcher.openAppOrStore(app.packageName);
-    if (!mounted) return;
-    _showLaunchFeedback(result, app.name);
+  Future<void> _openHealthConnect(
+    ActivityTrackingProvider provider,
+  ) async {
+    if (_isOpeningHealthConnect) return;
 
-    if (result == TrackingAppLaunchResult.openedStore) {
-      setState(() {
+    setState(() {
+      _isOpeningHealthConnect = true;
+      _refreshWhenResumed = true;
+    });
+
+    try {
+      final result = await provider.openHealthConnect();
+      if (!mounted) return;
+
+      switch (result) {
+        case TrackingAppLaunchResult.openedApp:
+          break;
+        case TrackingAppLaunchResult.openedStore:
+          _showMessage(
+            context.tr.translate('tracking_health_update_required'),
+          );
+          break;
+        case TrackingAppLaunchResult.unsupported:
+          _refreshWhenResumed = false;
+          _showMessage(context.tr.translate('tracking_not_available'));
+          break;
+        case TrackingAppLaunchResult.failed:
+          _refreshWhenResumed = false;
+          _showMessage(_syncErrorMessage());
+          break;
+      }
+    } catch (_) {
+      _refreshWhenResumed = false;
+      if (mounted) _showMessage(_syncErrorMessage());
+    } finally {
+      if (mounted) {
+        setState(() => _isOpeningHealthConnect = false);
+      }
+    }
+  }
+
+  Future<void> _handlePrimaryAction(
+    ActivityTrackingProvider provider,
+  ) async {
+    if (provider.isLoading ||
+        provider.isRequestingPermissions ||
+        _isOpeningHealthConnect) {
+      return;
+    }
+
+    if (!provider.isHealthConnectAvailable || provider.needsProviderUpdate) {
+      await _openHealthConnect(provider);
+      return;
+    }
+
+    if (!provider.hasAllPermissions) {
+      await _configureHealthConnect(provider);
+      return;
+    }
+
+    await _refreshHealthData(showFeedback: true);
+  }
+
+  Future<void> _openTrackingApp(
+    _TrackingAppInfo app,
+    ActivityTrackingProvider provider,
+  ) async {
+    if (_appsBeingOpened.contains(app.packageName)) return;
+
+    final installed = _installedApps[app.packageName] ?? false;
+    if (installed && app.supportsHealthConnect && !provider.hasAnyPermission) {
+      final status = await provider.requestPermissionsAndLoad(DateTime.now());
+      if (!mounted || !status.hasAnyPermission) {
+        if (mounted) {
+          _showMessage(
+            context.tr.translate('tracking_permission_needed'),
+          );
+        }
+        return;
+      }
+    }
+
+    setState(() {
+      _appsBeingOpened.add(app.packageName);
+      _refreshWhenResumed = true;
+    });
+
+    final result = !installed && app.installUrl != null
+        ? await provider.openTrackingAppOfficialStore(app.installUrl!)
+        : await provider.openTrackingApp(app.packageName);
+    if (!mounted) return;
+
+    setState(() {
+      _appsBeingOpened.remove(app.packageName);
+      if (result == TrackingAppLaunchResult.openedStore) {
         _installedApps[app.packageName] = false;
-      });
-    }
-  }
+      }
+      if (result == TrackingAppLaunchResult.failed ||
+          result == TrackingAppLaunchResult.unsupported) {
+        _refreshWhenResumed = false;
+      }
+    });
 
-  void _showLaunchFeedback(TrackingAppLaunchResult result, String appName) {
     final key = switch (result) {
       TrackingAppLaunchResult.openedApp => 'tracking_app_opened',
       TrackingAppLaunchResult.openedStore => 'tracking_app_store_opened',
       TrackingAppLaunchResult.unsupported => 'tracking_not_available',
       TrackingAppLaunchResult.failed => 'tracking_app_open_error',
     };
-
-    final message = context.tr.translate(key).replaceAll('{app}', appName);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    _showMessage(
+      context.tr.translate(key).replaceAll('{app}', app.name),
     );
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -205,33 +282,47 @@ class _ActivityTrackingAppsScreenState
             iconTheme: IconThemeData(color: textColor),
             title: Text(
               context.tr.translate('automatic_tracking_apps_title'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleLarge?.copyWith(
                 color: textColor,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                children: [
-                  _buildHealthConnectCard(
-                    theme,
-                    isDarkMode,
-                    trackingProvider,
+          body: SafeArea(
+            top: false,
+            child: RefreshIndicator(
+              onRefresh: _refreshHealthData,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    children: [
+                      _buildConnectionCard(
+                        theme,
+                        isDarkMode,
+                        trackingProvider,
+                      ),
+                      if (trackingProvider.hasAnyPermission) ...[
+                        const SizedBox(height: 14),
+                        _buildTodaySummary(
+                          theme,
+                          isDarkMode,
+                          trackingProvider,
+                        ),
+                      ],
+                      const SizedBox(height: 22),
+                      _buildTrackingAppsSection(
+                        theme,
+                        isDarkMode,
+                        trackingProvider,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 22),
-                  _buildSectionHeader(theme, textColor),
-                  const SizedBox(height: 10),
-                  ..._apps.map(
-                    (app) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildTrackingAppTile(app, theme, isDarkMode),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -240,440 +331,413 @@ class _ActivityTrackingAppsScreenState
     );
   }
 
-  Widget _buildHealthConnectCard(
+  Widget _buildConnectionCard(
     ThemeData theme,
     bool isDarkMode,
-    ActivityTrackingProvider trackingProvider,
+    ActivityTrackingProvider provider,
   ) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     final mutedTextColor =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
-    final primary = theme.colorScheme.primary;
+        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
     return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(isDarkMode, cardColor),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHealthConnectGraphic(theme, isDarkMode),
-          const SizedBox(height: 22),
-          Text(
-            context.tr.translate('tracking_health_connect_heading'),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: textColor,
-              fontSize: 23,
-              height: 1.18,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            context.tr.translate('tracking_health_connect_body'),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: mutedTextColor,
-              height: 1.38,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildSyncedSummary(theme, trackingProvider, isDarkMode),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDataChip(
-                Icons.local_fire_department_rounded,
-                context.tr.translate('tracking_permission_active_calories'),
-                const Color(0xFFFF6B35),
-                isDarkMode,
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(
+                    alpha: isDarkMode ? 0.2 : 0.12,
+                  ),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(
+                  Icons.health_and_safety_rounded,
+                  color: isDarkMode
+                      ? AppTheme.primaryColorDarkMode
+                      : AppTheme.primaryDarkColor,
+                  size: 27,
+                ),
               ),
-              _buildDataChip(
-                Icons.directions_walk_rounded,
-                context.tr.translate('tracking_permission_steps'),
-                const Color(0xFF2F80ED),
-                isDarkMode,
-              ),
-              _buildDataChip(
-                Icons.fitness_center_rounded,
-                context.tr.translate('tracking_permission_exercises'),
-                const Color(0xFF8B5CF6),
-                isDarkMode,
-              ),
-              _buildDataChip(
-                Icons.monitor_weight_rounded,
-                context.tr.translate('tracking_permission_body_measures'),
-                const Color(0xFF059669),
-                isDarkMode,
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr.translate('tracking_health_connect_name'),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.tr.translate('tracking_activity_card_message'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: mutedTextColor,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: trackingProvider.isRequestingPermissions
-                  ? null
-                  : () => _configureHealthConnect(trackingProvider),
-              icon: trackingProvider.isRequestingPermissions
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: ThemeData.estimateBrightnessForColor(primary) ==
-                                Brightness.dark
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                    )
-                  : const Icon(Icons.link_rounded, size: 19),
-              label: Text(
-                trackingProvider.hasAnyPermission
-                    ? context.tr.translate('tracking_refresh')
-                    : context.tr.translate('configure_health_connect'),
-                textAlign: TextAlign.center,
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: primary,
-                foregroundColor:
-                    ThemeData.estimateBrightnessForColor(primary) ==
-                            Brightness.dark
-                        ? Colors.white
-                        : Colors.black,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+          const SizedBox(height: 16),
+          _buildStatusBanner(theme, isDarkMode, provider),
+          if (!provider.isHealthConnectUnsupported) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: provider.isLoading ||
+                        provider.isRequestingPermissions ||
+                        _isOpeningHealthConnect
+                    ? null
+                    : () => _handlePrimaryAction(provider),
+                icon: _buildPrimaryActionIcon(provider),
+                label: Text(
+                  _primaryActionLabel(provider),
+                  textAlign: TextAlign.center,
+                ),
+                style: FilledButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
               ),
             ),
-          ),
+            if (provider.hasAnyPermission) ...[
+              const SizedBox(height: 6),
+              Center(
+                child: TextButton.icon(
+                  onPressed: _isOpeningHealthConnect
+                      ? null
+                      : () => _openHealthConnect(provider),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  label: Text(
+                    context.tr.translate('tracking_open_health_connect'),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSyncedSummary(
+  Widget _buildStatusBanner(
     ThemeData theme,
-    ActivityTrackingProvider trackingProvider,
     bool isDarkMode,
+    ActivityTrackingProvider provider,
+  ) {
+    final loading = !provider.hasLoadedStatus ||
+        provider.isLoading ||
+        provider.isRequestingPermissions;
+    final Color color;
+    final IconData icon;
+
+    if (loading) {
+      color = theme.colorScheme.primary;
+      icon = Icons.sync_rounded;
+    } else if (provider.isHealthConnectUnsupported ||
+        !provider.isHealthConnectAvailable ||
+        provider.errorMessage != null) {
+      color = theme.colorScheme.error;
+      icon = Icons.error_outline_rounded;
+    } else if (provider.hasAllPermissions) {
+      color = const Color(0xFF168B62);
+      icon = Icons.check_circle_outline_rounded;
+    } else if (provider.hasAnyPermission) {
+      color = const Color(0xFFB7791F);
+      icon = Icons.warning_amber_rounded;
+    } else {
+      color = isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+      icon = Icons.link_off_rounded;
+    }
+
+    return Semantics(
+      liveRegion: true,
+      label: _healthStatusMessage(provider),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDarkMode ? 0.16 : 0.09),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            if (loading)
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: color,
+                ),
+              )
+            else
+              Icon(icon, color: color, size: 21),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _healthStatusMessage(provider),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                  height: 1.3,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryActionIcon(ActivityTrackingProvider provider) {
+    if (provider.isLoading ||
+        provider.isRequestingPermissions ||
+        _isOpeningHealthConnect) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    if (!provider.isHealthConnectAvailable || provider.needsProviderUpdate) {
+      return const Icon(Icons.system_update_alt_rounded, size: 20);
+    }
+    if (provider.hasAllPermissions) {
+      return const Icon(Icons.sync_rounded, size: 20);
+    }
+    return const Icon(Icons.link_rounded, size: 20);
+  }
+
+  String _primaryActionLabel(ActivityTrackingProvider provider) {
+    if (provider.isLoading ||
+        provider.isRequestingPermissions ||
+        _isOpeningHealthConnect) {
+      return context.tr.translate('tracking_syncing');
+    }
+    if (provider.hasAllPermissions) {
+      return context.tr.translate('tracking_refresh');
+    }
+    return context.tr.translate('configure_health_connect');
+  }
+
+  Widget _buildTodaySummary(
+    ThemeData theme,
+    bool isDarkMode,
+    ActivityTrackingProvider provider,
   ) {
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     final mutedTextColor =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final syncedAt = provider.errorMessage == null
+        ? _formattedSyncTime(provider.summary?.syncedAt)
+        : null;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? Colors.white.withValues(alpha: 0.06)
-            : const Color(0xFFF4F7FB),
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(isDarkMode, cardColor),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr.translate('tracking_synced_today'),
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _healthSummaryMessage(trackingProvider),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: mutedTextColor,
-              height: 1.28,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: _buildSummaryMetric(
-                  context.tr.translate('tracking_metric_calories'),
-                  trackingProvider.activeCalories.toString(),
-                  const Color(0xFFFF6B35),
-                  isDarkMode,
+                child: Text(
+                  context.tr.translate('tracking_synced_today'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildSummaryMetric(
-                  context.tr.translate('tracking_metric_steps'),
-                  trackingProvider.steps.toString(),
-                  const Color(0xFF2F80ED),
-                  isDarkMode,
+              if (syncedAt != null)
+                Text(
+                  syncedAt,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: mutedTextColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildSummaryMetric(
-                  context.tr.translate('tracking_metric_minutes'),
-                  trackingProvider.exerciseMinutes.toString(),
-                  const Color(0xFF8B5CF6),
-                  isDarkMode,
-                ),
-              ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  String _healthSummaryMessage(ActivityTrackingProvider provider) {
-    if (provider.isLoading) {
-      return context.tr.translate('tracking_syncing_health_connect');
-    }
-    if (!provider.isHealthConnectAvailable || provider.needsProviderUpdate) {
-      return context.tr.translate('tracking_health_update_required');
-    }
-    if (!provider.hasAnyPermission) {
-      return context.tr.translate('tracking_permission_needed');
-    }
-    if (!provider.hasActivityData) {
-      return context.tr.translate('tracking_no_activity_data');
-    }
-    return context.tr
-        .translate('tracking_activity_synced_message')
-        .replaceAll('{steps}', provider.steps.toString())
-        .replaceAll('{minutes}', provider.exerciseMinutes.toString());
-  }
-
-  Widget _buildSummaryMetric(
-    String label,
-    String value,
-    Color color,
-    bool isDarkMode,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.18 : 0.1),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 7),
           Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
+            _healthSummaryMessage(provider),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: mutedTextColor,
+              height: 1.35,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 15),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 8.0;
+              final columns = constraints.maxWidth < 280 ? 2 : 3;
+              final width =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
-  Widget _buildHealthConnectGraphic(ThemeData theme, bool isDarkMode) {
-    final lineColor = isDarkMode ? Colors.white24 : const Color(0xFFCBD5E1);
-    final bridgeColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-
-    return SizedBox(
-      height: 162,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _TrackingBridgePainter(
-                color: lineColor,
-                accentColor: const Color(0xFF58C76B),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 4,
-            top: 28,
-            child: _MiniOrbitBadge(
-              icon: Icons.grid_view_rounded,
-              color: const Color(0xFF00B0B9),
-              isDarkMode: isDarkMode,
-            ),
-          ),
-          Positioned(
-            left: 44,
-            bottom: 22,
-            child: _MiniOrbitBadge(
-              icon: Icons.terrain_rounded,
-              color: const Color(0xFFFC4C02),
-              isDarkMode: isDarkMode,
-            ),
-          ),
-          Positioned(
-            top: 4,
-            left: 134,
-            child: _MiniOrbitBadge(
-              icon: Icons.favorite_rounded,
-              color: const Color(0xFFFF7043),
-              isDarkMode: isDarkMode,
-            ),
-          ),
-          Positioned(
-            right: 122,
-            top: 18,
-            child: _MiniOrbitBadge(
-              icon: Icons.directions_run_rounded,
-              color: const Color(0xFF14B8A6),
-              isDarkMode: isDarkMode,
-            ),
-          ),
-          Positioned(
-            right: 70,
-            bottom: 28,
-            child: _MiniOrbitBadge(
-              icon: Icons.watch_rounded,
-              color: const Color(0xFF374151),
-              isDarkMode: isDarkMode,
-            ),
-          ),
-          Positioned(
-            left: 104,
-            top: 58,
-            child: Container(
-              width: 66,
-              height: 66,
-              decoration: BoxDecoration(
-                color: isDarkMode ? const Color(0xFF222833) : Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  _buildMetric(
+                    width: width,
+                    icon: Icons.local_fire_department_rounded,
+                    label: context.tr
+                        .translate('tracking_permission_active_calories'),
+                    value: _metricValue(
+                      provider,
+                      canRead:
+                          provider.canReadCalories && provider.hasCaloriesData,
+                      value: provider.caloriesBurned,
+                      suffix: 'kcal',
+                    ),
+                    color: const Color(0xFFE76F51),
+                    isDarkMode: isDarkMode,
+                  ),
+                  _buildMetric(
+                    width: width,
+                    icon: Icons.directions_walk_rounded,
+                    label: context.tr.translate('tracking_permission_steps'),
+                    value: _metricValue(
+                      provider,
+                      canRead: provider.canReadSteps,
+                      value: provider.steps,
+                    ),
+                    color: const Color(0xFF2F80ED),
+                    isDarkMode: isDarkMode,
+                  ),
+                  _buildMetric(
+                    width: width,
+                    icon: Icons.fitness_center_rounded,
+                    label:
+                        context.tr.translate('tracking_permission_exercises'),
+                    value: _metricValue(
+                      provider,
+                      canRead: provider.canReadExercise,
+                      value: provider.exerciseMinutes,
+                      suffix: 'min',
+                    ),
+                    color: const Color(0xFF8B5CF6),
+                    isDarkMode: isDarkMode,
                   ),
                 ],
-              ),
-              child: Icon(
-                Icons.link_rounded,
-                color: bridgeColor,
-                size: 34,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 46,
-            child: Container(
-              width: 94,
-              height: 94,
-              decoration: BoxDecoration(
-                color: const Color(0xFF58C76B).withValues(alpha: 0.13),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: const Color(0xFF58C76B),
-                  width: 3,
-                ),
-              ),
-              child: const Icon(
-                Icons.eco_rounded,
-                color: Color(0xFF58C76B),
-                size: 44,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 128,
-            top: 82,
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: const BoxDecoration(
-                color: Color(0xFF58C76B),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDataChip(
-    IconData icon,
-    String label,
-    Color color,
+  Widget _buildMetric({
+    required double width,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isDarkMode,
+  }) {
+    final foregroundColor =
+        isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+
+    return Semantics(
+      label: '$label: $value',
+      child: Container(
+        width: width,
+        constraints: const BoxConstraints(minHeight: 96),
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDarkMode ? 0.14 : 0.08),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 9),
+            Text(
+              value,
+              style: TextStyle(
+                color: foregroundColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: foregroundColor.withValues(alpha: 0.72),
+                fontSize: 12,
+                height: 1.2,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrackingAppsSection(
+    ThemeData theme,
     bool isDarkMode,
+    ActivityTrackingProvider provider,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.2 : 0.12),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+    final mutedTextColor =
+        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
 
-  Widget _buildSectionHeader(ThemeData theme, Color textColor) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            context.tr.translate('popular_tracking_apps'),
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w800,
+        Text(
+          context.tr.translate('popular_tracking_apps'),
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          context.tr.translate('tracking_sources_intro'),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: mutedTextColor,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._trackingApps.map(
+          (app) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _buildTrackingAppTile(
+              app,
+              theme,
+              isDarkMode,
+              provider,
             ),
           ),
         ),
-        if (_isLoadingApps)
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
       ],
     );
   }
@@ -682,119 +746,238 @@ class _ActivityTrackingAppsScreenState
     _TrackingAppInfo app,
     ThemeData theme,
     bool isDarkMode,
+    ActivityTrackingProvider provider,
   ) {
     final installed = _installedApps[app.packageName] ?? false;
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final detected = _hasDataFromApp(app, provider);
+    final isOpening = _appsBeingOpened.contains(app.packageName);
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     final mutedTextColor =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
+    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
+    final actionColor = detected
+        ? const Color(0xFF168B62)
+        : isDarkMode
+            ? AppTheme.primaryColorDarkMode
+            : AppTheme.primaryDarkColor;
+    final statusColor = detected
+        ? const Color(0xFF168B62)
+        : installed
+            ? const Color(0xFF2F80ED)
+            : const Color(0xFF64748B);
+    final statusKey = detected
+        ? 'tracking_source_data_detected'
+        : installed
+            ? 'tracking_installed'
+            : 'tracking_store';
+    final actionKey = _isLoadingApps
+        ? 'tracking_syncing'
+        : !installed
+            ? 'tracking_action_install'
+            : detected || !app.supportsHealthConnect
+                ? 'tracking_action_open'
+                : 'tracking_action_connect';
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _openApp(app),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isDarkMode
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.05),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: app.color.withValues(alpha: isDarkMode ? 0.24 : 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(app.icon, color: app.color, size: 27),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      app.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w800,
-                      ),
+    return Semantics(
+      button: true,
+      label: '${app.name}. ${context.tr.translate(statusKey)}. '
+          '${context.tr.translate(actionKey)}',
+      child: Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(17),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(17),
+          onTap: _isLoadingApps || isOpening
+              ? null
+              : () => _openTrackingApp(app, provider),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(13, 13, 10, 13),
+            decoration: _cardDecoration(isDarkMode, Colors.transparent),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: app.color.withValues(
+                      alpha: isDarkMode ? 0.2 : 0.12,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      context.tr.translate(app.descriptionKey),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: mutedTextColor,
-                        height: 1.2,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _buildStatusBadge(installed, isDarkMode),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: textColor,
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Text(
-                      installed
-                          ? context.tr.translate('tracking_action_open')
-                          : context.tr.translate('tracking_action_install'),
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.black : Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                ],
-              ),
-            ],
+                  child: Icon(app.icon, color: app.color, size: 28),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        app.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: textColor,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        context.tr.translate(app.descriptionKey),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: mutedTextColor,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(
+                                alpha: isDarkMode ? 0.2 : 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              context.tr.translate(statusKey),
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            context.tr.translate(actionKey),
+                            style: TextStyle(
+                              color: actionColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                if (isOpening)
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: actionColor,
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: mutedTextColor,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildStatusBadge(bool installed, bool isDarkMode) {
-    final color = installed ? const Color(0xFF16A34A) : const Color(0xFF64748B);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.24 : 0.12),
-        borderRadius: BorderRadius.circular(999),
+  bool _hasDataFromApp(
+    _TrackingAppInfo app,
+    ActivityTrackingProvider provider,
+  ) {
+    final packageName = app.packageName.toLowerCase();
+    return provider.summary?.dataOrigins.any(
+          (origin) => origin.toLowerCase() == packageName,
+        ) ??
+        false;
+  }
+
+  BoxDecoration _cardDecoration(bool isDarkMode, Color cardColor) {
+    return BoxDecoration(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: isDarkMode
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.black.withValues(alpha: 0.05),
       ),
-      child: Text(
-        context.tr.translate(
-          installed ? 'tracking_installed' : 'tracking_store',
-        ),
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+    );
+  }
+
+  String _healthStatusMessage(ActivityTrackingProvider provider) {
+    if (!provider.hasLoadedStatus ||
+        provider.isLoading ||
+        provider.isRequestingPermissions) {
+      return context.tr.translate('tracking_syncing_health_connect');
+    }
+    if (provider.isHealthConnectUnsupported) {
+      return context.tr.translate('tracking_not_available');
+    }
+    if (!provider.isHealthConnectAvailable || provider.needsProviderUpdate) {
+      return context.tr.translate('tracking_health_update_required');
+    }
+    if (provider.errorMessage != null) return _syncErrorMessage();
+    if (provider.hasAllPermissions) {
+      return context.tr.translate('tracking_permission_granted');
+    }
+    if (provider.hasAnyPermission) {
+      return context.tr.translate('tracking_permission_partial');
+    }
+    return context.tr.translate('tracking_permission_needed');
+  }
+
+  String _healthSummaryMessage(ActivityTrackingProvider provider) {
+    if (provider.isLoading) {
+      return context.tr.translate('tracking_syncing_health_connect');
+    }
+    if (provider.errorMessage != null) return _syncErrorMessage();
+    if (!provider.hasActivityData) {
+      return context.tr.translate('tracking_no_activity_data');
+    }
+    return context.tr
+        .translate('tracking_activity_synced_message')
+        .replaceAll('{steps}', _formatNumber(provider.steps))
+        .replaceAll('{minutes}', _formatNumber(provider.exerciseMinutes));
+  }
+
+  String _syncErrorMessage() {
+    return '${context.tr.translate('error_occurred')}. '
+        '${context.tr.translate('try_again_later')}';
+  }
+
+  String _metricValue(
+    ActivityTrackingProvider provider, {
+    required bool canRead,
+    required int value,
+    String? suffix,
+  }) {
+    if (!canRead || provider.summary == null || provider.errorMessage != null) {
+      return '—';
+    }
+
+    final formatted = _formatNumber(value);
+    return suffix == null ? formatted : '$formatted $suffix';
+  }
+
+  String _formatNumber(int value) {
+    return NumberFormat.decimalPattern(
+      Localizations.localeOf(context).toString(),
+    ).format(value);
+  }
+
+  String? _formattedSyncTime(DateTime? dateTime) {
+    if (dateTime == null) return null;
+    return MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(dateTime),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
     );
   }
 }
@@ -805,6 +988,8 @@ class _TrackingAppInfo {
   final IconData icon;
   final Color color;
   final String descriptionKey;
+  final bool supportsHealthConnect;
+  final String? installUrl;
 
   const _TrackingAppInfo({
     required this.name,
@@ -812,115 +997,7 @@ class _TrackingAppInfo {
     required this.icon,
     required this.color,
     required this.descriptionKey,
+    this.supportsHealthConnect = true,
+    this.installUrl,
   });
-}
-
-class _MiniOrbitBadge extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final bool isDarkMode;
-
-  const _MiniOrbitBadge({
-    required this.icon,
-    required this.color,
-    required this.isDarkMode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF222833) : Colors.white,
-        borderRadius: BorderRadius.circular(13),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Icon(icon, color: color, size: 24),
-    );
-  }
-}
-
-class _TrackingBridgePainter extends CustomPainter {
-  final Color color;
-  final Color accentColor;
-
-  const _TrackingBridgePainter({
-    required this.color,
-    required this.accentColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final dottedPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8
-      ..strokeCap = StrokeCap.round;
-
-    final linkCenter = Offset(size.width * 0.34, size.height * 0.55);
-    final sources = [
-      Offset(size.width * 0.09, size.height * 0.31),
-      Offset(size.width * 0.14, size.height * 0.79),
-      Offset(size.width * 0.42, size.height * 0.18),
-      Offset(size.width * 0.64, size.height * 0.28),
-      Offset(size.width * 0.67, size.height * 0.76),
-    ];
-
-    for (final source in sources) {
-      final path = Path()
-        ..moveTo(source.dx, source.dy)
-        ..quadraticBezierTo(
-          (source.dx + linkCenter.dx) / 2,
-          source.dy - 22,
-          linkCenter.dx,
-          linkCenter.dy,
-        );
-      _drawDashedPath(canvas, path, dottedPaint);
-    }
-
-    final bridgePaint = Paint()
-      ..color = accentColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.2
-      ..strokeCap = StrokeCap.round;
-    final bridgePath = Path()
-      ..moveTo(size.width * 0.44, size.height * 0.62)
-      ..cubicTo(
-        size.width * 0.55,
-        size.height * 0.75,
-        size.width * 0.73,
-        size.height * 0.72,
-        size.width * 0.83,
-        size.height * 0.57,
-      );
-    canvas.drawPath(bridgePath, bridgePaint);
-  }
-
-  void _drawDashedPath(Canvas canvas, Path path, Paint paint) {
-    for (final metric in path.computeMetrics()) {
-      double distance = 0;
-      const dashLength = 7.0;
-      const gapLength = 7.0;
-      while (distance < metric.length) {
-        final next = distance + dashLength;
-        canvas.drawPath(
-          metric.extractPath(distance, math.min(next, metric.length)),
-          paint,
-        );
-        distance = next + gapLength;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrackingBridgePainter oldDelegate) {
-    return color != oldDelegate.color || accentColor != oldDelegate.accentColor;
-  }
 }

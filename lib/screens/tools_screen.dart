@@ -354,9 +354,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              // Mudar para a terceira aba (chat)
-                              navigationController.changeTab(
-                                  2); // índice da terceira aba (chat)
+                              // Abrir a aba Social.
+                              navigationController.changeTab(3);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Theme.of(context).primaryColor,

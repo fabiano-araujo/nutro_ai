@@ -62,4 +62,69 @@ void main() {
     expect(timeline, hasLength(1));
     expect(timeline.single.meals.map((meal) => meal.id), ['meal-1', 'meal-2']);
   });
+
+  test('hides the previous meal while its message is being regenerated', () {
+    final cardTime = DateTime(2026, 7, 8, 12);
+    final messageId = 'msg-${cardTime.microsecondsSinceEpoch}';
+
+    final timeline = ChatTimelineBuilder.build(
+      messages: [
+        {
+          'isUser': true,
+          'id': 'usr-1',
+          'message': 'pao',
+          'timestamp': cardTime.subtract(const Duration(seconds: 1)),
+        },
+        {
+          'isUser': false,
+          'id': messageId,
+          'timestamp': cardTime,
+          'notifier': Object(),
+          'replaceExistingMeals': true,
+        },
+      ],
+      unrepresentedMeals: [
+        Meal(
+          id: 'old-meal',
+          type: MealType.breakfast,
+          foods: const [],
+          dateTime: cardTime,
+          messageId: messageId,
+        ),
+      ],
+    );
+
+    expect(timeline, hasLength(2));
+    expect(timeline.every((item) => item.isMessage), isTrue);
+  });
+
+  test('shows assistant actions only after loading finishes', () {
+    final messages = <Map<String, dynamic>>[
+      {
+        'isUser': true,
+        'message': 'pao',
+        'timestamp': DateTime(2026, 7, 8, 12),
+      },
+      {
+        'isUser': false,
+        'message': 'resposta',
+        'timestamp': DateTime(2026, 7, 8, 12, 0, 1),
+      },
+    ];
+
+    expect(
+      ChatTimelineBuilder.shouldShowAssistantActions(
+        messages: messages,
+        isLoading: true,
+      ),
+      isFalse,
+    );
+    expect(
+      ChatTimelineBuilder.shouldShowAssistantActions(
+        messages: messages,
+        isLoading: false,
+      ),
+      isTrue,
+    );
+  });
 }

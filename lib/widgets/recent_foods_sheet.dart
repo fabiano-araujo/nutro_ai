@@ -735,21 +735,25 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
                   label: _tr('calories'),
                   value: '${food.calories} kcal',
                   color: MacroTheme.caloriesColor,
+                  icon: MacroTheme.caloriesIcon,
                 ),
                 _MacroMetricData(
                   label: _tr('protein_full'),
                   value: '${_formatNumber(food.protein)} g',
                   color: MacroTheme.proteinColor,
+                  icon: MacroTheme.proteinIcon,
                 ),
                 _MacroMetricData(
                   label: _tr('carbs'),
                   value: '${_formatNumber(food.carbs)} g',
                   color: MacroTheme.carbsColor,
+                  icon: MacroTheme.carbsIcon,
                 ),
                 _MacroMetricData(
                   label: _tr('fat'),
                   value: '${_formatNumber(food.fat)} g',
                   color: MacroTheme.fatColor,
+                  icon: MacroTheme.fatIcon,
                 ),
               ],
             ),
@@ -931,21 +935,25 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
                   label: _tr('calories'),
                   value: '${meal.calories} kcal',
                   color: MacroTheme.caloriesColor,
+                  icon: MacroTheme.caloriesIcon,
                 ),
                 _MacroMetricData(
                   label: _tr('protein_full'),
                   value: '${_formatNumber(meal.protein)} g',
                   color: MacroTheme.proteinColor,
+                  icon: MacroTheme.proteinIcon,
                 ),
                 _MacroMetricData(
                   label: _tr('carbs'),
                   value: '${_formatNumber(meal.carbs)} g',
                   color: MacroTheme.carbsColor,
+                  icon: MacroTheme.carbsIcon,
                 ),
                 _MacroMetricData(
                   label: _tr('fat'),
                   value: '${_formatNumber(meal.fat)} g',
                   color: MacroTheme.fatColor,
+                  icon: MacroTheme.fatIcon,
                 ),
               ],
             ),
@@ -1139,11 +1147,13 @@ class _MacroMetricData {
   final String label;
   final String value;
   final Color color;
+  final IconData icon;
 
   const _MacroMetricData({
     required this.label,
     required this.value,
     required this.color,
+    required this.icon,
   });
 }
 
@@ -1220,13 +1230,12 @@ class _MacroMetric extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: data.color,
-                    shape: BoxShape.circle,
-                  ),
+                MacroTheme.iconBadge(
+                  icon: data.icon,
+                  color: data.color,
+                  isDarkMode: isDarkMode,
+                  size: 16,
+                  iconSize: 10,
                 ),
                 const SizedBox(width: 4),
                 Flexible(

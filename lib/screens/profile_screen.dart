@@ -65,15 +65,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<ActivityTrackingProvider>().loadForDate(DateTime.now());
-    });
-  }
-
   void _navigateToLogin() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -100,44 +91,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _openActivityTrackingApps() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const ActivityTrackingAppsScreen(),
-      ),
-    );
-  }
-
-  Future<void> _connectActivityTracking(
-    ActivityTrackingProvider provider,
-  ) async {
-    final status = await provider.requestPermissionsAndLoad(DateTime.now());
-    if (!mounted) return;
-
-    String message;
-    if (status.hasAllPermissions) {
-      message = context.tr.translate('tracking_permission_granted');
-    } else if (status.hasAnyPermission) {
-      message = context.tr.translate('tracking_permission_partial');
-    } else if (status.needsProviderUpdate || !status.isAvailable) {
-      message = context.tr.translate('tracking_health_update_required');
-      await provider.openHealthConnect();
-    } else {
-      message = context.tr.translate('tracking_permission_denied');
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   _LogoutCleanupDependencies _captureLogoutCleanupDependencies() {
     return _LogoutCleanupDependencies(
       storageService: StorageService(),
       creditProvider: context.read<CreditProvider>(),
       essayProvider: context.read<EssayProvider>(),
       dailyMealsProvider: context.read<DailyMealsProvider>(),
+      activityTrackingProvider: context.read<ActivityTrackingProvider>(),
       foodHistoryProvider: context.read<FoodHistoryProvider>(),
       dietPlanProvider: context.read<DietPlanProvider>(),
       freeChatProvider: context.read<FreeChatProvider>(),
@@ -241,6 +201,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       deps.dailyMealsProvider.clearAuth();
       await deps.dailyMealsProvider.clearAllData();
       print('[🔄 AUTH_DATA] 4/7 ✅ DailyMealsProvider limpo');
+
+      await deps.activityTrackingProvider.clearAllData();
 
       // Limpar FoodHistoryProvider
       print('[🔄 AUTH_DATA] 5/7 Limpando FoodHistoryProvider...');
@@ -363,9 +325,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return _buildGoalCard(theme, colorScheme, isDarkMode);
           },
         ),
-        const SizedBox(height: 16),
-
-        _buildDailyProgressCard(theme, colorScheme, isDarkMode),
         const SizedBox(height: 16),
 
         // Settings Section
@@ -849,322 +808,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDailyProgressCard(
-      ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
-    final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final mutedTextColor =
-        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
-
-    return Consumer2<DailyMealsProvider, ActivityTrackingProvider>(
-      builder: (context, mealsProvider, trackingProvider, child) {
-        final today = DateTime.now();
-        final waterConsumed = mealsProvider.getWaterGlassesForDate(today);
-        final waterGoal =
-            mealsProvider.waterGoal <= 0 ? 1 : mealsProvider.waterGoal;
-        final waterProgress =
-            (waterConsumed / waterGoal).clamp(0.0, 1.0).toDouble();
-        final activityDetail =
-            '${trackingProvider.steps} ${context.tr.translate('tracking_steps_short')} / '
-            '${trackingProvider.exerciseMinutes} ${context.tr.translate('tracking_minutes_short')}';
-
-        return Container(
-          decoration: AppTheme.profileCardDecoration(isDarkMode),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: IntrinsicHeight(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildWaterProgressPanel(
-                      theme: theme,
-                      isDarkMode: isDarkMode,
-                      textColor: textColor,
-                      mutedTextColor: mutedTextColor,
-                      consumed: waterConsumed,
-                      goal: waterGoal,
-                      progress: waterProgress,
-                      onAdd: () => mealsProvider.addWaterForDate(today),
-                      onRemove: waterConsumed > 0
-                          ? () => mealsProvider.removeWaterForDate(today)
-                          : null,
-                    ),
-                  ),
-                  _buildDailyProgressDivider(colorScheme),
-                  Expanded(
-                    child: _buildActivityProgressPanel(
-                      theme: theme,
-                      isDarkMode: isDarkMode,
-                      textColor: textColor,
-                      mutedTextColor: mutedTextColor,
-                      trackingProvider: trackingProvider,
-                      detail: activityDetail,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDailyProgressDivider(ColorScheme colorScheme) {
-    return Container(
-      width: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      color: colorScheme.outlineVariant.withValues(alpha: 0.18),
-    );
-  }
-
-  Widget _buildWaterProgressPanel({
-    required ThemeData theme,
-    required bool isDarkMode,
-    required Color textColor,
-    required Color mutedTextColor,
-    required int consumed,
-    required int goal,
-    required double progress,
-    required VoidCallback onAdd,
-    required VoidCallback? onRemove,
-  }) {
-    const waterColor = Color(0xFF4FC3F7);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildProgressIcon(
-            icon: Icons.water_drop_rounded,
-            color: waterColor,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr.translate('water'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w800,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 5),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              '$consumed/$goal ${context.tr.translate('water_glasses')}',
-              maxLines: 1,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.w800,
-                height: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Stack(
-                children: [
-                  Container(
-                    height: 5,
-                    color: isDarkMode
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : Colors.black.withValues(alpha: 0.08),
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: progress,
-                    child: Container(
-                      height: 5,
-                      color: waterColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 9),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildSmallActionButton(
-                tooltip: context.tr.translate('remove'),
-                icon: Icons.remove_rounded,
-                color: mutedTextColor,
-                isDarkMode: isDarkMode,
-                onPressed: onRemove,
-              ),
-              const SizedBox(width: 8),
-              _buildSmallActionButton(
-                tooltip: context.tr.translate('add'),
-                icon: Icons.add_rounded,
-                color: waterColor,
-                isDarkMode: isDarkMode,
-                onPressed: onAdd,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityProgressPanel({
-    required ThemeData theme,
-    required bool isDarkMode,
-    required Color textColor,
-    required Color mutedTextColor,
-    required ActivityTrackingProvider trackingProvider,
-    required String detail,
-  }) {
-    const activityColor = Color(0xFFEAB308);
-    final actionColor = Theme.of(context).colorScheme.primary;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildProgressIcon(
-            icon: Icons.emoji_events_rounded,
-            color: activityColor,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr.translate('tracking_activities_title'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w800,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 5),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              '${trackingProvider.activeCalories} ${context.tr.translate('tracking_metric_calories')}',
-              maxLines: 1,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.w800,
-                height: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            detail,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: mutedTextColor,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 9),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildSmallActionButton(
-                tooltip: trackingProvider.hasAnyPermission
-                    ? context.tr.translate('tracking_refresh')
-                    : context.tr.translate('tracking_action_connect'),
-                color: actionColor,
-                isDarkMode: isDarkMode,
-                onPressed: trackingProvider.isRequestingPermissions
-                    ? null
-                    : () => _connectActivityTracking(trackingProvider),
-                child: trackingProvider.isRequestingPermissions
-                    ? SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: actionColor,
-                        ),
-                      )
-                    : Icon(
-                        trackingProvider.hasAnyPermission
-                            ? Icons.refresh_rounded
-                            : Icons.link_rounded,
-                        size: 18,
-                      ),
-              ),
-              const SizedBox(width: 8),
-              _buildSmallActionButton(
-                tooltip: context.tr.translate('tracking_add_activity'),
-                icon: Icons.apps_rounded,
-                color: mutedTextColor,
-                isDarkMode: isDarkMode,
-                onPressed: _openActivityTrackingApps,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressIcon({
-    required IconData icon,
-    required Color color,
-    required bool isDarkMode,
-  }) {
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.2 : 0.13),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, size: 22, color: color),
-    );
-  }
-
-  Widget _buildSmallActionButton({
-    required String tooltip,
-    required Color color,
-    required bool isDarkMode,
-    VoidCallback? onPressed,
-    IconData? icon,
-    Widget? child,
-  }) {
-    final effectiveChild = child ?? Icon(icon, size: 18);
-    return Tooltip(
-      message: tooltip,
-      child: SizedBox(
-        width: 34,
-        height: 34,
-        child: IconButton(
-          padding: EdgeInsets.zero,
-          constraints: BoxConstraints.tight(const Size(34, 34)),
-          style: IconButton.styleFrom(
-            backgroundColor: color.withValues(alpha: isDarkMode ? 0.14 : 0.1),
-            disabledBackgroundColor: color.withValues(alpha: 0.06),
-            foregroundColor: color,
-            disabledForegroundColor: color.withValues(alpha: 0.35),
-            shape: const CircleBorder(),
-          ),
-          onPressed: onPressed,
-          icon: effectiveChild,
-        ),
-      ),
-    );
-  }
-
   Widget _buildSettingsSection(
       ThemeData theme, ColorScheme colorScheme, bool isDarkMode) {
     return Container(
@@ -1541,6 +1184,7 @@ class _LogoutCleanupDependencies {
   final CreditProvider creditProvider;
   final EssayProvider essayProvider;
   final DailyMealsProvider dailyMealsProvider;
+  final ActivityTrackingProvider activityTrackingProvider;
   final FoodHistoryProvider foodHistoryProvider;
   final DietPlanProvider dietPlanProvider;
   final FreeChatProvider freeChatProvider;
@@ -1553,6 +1197,7 @@ class _LogoutCleanupDependencies {
     required this.creditProvider,
     required this.essayProvider,
     required this.dailyMealsProvider,
+    required this.activityTrackingProvider,
     required this.foodHistoryProvider,
     required this.dietPlanProvider,
     required this.freeChatProvider,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'dart:math' as math;
 import '../theme/app_theme.dart';
 import '../utils/message_formatter.dart';
 import '../screens/image_viewer_screen.dart';
@@ -29,21 +30,8 @@ class MessageUIHelper {
 
   /// Constrói o indicador de digitação (três pontos animados)
   static Widget buildTypingIndicator({Color? color}) {
-    final indicatorColor = color ?? AppTheme.primaryColor;
-
-    return Row(
-      children: List.generate(
-        3,
-        (index) => Container(
-          margin: EdgeInsets.symmetric(horizontal: 2),
-          height: 6,
-          width: 6,
-          decoration: BoxDecoration(
-            color: indicatorColor.withValues(alpha: 0.5),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
+    return _AnimatedTypingIndicator(
+      color: color ?? AppTheme.primaryColor,
     );
   }
 
@@ -261,6 +249,86 @@ class MessageUIHelper {
       splashRadius: 20,
       constraints: BoxConstraints(),
       padding: EdgeInsets.all(8),
+    );
+  }
+}
+
+class _AnimatedTypingIndicator extends StatefulWidget {
+  final Color color;
+
+  const _AnimatedTypingIndicator({required this.color});
+
+  @override
+  State<_AnimatedTypingIndicator> createState() =>
+      _AnimatedTypingIndicatorState();
+}
+
+class _AnimatedTypingIndicatorState extends State<_AnimatedTypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (index) {
+                final phase = (_controller.value - (index * 0.18)) % 1.0;
+                final wave = math.max(0.0, math.sin(phase * math.pi * 2));
+                return Transform.translate(
+                  key: ValueKey('typing_indicator_dot_$index'),
+                  offset: Offset(0, -5 * wave),
+                  child: Transform.scale(
+                    scale: 0.9 + (0.25 * wave),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      height: 9,
+                      width: 9,
+                      decoration: BoxDecoration(
+                        color: widget.color.withValues(
+                          alpha: 0.45 + (0.55 * wave),
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: wave > 0.2
+                            ? [
+                                BoxShadow(
+                                  color: widget.color.withValues(
+                                    alpha: 0.22 * wave,
+                                  ),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            );
+          },
+        ),
+      ),
     );
   }
 }

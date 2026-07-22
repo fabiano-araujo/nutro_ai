@@ -19,6 +19,7 @@ class FoodJsonDisplay extends StatefulWidget {
   final DateTime selectedDate;
   final DateTime? messageTimestamp;
   final String? messageId; // ID da mensagem do chat para vinculação
+  final bool replaceExistingMeals;
   final ValueChanged<List<Meal>>? onMealsPersisted;
   final VoidCallback?
       onDeleteMessage; // Callback para excluir a mensagem do chat
@@ -30,6 +31,7 @@ class FoodJsonDisplay extends StatefulWidget {
     required this.selectedDate,
     this.messageTimestamp,
     this.messageId,
+    this.replaceExistingMeals = false,
     this.onMealsPersisted,
     this.onDeleteMessage,
   }) : super(key: key);
@@ -63,6 +65,11 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           Provider.of<DailyMealsProvider>(context, listen: false);
       await mealsProvider.ready;
       if (!mounted) return;
+
+      if (widget.replaceExistingMeals) {
+        _replaceMealsInDay();
+        return;
+      }
 
       _removeDeletedMeals(mealsProvider);
       if (_meals.isEmpty) return;
@@ -311,6 +318,51 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
 
     // Fire-and-forget: salva nos recentes e aplica macros dos favoritos
     for (final meal in addedMeals) {
+      _processWithFavorites(meal);
+    }
+  }
+
+  void _replaceMealsInDay() {
+    final messageId = widget.messageId;
+    if (messageId == null ||
+        messageId.isEmpty ||
+        _meals.every((meal) => meal.foods.isEmpty)) {
+      return;
+    }
+
+    final mealsProvider =
+        Provider.of<DailyMealsProvider>(context, listen: false);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final replacementMeals = <Meal>[];
+
+    for (var index = 0; index < _meals.length; index++) {
+      final meal = _meals[index];
+      if (meal.foods.isEmpty) continue;
+      replacementMeals.add(
+        meal.copyWith(
+          dateTime: _mealDateTime(),
+          id: '$timestamp-$index',
+          messageId: _messageIdForMeal(index),
+        ),
+      );
+    }
+    if (replacementMeals.isEmpty) return;
+
+    mealsProvider.replaceChatMealsForMessage(messageId, replacementMeals);
+
+    if (mounted) {
+      setState(() {
+        _isAdded = true;
+        _meals = mealsProvider.getMealsByMessageId(messageId);
+      });
+    }
+    widget.onMealsPersisted?.call(
+      mealsProvider.getMealsByMessageId(messageId),
+    );
+
+    // A nova versao do card ainda precisa passar pelo enriquecimento de
+    // favoritos/recentes, mas reload nao conta como uma segunda refeicao.
+    for (final meal in replacementMeals) {
       _processWithFavorites(meal);
     }
   }

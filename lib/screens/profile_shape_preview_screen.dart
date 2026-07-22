@@ -44,6 +44,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
   bool _isApplying = false;
   bool _isPostingToSocial = false;
   bool _showInfoChip = false;
+  bool _isGeneratedResultExpanded = false;
   ProfileShapePreviewProvider? _shapeProvider;
 
   @override
@@ -158,6 +159,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
       setState(() {
         _sourceImageBytes = bytes;
         _generatedImageUrl = null;
+        _isGeneratedResultExpanded = false;
       });
       await _persistSourceImage(bytes, clearGeneratedPreview: true);
     } catch (e) {
@@ -219,6 +221,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
       setState(() {
         _sourceImageBytes = imageBytes;
         _generatedImageUrl = imageUrl;
+        _isGeneratedResultExpanded = true;
       });
       _showSnackBar(context.tr.translate('profile_shape_generate_success'));
     } catch (e) {
@@ -686,15 +689,24 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
               isDarkMode,
             ),
           ],
-          if (_generatedImageUrl != null) ...[
+          if (_generatedImageUrl != null && !_isGenerating) ...[
             const SizedBox(height: 18),
-            _buildGeneratedResultCard(
+            _buildGeneratedResultToggle(
               theme,
-              colorScheme,
               primary,
               cardColor,
               isDarkMode,
             ),
+            if (_isGeneratedResultExpanded) ...[
+              const SizedBox(height: 12),
+              _buildGeneratedResultCard(
+                theme,
+                colorScheme,
+                primary,
+                cardColor,
+                isDarkMode,
+              ),
+            ],
           ],
           const SizedBox(height: 18),
           _buildFeatureStrip(theme, primary, cardColor, isDarkMode),
@@ -1495,6 +1507,79 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
           const SizedBox(height: 10),
           _buildSocialShareButton(primary),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGeneratedResultToggle(
+    ThemeData theme,
+    Color primary,
+    Color cardColor,
+    bool isDarkMode,
+  ) {
+    final titleColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        key: const ValueKey('profile-shape-result-toggle'),
+        onTap: () {
+          setState(() {
+            _isGeneratedResultExpanded = !_isGeneratedResultExpanded;
+          });
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: isDarkMode ? 0.16 : 0.1),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(
+                  Icons.history_rounded,
+                  color: primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  context.tr.translate(
+                    _isGeneratedResultExpanded
+                        ? 'profile_shape_previous_result_hide'
+                        : 'profile_shape_previous_result_show',
+                  ),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: titleColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              AnimatedRotation(
+                turns: _isGeneratedResultExpanded ? 0.5 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: primary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
