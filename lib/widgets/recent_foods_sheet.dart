@@ -661,8 +661,12 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
     bool isDarkMode, {
     required bool isRecent,
   }) {
-    final usageText = food.usageCount != null && food.usageCount! > 1
-        ? _tr('used_times', {'count': food.usageCount.toString()})
+    final usageCount = food.usageCount;
+    final usageText = usageCount != null && usageCount > 0
+        ? _tr(
+            usageCount == 1 ? 'used_times_one' : 'used_times_other',
+            {'count': usageCount.toString()},
+          )
         : _tr('ready_to_add');
     final servingText = _formatServing(food.baseAmount, food.baseUnit);
 
@@ -854,9 +858,9 @@ class _RecentFoodsSheetState extends State<RecentFoodsSheet>
     Color? subtitleColor,
     bool isDarkMode,
   ) {
-    final dateStr = meal.date != null
-        ? '${meal.date!.day.toString().padLeft(2, '0')}/${meal.date!.month.toString().padLeft(2, '0')}'
-        : '';
+    final dateStr = meal.date == null
+        ? ''
+        : MaterialLocalizations.of(context).formatCompactDate(meal.date!);
     final title = meal.name?.isNotEmpty == true
         ? meal.name!
         : _localizedMealType(meal.type);

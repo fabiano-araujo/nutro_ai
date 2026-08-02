@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+import '../i18n/app_localizations_extension.dart';
 // Importamos dart:html somente se estivermos na web
 import 'dart:ui' as ui;
 // Importação condicional para o ambiente web
@@ -21,7 +22,7 @@ class HtmlPreviewScreen extends StatefulWidget {
   const HtmlPreviewScreen({
     Key? key,
     required this.htmlContent,
-    this.title = 'Visualização HTML',
+    this.title = '',
   }) : super(key: key);
 
   @override
@@ -32,7 +33,6 @@ class _HtmlPreviewScreenState extends State<HtmlPreviewScreen> {
   WebViewController? _controller;
   bool _isLoading = true;
   bool _hasError = false;
-  String _errorMessage = '';
   bool _showingSourceCode = false;
 
   @override
@@ -81,7 +81,6 @@ class _HtmlPreviewScreenState extends State<HtmlPreviewScreen> {
         print('WebView não está disponível, mostrando o código fonte');
         setState(() {
           _hasError = true;
-          _errorMessage = 'WebView não está disponível neste dispositivo';
           _isLoading = false;
           // Ativa o modo de visualização do código fonte
           Future.delayed(Duration(seconds: 1), () {
@@ -137,7 +136,6 @@ class _HtmlPreviewScreenState extends State<HtmlPreviewScreen> {
             if (mounted) {
               setState(() {
                 _hasError = true;
-                _errorMessage = 'Erro ao carregar HTML: ${error.description}';
                 _isLoading = false;
 
                 // Se for um erro grave, já abre diretamente o visualizador de código
@@ -174,19 +172,24 @@ class _HtmlPreviewScreenState extends State<HtmlPreviewScreen> {
         }
 
         // Define um timeout para garantir que a página seja carregada
+        final loadedMessage =
+            jsonEncode(context.tr.translate('file_loaded_successfully'));
         Future.delayed(Duration(seconds: 5), () {
           if (mounted && !pageLoaded && _controller != null) {
             print('Timeout ao carregar WebView, tentando injetar JavaScript');
             // Tenta injetar JavaScript para verificar se o WebView está funcionando
             _controller!.runJavaScript('''
               document.body.style.backgroundColor = "#FFFFFF";
-              document.body.innerHTML += "<div style='padding: 20px; text-align: center;'>Carregado com sucesso</div>";
+              const status = document.createElement("div");
+              status.style.padding = "20px";
+              status.style.textAlign = "center";
+              status.textContent = $loadedMessage;
+              document.body.appendChild(status);
             ''').catchError((e) {
               print('Falha ao executar JavaScript: $e');
               if (mounted) {
                 setState(() {
                   _hasError = true;
-                  _errorMessage = 'Não foi possível renderizar o HTML';
                   _isLoading = false;
                   _showingSourceCode = true;
                 });
@@ -211,7 +214,6 @@ class _HtmlPreviewScreenState extends State<HtmlPreviewScreen> {
           if (mounted) {
             setState(() {
               _hasError = true;
-              _errorMessage = 'Erro ao carregar HTML: $e';
               _isLoading = false;
               _showingSourceCode = true;
             });
@@ -230,7 +232,6 @@ class _HtmlPreviewScreenState extends State<HtmlPreviewScreen> {
       if (mounted) {
         setState(() {
           _hasError = true;
-          _errorMessage = 'Erro ao inicializar o visualizador: $e';
           _isLoading = false;
           _showingSourceCode = true;
         });
@@ -335,7 +336,11 @@ $html
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_showingSourceCode ? 'Código Fonte HTML' : widget.title),
+        title: Text(_showingSourceCode
+            ? context.tr.translate('html_source_code')
+            : widget.title.isEmpty
+                ? context.tr.translate('html_preview_title')
+                : widget.title),
         actions: [
           if (_controller != null &&
               !_hasError &&
@@ -353,7 +358,9 @@ $html
           IconButton(
             icon: Icon(_showingSourceCode ? Icons.visibility : Icons.code),
             onPressed: _toggleSourceCodeView,
-            tooltip: _showingSourceCode ? 'Ver página' : 'Ver código fonte',
+            tooltip: _showingSourceCode
+                ? context.tr.translate('view_page')
+                : context.tr.translate('view_source_code'),
           ),
         ],
       ),
@@ -377,7 +384,7 @@ $html
                               ),
                               SizedBox(height: 16),
                               Text(
-                                'Não foi possível carregar a visualização HTML',
+                                context.tr.translate('html_preview_load_error'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -386,7 +393,7 @@ $html
                               ),
                               SizedBox(height: 8),
                               Text(
-                                _errorMessage,
+                                context.tr.translate('html_preview_error_hint'),
                                 style: TextStyle(color: Colors.grey[700]),
                                 textAlign: TextAlign.center,
                               ),
@@ -402,12 +409,14 @@ $html
                                       });
                                       _initWebView();
                                     },
-                                    child: Text('Tentar novamente'),
+                                    child:
+                                        Text(context.tr.translate('try_again')),
                                   ),
                                   SizedBox(width: 16),
                                   OutlinedButton(
                                     onPressed: _toggleSourceCodeView,
-                                    child: Text('Ver código fonte'),
+                                    child: Text(context.tr
+                                        .translate('view_source_code')),
                                   ),
                                 ],
                               ),
@@ -419,7 +428,8 @@ $html
                       WebViewWidget(controller: _controller!)
                     else
                       Center(
-                        child: Text('Preparando visualização...'),
+                        child: Text(
+                            context.tr.translate('preparing_html_preview')),
                       ),
                     if (_isLoading && !_hasError)
                       Center(
@@ -435,7 +445,7 @@ $html
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Como alternativa, você pode visualizar o código HTML diretamente:',
+                    context.tr.translate('html_preview_alternative'),
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 8),
@@ -445,7 +455,7 @@ $html
                       children: [
                         OutlinedButton.icon(
                           icon: Icon(Icons.content_copy),
-                          label: Text('Copiar HTML'),
+                          label: Text(context.tr.translate('copy_html')),
                           onPressed: () {
                             _copyHtmlToClipboard();
                           },
@@ -487,7 +497,7 @@ $html
           ),
           SizedBox(height: 20),
           Text(
-            'Visualização de HTML no navegador',
+            context.tr.translate('html_browser_preview_title'),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -498,7 +508,7 @@ $html
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'Para visualizar este conteúdo HTML, utilize o botão abaixo para abrir em uma nova janela.',
+              context.tr.translate('html_browser_preview_description'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -509,7 +519,7 @@ $html
           SizedBox(height: 30),
           ElevatedButton.icon(
             icon: Icon(Icons.open_in_new),
-            label: Text('Abrir em nova janela'),
+            label: Text(context.tr.translate('open_new_window')),
             onPressed: () => _openHtmlInNewTab(),
             style: ElevatedButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -518,7 +528,7 @@ $html
           SizedBox(height: 20),
           TextButton.icon(
             icon: Icon(Icons.code),
-            label: Text('Ver código fonte'),
+            label: Text(context.tr.translate('view_source_code')),
             onPressed: _toggleSourceCodeView,
           ),
         ],
@@ -577,7 +587,7 @@ $html
                 child: FloatingActionButton(
                   onPressed: _copyHtmlToClipboard,
                   child: Icon(Icons.content_copy),
-                  tooltip: 'Copiar código HTML',
+                  tooltip: context.tr.translate('copy_html_code'),
                   mini: true,
                 ),
               ),
@@ -641,7 +651,7 @@ $html
     Clipboard.setData(ClipboardData(text: widget.htmlContent));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Código HTML copiado para a área de transferência'),
+        content: Text(context.tr.translate('html_copied_clipboard')),
         duration: Duration(seconds: 2),
       ),
     );

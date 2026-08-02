@@ -96,9 +96,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
         if (!authUpdated || !authService.isAuthenticated) {
           if (mounted) {
             setState(() {
-              _errorMessage = authService.errorMessage ??
-                  data['message']?.toString() ??
-                  context.tr.translate('server_connection_error');
+              _errorMessage = context.tr.translate('server_connection_error');
             });
           }
           return;
@@ -118,14 +116,12 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
         }
       } else {
         setState(() {
-          _errorMessage = data['message'] ??
-              'Falha ao fazer login. Verifique suas credenciais.';
+          _errorMessage = context.tr.translate('login_failed_credentials');
         });
       }
-    } catch (e) {
+    } catch (_) {
       setState(() {
-        _errorMessage =
-            'Erro ao conectar ao servidor. Tente novamente mais tarde.';
+        _errorMessage = context.tr.translate('server_connection_error');
       });
     } finally {
       if (mounted) {
@@ -223,7 +219,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
                                         color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
-                                        hintText: 'exemplo@email.com',
+                                        hintText: context.tr.translate(
+                                          'email_example_hint',
+                                        ),
                                         icon: Icons.email_outlined,
                                         isDarkMode: isDarkMode,
                                         textSecondary: textSecondary,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations.dart';
 import '../services/enhanced_progress_tracker.dart';
-import '../models/essay_progress.dart';
-import '../utils/date_time_utils.dart';
 import 'enhanced_progress_charts.dart';
 import 'competency_radar_chart.dart';
 import 'achievement_widgets.dart';
@@ -20,7 +19,8 @@ class PerformanceReportWidget extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<PerformanceReportWidget> createState() => _PerformanceReportWidgetState();
+  State<PerformanceReportWidget> createState() =>
+      _PerformanceReportWidgetState();
 }
 
 class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
@@ -43,24 +43,38 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Relatório de Desempenho'),
+        title: Text(_translate(context, 'progress_performance_report')),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: _translate(context, 'progress_refresh'),
             onPressed: widget.onRefresh,
           ),
           IconButton(
             icon: const Icon(Icons.share),
+            tooltip: _translate(context, 'progress_share_report'),
             onPressed: _shareReport,
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.analytics), text: 'Visão Geral'),
-            Tab(icon: Icon(Icons.show_chart), text: 'Progresso'),
-            Tab(icon: Icon(Icons.radar), text: 'Competências'),
-            Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.analytics),
+              text: _translate(context, 'progress_tab_overview'),
+            ),
+            Tab(
+              icon: const Icon(Icons.show_chart),
+              text: _translate(context, 'progress_tab_progress'),
+            ),
+            Tab(
+              icon: const Icon(Icons.radar),
+              text: _translate(context, 'progress_tab_competencies'),
+            ),
+            Tab(
+              icon: const Icon(Icons.emoji_events),
+              text: _translate(context, 'progress_achievements'),
+            ),
           ],
         ),
       ),
@@ -107,16 +121,19 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Evolução Temporal',
+                    _translate(context, 'progress_temporal_evolution'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 16),
-                  Container(
+                  SizedBox(
                     height: 200,
-                    child: const Center(
-                      child: Text('Gráfico de progresso temporal seria exibido aqui'),
+                    child: Center(
+                      child: Text(
+                        _translate(
+                            context, 'progress_temporal_chart_placeholder'),
+                      ),
                     ),
                   ),
                 ],
@@ -156,7 +173,7 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
         children: [
           AchievementGrid(
             achievements: widget.report.achievements,
-            title: 'Conquistas Recentes',
+            title: _translate(context, 'progress_recent_achievements'),
           ),
           const SizedBox(height: 16),
           _buildAchievementProgress(),
@@ -167,12 +184,12 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
 
   Widget _buildSummaryCards() {
     final summary = widget.report.summary;
-    
+
     return Row(
       children: [
         Expanded(
           child: _buildSummaryCard(
-            'Total de Redações',
+            _translate(context, 'progress_total_essays'),
             summary.totalEssays.toString(),
             Icons.edit,
             Colors.blue,
@@ -181,7 +198,7 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
         const SizedBox(width: 8),
         Expanded(
           child: _buildSummaryCard(
-            'Pontuação Média',
+            _translate(context, 'progress_average_score'),
             summary.averageScore.toStringAsFixed(0),
             Icons.star,
             Colors.amber,
@@ -190,7 +207,7 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
         const SizedBox(width: 8),
         Expanded(
           child: _buildSummaryCard(
-            'Melhor Nota',
+            _translate(context, 'progress_best_score'),
             summary.bestScore.toString(),
             Icons.trending_up,
             Colors.green,
@@ -200,7 +217,8 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+      String title, String value, IconData icon, Color color) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -211,9 +229,9 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
             Text(
               value,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
             ),
             Text(
               title,
@@ -234,27 +252,35 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Métricas de Performance',
+              _translate(context, 'progress_performance_metrics'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             _buildMetricRow(
-              'Frequência de Escrita',
-              '${widget.report.writingFrequency.toStringAsFixed(2)} redações/dia',
+              _translate(context, 'progress_writing_frequency'),
+              _translateWith(
+                context,
+                'progress_essays_per_day_value',
+                {'value': widget.report.writingFrequency.toStringAsFixed(2)},
+              ),
               _getFrequencyColor(widget.report.writingFrequency),
             ),
             const SizedBox(height: 8),
             _buildMetricRow(
-              'Consistência',
+              _translate(context, 'progress_consistency'),
               '${(widget.report.consistencyScore * 100).toStringAsFixed(0)}%',
               _getConsistencyColor(widget.report.consistencyScore),
             ),
             const SizedBox(height: 8),
             _buildMetricRow(
-              'Taxa de Melhoria',
-              '${widget.report.improvementRate.toStringAsFixed(1)} pontos/dia',
+              _translate(context, 'progress_improvement_rate'),
+              _translateWith(
+                context,
+                'progress_points_per_day_value',
+                {'value': widget.report.improvementRate.toStringAsFixed(1)},
+              ),
               _getImprovementColor(widget.report.improvementRate),
             ),
           ],
@@ -288,7 +314,7 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
 
   Widget _buildRecentAchievements() {
     final recentAchievements = widget.report.achievements.take(3).toList();
-    
+
     if (recentAchievements.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -300,10 +326,10 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Conquistas Recentes',
+              _translate(context, 'progress_recent_achievements'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             AchievementBadgeRow(
@@ -318,7 +344,7 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
 
   Widget _buildQuickInsights() {
     final insights = _generateInsights();
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -326,31 +352,31 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Insights Rápidos',
+              _translate(context, 'progress_quick_insights'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             ...insights.map((insight) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: Row(
-                children: [
-                  Icon(
-                    insight.isPositive ? Icons.trending_up : Icons.info,
-                    color: insight.isPositive ? Colors.green : Colors.blue,
-                    size: 16,
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        insight.isPositive ? Icons.trending_up : Icons.info,
+                        color: insight.isPositive ? Colors.green : Colors.blue,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          insight.message,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      insight.message,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-            )),
+                )),
           ],
         ),
       ),
@@ -365,10 +391,10 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Frequência de Escrita',
+              _translate(context, 'progress_writing_frequency'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             LinearProgressIndicator(
@@ -380,7 +406,11 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
             ),
             const SizedBox(height: 8),
             Text(
-              '${widget.report.writingFrequency.toStringAsFixed(2)} redações por dia',
+              _translateWith(
+                context,
+                'progress_essays_per_day_value',
+                {'value': widget.report.writingFrequency.toStringAsFixed(2)},
+              ),
               style: const TextStyle(fontSize: 14),
             ),
           ],
@@ -397,10 +427,10 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Consistência',
+              _translate(context, 'progress_consistency'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             LinearProgressIndicator(
@@ -412,7 +442,14 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
             ),
             const SizedBox(height: 8),
             Text(
-              '${(widget.report.consistencyScore * 100).toStringAsFixed(0)}% de consistência',
+              _translateWith(
+                context,
+                'progress_consistency_percentage',
+                {
+                  'percentage':
+                      (widget.report.consistencyScore * 100).toStringAsFixed(0),
+                },
+              ),
               style: const TextStyle(fontSize: 14),
             ),
           ],
@@ -424,9 +461,9 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
   Widget _buildCompetencyRadarChart() {
     // Convert competency analysis to radar chart format
     final competencyScores = <String, int>{};
-    
+
     widget.report.competencyAnalysis.forEach((key, analysis) {
-      competencyScores[analysis.competencyName] = analysis.averageScore.round();
+      competencyScores[key] = analysis.averageScore.round();
     });
 
     return Card(
@@ -436,10 +473,10 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Radar de Competências',
+              _translate(context, 'progress_competency_radar'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             Center(
@@ -463,30 +500,34 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Recomendações',
+              _translate(context, 'progress_recommendations'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             ...widget.report.competencyAnalysis.values
                 .expand((analysis) => analysis.recommendations)
                 .take(5)
                 .map((recommendation) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.lightbulb, color: Colors.amber, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          recommendation,
-                          style: const TextStyle(fontSize: 14),
-                        ),
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lightbulb,
+                              color: Colors.amber, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _localizedServiceRecommendation(
+                                context,
+                                recommendation,
+                              ),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                )),
+                    )),
           ],
         ),
       ),
@@ -494,7 +535,8 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
   }
 
   Widget _buildAchievementProgress() {
-    final totalPossibleAchievements = 20; // This would come from a predefined list
+    final totalPossibleAchievements =
+        20; // This would come from a predefined list
     final unlockedCount = widget.report.achievements.length;
     final progress = unlockedCount / totalPossibleAchievements;
 
@@ -505,10 +547,10 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Progresso de Conquistas',
+              _translate(context, 'progress_achievement_progress'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             LinearProgressIndicator(
@@ -518,7 +560,16 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
             ),
             const SizedBox(height: 8),
             Text(
-              '$unlockedCount de $totalPossibleAchievements conquistas desbloqueadas',
+              _translateWith(
+                context,
+                'progress_achievements_unlocked',
+                {
+                  'unlocked': MaterialLocalizations.of(context)
+                      .formatDecimal(unlockedCount),
+                  'total': MaterialLocalizations.of(context)
+                      .formatDecimal(totalPossibleAchievements),
+                },
+              ),
               style: const TextStyle(fontSize: 14),
             ),
           ],
@@ -552,7 +603,11 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
     // Improvement insight
     if (summary.improvementTrend > 0) {
       insights.add(Insight(
-        message: 'Você está melhorando! Sua pontuação aumentou ${summary.improvementTrend.toStringAsFixed(0)} pontos em média.',
+        message: _translateWith(
+          context,
+          'progress_insight_improving',
+          {'points': summary.improvementTrend.toStringAsFixed(0)},
+        ),
         isPositive: true,
       ));
     }
@@ -560,7 +615,7 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
     // Consistency insight
     if (widget.report.consistencyScore > 0.8) {
       insights.add(Insight(
-        message: 'Sua performance é muito consistente! Continue assim.',
+        message: _translate(context, 'progress_insight_consistent'),
         isPositive: true,
       ));
     }
@@ -568,19 +623,32 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
     // Frequency insight
     if (widget.report.writingFrequency < 0.1) {
       insights.add(Insight(
-        message: 'Tente escrever mais regularmente para melhorar seus resultados.',
+        message: _translate(context, 'progress_insight_write_regularly'),
         isPositive: false,
       ));
     }
 
     // Best competency insight
-    final bestCompetency = widget.report.competencyAnalysis.entries
-        .reduce((a, b) => a.value.averageScore > b.value.averageScore ? a : b);
-    
-    insights.add(Insight(
-      message: 'Sua competência mais forte é: ${bestCompetency.value.competencyName}',
-      isPositive: true,
-    ));
+    if (widget.report.competencyAnalysis.isNotEmpty) {
+      final bestCompetency = widget.report.competencyAnalysis.entries.reduce(
+        (a, b) => a.value.averageScore > b.value.averageScore ? a : b,
+      );
+
+      insights.add(Insight(
+        message: _translateWith(
+          context,
+          'progress_strongest_competency',
+          {
+            'competency': _localizedCompetencyName(
+              context,
+              bestCompetency.key,
+              fallback: bestCompetency.value.competencyName,
+            ),
+          },
+        ),
+        isPositive: true,
+      ));
+    }
 
     return insights;
   }
@@ -588,8 +656,8 @@ class _PerformanceReportWidgetState extends State<PerformanceReportWidget>
   void _shareReport() {
     // Implementation for sharing the report
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funcionalidade de compartilhamento em desenvolvimento'),
+      SnackBar(
+        content: Text(_translate(context, 'progress_sharing_coming_soon')),
       ),
     );
   }
@@ -603,4 +671,50 @@ class Insight {
     required this.message,
     required this.isPositive,
   });
+}
+
+String _localizedServiceRecommendation(
+  BuildContext context,
+  String recommendation,
+) {
+  final key = switch (recommendation) {
+    'Foque em melhorar os fundamentos desta competência' =>
+      'progress_recommendation_improve_fundamentals',
+    'Pratique mais para manter regularidade' =>
+      'progress_recommendation_practice_consistently',
+    'Revise conceitos básicos desta competência' =>
+      'progress_recommendation_review_basics',
+    _ => 'progress_recommendation_generic',
+  };
+  return _translate(context, key);
+}
+
+String _localizedCompetencyName(
+  BuildContext context,
+  String value, {
+  String? fallback,
+}) {
+  final match = RegExp(r'([1-5])').firstMatch(value);
+  if (match == null) return fallback ?? value;
+  return _translateWith(
+    context,
+    'progress_competency_number',
+    {'number': match.group(1)!},
+  );
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
+}
+
+String _translateWith(
+  BuildContext context,
+  String key,
+  Map<String, String> values,
+) {
+  var text = _translate(context, key);
+  values.forEach((placeholder, value) {
+    text = text.replaceAll('{$placeholder}', value);
+  });
+  return text;
 }

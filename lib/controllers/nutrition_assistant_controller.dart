@@ -25,11 +25,13 @@ import '../widgets/reward_ad_dialog.dart';
 import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../providers/meal_types_provider.dart';
+import '../utils/meal_type_localization.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../services/app_agent_service.dart';
 import '../utils/food_json_parser.dart';
 import '../models/meal_model.dart';
+import '../util/app_constants.dart';
 
 /// Controller para gerenciar o estado e a lógica do Assistente de Nutrição
 class NutritionAssistantController with ChangeNotifier {
@@ -737,10 +739,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
   /// Adiciona uma mensagem de boas-vindas padrão
   void _addWelcomeMessage() {
+    final platformLocale = WidgetsBinding.instance.platformDispatcher.locale;
     _messages.add({
       'isUser': false,
       'message':
-          'Olá! Sou Nutro AI, seu assistente de nutrição. Como posso te ajudar hoje?',
+          AppLocalizations(platformLocale).translate('ai_tutor_short_welcome'),
       'timestamp': DateTime.now(),
     });
     notifyListeners();
@@ -789,45 +792,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     if (_messages.isEmpty || _currentConversationId != null) return;
 
     try {
-      // Tentar obter a mensagem de boas-vindas do AppLocalizations
-      AppLocalizations appLocalizations = AppLocalizations.of(context);
-      String welcomeMessage =
-          appLocalizations.translate('ai_tutor_short_welcome');
-
-      // Se a chave não existir, ele retorna a própria chave
-      if (welcomeMessage == 'ai_tutor_short_welcome') {
-        // Fallback para o idioma específico
-        final String locale = Localizations.localeOf(context).toString();
-        switch (locale) {
-          case 'pt_BR':
-            welcomeMessage =
-                'Olá! Sou Nutro AI, seu assistente de nutrição. Como posso te ajudar hoje?';
-            break;
-          case 'en_US':
-            welcomeMessage =
-                'Hi! I\'m Nutro AI, your nutrition assistant. How can I help you today?';
-            break;
-          case 'es_ES':
-            welcomeMessage =
-                '¡Hola! Soy Nutro AI, tu asistente de nutrición. ¿Cómo puedo ayudarte hoy?';
-            break;
-          case 'de_DE':
-            welcomeMessage =
-                'Hallo! Ich bin Nutro AI, dein Ernährungsassistent. Wie kann ich dir heute helfen?';
-            break;
-          case 'fr_FR':
-            welcomeMessage =
-                'Bonjour ! Je suis Nutro AI, votre assistant nutritionnel. Comment puis-je vous aider aujourd\'hui ?';
-            break;
-          case 'it_IT':
-            welcomeMessage =
-                'Ciao! Sono Nutro AI, il tuo assistente nutrizionale. Come posso aiutarti oggi?';
-            break;
-          default:
-            welcomeMessage =
-                'Hi! I\'m Nutro AI, your nutrition assistant. How can I help you today?';
-        }
-      }
+      final welcomeMessage =
+          AppLocalizations.of(context).translate('ai_tutor_short_welcome');
 
       // Atualiza a mensagem se houver mensagens
       if (_messages.isNotEmpty) {
@@ -944,7 +910,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
                   // Título
                   Text(
-                    'Sem créditos restantes!',
+                    AppLocalizations.of(context)
+                        .translate('no_credits_remaining_title'),
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -956,7 +923,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
                   // Descrição
                   Text(
-                    'Assista a um anúncio rápido e ganhe 7 créditos grátis para continuar agora mesmo.',
+                    AppLocalizations.of(context).translate('watch_ad_earn'),
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -990,7 +957,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                         SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Assistir anúncio • +7 créditos grátis',
+                            AppLocalizations.of(context)
+                                .translate('watch_ad_for_credits'),
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 15),
                             textAlign: TextAlign.center,
@@ -1028,7 +996,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                         Icon(Icons.workspace_premium, size: 16),
                         SizedBox(width: 6),
                         Text(
-                          'Ou obter PRO ilimitado',
+                          AppLocalizations.of(context)
+                              .translate('upgrade_to_pro'),
                           style: TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 14),
                         ),
@@ -1045,7 +1014,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white.withOpacity(0.8),
                     ),
-                    child: Text('Cancelar'),
+                    child: Text(
+                      AppLocalizations.of(context).translate('cancel'),
+                    ),
                   ),
                 ],
               ),
@@ -1274,28 +1245,27 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           _aiService.getCurrentLanguageCode(languageController);
 
       // Determinar o modelo baseado no toolType
-      String quality = '';
-      String provider = 'Hyperbolic';
+      String quality = AppConstants.DEFAULT_AI_MODEL;
+      String provider = '';
 
-      // Para fluxos principais do app, usar Gemini Flash Lite com provider automático
+      // Para fluxos principais do app, usar o modelo textual padrão com provider automático
       if (toolType == 'chat') {
-        quality = 'google/gemini-2.5-flash-lite';
+        quality = AppConstants.DEFAULT_AI_MODEL;
         provider = '';
-        print('📱 Usando modelo Gemini 2.5 Flash Lite para o chat inicial');
+        print('📱 Usando modelo padrão para o chat inicial');
       } else if (toolType == 'my_diet') {
-        quality = 'google/gemini-3-flash-preview';
+        quality = AppConstants.DEFAULT_AI_MODEL;
         provider = ''; // Deixar o OpenRouter escolher o provider
-        print('📱 Usando modelo Gemini Flash para Minha Dieta');
+        print('📱 Usando modelo padrão para Minha Dieta');
       } else if (toolType == 'free_chat') {
-        quality = 'google/gemini-2.5-flash-lite';
+        quality = AppConstants.DEFAULT_AI_MODEL;
         provider =
             ''; // Deixar vazio para escolher automaticamente (geralmente o mais barato/disponível)
-        print('📱 Usando modelo Gemini 2.5 Flash Lite para Free Chat');
+        print('📱 Usando modelo padrão para Free Chat');
       } else if (toolType == macroGoalsToolType) {
-        quality = 'google/gemini-2.5-flash-lite';
+        quality = AppConstants.DEFAULT_AI_MODEL;
         provider = '';
-        print(
-            '📱 Usando modelo Gemini 2.5 Flash Lite para conversa de metas/macros');
+        print('📱 Usando modelo padrão para conversa de metas/macros');
       } else {
         print(
             '📱 Usando qualidade padrão (modelo padrão do servidor) para o tutor de nutrição');
@@ -1328,7 +1298,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         final mealTypesProvider =
             Provider.of<MealTypesProvider>(context, listen: false);
         mealTypesForAI = mealTypesProvider.mealTypes
-            .map((mt) => {'id': mt.id, 'name': mt.name})
+            .map((mt) => {
+                  'id': mt.id,
+                  'name': localizedMealTypeName(
+                    AppLocalizations.of(context),
+                    mt,
+                  ),
+                })
             .toList();
         print(
             '🍽️ NutritionAssistantController - Tipos de refeição: $mealTypesForAI');
@@ -1417,8 +1393,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           '❌ NutritionAssistantController - Exceção ao preparar/iniciar stream de texto: $e');
       if (_messageNotifier != null) {
         // Mensagem de erro genérica para o usuário
-        _messageNotifier!.setError(true,
-            'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.');
+        _messageNotifier!.setError(
+          true,
+          AppLocalizations.of(context).translate('process_error'),
+        );
       }
       _isLoading = false;
       notifyListeners();
@@ -2179,7 +2157,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           '❌ NutritionAssistantController - Erro ao executar comando agêntico: $e');
       _finalizeInterceptedMessage(
         notifier,
-        'Desculpe, ocorreu um erro ao acessar seus dados no app. Tente novamente.',
+        AppLocalizations.of(context).translate('agent_data_access_error'),
       );
     }
 
@@ -2321,8 +2299,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           '❌ NutritionAssistantController - Exceção ao preparar/iniciar stream de imagem: $e');
       if (_messageNotifier != null) {
         // Mensagem de erro genérica para o usuário
-        _messageNotifier!.setError(true,
-            'Desculpe, ocorreu um erro ao processar sua imagem. Por favor, tente novamente.');
+        _messageNotifier!.setError(
+          true,
+          '${AppLocalizations.of(context).translate('error_processing_image')}. '
+          '${AppLocalizations.of(context).translate('try_again')}',
+        );
       }
       _isLoading = false;
       _isProcessingMedia = false;
@@ -2405,7 +2386,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Não foi possível ler o texto. Verifique as permissões do aplicativo.'),
+                AppLocalizations.of(context)
+                    .translate('voice_read_permission_error'),
+              ),
               backgroundColor: Colors.red,
               duration: Duration(seconds: 3),
             ),
@@ -2419,7 +2402,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       // Mostrar mensagem de erro para o usuário
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Função de leitura não disponível no momento.'),
+          content: Text(
+            AppLocalizations.of(context).translate('voice_unavailable'),
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -2666,7 +2651,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
                   // Título
                   Text(
-                    'Sem créditos restantes!',
+                    AppLocalizations.of(context)
+                        .translate('no_credits_remaining_title'),
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -2678,7 +2664,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
                   // Descrição
                   Text(
-                    'Assista a um anúncio rápido e ganhe 7 créditos grátis para continuar agora mesmo.',
+                    AppLocalizations.of(context).translate('watch_ad_earn'),
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -2712,7 +2698,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                         SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Assistir anúncio • +7 créditos grátis',
+                            AppLocalizations.of(context)
+                                .translate('watch_ad_for_credits'),
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 15),
                             textAlign: TextAlign.center,
@@ -2750,7 +2737,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                         Icon(Icons.workspace_premium, size: 16),
                         SizedBox(width: 6),
                         Text(
-                          'Ou obter PRO ilimitado',
+                          AppLocalizations.of(context)
+                              .translate('upgrade_to_pro'),
                           style: TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 14),
                         ),
@@ -2767,7 +2755,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white.withOpacity(0.8),
                     ),
-                    child: Text('Cancelar'),
+                    child: Text(
+                      AppLocalizations.of(context).translate('cancel'),
+                    ),
                   ),
                 ],
               ),
@@ -2825,15 +2815,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     } else {
       print('📝 Processando texto silenciosamente...');
       // Determinar a qualidade com base no tipo de ferramenta
-      String quality = 'bom';
+      String quality = AppConstants.DEFAULT_AI_MODEL;
 
       // Definir a qualidade com base no tipo de ferramenta
       if (toolType == 'youtube') {
-        quality = 'baixo';
-        print('📱 Usando qualidade BAIXO para ferramenta do tipo: $toolType');
+        print('📱 Usando modelo padrão para ferramenta do tipo: $toolType');
       } else {
-        print(
-            '📱 Usando qualidade padrão (BOM) para ferramenta do tipo: $toolType');
+        print('📱 Usando modelo padrão para ferramenta do tipo: $toolType');
       }
 
       // Obter tipos de refeição do usuário
@@ -2842,7 +2830,13 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         final mealTypesProvider =
             Provider.of<MealTypesProvider>(context, listen: false);
         mealTypesForAI = mealTypesProvider.mealTypes
-            .map((mt) => {'id': mt.id, 'name': mt.name})
+            .map((mt) => {
+                  'id': mt.id,
+                  'name': localizedMealTypeName(
+                    AppLocalizations.of(context),
+                    mt,
+                  ),
+                })
             .toList();
       } catch (e) {
         print(
@@ -2912,8 +2906,10 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         print(
             '❌ NutritionAssistantController - Erro ao processar texto silenciosamente: $e');
         if (_messageNotifier != null) {
-          _messageNotifier!.setError(true,
-              'Erro ao processar sua solicitação. Por favor, tente novamente.');
+          _messageNotifier!.setError(
+            true,
+            AppLocalizations.of(context).translate('process_error'),
+          );
         }
 
         _isLoading = false;
@@ -3069,7 +3065,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
                   // Título
                   Text(
-                    'Sem créditos restantes!',
+                    AppLocalizations.of(context)
+                        .translate('no_credits_remaining_title'),
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -3081,7 +3078,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
                   // Descrição
                   Text(
-                    'Assista a um anúncio rápido e ganhe 7 créditos grátis para continuar agora mesmo.',
+                    AppLocalizations.of(context).translate('watch_ad_earn'),
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -3115,7 +3112,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                         SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Assistir anúncio • +7 créditos grátis',
+                            AppLocalizations.of(context)
+                                .translate('watch_ad_for_credits'),
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 15),
                             textAlign: TextAlign.center,
@@ -3153,7 +3151,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                         Icon(Icons.workspace_premium, size: 16),
                         SizedBox(width: 6),
                         Text(
-                          'Ou obter PRO ilimitado',
+                          AppLocalizations.of(context)
+                              .translate('upgrade_to_pro'),
                           style: TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 14),
                         ),
@@ -3170,7 +3169,9 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white.withOpacity(0.8),
                     ),
-                    child: Text('Cancelar'),
+                    child: Text(
+                      AppLocalizations.of(context).translate('cancel'),
+                    ),
                   ),
                 ],
               ),

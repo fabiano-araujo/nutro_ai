@@ -147,7 +147,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
             ),
             SizedBox(height: 24),
             Text(
-              'Processando...',
+              context.tr.translate('processing'),
               style: AppTheme.bodyMedium.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor
@@ -157,7 +157,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
             ),
             SizedBox(height: 8),
             Text(
-              'Gerando a melhor resposta para você',
+              context.tr.translate('generating_best_response'),
               style: AppTheme.bodySmall.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor.withOpacity(0.7)
@@ -190,7 +190,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
             ),
             SizedBox(height: 16),
             Text(
-              'Algo deu errado',
+              context.tr.translate('something_went_wrong'),
               style: AppTheme.bodyMedium.copyWith(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode
@@ -201,7 +201,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
             ),
             SizedBox(height: 8),
             Text(
-              'Por favor, tente novamente ou verifique sua conexão',
+              context.tr.translate('try_again_or_check_connection'),
               style: AppTheme.bodySmall.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor.withOpacity(0.7)
@@ -212,7 +212,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {},
-              child: Text('Tentar Novamente'),
+              child: Text(context.tr.translate('try_again')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.errorColor,
                 foregroundColor: Colors.white,
@@ -247,7 +247,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
             ),
             SizedBox(height: 24),
             Text(
-              'Nenhuma resposta ainda',
+              context.tr.translate('no_response_yet'),
               style: AppTheme.bodyMedium.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor
@@ -257,7 +257,7 @@ class _StreamingResponseDisplayState extends State<StreamingResponseDisplay>
             ),
             SizedBox(height: 8),
             Text(
-              'Preencha o documento e clique em "Resumir" para ver os resultados aqui',
+              context.tr.translate('fill_document_summarize_hint'),
               style: AppTheme.bodySmall.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor.withOpacity(0.7)

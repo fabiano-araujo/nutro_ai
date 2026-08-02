@@ -13,6 +13,9 @@ class BehavioralMealSlot {
   });
 
   final String id;
+
+  /// Nome já pronto para exibição: localizado para tipos padrão ou definido
+  /// pelo usuário para tipos personalizados. O planner é puro e não tem locale.
   final String name;
   final int order;
   final String configuredTime;
@@ -234,7 +237,9 @@ class BehavioralReminderPlanner {
           kind: BehavioralReminderKind.streakRisk,
           scheduledAt: streakAt,
           titleKey: 'notification_streak_risk_title',
-          bodyKey: 'notification_streak_risk_body',
+          bodyKey: context.currentRegistrationStreak == 1
+              ? 'notification_streak_risk_body_one'
+              : 'notification_streak_risk_body_other',
           payloadType: 'streak_risk',
           arguments: {
             'count': context.currentRegistrationStreak.toString(),

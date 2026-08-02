@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../i18n/app_localizations_extension.dart';
@@ -7,6 +8,59 @@ import '../providers/challenges_provider.dart';
 import '../services/challenge_service.dart';
 import '../services/social_service.dart';
 import '../theme/app_theme.dart';
+
+String _challengeText(
+  BuildContext context,
+  String key, [
+  Map<String, String> placeholders = const {},
+]) {
+  var text = context.tr.translate(key);
+  for (final entry in placeholders.entries) {
+    text = text.replaceAll('{${entry.key}}', entry.value);
+  }
+  return text;
+}
+
+String _challengeDayCount(BuildContext context, int count) {
+  return _challengeText(
+    context,
+    count == 1 ? 'social_day_count_singular' : 'social_day_count_plural',
+    {'count': '$count'},
+  );
+}
+
+String _challengeActiveDayCount(BuildContext context, int count) {
+  return _challengeText(
+    context,
+    count == 1
+        ? 'challenge_active_day_count_singular'
+        : 'challenge_active_day_count_plural',
+    {'count': '$count'},
+  );
+}
+
+String _challengePointCount(BuildContext context, int count) {
+  return _challengeText(
+    context,
+    count == 1 ? 'social_point_count_singular' : 'social_point_count_plural',
+    {'count': '$count'},
+  );
+}
+
+String _challengeTypeText(BuildContext context, String type) {
+  switch (type.toUpperCase()) {
+    case 'LOGGING_STREAK':
+      return context.tr.translate('challenge_type_logging');
+    case 'PROTEIN_TARGET':
+      return context.tr.translate('challenge_type_protein');
+    case 'CALORIE_DEFICIT':
+      return context.tr.translate('challenge_type_calorie_deficit');
+    case 'FIBER_TARGET':
+      return context.tr.translate('challenge_type_fiber');
+    default:
+      return context.tr.translate('challenge_type_custom');
+  }
+}
 
 Color _detailBackgroundColor(bool isDarkMode) =>
     isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
@@ -115,7 +169,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                      child: _SectionTitle(title: 'Classificações'),
+                      child: _SectionTitle(
+                        title: context.tr.translate('challenge_leaderboard'),
+                      ),
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -135,7 +191,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                      child: _SectionTitle(title: 'Estatísticas do grupo'),
+                      child: _SectionTitle(
+                        title: context.tr.translate('challenge_group_stats'),
+                      ),
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -171,7 +229,15 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
     Clipboard.setData(ClipboardData(text: code));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Código "$code" copiado.')),
+      SnackBar(
+        content: Text(
+          _challengeText(
+            context,
+            'challenge_code_copied',
+            {'code': code},
+          ),
+        ),
+      ),
     );
   }
 
@@ -179,14 +245,14 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sair do desafio'),
-        content: const Text(
-          'Tem certeza que deseja sair deste desafio? Seu progresso será perdido.',
+        title: Text(context.tr.translate('challenge_leave_title')),
+        content: Text(
+          context.tr.translate('challenge_leave_message'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           TextButton(
             onPressed: () async {
@@ -196,11 +262,18 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               if (success) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Você saiu do desafio.')),
+                  SnackBar(
+                    content: Text(
+                      context.tr.translate('challenge_leave_success'),
+                    ),
+                  ),
                 );
               }
             },
-            child: const Text('Sair', style: TextStyle(color: Colors.red)),
+            child: Text(
+              context.tr.translate('challenge_leave'),
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -244,7 +317,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SectionTitle(title: 'Todas as classificações'),
+                _SectionTitle(
+                  title: context.tr.translate('challenge_all_rankings'),
+                ),
                 const SizedBox(height: 12),
                 Flexible(
                   child: ListView.separated(
@@ -280,7 +355,7 @@ class _MissingChallengeState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        'Desafio não encontrado',
+        context.tr.translate('challenge_not_found'),
         style: TextStyle(color: _detailMutedColor(isDarkMode)),
       ),
     );
@@ -312,11 +387,11 @@ class _ChallengeTopBar extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
               onPressed: onBack,
-              tooltip: 'Voltar',
+              tooltip: context.tr.translate('back'),
             ),
             Expanded(
               child: Text(
-                'Desafio',
+                context.tr.translate('challenge_title'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 18,
@@ -332,7 +407,7 @@ class _ChallengeTopBar extends StatelessWidget {
                     onShare == null ? _detailMutedColor(isDarkMode) : textColor,
               ),
               onPressed: onShare,
-              tooltip: 'Convidar',
+              tooltip: context.tr.translate('challenge_invite'),
             ),
           ],
         ),
@@ -407,7 +482,11 @@ class _ChallengeHeroCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Iniciado ${_formatShortDate(challenge.startDate)}',
+                _challengeText(
+                  context,
+                  'challenge_started_on',
+                  {'date': _formatShortDate(context, challenge.startDate)},
+                ),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -416,7 +495,11 @@ class _ChallengeHeroCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                'Acaba ${_formatShortDate(challenge.endDate)}',
+                _challengeText(
+                  context,
+                  'challenge_ends_on',
+                  {'date': _formatShortDate(context, challenge.endDate)},
+                ),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -436,12 +519,12 @@ class _ChallengeHeroCard extends StatelessWidget {
               const SizedBox(width: 8),
               _InfoPill(
                 icon: Icons.flag_rounded,
-                label: '${challenge.targetDays} dias',
+                label: _challengeDayCount(context, challenge.targetDays),
               ),
               const SizedBox(width: 8),
               _InfoPill(
                 icon: Icons.bolt_rounded,
-                label: challenge.typeFormatted,
+                label: _challengeTypeText(context, challenge.type),
               ),
             ],
           ),
@@ -474,7 +557,7 @@ class _ChallengeHeroCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Convidar',
+                      context.tr.translate('challenge_invite'),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -513,7 +596,7 @@ class _DaysBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
-        '$days dias',
+        _challengeDayCount(context, days),
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w800,
@@ -594,7 +677,7 @@ class _MyProgressSummary extends StatelessWidget {
             child: _InlineMetric(
               icon: Icons.bolt_rounded,
               value: '${participation.totalPoints}',
-              label: 'meus pontos',
+              label: context.tr.translate('challenge_my_points'),
             ),
           ),
           const SizedBox(width: 10),
@@ -602,7 +685,7 @@ class _MyProgressSummary extends StatelessWidget {
             child: _InlineMetric(
               icon: Icons.local_fire_department_rounded,
               value: '${participation.currentStreak}',
-              label: 'dias ativos',
+              label: context.tr.translate('challenge_active_days'),
             ),
           ),
           const SizedBox(width: 10),
@@ -721,7 +804,7 @@ class _LeaderboardPreviewCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
-                'Nenhum participante ainda',
+                context.tr.translate('challenge_no_participants'),
                 style: TextStyle(color: _detailMutedColor(isDarkMode)),
               ),
             )
@@ -744,7 +827,7 @@ class _LeaderboardPreviewCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'Todas as classificações',
+                        context.tr.translate('challenge_all_rankings'),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -787,7 +870,9 @@ class _LeaderboardRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item.user.name.isEmpty ? 'Participante' : item.user.name,
+                item.user.name.isEmpty
+                    ? context.tr.translate('challenge_participant')
+                    : item.user.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -799,8 +884,8 @@ class _LeaderboardRow extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 item.currentStreak > 0
-                    ? '${item.currentStreak} dias ativos'
-                    : '${item.totalPoints} pontos',
+                    ? _challengeActiveDayCount(context, item.currentStreak)
+                    : _challengePointCount(context, item.totalPoints),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -812,7 +897,13 @@ class _LeaderboardRow extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          item.rank <= 0 ? '-' : '${item.rank}º',
+          item.rank <= 0
+              ? '-'
+              : _challengeText(
+                  context,
+                  'challenge_rank',
+                  {'rank': '${item.rank}'},
+                ),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w900,
@@ -855,19 +946,19 @@ class _GroupStatsCard extends StatelessWidget {
           _StatLine(
             icon: Icons.monitor_heart_rounded,
             value: '$totalPoints',
-            label: 'Pontos totais',
+            label: context.tr.translate('challenge_total_points'),
           ),
           const SizedBox(height: 18),
           _StatLine(
             icon: Icons.calendar_month_rounded,
             value: '$activeDays',
-            label: 'Dias ativos somados',
+            label: context.tr.translate('challenge_combined_active_days'),
           ),
           const SizedBox(height: 18),
           _StatLine(
             icon: Icons.trending_up_rounded,
-            value: _formatDecimal(averagePerDay),
-            label: 'Média de pontos por dia',
+            value: _formatDecimal(context, averagePerDay),
+            label: context.tr.translate('challenge_average_points_per_day'),
           ),
           if (leader != null) ...[
             const SizedBox(height: 18),
@@ -944,7 +1035,9 @@ class _LeaderStatLine extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item.user.name.isEmpty ? 'Participante' : item.user.name,
+                item.user.name.isEmpty
+                    ? context.tr.translate('challenge_participant')
+                    : item.user.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -955,7 +1048,7 @@ class _LeaderStatLine extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                'Líder atual',
+                context.tr.translate('challenge_current_leader'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -997,9 +1090,12 @@ class _ActionButtons extends StatelessWidget {
         TextButton.icon(
           onPressed: onLeave,
           icon: const Icon(Icons.exit_to_app_rounded, color: Colors.red),
-          label: const Text(
-            'Sair do desafio',
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700),
+          label: Text(
+            context.tr.translate('challenge_leave_title'),
+            style: const TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         Text(
@@ -1076,14 +1172,17 @@ class _UserAvatar extends StatelessWidget {
   }
 }
 
-String _formatShortDate(DateTime date) {
+String _formatShortDate(BuildContext context, DateTime date) {
   final day = date.day.toString().padLeft(2, '0');
   final month = date.month.toString().padLeft(2, '0');
-  return '$day/$month/${date.year}';
+  return _challengeText(
+    context,
+    'short_date_with_year',
+    {'day': day, 'month': month, 'year': '${date.year}'},
+  );
 }
 
-String _formatDecimal(double value) {
-  final text =
-      value >= 10 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
-  return text.replaceAll('.', ',');
+String _formatDecimal(BuildContext context, double value) {
+  final pattern = value >= 10 ? '0' : '0.0';
+  return NumberFormat(pattern, context.tr.locale.toString()).format(value);
 }

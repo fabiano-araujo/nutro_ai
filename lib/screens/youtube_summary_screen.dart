@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../i18n/app_localizations.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../services/youtube_service.dart';
-import '../providers/credit_provider.dart';
 import '../widgets/credit_indicator.dart';
 import '../screens/nutrition_assistant_screen.dart';
 import 'dart:convert';
@@ -46,12 +43,13 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
 
   // Inicializar o player do YouTube
   void _initializeYoutubePlayer(String videoId) {
+    final captionLanguage = Localizations.localeOf(context).languageCode;
     _youtubeController = YoutubePlayerController(
       initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
+      flags: YoutubePlayerFlags(
         autoPlay: false,
         mute: false,
-        captionLanguage: 'pt',
+        captionLanguage: captionLanguage,
       ),
     );
   }
@@ -108,7 +106,10 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
 
       // 1. Carregar informações básicas do vídeo primeiro
       // Obtemos as informações completas mas só mostramos as básicas inicialmente
-      final videoInfo = await YouTubeService.getVideoInfo(url);
+      final videoInfo = await YouTubeService.getVideoInfo(
+        url,
+        languageCode: Localizations.localeOf(context).toString(),
+      );
 
       // Atualizar a UI com as informações básicas do vídeo
       if (videoInfo['success'] == true) {
@@ -130,16 +131,15 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
         });
       } else {
         setState(() {
-          _errorMessage = videoInfo['error'] ??
-              context.tr.translate('youtube_error_generic');
+          _errorMessage = context.tr.translate('youtube_error_generic');
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _isLoading = false;
         _isLoadingTranscript = false;
-        _errorMessage = e.toString();
+        _errorMessage = context.tr.translate('youtube_error_generic');
       });
     }
   }
@@ -196,8 +196,8 @@ Por favor, forneça:
         'userInput': _videoInfo!['title'],
         'fullPrompt':
             directPrompt, // Aqui incluímos o prompt com transcrição para a IA
-        'toolName': 'YouTube Summary',
-        'toolTab': 'Análise de Vídeo',
+        'toolName': context.tr.translate('youtube_summary'),
+        'toolTab': context.tr.translate('video_analysis'),
         'sourceType': 'youtube',
         'thumbnailUrl': _videoInfo!['thumbnail'], // URL da thumbnail
         'videoTitle': _videoInfo!['title'],
@@ -541,4 +541,3 @@ Por favor, forneça:
     );
   }
 }
-

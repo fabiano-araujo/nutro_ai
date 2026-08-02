@@ -8,6 +8,7 @@ import '../services/storage_service.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/response_display.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class CodeEnhancerScreen extends StatefulWidget {
   const CodeEnhancerScreen({Key? key}) : super(key: key);
@@ -25,25 +26,24 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
   String? _response;
   bool _isLoading = false;
   bool _isError = false;
-  bool _showImageOptions = false;
   int _maxCharacters = 1500;
 
   final List<Map<String, dynamic>> _actionOptions = [
     {
       'value': 'analyze',
-      'label': 'Analisar',
+      'labelKey': 'code_analysis',
       'icon': Icons.analytics,
       'color': Color(0xFF4A6FFF),
     },
     {
       'value': 'check',
-      'label': 'Verificar',
+      'labelKey': 'code_check',
       'icon': Icons.fact_check,
       'color': Color(0xFF2DC96B),
     },
     {
       'value': 'optimize',
-      'label': 'Otimizar',
+      'labelKey': 'code_optimize',
       'icon': Icons.speed,
       'color': Color(0xFFFF7A50),
     },
@@ -59,7 +59,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
     final code = _codeController.text;
 
     if (code.isEmpty) {
-      _showErrorSnackBar('Por favor, insira algum código para processar');
+      _showErrorSnackBar(context.tr.translate('enter_code_to_process'));
       return;
     }
 
@@ -89,11 +89,14 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
         code,
         'auto', // Linguagem automática
         requestType,
+        languageCode: Localizations.localeOf(context).toString(),
       );
 
       // Save to history
       final studyItem = StudyItem(
-        title: 'Código ${_getActionLabel(_selectedAction)}',
+        title: context.tr
+            .translate('code_history_title')
+            .replaceAll('{action}', _getActionLabel(_selectedAction)),
         content: _codeController.text,
         response: result,
         type: 'code_enhancement',
@@ -110,28 +113,22 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
         _isLoading = false;
         _isError = true;
       });
-      _showErrorSnackBar('Erro ao processar o código: $e');
+      _showErrorSnackBar(context.tr.translate('code_processing_error'));
     }
   }
 
   String _getActionLabel(String value) {
     final option = _actionOptions.firstWhere(
       (option) => option['value'] == value,
-      orElse: () => {'label': 'Desconhecido'},
+      orElse: () => {'labelKey': 'unknown_label'},
     );
-    return option['label'] as String;
+    return context.tr.translate(option['labelKey'] as String);
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: AppTheme.errorColor),
     );
-  }
-
-  void _toggleImageOptions() {
-    setState(() {
-      _showImageOptions = !_showImageOptions;
-    });
   }
 
   // Método real para capturar uma foto e extrair código
@@ -155,7 +152,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
         await _processImageForText(photo);
       }
     } catch (e) {
-      _showErrorSnackBar('Erro ao capturar imagem: $e');
+      _showErrorSnackBar(context.tr.translate('failed_to_capture_image'));
     } finally {
       setState(() {
         _isLoading = false;
@@ -184,7 +181,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
         await _processImageForText(image);
       }
     } catch (e) {
-      _showErrorSnackBar('Erro ao selecionar imagem: $e');
+      _showErrorSnackBar(context.tr.translate('failed_to_pick_image'));
     } finally {
       setState(() {
         _isLoading = false;
@@ -219,7 +216,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'O texto foi truncado devido ao limite de caracteres',
+              context.tr.translate('text_truncated_character_limit'),
             ),
           ),
         );
@@ -233,9 +230,13 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
       // Mostrar mensagem de sucesso
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Texto extraído com sucesso')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(context.tr.translate('text_extracted_success')),
+        ),
+      );
     } catch (e) {
-      _showErrorSnackBar('Erro ao processar imagem: $e');
+      _showErrorSnackBar(context.tr.translate('error_processing_image'));
     }
   }
 
@@ -255,7 +256,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                   vertical: 8.0,
                 ),
                 child: Text(
-                  'Digitalizar foto',
+                  context.tr.translate('scan_photo'),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -279,7 +280,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                       Icon(Icons.camera_alt, color: Colors.white),
                       SizedBox(width: 8),
                       Text(
-                        'Tirar uma foto',
+                        context.tr.translate('take_photo'),
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
                     ],
@@ -301,7 +302,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                       Icon(Icons.photo_library, color: Colors.white),
                       SizedBox(width: 8),
                       Text(
-                        'Biblioteca de fotos',
+                        context.tr.translate('photo_library'),
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
                     ],
@@ -338,7 +339,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
       Clipboard.setData(ClipboardData(text: _response!));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Resultado copiado para a área de transferência'),
+          content: Text(context.tr.translate('copied_to_clipboard')),
         ),
       );
     }
@@ -350,7 +351,10 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Aprimorador de código'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(context.tr.translate('code_enhancer')),
+        centerTitle: true,
+      ),
       body: Column(
         children: [
           // Ações no topo (Analisar, Verificar, Otimizar)
@@ -359,60 +363,57 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
             color: theme.scaffoldBackgroundColor,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children:
-                  _actionOptions.map((option) {
-                    final bool isSelected = _selectedAction == option['value'];
-                    return Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedAction = option['value'] as String;
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                color:
-                                    isSelected
-                                        ? option['color'] as Color
-                                        : Colors.transparent,
-                                width: 2.0,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                option['icon'] as IconData,
-                                color:
-                                    isSelected
-                                        ? option['color'] as Color
-                                        : Colors.grey,
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                option['label'] as String,
-                                style: TextStyle(
-                                  color:
-                                      isSelected
-                                          ? option['color'] as Color
-                                          : Colors.grey,
-                                  fontWeight:
-                                      isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                ),
-                              ),
-                            ],
+              children: _actionOptions.map((option) {
+                final bool isSelected = _selectedAction == option['value'];
+                return Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedAction = option['value'] as String;
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: isSelected
+                                ? option['color'] as Color
+                                : Colors.transparent,
+                            width: 2.0,
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            option['icon'] as IconData,
+                            color: isSelected
+                                ? option['color'] as Color
+                                : Colors.grey,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            context.tr.translate(
+                              option['labelKey'] as String,
+                            ),
+                            style: TextStyle(
+                              color: isSelected
+                                  ? option['color'] as Color
+                                  : Colors.grey,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
 
@@ -433,10 +434,9 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color:
-                                    isDarkMode
-                                        ? Colors.black
-                                        : Colors.grey[100],
+                                color: isDarkMode
+                                    ? Colors.black
+                                    : Colors.grey[100],
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Stack(
@@ -465,10 +465,10 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                     constraints: BoxConstraints(
                                       maxHeight:
                                           MediaQuery.of(context).size.height *
-                                          0.5,
+                                              0.5,
                                       minHeight:
                                           MediaQuery.of(context).size.height *
-                                          0.35,
+                                              0.35,
                                     ),
                                     padding: EdgeInsets.only(
                                       bottom: 46,
@@ -476,7 +476,9 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                     child: TextField(
                                       controller: _codeController,
                                       decoration: InputDecoration(
-                                        hintText: 'Codificar:',
+                                        hintText: context.tr.translate(
+                                          'code_input_hint',
+                                        ),
                                         hintStyle: TextStyle(
                                           color: Colors.grey,
                                         ),
@@ -485,10 +487,9 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                       ),
                                       style: TextStyle(
                                         fontFamily: 'monospace',
-                                        color:
-                                            isDarkMode
-                                                ? Colors.white
-                                                : Colors.black87,
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : Colors.black87,
                                       ),
                                       maxLines: null,
                                       expands: true,
@@ -511,10 +512,9 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                         horizontal: 12,
                                       ),
                                       decoration: BoxDecoration(
-                                        color:
-                                            isDarkMode
-                                                ? Colors.black
-                                                : Colors.grey[200],
+                                        color: isDarkMode
+                                            ? Colors.black
+                                            : Colors.grey[200],
                                         borderRadius: BorderRadius.only(
                                           bottomLeft: Radius.circular(12),
                                           bottomRight: Radius.circular(12),
@@ -529,9 +529,11 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                               Icons.camera_alt,
                                               color: Colors.grey,
                                             ),
-                                            onPressed:
-                                                () => _showImageOptionsModal(),
-                                            tooltip: 'Digitalizar foto',
+                                            onPressed: () =>
+                                                _showImageOptionsModal(),
+                                            tooltip: context.tr.translate(
+                                              'scan_photo',
+                                            ),
                                             padding: EdgeInsets.zero,
                                             constraints: BoxConstraints(),
                                           ),
@@ -564,26 +566,25 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child:
-                                  _isLoading
-                                      ? SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
-                                              ),
-                                        ),
-                                      )
-                                      : Text(
-                                        'Gerar',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                              child: _isLoading
+                                  ? SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
                                         ),
                                       ),
+                                    )
+                                  : Text(
+                                      context.tr.translate('generate'),
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],
@@ -612,13 +613,16 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                               color: Colors.grey,
                                             ),
                                             onPressed: _copyResponseToClipboard,
-                                            tooltip: 'Copiar resultado',
+                                            tooltip: context.tr.translate(
+                                              'copy_result',
+                                            ),
                                           ),
                                         ),
                                       ResponseDisplay(
-                                        response:
-                                            _response ??
-                                            'Erro ao processar o código',
+                                        response: _response ??
+                                            context.tr.translate(
+                                              'code_processing_error',
+                                            ),
                                         isError: _isError,
                                         isCode: true,
                                       ),
@@ -647,7 +651,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                         ),
                                       ),
                                       child: Text(
-                                        'Tentar novamente',
+                                        context.tr.translate('try_again'),
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -672,7 +676,7 @@ class _CodeEnhancerScreenState extends State<CodeEnhancerScreen> {
                                         ),
                                       ),
                                       child: Text(
-                                        'Novo código',
+                                        context.tr.translate('new_code'),
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,

@@ -35,6 +35,7 @@ import '../providers/credit_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/meal_types_provider.dart';
+import '../utils/meal_type_localization.dart';
 import '../providers/food_history_provider.dart';
 import '../providers/profile_shape_preview_provider.dart';
 import '../models/user_model.dart';
@@ -357,22 +358,7 @@ class _MainNavigationState extends State<MainNavigation>
   }
 
   String _localizedNotificationMealName(MealTypeConfig mealType) {
-    switch (mealType.id) {
-      case 'breakfast':
-        return context.tr.translate('breakfast');
-      case 'morning_snack':
-        return context.tr.translate('notification_meal_name_morning_snack');
-      case 'lunch':
-        return context.tr.translate('lunch');
-      case 'afternoon_snack':
-        return context.tr.translate('notification_meal_name_afternoon_snack');
-      case 'dinner':
-        return context.tr.translate('dinner');
-      case 'supper':
-        return context.tr.translate('notification_meal_name_supper');
-      default:
-        return mealType.name;
-    }
+    return localizedMealTypeName(context.tr, mealType);
   }
 
   String _notificationDateKey(DateTime value) {
@@ -428,18 +414,20 @@ class _MainNavigationState extends State<MainNavigation>
     final shouldLogin = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Modo desenvolvedor'),
+        title: Text(dialogContext.tr.translate('developer_mode')),
         content: Text(
-          'Fazer login automático na conta $_devAutoLoginEmail?',
+          dialogContext.tr
+              .translate('developer_auto_login_prompt')
+              .replaceAll('{email}', _devAutoLoginEmail),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Não'),
+            child: Text(dialogContext.tr.translate('no')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Entrar'),
+            child: Text(dialogContext.tr.translate('login')),
           ),
         ],
       ),
@@ -466,17 +454,19 @@ class _MainNavigationState extends State<MainNavigation>
         SnackBar(
           content: Text(
             ok
-                ? 'Login automático: $_devAutoLoginEmail'
-                : 'Falha no login automático: ${data['message'] ?? 'erro desconhecido'}',
+                ? context.tr
+                    .translate('developer_auto_login_success')
+                    .replaceAll('{email}', _devAutoLoginEmail)
+                : context.tr.translate('developer_auto_login_failed'),
           ),
           backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
         ),
       );
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro no login automático: $e'),
+          content: Text(context.tr.translate('developer_auto_login_error')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -1888,7 +1878,7 @@ class _MainNavigationState extends State<MainNavigation>
         NavigationDestination(
           icon: Icon(Icons.group_outlined),
           selectedIcon: Icon(Icons.group),
-          label: 'Social',
+          label: context.tr.translate('social'),
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline),
@@ -1965,7 +1955,7 @@ class _MainNavigationState extends State<MainNavigation>
                             ),
                           );
                         },
-                        tooltip: 'Buscar',
+                        tooltip: context.tr.translate('search'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1991,7 +1981,7 @@ class _MainNavigationState extends State<MainNavigation>
                     Expanded(
                       child: _drawerQuickCard(
                         icon: Icons.chat_bubble_outline,
-                        label: 'Conversa livre',
+                        label: context.tr.translate('free_chat'),
                         isDarkMode: isDarkMode,
                         isSelected: _currentMode == 'free_chat' &&
                             _currentFreeChatId == null,
@@ -2025,7 +2015,7 @@ class _MainNavigationState extends State<MainNavigation>
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 child: Text(
-                  'Recentes',
+                  context.tr.translate('recent'),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -2080,7 +2070,7 @@ class _MainNavigationState extends State<MainNavigation>
                                     .withValues(alpha: 0.12)
                                 : null,
                             child: Text(
-                              chat.title,
+                              _localizedConversationTitle(chat.title),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -2183,7 +2173,7 @@ class _MainNavigationState extends State<MainNavigation>
               ),
               const SizedBox(width: 8),
               Text(
-                'Conversa livre',
+                context.tr.translate('free_chat'),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -2223,7 +2213,7 @@ class _MainNavigationState extends State<MainNavigation>
       _SidePanelNavItem(
         icon: Icons.group_outlined,
         activeIcon: Icons.group,
-        label: 'Social',
+        label: context.tr.translate('social'),
       ),
       _SidePanelNavItem(
         icon: Icons.person_outline,
@@ -2350,13 +2340,14 @@ class _MainNavigationState extends State<MainNavigation>
 
   void _showDeleteConfirmation(
       String chatId, String title, FreeChatProvider provider) {
+    final localizedTitle = _localizedConversationTitle(title);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.tr.translate('delete_conversation')),
         content: Text(context.tr
             .translate('delete_conversation_confirm')
-            .replaceAll('{title}', title)),
+            .replaceAll('{title}', localizedTitle)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -2384,6 +2375,13 @@ class _MainNavigationState extends State<MainNavigation>
         ],
       ),
     );
+  }
+
+  String _localizedConversationTitle(String title) {
+    if (title.trim() == 'Nova conversa') {
+      return context.tr.translate('new_conversation');
+    }
+    return title;
   }
 }
 

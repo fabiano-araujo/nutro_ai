@@ -64,9 +64,9 @@ void main() {
     await tester.tap(find.text('Ver detalhes'));
     await tester.pumpAndSettle();
 
-    expect(find.text('35.0'), findsOneWidget);
-    expect(find.text('102.0'), findsOneWidget);
-    expect(find.text('23.0'), findsOneWidget);
+    expect(find.text('35.0 g prot'), findsOneWidget);
+    expect(find.text('102.0 g carb'), findsOneWidget);
+    expect(find.text('23.0 g gord'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

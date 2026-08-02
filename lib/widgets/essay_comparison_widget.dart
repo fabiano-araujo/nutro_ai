@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../models/essay_correction_model.dart';
 
 class EssayComparisonWidget extends StatefulWidget {
@@ -36,12 +37,13 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
   String _getTextWithSuggestions() {
     String modifiedText = widget.originalText;
     List<EssaySuggestion> sortedSuggestions = List.from(widget.suggestions);
-    
+
     // Sort suggestions by position (descending) to avoid position shifts
-    sortedSuggestions.sort((a, b) => b.startPosition.compareTo(a.startPosition));
-    
+    sortedSuggestions
+        .sort((a, b) => b.startPosition.compareTo(a.startPosition));
+
     for (EssaySuggestion suggestion in sortedSuggestions) {
-      if (suggestion.startPosition < modifiedText.length && 
+      if (suggestion.startPosition < modifiedText.length &&
           suggestion.endPosition <= modifiedText.length) {
         modifiedText = modifiedText.replaceRange(
           suggestion.startPosition,
@@ -50,21 +52,22 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
         );
       }
     }
-    
+
     return modifiedText;
   }
 
   List<TextSpan> _buildHighlightedText(String text, bool isOriginal) {
     List<TextSpan> spans = [];
     int currentIndex = 0;
-    
+
     // Sort suggestions by start position
     List<EssaySuggestion> sortedSuggestions = List.from(widget.suggestions);
-    sortedSuggestions.sort((a, b) => a.startPosition.compareTo(b.startPosition));
-    
+    sortedSuggestions
+        .sort((a, b) => a.startPosition.compareTo(b.startPosition));
+
     for (int i = 0; i < sortedSuggestions.length; i++) {
       EssaySuggestion suggestion = sortedSuggestions[i];
-      
+
       if (suggestion.startPosition > currentIndex) {
         // Add normal text before suggestion
         spans.add(TextSpan(
@@ -72,15 +75,14 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
           style: const TextStyle(fontSize: 14, height: 1.5),
         ));
       }
-      
-      if (suggestion.startPosition < text.length && 
+
+      if (suggestion.startPosition < text.length &&
           suggestion.endPosition <= text.length) {
         // Add highlighted suggestion
         Color highlightColor = _getSuggestionColor(suggestion.priority);
-        String highlightedText = isOriginal 
-            ? suggestion.originalText 
-            : suggestion.suggestedText;
-            
+        String highlightedText =
+            isOriginal ? suggestion.originalText : suggestion.suggestedText;
+
         spans.add(TextSpan(
           text: highlightedText,
           style: TextStyle(
@@ -92,11 +94,11 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
           ),
           recognizer: null, // Could add tap recognizer for suggestion details
         ));
-        
+
         currentIndex = suggestion.endPosition;
       }
     }
-    
+
     // Add remaining text
     if (currentIndex < text.length) {
       spans.add(TextSpan(
@@ -104,7 +106,7 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
         style: const TextStyle(fontSize: 14, height: 1.5),
       ));
     }
-    
+
     return spans;
   }
 
@@ -152,7 +154,7 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
             Icon(Icons.compare_arrows, color: theme.primaryColor),
             const SizedBox(width: 8),
             Text(
-              'Comparação com Sugestões',
+              context.tr.translate('essay_comparison_title'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -167,7 +169,12 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                '${widget.suggestions.length} sugestões',
+                _translateWithValues(
+                  widget.suggestions.length == 1
+                      ? 'essay_suggestion_count_one'
+                      : 'essay_suggestion_count_other',
+                  {'count': widget.suggestions.length.toString()},
+                ),
                 style: TextStyle(
                   color: theme.primaryColor,
                   fontSize: 12,
@@ -177,9 +184,9 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
             ),
           ],
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Tab bar for switching between views
         Container(
           decoration: BoxDecoration(
@@ -193,16 +200,17 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
               borderRadius: BorderRadius.circular(8),
             ),
             labelColor: Colors.white,
-            unselectedLabelColor: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            tabs: const [
-              Tab(text: 'Texto Original'),
-              Tab(text: 'Com Sugestões'),
+            unselectedLabelColor:
+                isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            tabs: [
+              Tab(text: context.tr.translate('essay_original_text')),
+              Tab(text: context.tr.translate('essay_with_suggestions')),
             ],
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Content area
         if (isSmallDevice || !widget.showSideBySide) ...[
           // Single view for small devices
@@ -226,7 +234,7 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Texto Original',
+                      context.tr.translate('essay_original_text'),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -236,7 +244,8 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                     const SizedBox(height: 8),
                     Container(
                       height: 400,
-                      child: _buildTextView(widget.originalText, true, isDarkMode),
+                      child:
+                          _buildTextView(widget.originalText, true, isDarkMode),
                     ),
                   ],
                 ),
@@ -247,7 +256,7 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Com Sugestões Aplicadas',
+                      context.tr.translate('essay_suggestions_applied'),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -257,7 +266,8 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                     const SizedBox(height: 8),
                     Container(
                       height: 400,
-                      child: _buildTextView(_getTextWithSuggestions(), false, isDarkMode),
+                      child: _buildTextView(
+                          _getTextWithSuggestions(), false, isDarkMode),
                     ),
                   ],
                 ),
@@ -265,13 +275,13 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
             ],
           ),
         ],
-        
+
         const SizedBox(height: 24),
-        
+
         // Suggestions list
         if (widget.suggestions.isNotEmpty) ...[
           Text(
-            'Lista de Sugestões',
+            context.tr.translate('essay_suggestions_list'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -303,12 +313,14 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
       child: SingleChildScrollView(
         child: RichText(
           text: TextSpan(
-            children: widget.suggestions.isNotEmpty 
+            children: widget.suggestions.isNotEmpty
                 ? _buildHighlightedText(text, isOriginal)
-                : [TextSpan(
-                    text: text,
-                    style: const TextStyle(fontSize: 14, height: 1.5),
-                  )],
+                : [
+                    TextSpan(
+                      text: text,
+                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    )
+                  ],
             style: TextStyle(
               color: isDarkMode ? Colors.white : Colors.black,
             ),
@@ -318,9 +330,10 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
     );
   }
 
-  Widget _buildSuggestionCard(EssaySuggestion suggestion, int index, bool isDarkMode) {
+  Widget _buildSuggestionCard(
+      EssaySuggestion suggestion, int index, bool isDarkMode) {
     Color priorityColor = _getSuggestionColor(suggestion.priority);
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
@@ -332,8 +345,10 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
           children: [
             Expanded(
               child: Text(
-                '${suggestion.type.toUpperCase()}: ${suggestion.originalText}',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                '${_suggestionTypeLabel(suggestion.type)}: '
+                '${suggestion.originalText}',
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -345,7 +360,7 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                suggestion.priority.toString().split('.').last.toUpperCase(),
+                _suggestionPriorityLabel(suggestion.priority),
                 style: TextStyle(
                   color: priorityColor,
                   fontSize: 10,
@@ -370,7 +385,7 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Original:',
+                            context.tr.translate('essay_original_label'),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -399,7 +414,7 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Sugerido:',
+                            context.tr.translate('essay_suggested_label'),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -424,13 +439,13 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Explanation
                 if (suggestion.explanation.isNotEmpty) ...[
                   Text(
-                    'Explicação:',
+                    context.tr.translate('essay_explanation_label'),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -449,5 +464,41 @@ class _EssayComparisonWidgetState extends State<EssayComparisonWidget>
         ],
       ),
     );
+  }
+
+  String _suggestionTypeLabel(String type) {
+    switch (type) {
+      case 'grammar':
+        return context.tr.translate('essay_suggestion_type_grammar');
+      case 'style':
+        return context.tr.translate('essay_suggestion_type_style');
+      case 'structure':
+        return context.tr.translate('essay_suggestion_type_structure');
+      case 'content':
+        return context.tr.translate('essay_suggestion_type_content');
+      default:
+        return context.tr.translate('essay_suggestion_type_general');
+    }
+  }
+
+  String _suggestionPriorityLabel(SuggestionPriority priority) {
+    switch (priority) {
+      case SuggestionPriority.critical:
+        return context.tr.translate('essay_priority_critical');
+      case SuggestionPriority.high:
+        return context.tr.translate('essay_priority_high');
+      case SuggestionPriority.medium:
+        return context.tr.translate('essay_priority_medium');
+      case SuggestionPriority.low:
+        return context.tr.translate('essay_priority_low');
+    }
+  }
+
+  String _translateWithValues(String key, Map<String, String> values) {
+    var result = context.tr.translate(key);
+    for (final entry in values.entries) {
+      result = result.replaceAll('{${entry.key}}', entry.value);
+    }
+    return result;
   }
 }

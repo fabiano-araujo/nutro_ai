@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../i18n/app_localizations_extension.dart';
 import '../services/app_debug_log_service.dart';
 
 class AppDebugLogOverlay extends StatefulWidget {
@@ -68,10 +69,10 @@ class _AppDebugLogOverlayState extends State<AppDebugLogOverlay> {
                         child: Row(
                           children: [
                             const SizedBox(width: 10),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'App logs',
-                                style: TextStyle(
+                                context.tr.translate('app_logs'),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
@@ -79,7 +80,7 @@ class _AppDebugLogOverlayState extends State<AppDebugLogOverlay> {
                               ),
                             ),
                             IconButton(
-                              tooltip: 'Limpar',
+                              tooltip: context.tr.translate('clear'),
                               icon: const Icon(
                                 Icons.delete_outline,
                                 color: Colors.white70,
@@ -88,7 +89,7 @@ class _AppDebugLogOverlayState extends State<AppDebugLogOverlay> {
                               onPressed: AppDebugLogService.clear,
                             ),
                             IconButton(
-                              tooltip: 'Fechar',
+                              tooltip: context.tr.translate('close'),
                               icon: const Icon(
                                 Icons.close,
                                 color: Colors.white70,
@@ -103,10 +104,10 @@ class _AppDebugLogOverlayState extends State<AppDebugLogOverlay> {
                       const Divider(height: 1, color: Colors.white24),
                       Expanded(
                         child: logs.isEmpty
-                            ? const Center(
+                            ? Center(
                                 child: Text(
-                                  'Sem logs ainda',
-                                  style: TextStyle(
+                                  context.tr.translate('no_logs_yet'),
+                                  style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 12,
                                   ),

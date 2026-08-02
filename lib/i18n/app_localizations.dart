@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'app_localizations_delegate.dart';
 import 'translations/pt_br_translations.dart';
 import 'translations/en_us_translations.dart';
@@ -46,43 +45,7 @@ class AppLocalizations {
 
   // Método para obter a tradução
   String translate(String key) {
-    // Tratamento especial para translate_hint_short
-    if (key == 'translate_hint_short') {
-      String localeString = locale.toString();
-
-      // Mapeamento direto para garantir que temos uma tradução
-      Map<String, String> fallbackTranslations = {
-        'pt_BR': 'Traduzir para',
-        'en_US': 'Translate to',
-        'es_ES': 'Traducir a',
-        'fr_FR': 'Traduire en',
-        'de_DE': 'Übersetzen in',
-        'it_IT': 'Traduci in',
-      };
-
-      // Verificar se o idioma atual tem a chave
-      if (_localizedValues.containsKey(localeString) &&
-          _localizedValues[localeString]!.containsKey(key)) {
-        return _localizedValues[localeString]![key]!;
-      }
-
-      // Se não tiver, usar o fallback
-      return fallbackTranslations[localeString] ?? 'Translate to';
-    }
-
     String localeString = locale.toString();
-
-    // Adicionar debug apenas para essa chave específica
-    if (key == 'translate_hint_short') {
-      print(
-          'DEBUG TRANSLATE: Tentando traduzir key=$key, locale=$localeString');
-
-      // Verificar se a chave existe em todos os idiomas
-      _localizedValues.forEach((langCode, translations) {
-        print(
-            'DEBUG TRANSLATE: Idioma $langCode tem a chave? ${translations.containsKey(key)} - Valor: ${translations[key] ?? "NULL"}');
-      });
-    }
 
     // Verificar se o idioma é suportado
     if (!_localizedValues.containsKey(localeString)) {

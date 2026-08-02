@@ -83,7 +83,7 @@ dependencies {
     
     // Adiciona appcompat para resolver problema de lStar
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("androidx.health.connect:connect-client:1.1.0-alpha12")
+    implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     
     // Novas bibliotecas específicas do Google Play

@@ -1,0 +1,4 @@
+"NSMicrophoneUsageDescription" = "Nutro AI usa il microfono per registrare l’audio e trascrivere i tuoi messaggi in chat.";
+"NSCameraUsageDescription" = "Nutro AI usa la fotocamera per scansionare gli alimenti e leggere i codici a barre.";
+"NSPhotoLibraryAddUsageDescription" = "Nutro AI richiede l’accesso per salvare le immagini nella tua libreria foto.";
+"NSPhotoLibraryUsageDescription" = "Nutro AI usa la tua libreria foto per selezionare foto di alimenti e immagini da analizzare.";

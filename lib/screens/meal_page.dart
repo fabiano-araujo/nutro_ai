@@ -120,6 +120,7 @@ class _MealPageState extends State<MealPage> {
   String _buildAiPrompt(String languageCode) {
     final l10n = AppLocalizations.of(context);
     final meal = widget.meal;
+    final subtitle = meal.resolveSubtitle(Localizations.localeOf(context));
     final foods = meal.foods
         .map(
           (food) =>
@@ -132,7 +133,7 @@ Analise a refeição abaixo e responda APENAS com JSON válido.
 
 Idioma da resposta: $languageCode
 Nome da refeição: ${meal.resolveTitle(l10n)}
-Horário: ${meal.subtitle}
+Horário: $subtitle
 Calorias: ${meal.calories.toStringAsFixed(0)} kcal
 Proteína: ${meal.protein.toStringAsFixed(1)} g
 Carboidratos: ${meal.carbs.toStringAsFixed(1)} g
@@ -334,7 +335,9 @@ Regras:
                   runSpacing: 8,
                   children: [
                     _buildHeaderChip(
-                      label: meal.subtitle,
+                      label: meal.resolveSubtitle(
+                        Localizations.localeOf(context),
+                      ),
                       color: qualityColor,
                       textColor: secondaryTextColor,
                       isDarkMode: isDarkMode,
@@ -1036,6 +1039,7 @@ class _MealPageData {
   final String title;
   final bool titleIsTranslationKey;
   final String subtitle;
+  final DateTime? dateTime;
   final String emoji;
   final double calories;
   final double protein;
@@ -1049,6 +1053,7 @@ class _MealPageData {
     required this.title,
     required this.titleIsTranslationKey,
     required this.subtitle,
+    this.dateTime,
     required this.emoji,
     required this.calories,
     required this.protein,
@@ -1087,7 +1092,8 @@ class _MealPageData {
     return _MealPageData(
       title: meal.type.name,
       titleIsTranslationKey: true,
-      subtitle: DateFormat('dd/MM • HH:mm').format(meal.dateTime),
+      subtitle: '',
+      dateTime: meal.dateTime,
       emoji: _mealEmojiFromType(meal.type.name),
       calories: meal.totalCalories.toDouble(),
       protein: meal.totalProtein,
@@ -1151,6 +1157,23 @@ class _MealPageData {
       return l10n.translate(title);
     }
     return title;
+  }
+
+  String resolveSubtitle(Locale locale) {
+    final localeName = locale.toLanguageTag();
+    if (dateTime != null) {
+      return DateFormat.yMd(localeName).add_jm().format(dateTime!);
+    }
+
+    final timeMatch = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(subtitle);
+    if (timeMatch == null) return subtitle;
+
+    final hour = int.tryParse(timeMatch.group(1)!);
+    final minute = int.tryParse(timeMatch.group(2)!);
+    if (hour == null || minute == null || hour > 23 || minute > 59) {
+      return subtitle;
+    }
+    return DateFormat.jm(localeName).format(DateTime(2000, 1, 1, hour, minute));
   }
 }
 

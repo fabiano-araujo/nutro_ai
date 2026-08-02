@@ -262,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                 ),
                 onPressed: widget.onOpenDrawer,
-                tooltip: 'Menu',
+                tooltip: context.tr.translate('menu'),
               )
             : null,
         title: Text(
@@ -552,7 +552,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.w600,
           ),
           children: [
-            TextSpan(text: 'IMC ${bmi.toStringAsFixed(1)}'),
+            TextSpan(
+              text: context.tr
+                  .translate('bmi_value')
+                  .replaceAll('{value}', bmi.toStringAsFixed(1)),
+            ),
             TextSpan(
               text: '  ·  ',
               style: TextStyle(color: colorScheme.primary),

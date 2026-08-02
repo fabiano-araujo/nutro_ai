@@ -51,13 +51,11 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   final List<Map<String, dynamic>> _scanModes = [
     {
       'id': 'ai_macros',
-      'label': 'Macros com IA',
       'color': AppTheme.primaryColor,
       'icon': Icons.restaurant_menu,
     },
     {
       'id': 'barcode',
-      'label': 'Código de Barras',
       'color': Color(0xFF9C27B0),
       'icon': Icons.qr_code_scanner,
     },
@@ -93,7 +91,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     // Inicializa o PageController na página correspondente ao modo selecionado
     int initialIndex =
         _scanModes.indexWhere((mode) => mode['id'] == _selectedScanMode);
-    if (initialIndex < 0) initialIndex = 0; // default para 'ai_macros' (índice 0)
+    if (initialIndex < 0)
+      initialIndex = 0; // default para 'ai_macros' (índice 0)
 
     _pageController = PageController(
       initialPage: initialIndex,
@@ -250,7 +249,9 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             _isCameraError = true;
             _isInitializing = false;
           });
-          _showErrorSnackBar('Nenhuma câmera disponível');
+          _showErrorSnackBar(
+            context.tr.translate('no_cameras_available'),
+          );
         }
         _isResuming = false;
         _cancelInitTimeoutTimer();
@@ -286,7 +287,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             _isInitializing = false;
           });
           _showErrorSnackBar(
-              'Falha ao inicializar a câmera após várias tentativas');
+            context.tr.translate('camera_initialization_retries_failed'),
+          );
         }
       }
     }
@@ -381,8 +383,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(context.tr.translate('camera_timeout') ??
-                  'Tempo esgotado ao inicializar a câmera. Tente novamente.'),
+              content: Text(context.tr.translate('camera_timeout')),
               backgroundColor: Colors.red,
               duration: Duration(seconds: 3),
             ),
@@ -434,8 +435,9 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             _isInitializing = false;
           });
           _cancelInitTimeoutTimer();
-          _showErrorSnackBar(context.tr.translate('no_cameras_available') ??
-              'Nenhuma câmera disponível');
+          _showErrorSnackBar(
+            context.tr.translate('no_cameras_available'),
+          );
         }
         return;
       }
@@ -461,7 +463,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
           _isInitializing = false;
         });
         _showErrorSnackBar(
-            '${context.tr.translate('camera_initialization_error') ?? 'Erro ao inicializar câmera'}: $e');
+          context.tr.translate('camera_initialization_error'),
+        );
       }
     }
   }
@@ -537,7 +540,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
       if (mounted) {
         _showErrorSnackBar(
-          '${context.tr.translate('camera_initialization_error') ?? 'Erro ao inicializar câmera'}: $e',
+          context.tr.translate('camera_initialization_error'),
         );
       }
 
@@ -572,8 +575,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       }
 
       final Size screenSize = MediaQuery.of(context).size;
-      final double navBarHeight =
-          56.0 + MediaQuery.of(context).padding.bottom;
+      final double navBarHeight = 56.0 + MediaQuery.of(context).padding.bottom;
       final double availableHeight = screenSize.height - navBarHeight;
 
       final double screenRatio = screenSize.width / availableHeight;
@@ -602,12 +604,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
       final double relativeCropX = (cropRectScreen.left - displayRect.left)
           .clamp(0.0, displayRect.width);
-      final double relativeCropY = (cropRectScreen.top - displayRect.top)
-          .clamp(0.0, displayRect.height);
+      final double relativeCropY =
+          (cropRectScreen.top - displayRect.top).clamp(0.0, displayRect.height);
       final double relativeCropWidth =
           cropRectScreen.width.clamp(0.0, displayRect.width - relativeCropX);
-      final double relativeCropHeight = cropRectScreen.height
-          .clamp(0.0, displayRect.height - relativeCropY);
+      final double relativeCropHeight =
+          cropRectScreen.height.clamp(0.0, displayRect.height - relativeCropY);
 
       final double cropStartX =
           (relativeCropX / displayRect.width) * originalImage.width;
@@ -651,24 +653,27 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     String toolTitle;
     switch (_selectedScanMode) {
       case 'ai_macros':
-        toolTitle = 'Macros com IA';
+        toolTitle = context.tr.translate('ai_macros');
         break;
       case 'barcode':
-        toolTitle = 'Código de Barras';
+        toolTitle = context.tr.translate('barcode');
         break;
       default:
-        toolTitle = 'Digitalização';
+        toolTitle = context.tr.translate('scan');
     }
 
     final Map<String, dynamic> toolData = {
-      'toolName': 'Camera Scan',
+      'toolName': context.tr.translate('camera_scan'),
       'toolTab': toolTitle,
       'sourceType': 'camera',
       'scanMode': _selectedScanMode,
       'imageData': base64Encode(processedImage),
-      'userInput': 'Análise de imagem: $toolTitle',
-      'fullPrompt':
-          'Analise esta imagem capturada com a câmera no modo "$toolTitle" e forneça uma resposta detalhada.',
+      'userInput': context.tr
+          .translate('image_analysis_with_mode')
+          .replaceAll('{mode}', toolTitle),
+      'fullPrompt': context.tr
+          .translate('camera_analysis_prompt')
+          .replaceAll('{mode}', toolTitle),
       'hasImage': true,
     };
 
@@ -683,8 +688,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
   Future<void> _captureImage() async {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      _showErrorSnackBar(
-          context.tr.translate('camera_not_ready') ?? 'Câmera não está pronta');
+      _showErrorSnackBar(context.tr.translate('camera_not_ready'));
       return;
     }
     if (_isProcessingCapture) return;
@@ -698,13 +702,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       final Uint8List? processed =
           await _cropAndOptimize(imageBytes, cutOutRect);
       if (processed == null) {
-        _showErrorSnackBar('Falha ao processar imagem');
+        _showErrorSnackBar(context.tr.translate('error_processing_image'));
         return;
       }
       if (mounted) _sendImageToChat(processed);
-    } catch (e) {
-      _showErrorSnackBar(
-          '${context.tr.translate('failed_to_capture_image') ?? 'Falha ao capturar imagem'}: $e');
+    } catch (_) {
+      _showErrorSnackBar(context.tr.translate('failed_to_capture_image'));
     } finally {
       if (mounted) setState(() => _isProcessingCapture = false);
     }
@@ -722,12 +725,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       final Uint8List? processed =
           await _cropAndOptimize(imageBytes, cutOutRect);
       if (processed == null) {
-        _showErrorSnackBar('Falha ao processar imagem');
+        _showErrorSnackBar(context.tr.translate('error_processing_image'));
         return;
       }
       if (mounted) _sendImageToChat(processed);
-    } catch (e) {
-      _showErrorSnackBar('${context.tr.translate('failed_to_pick_image')}: $e');
+    } catch (_) {
+      _showErrorSnackBar(context.tr.translate('failed_to_pick_image'));
     } finally {
       if (mounted) setState(() => _isProcessingCapture = false);
     }
@@ -754,9 +757,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
           duration: Duration(seconds: 1),
         ),
       );
-    } catch (e) {
-      _showErrorSnackBar(
-          '${context.tr.translate('flash_toggle_error') ?? 'Erro ao alternar flash'}: $e');
+    } catch (_) {
+      _showErrorSnackBar(context.tr.translate('flash_toggle_error'));
     }
   }
 
@@ -823,235 +825,235 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     final double topOffset =
         appBarHeight + statusBarHeight + (availableHeight * 0.25);
 
-    final Rect cutOutRect = Rect.fromLTWH(
-        padding, topOffset, squareSize, squareSize); // Quadrado
+    final Rect cutOutRect =
+        Rect.fromLTWH(padding, topOffset, squareSize, squareSize); // Quadrado
 
     // Texto da dica baseado no modo
     String hintText = '';
     switch (_selectedScanMode) {
       case 'ai_macros':
-        hintText = context.tr.translate('ai_macros_hint') ??
-            'Tire uma foto do seu alimento para calcular macros';
+        hintText = context.tr.translate('ai_macros_hint');
         break;
       case 'barcode':
-        hintText = context.tr.translate('barcode_hint') ??
-            'Escaneie o código de barras do produto';
+        hintText = context.tr.translate('barcode_hint');
         break;
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-      backgroundColor: Colors.black,
-      extendBodyBehindAppBar:
-          true, // Permite que o corpo se estenda atrás do AppBar
-      appBar: AppBar(
-        backgroundColor: Colors.transparent, // AppBar totalmente transparente
-        elevation: 0,
-        title: Text(context.tr.translate('scan'),
-            style: TextStyle(color: Colors.white)),
-        centerTitle: false,
-        iconTheme: IconThemeData(color: Colors.white),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: CreditIndicator(),
-          ),
-          IconButton(
-            icon: Icon(Icons.info, color: Colors.white, size: 26),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CameraTipsScreen(),
-                ),
-              );
-            },
-            tooltip: 'Dicas de captura',
-          ),
-          SizedBox(width: 8),
-        ],
-      ),
-      body: Stack(
-        children: [
-          // Verifica se temos um erro de câmera para mostrar a tela de erro
-          if (_isCameraError)
-            _buildErrorScreen(context)
-          else if (_isCameraInitialized &&
-              _cameraController != null &&
-              _cameraController!.value.isInitialized)
-            // Visualização da câmera
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              child: CameraPreview(_cameraController!),
-            )
-          else
-            // Tela de carregamento melhorada
-            _buildLoadingScreen(context),
-
-          // Só mostra o recorte e os controles se não houver erro de câmera
-          if (!_isCameraError) ...[
-            // Overlay translúcido com recorte retangular
-            Positioned.fill(
-              child: CustomPaint(
-                painter: OverlayPainter(
-                  cutOutRect: cutOutRect,
-                  borderRadius: 12.0,
-                ),
-              ),
+        backgroundColor: Colors.black,
+        extendBodyBehindAppBar:
+            true, // Permite que o corpo se estenda atrás do AppBar
+        appBar: AppBar(
+          backgroundColor: Colors.transparent, // AppBar totalmente transparente
+          elevation: 0,
+          title: Text(context.tr.translate('scan'),
+              style: TextStyle(color: Colors.white)),
+          centerTitle: false,
+          iconTheme: IconThemeData(color: Colors.white),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: CreditIndicator(),
             ),
-
-            // Mensagem informativa acima do retângulo
-            Positioned(
-              top: cutOutRect.top - 85,
-              left: padding,
-              right: padding,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _getModeHintText(),
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            IconButton(
+              icon: Icon(Icons.info, color: Colors.white, size: 26),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CameraTipsScreen(),
+                  ),
+                );
+              },
+              tooltip: context.tr.translate('camera_capture_tips'),
             ),
-
-            // Bottom controls overlay
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).padding.bottom + 10,
-                    top: 10,
-                    left: 0,
-                    right: 0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Scan mode options com PageView para centralização automática
-                    Container(
-                      height:
-                          50, // Reduzido para acomodar menos padding vertical
-                      width: double.infinity,
-                      child: PageView.builder(
-                        controller: _pageController,
-                        itemCount: _scanModes.length,
-                        onPageChanged: _onPageChanged,
-                        physics: BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          final mode = _scanModes[index];
-                          return Center(
-                            child: _buildScanOptionTextOnly(
-                              mode['id'],
-                              context.tr.translate(mode['id']) ?? mode['label'],
-                              mode['color'],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // Capture, gallery and flash buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        // Gallery button (left) - sem contorno
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            icon: Icon(Icons.photo_library_outlined,
-                                color: Colors.white),
-                            onPressed: _openGallery,
-                          ),
-                        ),
-
-                        // Botão de captura grande com a cor e ícone do modo selecionado
-                        GestureDetector(
-                          onTap:
-                              (_isCameraInitialized && !_isProcessingCapture)
-                                  ? _captureImage
-                                  : null,
-                          child: Container(
-                            width: 85,
-                            height: 85,
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 3,
-                              ),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 75,
-                                height: 75,
-                                decoration: BoxDecoration(
-                                  color: _getModeColor(_selectedScanMode),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: _isProcessingCapture
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(22),
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 3,
-                                        ),
-                                      )
-                                    : Icon(
-                                        _getModeIcon(_selectedScanMode),
-                                        color: Colors.white,
-                                        size: 30,
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Flash button (right) - sem contorno
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: _flashEnabled
-                                ? Colors.yellow.withOpacity(0.3)
-                                : Colors.black.withOpacity(0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              _flashEnabled ? Icons.flash_on : Icons.flash_off,
-                              color: Colors.white,
-                            ),
-                            onPressed:
-                                _isCameraInitialized ? _toggleFlash : null,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    SizedBox(height: 10),
-                  ],
-                ),
-              ),
-            ),
+            SizedBox(width: 8),
           ],
-        ],
-      ),
+        ),
+        body: Stack(
+          children: [
+            // Verifica se temos um erro de câmera para mostrar a tela de erro
+            if (_isCameraError)
+              _buildErrorScreen(context)
+            else if (_isCameraInitialized &&
+                _cameraController != null &&
+                _cameraController!.value.isInitialized)
+              // Visualização da câmera
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                child: CameraPreview(_cameraController!),
+              )
+            else
+              // Tela de carregamento melhorada
+              _buildLoadingScreen(context),
+
+            // Só mostra o recorte e os controles se não houver erro de câmera
+            if (!_isCameraError) ...[
+              // Overlay translúcido com recorte retangular
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: OverlayPainter(
+                    cutOutRect: cutOutRect,
+                    borderRadius: 12.0,
+                  ),
+                ),
+              ),
+
+              // Mensagem informativa acima do retângulo
+              Positioned(
+                top: cutOutRect.top - 85,
+                left: padding,
+                right: padding,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _getModeHintText(),
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+
+              // Bottom controls overlay
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).padding.bottom + 10,
+                      top: 10,
+                      left: 0,
+                      right: 0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Scan mode options com PageView para centralização automática
+                      Container(
+                        height:
+                            50, // Reduzido para acomodar menos padding vertical
+                        width: double.infinity,
+                        child: PageView.builder(
+                          controller: _pageController,
+                          itemCount: _scanModes.length,
+                          onPageChanged: _onPageChanged,
+                          physics: BouncingScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            final mode = _scanModes[index];
+                            return Center(
+                              child: _buildScanOptionTextOnly(
+                                mode['id'],
+                                context.tr.translate(mode['id']),
+                                mode['color'],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Capture, gallery and flash buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Gallery button (left) - sem contorno
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: Icon(Icons.photo_library_outlined,
+                                  color: Colors.white),
+                              onPressed: _openGallery,
+                            ),
+                          ),
+
+                          // Botão de captura grande com a cor e ícone do modo selecionado
+                          GestureDetector(
+                            onTap:
+                                (_isCameraInitialized && !_isProcessingCapture)
+                                    ? _captureImage
+                                    : null,
+                            child: Container(
+                              width: 85,
+                              height: 85,
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 3,
+                                ),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 75,
+                                  height: 75,
+                                  decoration: BoxDecoration(
+                                    color: _getModeColor(_selectedScanMode),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: _isProcessingCapture
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(22),
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 3,
+                                          ),
+                                        )
+                                      : Icon(
+                                          _getModeIcon(_selectedScanMode),
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Flash button (right) - sem contorno
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: _flashEnabled
+                                  ? Colors.yellow.withOpacity(0.3)
+                                  : Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                _flashEnabled
+                                    ? Icons.flash_on
+                                    : Icons.flash_off,
+                                color: Colors.white,
+                              ),
+                              onPressed:
+                                  _isCameraInitialized ? _toggleFlash : null,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -1075,8 +1077,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Text(
-                context.tr.translate('camera_error_message') ??
-                    'Não foi possível inicializar a câmera',
+                context.tr.translate('camera_error_message'),
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -1089,10 +1090,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
               padding: const EdgeInsets.symmetric(horizontal: 32.0),
               child: Text(
                 _isInitializing
-                    ? (context.tr.translate('camera_timeout_description') ??
-                        'A câmera está demorando muito para responder. Você pode tentar novamente ou usar a galeria.')
-                    : (context.tr.translate('camera_error_description') ??
-                        'Verifique as permissões de câmera do aplicativo ou tente novamente'),
+                    ? context.tr.translate('camera_timeout_description')
+                    : context.tr.translate('camera_error_description'),
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
@@ -1113,7 +1112,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
               },
               icon: Icon(Icons.refresh),
               label: Text(
-                context.tr.translate('try_again') ?? 'Tentar novamente',
+                context.tr.translate('try_again'),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
@@ -1126,7 +1125,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             TextButton(
               onPressed: _openGallery,
               child: Text(
-                context.tr.translate('use_gallery') ?? 'Usar galeria',
+                context.tr.translate('use_gallery'),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -1165,8 +1164,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32.0),
                 child: Text(
-                  context.tr.translate('camera_initializing') ??
-                      'Inicializando câmera...',
+                  context.tr.translate('camera_initializing'),
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -1179,8 +1177,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32.0),
                   child: Text(
-                    context.tr.translate('camera_wait_message') ??
-                        'Isso pode levar alguns segundos',
+                    context.tr.translate('camera_wait_message'),
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
@@ -1193,8 +1190,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                   onPressed: _openGallery,
                   icon: Icon(Icons.photo_library, color: Colors.white70),
                   label: Text(
-                    context.tr.translate('use_gallery_instead') ??
-                        'Usar galeria em vez disso',
+                    context.tr.translate('use_gallery_instead'),
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
@@ -1249,7 +1245,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         width: 110, // Largura reduzida para aproximar ainda mais
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+          color:
+              isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
         ),
         child: Text(
           label,
@@ -1314,11 +1311,9 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   String _getModeHintText() {
     switch (_selectedScanMode) {
       case 'ai_macros':
-        return context.tr.translate('ai_macros_hint') ??
-            'Os alimentos devem estar bem iluminados e dentro do enquadramento';
+        return context.tr.translate('ai_macros_hint');
       case 'barcode':
-        return context.tr.translate('barcode_hint') ??
-            'Escaneie o código de barras do produto';
+        return context.tr.translate('barcode_hint');
       default:
         return '';
     }
@@ -1327,30 +1322,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   String _getTranslateHintShort(BuildContext context) {
     // Método para garantir que sempre teremos um texto para "translate_hint_short"
     // baseado no idioma atual
-    String? translatedText = context.tr.translate('translate_hint_short');
-
-    if (translatedText != null && translatedText != 'translate_hint_short') {
-      return translatedText;
-    }
-
-    // Fallback para idiomas específicos se a tradução não for encontrada
-    Locale currentLocale = Localizations.localeOf(context);
-    String languageCode = currentLocale.languageCode;
-
-    switch (languageCode) {
-      case 'pt':
-        return 'Traduzir para';
-      case 'es':
-        return 'Traducir a';
-      case 'fr':
-        return 'Traduire en';
-      case 'de':
-        return 'Übersetzen in';
-      case 'it':
-        return 'Traduci in';
-      default:
-        return 'Translate to';
-    }
+    return context.tr.translate('translate_hint_short');
   }
 
   // Verificação periódica do estado da câmera
@@ -1377,8 +1349,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         // Exibir mensagem
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.tr.translate('camera_stuck') ??
-                'A câmera parece estar presa. Por favor, tente novamente.'),
+            content: Text(context.tr.translate('camera_stuck')),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),

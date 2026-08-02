@@ -6,8 +6,8 @@ import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
-import '../widgets/response_display.dart';
 import '../widgets/streaming_response_display.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class DocumentSummaryScreen extends StatefulWidget {
   const DocumentSummaryScreen({Key? key}) : super(key: key);
@@ -32,21 +32,21 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
   final List<Map<String, dynamic>> _summaryLengthOptions = [
     {
       'value': 'short',
-      'label': 'Short',
+      'labelKey': 'short_summary',
       'icon': Icons.short_text,
-      'description': 'Concise 1-2 paragraph summary',
+      'descriptionKey': 'short_summary_description',
     },
     {
       'value': 'medium',
-      'label': 'Medium',
+      'labelKey': 'medium_summary',
       'icon': Icons.article,
-      'description': 'Comprehensive overview with key points',
+      'descriptionKey': 'medium_summary_description',
     },
     {
       'value': 'detailed',
-      'label': 'Detailed',
+      'labelKey': 'detailed_summary',
       'icon': Icons.description,
-      'description': 'In-depth summary with section breakdowns',
+      'descriptionKey': 'detailed_summary_description',
     },
   ];
 
@@ -78,18 +78,21 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
         setState(() {
           _fileName = file.name;
           // Set some placeholder text for demo purposes
-          _textController.text =
-              'Text content extracted from ${file.name}\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl.';
+          _textController.text = context.tr
+              .translate('document_extracted_text_placeholder')
+              .replaceAll('{file}', file.name);
         });
       }
     } catch (e) {
-      _showErrorSnackBar('Error picking file: $e');
+      _showErrorSnackBar(context.tr.translate('document_pick_error'));
     }
   }
 
   Future<void> _summarizeDocument() async {
     if (_textController.text.isEmpty) {
-      _showErrorSnackBar('Please enter text or upload a document to summarize');
+      _showErrorSnackBar(
+        context.tr.translate('enter_text_or_upload_document'),
+      );
       return;
     }
 
@@ -105,6 +108,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
           .summarizeDocumentStream(
         _textController.text,
         summaryLength: _selectedSummaryLength,
+        languageCode: Localizations.localeOf(context).toString(),
       )
           .listen(
         (chunk) {
@@ -123,8 +127,11 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
             // Salvar no histórico
             final studyItem = StudyItem(
               id: _currentItemId,
-              title:
-                  'Document Summary${_fileName != null ? ': $_fileName' : ''}',
+              title: _fileName == null
+                  ? context.tr.translate('document_summary')
+                  : context.tr
+                      .translate('document_summary_file_title')
+                      .replaceAll('{file}', _fileName!),
               content: _textController.text,
               response: _response,
               type: 'summary',
@@ -144,7 +151,9 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
               _isLoading = false;
               _isError = true;
             });
-            _showErrorSnackBar('Error summarizing document: $error');
+            _showErrorSnackBar(
+              context.tr.translate('document_summary_error'),
+            );
           }
         },
       );
@@ -153,7 +162,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
         _isLoading = false;
         _isError = true;
       });
-      _showErrorSnackBar('Error summarizing document: $e');
+      _showErrorSnackBar(context.tr.translate('document_summary_error'));
     }
   }
 
@@ -173,7 +182,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
       appBar: AppBar(
         backgroundColor:
             isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
-        title: Text('Document Summarization'),
+        title: Text(context.tr.translate('document_summary')),
         centerTitle: true,
         actions: [
           IconButton(
@@ -186,11 +195,15 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                   _fileName = null;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Text pasted from clipboard')),
+                  SnackBar(
+                    content: Text(
+                      context.tr.translate('text_pasted_from_clipboard'),
+                    ),
+                  ),
                 );
               }
             },
-            tooltip: 'Paste from clipboard',
+            tooltip: context.tr.translate('paste_from_clipboard'),
           ),
         ],
       ),
@@ -208,14 +221,14 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                 SizedBox(height: 24),
 
                 Text(
-                  'Document Text',
+                  context.tr.translate('document_text'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
                 TextField(
                   controller: _textController,
                   decoration: InputDecoration(
-                    hintText: 'Enter text to summarize or upload a document...',
+                    hintText: context.tr.translate('document_text_hint'),
                     border: OutlineInputBorder(),
                     filled: true,
                     fillColor:
@@ -232,7 +245,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                 SizedBox(height: 24),
 
                 Text(
-                  'Summary Length',
+                  context.tr.translate('summary_length'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
@@ -248,7 +261,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                         ? _summarizeDocument
                         : null,
                     icon: Icon(Icons.auto_awesome),
-                    label: Text('Summarize Document'),
+                    label: Text(context.tr.translate('summarize_document')),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -262,7 +275,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
 
                 // Response section
                 Text(
-                  'Summary',
+                  context.tr.translate('summary'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
@@ -308,7 +321,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Upload Document',
+                      context.tr.translate('upload_document'),
                       style: AppTheme.bodyMedium.copyWith(
                         fontWeight: FontWeight.bold,
                         color: isDarkMode
@@ -318,7 +331,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Supported formats: TXT, PDF, DOC, DOCX',
+                      context.tr.translate('document_supported_formats'),
                       style: AppTheme.captionText.copyWith(
                         color: isDarkMode
                             ? AppTheme.darkTextColor.withOpacity(0.7)
@@ -376,7 +389,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
               : OutlinedButton.icon(
                   onPressed: _pickDocument,
                   icon: Icon(Icons.attach_file),
-                  label: Text('Choose File'),
+                  label: Text(context.tr.translate('choose_file')),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -431,7 +444,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    option['label'],
+                    context.tr.translate(option['labelKey'] as String),
                     style: AppTheme.bodySmall.copyWith(
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
@@ -444,7 +457,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    option['description'],
+                    context.tr.translate(option['descriptionKey'] as String),
                     style: AppTheme.captionText.copyWith(
                       color: isDarkMode
                           ? AppTheme.darkTextColor.withOpacity(0.7)

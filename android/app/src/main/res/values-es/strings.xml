@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ad_attribution">Anuncio</string>
+    <string name="health_permissions_privacy_title">Política de privacidad</string>
+    <string name="health_permissions_privacy_body">Nutro AI usa los datos de Health Connect únicamente para mostrar dentro de la aplicación las calorías quemadas, los pasos y los ejercicios que ayudan a controlar tu nutrición. Estos datos no se venden. Puedes permitir, denegar o retirar el acceso en cualquier momento desde los ajustes de Health Connect.</string>
+</resources>

@@ -38,7 +38,7 @@ This file guides coding agents working in this repository.
 - Rewarded ad credit grant: `POST /credits/rewarded-ad`
   - Requires auth token, credits the authenticated user with the server-side rewarded ad amount, and returns the updated credit balance.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
-  - Diet generation model: `google/gemini-3-flash-preview` for My Diet generation and the backend `diet` alias.
+  - Global default text model: `deepseek/deepseek-v4-flash-0731` for server fallbacks, text aliases, and My Diet generation.
   - DeepSeek models (`deepseek/...`) use OpenRouter's default provider routing unless a provider is explicitly supplied by the caller.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.

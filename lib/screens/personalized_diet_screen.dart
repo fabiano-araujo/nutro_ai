@@ -21,10 +21,12 @@ import '../screens/nutrition_goals_wizard_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../i18n/app_localizations.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../widgets/diet_style_message_state.dart';
 import '../widgets/food_icon.dart';
 import '../widgets/header_streak_badge.dart';
 import '../widgets/reward_ad_dialog.dart';
+import '../utils/meal_type_localization.dart';
 
 class _ReplacementQuickOption {
   const _ReplacementQuickOption({
@@ -645,7 +647,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                 IconButton(
                   icon: Icon(Icons.menu, color: textColor),
                   onPressed: widget.onOpenDrawer,
-                  tooltip: 'Menu',
+                  tooltip: context.tr.translate('menu'),
                 )
               else
                 const SizedBox(width: 48),
@@ -656,7 +658,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                   if (widget.onSearchPressed != null)
                     IconButton(
                       icon: Icon(Icons.search, color: textColor),
-                      tooltip: 'Pesquisar alimentos',
+                      tooltip: context.tr.translate('search_food'),
                       onPressed: widget.onSearchPressed,
                     ),
                 ],
@@ -755,7 +757,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     final userId = authService.currentUser?.id.toString() ?? '';
 
     // Get meal types from provider
-    final mealTypes = mealTypesProvider.mealTypes;
+    final l10n = AppLocalizations.of(context);
+    final mealTypes = _localizedMealTypes(mealTypesProvider.mealTypes, l10n);
     print(
         '🍽️ PersonalizedDietScreen: Gerando dieta com ${mealTypes.length} refeições');
     print(
@@ -771,8 +774,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     );
 
     if (!mounted) return;
-
-    final l10n = AppLocalizations.of(context);
 
     if (dietProvider.error != null) {
       // Check if error is premium required
@@ -1417,7 +1418,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       dietProvider.selectedDate,
       mealType,
       nutritionGoals,
-      mealTypes: mealTypesProvider.mealTypes,
+      mealTypes: _localizedMealTypes(mealTypesProvider.mealTypes, l10n),
       userId: userId,
       languageCode: languageCode,
       replacementNotes: effectiveReplacementNotes,
@@ -1502,7 +1503,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     await dietProvider.replaceAllMeals(
       dietProvider.selectedDate,
       nutritionGoals,
-      mealTypes: mealTypesProvider.mealTypes,
+      mealTypes: _localizedMealTypes(mealTypesProvider.mealTypes, l10n),
       userId: userId,
       languageCode: languageCode,
       replacementNotes: effectiveReplacementNotes,
@@ -1666,8 +1667,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
   }
 
   String _formatRepeatDateLabel(DateTime date) {
-    final localeName = Localizations.localeOf(context).toString();
-    final formatted = DateFormat('EEE, dd/MM', localeName).format(date);
+    final localeName = Localizations.localeOf(context).toLanguageTag();
+    final formatted = DateFormat.MMMEd(localeName).format(date);
     return toBeginningOfSentenceCase(formatted) ?? formatted;
   }
 
@@ -1709,9 +1710,30 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       case 'dinner':
       case 'snack':
         return l10n.translate(meal.type);
+      case 'morning_snack':
+        return l10n.translate('notification_meal_name_morning_snack');
+      case 'afternoon_snack':
+        return l10n.translate('notification_meal_name_afternoon_snack');
+      case 'supper':
+        return l10n.translate('notification_meal_name_supper');
+      case 'free_meal':
+        return l10n.translate('free_meal');
       default:
         return meal.name;
     }
+  }
+
+  List<MealTypeConfig> _localizedMealTypes(
+    List<MealTypeConfig> mealTypes,
+    AppLocalizations localizations,
+  ) {
+    return mealTypes
+        .map(
+          (mealType) => mealType.copyWith(
+            name: localizedMealTypeName(localizations, mealType),
+          ),
+        )
+        .toList(growable: false);
   }
 
   Food _convertPlannedFoodToFood(PlannedFood plannedFood) {
@@ -2232,7 +2254,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
         rawError == l10n.translate('diet_generation_error')) {
       return l10n.translate('try_again_or_check_connection');
     }
-    return _extractReadableDietError(rawError);
+    return l10n.translate('try_again_or_check_connection');
   }
 
   Future<void> _shareDietPlan(DietPlan dietPlan) async {
@@ -2250,7 +2272,9 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
         : l10n.translate('professional_daily_diet_plan');
     final periodLabel = isWeeklyMode
         ? l10n.translate('weekly_diet')
-        : DateFormat('dd/MM/yyyy').format(dietProvider.selectedDate);
+        : DateFormat.yMd(
+            Localizations.localeOf(context).toLanguageTag(),
+          ).format(dietProvider.selectedDate);
     final targetNutrition = dietPlan.generatedForNutrition ??
         DailyNutrition(
           calories: goalsProvider.caloriesGoal,
@@ -2276,6 +2300,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       portion: l10n.translate('diet_pdf_portion'),
       nutrition: l10n.translate('diet_pdf_nutrition'),
       page: l10n.translate('diet_pdf_page'),
+      localeName: Localizations.localeOf(context).toLanguageTag(),
       tagline: l10n.translate('diet_pdf_tagline'),
       nutritionSummary: l10n.translate('diet_pdf_nutrition_summary'),
       macroDistribution: l10n.translate('diet_pdf_macro_distribution'),
@@ -2407,6 +2432,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
   Widget _buildMacroCards(DailyNutrition nutrition, bool isDarkMode) {
     final secondaryColor =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: AppTheme.profileCardDecoration(isDarkMode),
@@ -2428,7 +2454,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                 child: _buildMacroStat(
                     MacroTheme.proteinIcon,
                     '${nutrition.protein.toStringAsFixed(0)}g',
-                    'Proteína',
+                    l10n.translate('protein'),
                     MacroTheme.proteinColor,
                     secondaryColor),
               ),
@@ -2437,7 +2463,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                 child: _buildMacroStat(
                     MacroTheme.carbsIcon,
                     '${nutrition.carbs.toStringAsFixed(0)}g',
-                    'Carboidrato',
+                    l10n.translate('carbohydrates'),
                     MacroTheme.carbsColor,
                     secondaryColor),
               ),
@@ -2446,7 +2472,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                 child: _buildMacroStat(
                     MacroTheme.fatIcon,
                     '${nutrition.fat.toStringAsFixed(0)}g',
-                    'Gordura',
+                    l10n.translate('fat'),
                     MacroTheme.fatColor,
                     secondaryColor),
               ),
@@ -2504,7 +2530,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
   Widget _buildMacroCardCompact({
     required IconData icon,
     required String value,
-    required String unit,
+    String? unit,
     required Color color,
     required bool isDarkMode,
     bool isSmall = false,
@@ -2531,13 +2557,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
             color: color,
           ),
         ),
-        Text(
-          unit,
-          style: GoogleFonts.inter(
-            fontSize: isSmall ? 9.5 : 10,
-            color: secondaryColor,
+        if (unit != null && unit.isNotEmpty)
+          Text(
+            unit,
+            style: GoogleFonts.inter(
+              fontSize: isSmall ? 9.5 : 10,
+              color: secondaryColor,
+            ),
           ),
-        ),
       ],
     );
   }
@@ -2596,6 +2623,13 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     final hasFoods = meal.foods.isNotEmpty;
     final isExpanded = _expandedMeals.contains(meal.type);
     final l10n = AppLocalizations.of(context);
+    final itemCountLabel = l10n
+        .translate(
+          meal.foods.length == 1
+              ? 'meal_item_count_one'
+              : 'meal_item_count_other',
+        )
+        .replaceAll('{count}', meal.foods.length.toString());
     final cardBorderRadius = BorderRadius.circular(24);
 
     return Container(
@@ -2633,8 +2667,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                           const SizedBox(height: 2),
                           Text(
                             hasFoods
-                                ? '${meal.foods.length} ${meal.foods.length == 1 ? 'item' : 'itens'} • ${meal.mealTotals.calories.toStringAsFixed(0)} kcal'
-                                : meal.time,
+                                ? '$itemCountLabel • ${meal.mealTotals.calories.toStringAsFixed(0)} kcal'
+                                : localizedMealTime(context, meal.time),
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: secondaryTextColor,
@@ -2687,6 +2721,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
 
   Widget _buildExpandedFoodList(PlannedMeal meal, bool isDarkMode,
       Color textColor, Color secondaryTextColor) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Container(
@@ -2728,8 +2763,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
               _buildMacroDivider(isDarkMode),
               _buildMacroCardCompact(
                 icon: MacroTheme.proteinIcon,
-                value: meal.mealTotals.protein.toStringAsFixed(1),
-                unit: 'g prot',
+                value: l10n.translate('protein_grams_short').replaceAll(
+                      '{value}',
+                      meal.mealTotals.protein.toStringAsFixed(1),
+                    ),
                 color: MacroTheme.proteinColor,
                 isDarkMode: isDarkMode,
                 isSmall: true,
@@ -2737,8 +2774,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
               _buildMacroDivider(isDarkMode),
               _buildMacroCardCompact(
                 icon: MacroTheme.carbsIcon,
-                value: meal.mealTotals.carbs.toStringAsFixed(1),
-                unit: 'g carb',
+                value: l10n.translate('carbs_grams_short').replaceAll(
+                      '{value}',
+                      meal.mealTotals.carbs.toStringAsFixed(1),
+                    ),
                 color: MacroTheme.carbsColor,
                 isDarkMode: isDarkMode,
                 isSmall: true,
@@ -2746,8 +2785,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
               _buildMacroDivider(isDarkMode),
               _buildMacroCardCompact(
                 icon: MacroTheme.fatIcon,
-                value: meal.mealTotals.fat.toStringAsFixed(1),
-                unit: 'g gord',
+                value: l10n.translate('fat_grams_short').replaceAll(
+                      '{value}',
+                      meal.mealTotals.fat.toStringAsFixed(1),
+                    ),
                 color: MacroTheme.fatColor,
                 isDarkMode: isDarkMode,
                 isSmall: true,
@@ -2870,7 +2911,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(
-              '${meal.time} • ${meal.mealTotals.calories} kcal',
+              '${localizedMealTime(context, meal.time)} • ${meal.mealTotals.calories} kcal',
               style: GoogleFonts.inter(
                 color: secondaryTextColor.withValues(alpha: 0.7),
                 fontSize: 13,
@@ -2936,8 +2977,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                       _buildMacroDivider(isDarkMode),
                       _buildMacroCardCompact(
                         icon: MacroTheme.proteinIcon,
-                        value: meal.mealTotals.protein.toStringAsFixed(1),
-                        unit: 'g prot',
+                        value: l10n.translate('protein_grams_short').replaceAll(
+                              '{value}',
+                              meal.mealTotals.protein.toStringAsFixed(1),
+                            ),
                         color: MacroTheme.proteinColor,
                         isDarkMode: isDarkMode,
                         isSmall: true,
@@ -2945,8 +2988,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                       _buildMacroDivider(isDarkMode),
                       _buildMacroCardCompact(
                         icon: MacroTheme.carbsIcon,
-                        value: meal.mealTotals.carbs.toStringAsFixed(1),
-                        unit: 'g carb',
+                        value: l10n.translate('carbs_grams_short').replaceAll(
+                              '{value}',
+                              meal.mealTotals.carbs.toStringAsFixed(1),
+                            ),
                         color: MacroTheme.carbsColor,
                         isDarkMode: isDarkMode,
                         isSmall: true,
@@ -2954,8 +2999,10 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                       _buildMacroDivider(isDarkMode),
                       _buildMacroCardCompact(
                         icon: MacroTheme.fatIcon,
-                        value: meal.mealTotals.fat.toStringAsFixed(1),
-                        unit: 'g gord',
+                        value: l10n.translate('fat_grams_short').replaceAll(
+                              '{value}',
+                              meal.mealTotals.fat.toStringAsFixed(1),
+                            ),
                         color: MacroTheme.fatColor,
                         isDarkMode: isDarkMode,
                         isSmall: true,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import 'dart:convert';
@@ -9,15 +8,8 @@ import '../services/event_service.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
-import '../widgets/credit_indicator.dart';
 import '../widgets/state_animation.dart';
-import 'settings_screen.dart';
 import 'nutrition_assistant_screen.dart';
-import 'document_summary_screen.dart';
-import 'text_enhancement_screen.dart';
-import 'code_enhancer_screen.dart';
-import 'document_scan_screen.dart';
-import 'camera_scan_screen.dart';
 
 class HistoryWidget extends StatefulWidget {
   const HistoryWidget({Key? key}) : super(key: key);
@@ -331,13 +323,17 @@ class _HistoryWidgetState extends State<HistoryWidget>
   }
 
   Widget _buildItemList(List<StudyItem> items, {required bool isHistoryList}) {
-    final grouped = <String, List<StudyItem>>{};
+    final grouped = <DateTime, List<StudyItem>>{};
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     // Group items by date
     for (var item in items) {
-      final date = DateFormat('dd/MM/yyyy').format(item.timestamp);
+      final date = DateTime(
+        item.timestamp.year,
+        item.timestamp.month,
+        item.timestamp.day,
+      );
       if (!grouped.containsKey(date)) {
         grouped[date] = [];
       }
@@ -345,12 +341,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
     }
 
     // Sort dates in descending order
-    final sortedDates = grouped.keys.toList()
-      ..sort((a, b) {
-        final dateA = DateFormat('dd/MM/yyyy').parse(a);
-        final dateB = DateFormat('dd/MM/yyyy').parse(b);
-        return dateB.compareTo(dateA);
-      });
+    final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(vertical: 8),
@@ -452,54 +443,44 @@ class _HistoryWidgetState extends State<HistoryWidget>
     final colorScheme = theme.colorScheme;
     IconData iconData;
     Color iconColor;
-    String typeLabel = '';
 
     // Definir ícone, cor e rótulo com base no tipo
     switch (item.type) {
       case 'scan':
         iconData = Icons.document_scanner_outlined;
         iconColor = colorScheme.primary;
-        typeLabel = 'Scanner';
         break;
       case 'enhancement':
         iconData = Icons.edit_note_outlined;
         iconColor = colorScheme.secondary;
-        typeLabel = 'Texto';
         break;
       case 'summary':
         iconData = Icons.description_outlined;
         iconColor = colorScheme.tertiary;
-        typeLabel = 'Resumo';
         break;
       case 'tutor':
         iconData = Icons.school_outlined;
         iconColor = colorScheme.primaryContainer;
-        typeLabel = context.tr.translate('ai_tutor');
         break;
       case 'conversation':
         iconData = Icons.chat_bubble_outline;
         iconColor = colorScheme.secondaryContainer;
-        typeLabel = 'Conversa livre';
         break;
       case 'youtube':
         iconData = Icons.play_circle_outline;
         iconColor = Colors.red;
-        typeLabel = 'YouTube';
         break;
       case 'code':
         iconData = Icons.code;
         iconColor = colorScheme.tertiary;
-        typeLabel = 'Código';
         break;
       case 'camera':
         iconData = Icons.camera_alt_outlined;
         iconColor = colorScheme.primary;
-        typeLabel = 'Câmera';
         break;
       default:
         iconData = Icons.lightbulb_outline;
         iconColor = colorScheme.onSurfaceVariant;
-        typeLabel = 'Outro';
     }
 
     // Check if this item is in favorites
@@ -613,7 +594,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
 
               if (hasConversationHistory) {
                 print('📝 Histórico de conversa encontrado no toolData:');
-                if (toolDataMap!['conversationHistory'] is Map &&
+                if (toolDataMap['conversationHistory'] is Map &&
                     toolDataMap['conversationHistory']
                         .containsKey('messages')) {
                   List<dynamic>? messagesList =
@@ -761,7 +742,9 @@ class _HistoryWidgetState extends State<HistoryWidget>
               children: [
                 // Hora acima do ícone de favorito
                 Text(
-                  DateFormat('HH:mm').format(item.timestamp),
+                  DateFormat.jm(
+                    Localizations.localeOf(context).toLanguageTag(),
+                  ).format(item.timestamp),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant.withOpacity(0.7),
                   ),
@@ -812,57 +795,57 @@ class _HistoryWidgetState extends State<HistoryWidget>
 
     switch (item.type) {
       case 'tutor':
-        actionButtonText = 'Continuar conversa';
+        actionButtonText = context.tr.translate('continue_conversation');
         actionIcon = Icons.school_outlined;
         typeLabel = context.tr.translate('ai_tutor');
         typeColor = colorScheme.primaryContainer;
         break;
       case 'conversation':
-        actionButtonText = 'Continuar conversa';
+        actionButtonText = context.tr.translate('continue_conversation');
         actionIcon = Icons.chat_bubble_outline;
-        typeLabel = 'Chat IA';
+        typeLabel = context.tr.translate('ai_chat');
         typeColor = colorScheme.secondaryContainer;
         break;
       case 'summary':
-        actionButtonText = 'Abrir resumidor';
+        actionButtonText = context.tr.translate('open_summarizer');
         actionIcon = Icons.description_outlined;
-        typeLabel = 'Resumo de documento';
+        typeLabel = context.tr.translate('document_summary');
         typeColor = colorScheme.tertiary;
         break;
       case 'youtube':
-        actionButtonText = 'Abrir YouTube';
+        actionButtonText = context.tr.translate('open_youtube');
         actionIcon = Icons.play_circle_outline;
-        typeLabel = 'Resumo de YouTube';
+        typeLabel = context.tr.translate('youtube_summary');
         typeColor = Colors.red;
         break;
       case 'enhancement':
-        actionButtonText = 'Abrir melhorador';
+        actionButtonText = context.tr.translate('open_text_enhancer');
         actionIcon = Icons.edit_note_outlined;
-        typeLabel = 'Melhoria de texto';
+        typeLabel = context.tr.translate('text_enhancement');
         typeColor = colorScheme.secondary;
         break;
       case 'code':
-        actionButtonText = 'Abrir editor de código';
+        actionButtonText = context.tr.translate('open_code_editor');
         actionIcon = Icons.code;
-        typeLabel = 'Assistente de código';
+        typeLabel = context.tr.translate('code_enhancer');
         typeColor = colorScheme.tertiary;
         break;
       case 'scan':
-        actionButtonText = 'Abrir scanner';
+        actionButtonText = context.tr.translate('open_scanner');
         actionIcon = Icons.document_scanner_outlined;
-        typeLabel = 'Scanner de documento';
+        typeLabel = context.tr.translate('document_scan');
         typeColor = colorScheme.primary;
         break;
       case 'camera':
-        actionButtonText = 'Abrir câmera';
+        actionButtonText = context.tr.translate('open_camera');
         actionIcon = Icons.camera_alt_outlined;
-        typeLabel = 'Scanner por câmera';
+        typeLabel = context.tr.translate('camera_scan');
         typeColor = colorScheme.primary;
         break;
       default:
-        actionButtonText = 'Abrir ferramenta';
+        actionButtonText = context.tr.translate('open_tool');
         actionIcon = Icons.open_in_new;
-        typeLabel = 'Outro';
+        typeLabel = context.tr.translate('other');
         typeColor = colorScheme.onSurfaceVariant;
     }
 
@@ -1030,7 +1013,8 @@ class _HistoryWidgetState extends State<HistoryWidget>
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => NutritionAssistantScreen(
+                                  builder: (context) =>
+                                      NutritionAssistantScreen(
                                     conversationId: item.id,
                                   ),
                                 ),
@@ -1095,7 +1079,7 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 if (hasConversationHistory) {
                                   print(
                                       '📝 HistoryScreen: Encontrado conversationHistory no toolData');
-                                  if (toolDataMap!['conversationHistory']
+                                  if (toolDataMap['conversationHistory']
                                           is Map &&
                                       toolDataMap['conversationHistory']
                                           .containsKey('messages')) {
@@ -1121,7 +1105,8 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => NutritionAssistantScreen(
+                                    builder: (context) =>
+                                        NutritionAssistantScreen(
                                       conversationId:
                                           conversationIdFromToolData, // Usar o conversationId se disponível
                                       initialPrompt:
@@ -1159,7 +1144,8 @@ class _HistoryWidgetState extends State<HistoryWidget>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => NutritionAssistantScreen(
+                                    builder: (context) =>
+                                        NutritionAssistantScreen(
                                       initialPrompt: fallbackJsonData,
                                     ),
                                   ),
@@ -1187,18 +1173,19 @@ class _HistoryWidgetState extends State<HistoryWidget>
     );
   }
 
-  String _formatDate(String date) {
-    final DateTime parsedDate = DateFormat('dd/MM/yyyy').parse(date);
+  String _formatDate(DateTime date) {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
     final DateTime yesterday = today.subtract(Duration(days: 1));
 
-    if (parsedDate == today) {
+    if (date == today) {
       return context.tr.translate('today');
-    } else if (parsedDate == yesterday) {
+    } else if (date == yesterday) {
       return context.tr.translate('yesterday');
     } else {
-      return date;
+      return DateFormat.yMd(
+        Localizations.localeOf(context).toLanguageTag(),
+      ).format(date);
     }
   }
 
@@ -1206,19 +1193,19 @@ class _HistoryWidgetState extends State<HistoryWidget>
   String _getToolNameFromType(String type) {
     switch (type) {
       case 'summary':
-        return 'Document Summary';
+        return context.tr.translate('document_summary');
       case 'youtube':
-        return 'YouTube Summary';
+        return context.tr.translate('youtube_summary');
       case 'enhancement':
-        return 'Text Enhancement';
+        return context.tr.translate('text_enhancement');
       case 'code':
-        return 'Code Assistant';
+        return context.tr.translate('code_enhancer');
       case 'scan':
-        return 'Document Scan';
+        return context.tr.translate('document_scan');
       case 'camera':
-        return 'Camera Scan';
+        return context.tr.translate('camera_scan');
       default:
-        return 'Tool';
+        return context.tr.translate('tool');
     }
   }
 
@@ -1226,17 +1213,17 @@ class _HistoryWidgetState extends State<HistoryWidget>
   String _getToolTabFromType(String type) {
     switch (type) {
       case 'summary':
-        return 'Resumo';
+        return context.tr.translate('summary');
       case 'youtube':
-        return 'Análise de Vídeo';
+        return context.tr.translate('video_analysis');
       case 'enhancement':
-        return 'Melhoria de Texto';
+        return context.tr.translate('text_enhancement');
       case 'code':
-        return 'Código';
+        return context.tr.translate('code_enhancer');
       case 'scan':
-        return 'Digitalização';
+        return context.tr.translate('scan');
       case 'camera':
-        return 'Câmera';
+        return context.tr.translate('camera');
       default:
         return '';
     }

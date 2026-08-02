@@ -1167,7 +1167,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return context.tr
-        .translate('notifications_enabled_count')
+        .translate(
+          enabledCount == 1
+              ? 'notifications_enabled_count_one'
+              : 'notifications_enabled_count_other',
+        )
         .replaceAll('{count}', enabledCount.toString());
   }
 
@@ -1371,8 +1375,9 @@ class _DietAiModelDialogState extends State<_DietAiModelDialog> {
                 ),
                 title: Text(option['name']!),
                 subtitle: Text(
-                  widget.dietProvider.getDietGenerationModelDescription(
-                    modelId,
+                  l10n.translate(
+                    widget.dietProvider
+                        .getDietGenerationModelDescriptionKey(modelId),
                   ),
                   style: theme.textTheme.bodySmall,
                 ),

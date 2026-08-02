@@ -5,6 +5,7 @@ import '../services/storage_service.dart';
 import '../models/study_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/response_display.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class TextEnhancementScreen extends StatefulWidget {
   const TextEnhancementScreen({Key? key}) : super(key: key);
@@ -27,39 +28,39 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
   final List<Map<String, dynamic>> _enhancementOptions = [
     {
       'value': 'paraphrase',
-      'label': 'Paraphrase',
+      'labelKey': 'paraphrase',
       'icon': Icons.autorenew,
-      'description': 'Rewrite the text while keeping the original meaning',
+      'descriptionKey': 'paraphrase_description',
       'color': Color(0xFF4A6FFF),
     },
     {
       'value': 'simplify',
-      'label': 'Simplify',
+      'labelKey': 'simplify',
       'icon': Icons.new_releases,
-      'description': 'Make the text easier to understand',
+      'descriptionKey': 'simplify_description',
       'color': Color(0xFF2DC96B),
     },
     {
       'value': 'expand',
-      'label': 'Expand',
+      'labelKey': 'expand',
       'icon': Icons.add_circle_outline,
-      'description': 'Add more details and explanations',
+      'descriptionKey': 'expand_description',
       'color': Color(0xFFFF7A50),
     },
     {
       'value': 'academicTone',
-      'label': 'Academic Tone',
+      'labelKey': 'academic_tone',
       'icon': Icons.school,
-      'description': 'Transform into formal academic language',
+      'descriptionKey': 'academic_tone_description',
       'color': Color(0xFF5E60CE),
     },
   ];
 
   final List<Map<String, dynamic>> _wordCountOptions = [
-    {'label': 'Original Length', 'value': null},
-    {'label': 'Short (~100 words)', 'value': 100},
-    {'label': 'Medium (~250 words)', 'value': 250},
-    {'label': 'Long (~500 words)', 'value': 500},
+    {'labelKey': 'original_length', 'value': null},
+    {'labelKey': 'short_approximately_100_words', 'value': 100},
+    {'labelKey': 'medium_approximately_250_words', 'value': 250},
+    {'labelKey': 'long_approximately_500_words', 'value': 500},
   ];
 
   @override
@@ -70,7 +71,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
 
   Future<void> _enhanceText() async {
     if (_textController.text.isEmpty) {
-      _showErrorSnackBar('Please enter some text to enhance');
+      _showErrorSnackBar(context.tr.translate('enter_text_to_enhance'));
       return;
     }
 
@@ -84,12 +85,16 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
         _textController.text,
         _selectedEnhancement,
         targetWordCount: _targetWordCount,
+        languageCode: Localizations.localeOf(context).toString(),
       );
 
       // Save to history
       final studyItem = StudyItem(
         title:
-            'Text Enhancement: ${_getEnhancementLabel(_selectedEnhancement)}',
+            context.tr.translate('text_enhancement_history_title').replaceAll(
+                  '{action}',
+                  _getEnhancementLabel(_selectedEnhancement),
+                ),
         content: _textController.text,
         response: result,
         type: 'enhancement',
@@ -106,16 +111,16 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
         _isLoading = false;
         _isError = true;
       });
-      _showErrorSnackBar('Error enhancing text: $e');
+      _showErrorSnackBar(context.tr.translate('text_enhancement_error'));
     }
   }
 
   String _getEnhancementLabel(String value) {
     final option = _enhancementOptions.firstWhere(
       (option) => option['value'] == value,
-      orElse: () => {'label': 'Unknown'},
+      orElse: () => {'labelKey': 'unknown_label'},
     );
-    return option['label'] as String;
+    return context.tr.translate(option['labelKey'] as String);
   }
 
   void _showErrorSnackBar(String message) {
@@ -134,7 +139,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
       appBar: AppBar(
         backgroundColor:
             isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
-        title: Text('Essay Enhancement'),
+        title: Text(context.tr.translate('essay_enhancement')),
         centerTitle: true,
         actions: [
           IconButton(
@@ -144,11 +149,15 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
               if (data != null && data.text != null && data.text!.isNotEmpty) {
                 _textController.text = data.text!;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Text pasted from clipboard')),
+                  SnackBar(
+                    content: Text(
+                      context.tr.translate('text_pasted_from_clipboard'),
+                    ),
+                  ),
                 );
               }
             },
-            tooltip: 'Paste from clipboard',
+            tooltip: context.tr.translate('paste_from_clipboard'),
           ),
         ],
       ),
@@ -162,14 +171,15 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Your Text',
+                  context.tr.translate('your_text'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
                 TextField(
                   controller: _textController,
                   decoration: InputDecoration(
-                    hintText: 'Enter your text here to enhance...',
+                    hintText:
+                        context.tr.translate('enter_text_to_enhance_hint'),
                     border: OutlineInputBorder(),
                     filled: true,
                     fillColor:
@@ -187,7 +197,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
                 SizedBox(height: 24),
 
                 Text(
-                  'Enhancement Type',
+                  context.tr.translate('enhancement_type'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
@@ -196,7 +206,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
                 SizedBox(height: 16),
 
                 Text(
-                  'Target Length',
+                  context.tr.translate('target_length'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
@@ -212,7 +222,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
                         ? _enhanceText
                         : null,
                     icon: Icon(Icons.auto_awesome),
-                    label: Text('Enhance Text'),
+                    label: Text(context.tr.translate('enhance_text')),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -226,7 +236,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
 
                 // Response section
                 Text(
-                  'Enhanced Result',
+                  context.tr.translate('enhanced_result'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
@@ -300,7 +310,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      option['label'],
+                      context.tr.translate(option['labelKey'] as String),
                       style: AppTheme.bodyMedium.copyWith(
                         fontWeight: FontWeight.bold,
                         color: isSelected
@@ -312,7 +322,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      option['description'],
+                      context.tr.translate(option['descriptionKey'] as String),
                       style: AppTheme.captionText.copyWith(
                         color: isDarkMode
                             ? AppTheme.darkTextColor.withOpacity(0.7)
@@ -340,7 +350,7 @@ class _TextEnhancementScreenState extends State<TextEnhancementScreen> {
         final isSelected = _targetWordCount == option['value'];
 
         return ChoiceChip(
-          label: Text(option['label']),
+          label: Text(context.tr.translate(option['labelKey'] as String)),
           selected: isSelected,
           onSelected: (selected) {
             setState(() {

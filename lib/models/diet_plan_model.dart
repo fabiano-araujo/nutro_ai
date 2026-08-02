@@ -1,4 +1,5 @@
 import '../utils/food_emoji_resolver.dart' as food_emoji;
+import '../util/app_constants.dart';
 
 /// Modo de dieta: diária (cada dia diferente) ou semanal única (mesma dieta todos os dias)
 enum DietMode {
@@ -270,7 +271,7 @@ class PlannedMeal {
     return PlannedMeal(
       type: json['type'] ?? 'snack',
       time: json['time'] ?? '12:00',
-      name: json['name'] ?? 'Refeição',
+      name: json['name'] ?? json['type']?.toString() ?? '',
       foods: (json['foods'] as List<dynamic>?)
               ?.map((food) => PlannedFood.fromJson(food))
               .toList() ??
@@ -383,10 +384,14 @@ class PlannedFood {
   });
 
   factory PlannedFood.fromJson(Map<String, dynamic> json) {
-    final name = json['name'] ?? 'Alimento';
+    final name = json['name']?.toString().trim();
+    final displayName = name?.isNotEmpty == true ? name! : '—';
     return PlannedFood(
-      name: name,
-      emoji: resolveFoodEmoji(name, preferred: json['emoji']?.toString()),
+      name: displayName,
+      emoji: resolveFoodEmoji(
+        displayName,
+        preferred: json['emoji']?.toString(),
+      ),
       amount: (json['amount'] ?? 0).toDouble(),
       unit: json['unit'] ?? 'g',
       calories: (json['calories'] ?? 0).toInt(),
@@ -398,7 +403,8 @@ class PlannedFood {
 
   factory PlannedFood.fromAiJson(dynamic raw) {
     if (raw is List<dynamic>) {
-      final name = raw.isNotEmpty ? raw[0].toString() : 'Alimento';
+      final parsedName = raw.isNotEmpty ? raw[0].toString().trim() : '';
+      final name = parsedName.isNotEmpty ? parsedName : '—';
       return PlannedFood(
         name: name,
         emoji: resolveFoodEmoji(name),
@@ -430,9 +436,9 @@ class PlannedFood {
     }
 
     return PlannedFood(
-      name: _readString(raw, ['n']) ?? 'Alimento',
+      name: _readString(raw, ['n']) ?? '—',
       emoji: resolveFoodEmoji(
-        _readString(raw, ['n']) ?? 'Alimento',
+        _readString(raw, ['n']) ?? '—',
         preferred: _readString(raw, ['e']),
       ),
       amount: _readDouble(raw, ['a']),
@@ -460,7 +466,7 @@ class PlannedFood {
 
 class DietPreferences {
   static const String defaultDietGenerationModel =
-      'google/gemini-3-flash-preview';
+      AppConstants.DEFAULT_AI_MODEL;
 
   final int mealsPerDay; // 3-6
   final String hungriestMealTime; // breakfast, lunch, dinner, snack

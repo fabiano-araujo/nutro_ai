@@ -55,13 +55,8 @@ class NotificationService {
 
   static const String _preferencesKey = 'notification_preferences';
   static const String _androidChannelId = 'nutro_ai_reminders';
-  static const String _androidChannelName = 'Nutro AI lembretes';
-  static const String _androidChannelDescription =
-      'Lembretes inteligentes de refeicao, sequencia, peso e dicas.';
   static const String _androidPushChannelId = 'social';
   static const String _androidPushChannelName = 'Nutro AI';
-  static const String _androidPushChannelDescription =
-      'Notificacoes de social, dieta e atualizacoes do app.';
 
   static final List<int> _recurringNotificationIds = <int>[
     // IDs legados de lembretes diarios de refeicao. Eles precisam ser
@@ -187,19 +182,26 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidImplementation == null) return;
 
+    final reminderChannelName =
+        await _translate('notification_channel_reminders_name');
+    final reminderChannelDescription =
+        await _translate('notification_channel_reminders_description');
+    final pushChannelDescription =
+        await _translate('notification_channel_updates_description');
+
     await androidImplementation.createNotificationChannel(
-      const AndroidNotificationChannel(
+      AndroidNotificationChannel(
         _androidChannelId,
-        _androidChannelName,
-        description: _androidChannelDescription,
+        reminderChannelName,
+        description: reminderChannelDescription,
         importance: Importance.high,
       ),
     );
     await androidImplementation.createNotificationChannel(
-      const AndroidNotificationChannel(
+      AndroidNotificationChannel(
         _androidPushChannelId,
         _androidPushChannelName,
-        description: _androidPushChannelDescription,
+        description: pushChannelDescription,
         importance: Importance.high,
       ),
     );
@@ -811,22 +813,25 @@ class NotificationService {
   }
 
   Future<NotificationDetails> _notificationDetails() async {
-    return const NotificationDetails(
+    final channelName = await _translate('notification_channel_reminders_name');
+    final channelDescription =
+        await _translate('notification_channel_reminders_description');
+    return NotificationDetails(
       android: AndroidNotificationDetails(
         _androidChannelId,
-        _androidChannelName,
-        channelDescription: _androidChannelDescription,
+        channelName,
+        channelDescription: channelDescription,
         icon: 'ic_notification',
         importance: Importance.high,
         priority: Priority.high,
         category: AndroidNotificationCategory.reminder,
       ),
-      iOS: DarwinNotificationDetails(
+      iOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
       ),
-      macOS: DarwinNotificationDetails(
+      macOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,

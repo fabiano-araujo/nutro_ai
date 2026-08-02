@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../models/essay_template_model.dart';
 import '../providers/essay_template_provider.dart';
 import 'state_animation.dart';
@@ -67,7 +68,20 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
     setState(() {
       _isSearching = query.isNotEmpty;
       if (_isSearching) {
-        _filteredThemes = provider.searchThemes(query);
+        final normalizedQuery = query.toLowerCase();
+        _filteredThemes = provider.themes.where((theme) {
+          return _localizedStoredText(theme.title)
+                  .toLowerCase()
+                  .contains(normalizedQuery) ||
+              _localizedStoredText(theme.description)
+                  .toLowerCase()
+                  .contains(normalizedQuery) ||
+              theme.keywords.any(
+                (keyword) => _localizedStoredText(keyword)
+                    .toLowerCase()
+                    .contains(normalizedQuery),
+              );
+        }).toList();
       } else {
         _filteredThemes = _selectedCategory.isEmpty
             ? provider.themes
@@ -106,11 +120,11 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                   accentColor: Colors.red,
                 ),
                 const SizedBox(height: 16),
-                Text(provider.error!),
+                Text(context.tr.translate('essay_themes_load_error')),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: provider.refresh,
-                  child: Text('Tentar Novamente'),
+                  child: Text(context.tr.translate('essay_try_again_action')),
                 ),
               ],
             ),
@@ -153,7 +167,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Buscar temas...',
+          hintText: context.tr.translate('essay_theme_search_hint'),
           prefixIcon: Icon(Icons.search),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
@@ -177,9 +191,11 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
   Widget _buildTabBar() {
     final tabs = <Widget>[
-      Tab(text: 'Todos'),
-      if (widget.showCategories) Tab(text: 'Categorias'),
-      if (widget.showTrending) Tab(text: 'Em Alta'),
+      Tab(text: context.tr.translate('essay_themes_all_tab')),
+      if (widget.showCategories)
+        Tab(text: context.tr.translate('essay_themes_categories_tab')),
+      if (widget.showTrending)
+        Tab(text: context.tr.translate('essay_themes_trending_tab')),
     ];
 
     return TabBar(
@@ -196,7 +212,9 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
     if (themes.isEmpty) {
       return _buildEmptyState(
-        _isSearching ? 'Nenhum tema encontrado' : 'Nenhum tema disponível',
+        context.tr.translate(
+          _isSearching ? 'essay_no_theme_found' : 'essay_no_themes_available',
+        ),
         _isSearching ? Icons.search_off : Icons.article,
       );
     }
@@ -220,7 +238,10 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
         // Lista de temas filtrados
         Expanded(
           child: _filteredThemes.isEmpty
-              ? _buildEmptyState('Nenhum tema nesta categoria', Icons.category)
+              ? _buildEmptyState(
+                  context.tr.translate('essay_no_theme_in_category'),
+                  Icons.category,
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _filteredThemes.length,
@@ -238,7 +259,10 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
     final trendingThemes = provider.getTrendingThemes();
 
     if (trendingThemes.isEmpty) {
-      return _buildEmptyState('Nenhum tema em alta', Icons.trending_up);
+      return _buildEmptyState(
+        context.tr.translate('essay_no_trending_themes'),
+        Icons.trending_up,
+      );
     }
 
     return ListView.builder(
@@ -263,11 +287,14 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
         itemCount: categories.length + 1, // +1 para "Todos"
         itemBuilder: (context, index) {
           if (index == 0) {
-            return _buildCategoryChip('Todos', '');
+            return _buildCategoryChip(
+              context.tr.translate('essay_themes_all_tab'),
+              '',
+            );
           }
 
           final category = categories[index - 1];
-          return _buildCategoryChip(category, category);
+          return _buildCategoryChip(_categoryLabel(category), category);
         },
       ),
     );
@@ -284,7 +311,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
         onSelected: (selected) {
           _onCategorySelected(selected ? value : '');
         },
-        selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+        selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
         checkmarkColor: Theme.of(context).primaryColor,
       ),
     );
@@ -296,8 +323,9 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isSelected ? 4 : 1,
-      color:
-          isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
+      color: isSelected
+          ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
+          : null,
       child: InkWell(
         onTap: () => widget.onThemeSelected(theme),
         borderRadius: BorderRadius.circular(8),
@@ -311,7 +339,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                 children: [
                   Expanded(
                     child: Text(
-                      theme.title,
+                      _localizedStoredText(theme.title),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -335,7 +363,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                               size: 12, color: Colors.white),
                           const SizedBox(width: 4),
                           Text(
-                            'Em Alta',
+                            context.tr.translate('essay_trending_badge'),
                             style: TextStyle(
                               fontSize: 10,
                               color: Colors.white,
@@ -352,7 +380,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
 
               // Descrição
               Text(
-                theme.description,
+                _localizedStoredText(theme.description),
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[600],
@@ -367,20 +395,25 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
               Row(
                 children: [
                   _buildMetadataChip(
-                    theme.category,
+                    _categoryLabel(theme.category),
                     Icons.category,
                     Theme.of(context).primaryColor,
                   ),
                   const SizedBox(width: 8),
                   _buildMetadataChip(
-                    theme.difficulty,
+                    _difficultyLabel(theme.difficulty),
                     Icons.bar_chart,
                     _getDifficultyColor(theme.difficulty),
                   ),
                   if (theme.usageCount > 0) ...[
                     const SizedBox(width: 8),
                     _buildMetadataChip(
-                      '${theme.usageCount} usos',
+                      _translateWithValues(
+                        theme.usageCount == 1
+                            ? 'essay_theme_usage_one'
+                            : 'essay_theme_usage_other',
+                        {'count': theme.usageCount.toString()},
+                      ),
                       Icons.people,
                       Colors.grey,
                     ),
@@ -399,11 +432,11 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: Colors.grey.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        keyword,
+                        _localizedStoredText(keyword),
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.grey[700],
@@ -424,7 +457,7 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -479,5 +512,60 @@ class _EssayThemeSelectorState extends State<EssayThemeSelector>
       default:
         return Colors.grey;
     }
+  }
+
+  String _localizedStoredText(String value) {
+    const prefix = 'i18n:';
+    return value.startsWith(prefix)
+        ? context.tr.translate(value.substring(prefix.length))
+        : value;
+  }
+
+  String _categoryLabel(String category) {
+    switch (category) {
+      case ThemeCategory.atualidades:
+        return context.tr.translate('essay_category_current_affairs');
+      case ThemeCategory.meioAmbiente:
+        return context.tr.translate('essay_category_environment');
+      case ThemeCategory.tecnologia:
+        return context.tr.translate('essay_category_technology');
+      case ThemeCategory.sociedade:
+        return context.tr.translate('essay_category_society');
+      case ThemeCategory.educacao:
+        return context.tr.translate('essay_category_education');
+      case ThemeCategory.saude:
+        return context.tr.translate('essay_category_health');
+      case ThemeCategory.politica:
+        return context.tr.translate('essay_category_politics');
+      case ThemeCategory.economia:
+        return context.tr.translate('essay_category_economy');
+      case ThemeCategory.cultura:
+        return context.tr.translate('essay_category_culture');
+      case ThemeCategory.direitos:
+        return context.tr.translate('essay_category_human_rights');
+      default:
+        return category;
+    }
+  }
+
+  String _difficultyLabel(String difficulty) {
+    switch (difficulty.toLowerCase()) {
+      case 'fácil':
+        return context.tr.translate('essay_difficulty_easy');
+      case 'médio':
+        return context.tr.translate('essay_difficulty_medium');
+      case 'difícil':
+        return context.tr.translate('essay_difficulty_hard');
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateWithValues(String key, Map<String, String> values) {
+    var result = context.tr.translate(key);
+    for (final entry in values.entries) {
+      result = result.replaceAll('{${entry.key}}', entry.value);
+    }
+    return result;
   }
 }

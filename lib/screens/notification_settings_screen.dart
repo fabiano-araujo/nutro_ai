@@ -6,6 +6,7 @@ import '../models/notification_preferences.dart';
 import '../providers/meal_types_provider.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/meal_type_localization.dart';
 import 'manage_meal_types_screen.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -411,7 +412,7 @@ class _NotificationSettingsScreenState
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              mealType.name,
+              localizedMealTypeName(context.tr, mealType),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -434,7 +435,7 @@ class _NotificationSettingsScreenState
                     Icon(Icons.schedule_rounded, size: 17, color: mutedColor),
                     const SizedBox(width: 7),
                     Text(
-                      mealType.reminderTime,
+                      _localizedTime(mealType.reminderTime),
                       style: TextStyle(
                         color: textColor,
                         fontSize: 14,
@@ -601,7 +602,7 @@ class _NotificationSettingsScreenState
                         child: CircularProgressIndicator(strokeWidth: 2.2),
                       )
                     : Text(
-                        time,
+                        _localizedTime(time),
                         style: TextStyle(
                           color: textColor,
                           fontSize: 16,
@@ -770,23 +771,30 @@ class _NotificationSettingsScreenState
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
+  String _localizedTime(String value) {
+    return MaterialLocalizations.of(context).formatTimeOfDay(
+      _timeOfDayFromString(value),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+  }
+
   String _weightScheduleSummary() {
     return context.tr
         .translate('notification_weight_schedule')
         .replaceAll('{count}', _preferences.weightReminderFrequency.toString())
         .replaceAll(
             '{days}', _weekdayListLabel(_preferences.weightReminderWeekdays))
-        .replaceAll('{time}', _preferences.weightReminderTime);
+        .replaceAll('{time}', _localizedTime(_preferences.weightReminderTime));
   }
 
   String _weightSettingsSubtitle() {
     return '${_preferences.weightReminderFrequency}x - '
         '${_weekdayListLabel(_preferences.weightReminderWeekdays)} - '
-        '${_preferences.weightReminderTime}';
+        '${_localizedTime(_preferences.weightReminderTime)}';
   }
 
   String _translatedSchedule(String key, String time) {
-    return context.tr.translate(key).replaceAll('{time}', time);
+    return context.tr.translate(key).replaceAll('{time}', _localizedTime(time));
   }
 
   String _weekdayListLabel(List<int> weekdays) {
@@ -1040,7 +1048,7 @@ class _WeightReminderSettingsSheetState
               ),
               const SizedBox(width: 12),
               Text(
-                _time,
+                _localizedTime(_time),
                 style: TextStyle(
                   color: textColor,
                   fontSize: 17,
@@ -1117,6 +1125,13 @@ class _WeightReminderSettingsSheetState
 
   String _formatTimeOfDay(TimeOfDay time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _localizedTime(String value) {
+    return MaterialLocalizations.of(context).formatTimeOfDay(
+      _timeOfDayFromString(value),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
   }
 
   String _weekdayLabel(BuildContext context, int weekday) {

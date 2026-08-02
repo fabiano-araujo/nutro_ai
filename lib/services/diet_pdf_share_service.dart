@@ -28,6 +28,7 @@ class DietPdfLabels {
     required this.portion,
     required this.nutrition,
     required this.page,
+    required this.localeName,
     this.tagline = '',
     this.nutritionSummary = '',
     this.macroDistribution = '',
@@ -52,6 +53,7 @@ class DietPdfLabels {
   final String portion;
   final String nutrition;
   final String page;
+  final String localeName;
 
   // Optional professional labels (fall back gracefully when empty).
   final String tagline;
@@ -115,7 +117,7 @@ class DietPdfShareService {
     final file = File('${tempDir.path}${Platform.pathSeparator}$fileName');
     await file.writeAsBytes(bytes, flush: true);
 
-    final generatedDate = DateFormat('dd/MM/yyyy').format(generatedAt);
+    final generatedDate = DateFormat.yMd(labels.localeName).format(generatedAt);
     await Share.shareXFiles(
       [
         XFile(
@@ -141,7 +143,7 @@ class DietPdfShareService {
   }) async {
     final logo = await _loadLogo();
     final fonts = await _loadFonts();
-    final generatedDate = DateFormat('dd/MM/yyyy').format(generatedAt);
+    final generatedDate = DateFormat.yMd(labels.localeName).format(generatedAt);
     final document = pw.Document(
       theme: pw.ThemeData.withFont(
         base: fonts.regular,

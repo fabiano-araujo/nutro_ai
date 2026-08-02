@@ -12,6 +12,7 @@ import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../widgets/reward_ad_dialog.dart';
 import '../widgets/message_notifier.dart';
+import '../utils/meal_type_localization.dart';
 import 'auth_service.dart';
 import 'app_debug_log_service.dart';
 import 'server_chat_state_service.dart';
@@ -1920,7 +1921,7 @@ class AppAgentService {
           result = AppAgentExecutionResult(
             commandName: command.name,
             success: false,
-            errorMessage: 'Comando do app não suportado',
+            errorMessage: _translate(context, 'agent_command_unsupported'),
             payload: {
               'supportedCommands': const [
                 getDailyNutritionStatus,
@@ -1997,96 +1998,66 @@ class AppAgentService {
     }
   }
 
-  static String _contextLanguageCode(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase();
+  static String _translate(
+    BuildContext context,
+    String key, [
+    Map<String, Object?> parameters = const {},
+  ]) {
+    var value = AppLocalizations.of(context).translate(key);
+    for (final entry in parameters.entries) {
+      value = value.replaceAll('{${entry.key}}', entry.value?.toString() ?? '');
+    }
+    return value;
+  }
 
-  static bool _isPortugueseLanguage(String language) =>
-      language.toLowerCase().startsWith('pt');
+  static String _safeCommandErrorCode(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    if (RegExp(r'^[a-z][a-z0-9_]{0,80}$').hasMatch(normalized)) {
+      return normalized;
+    }
+    return 'server_command_failed';
+  }
 
   static String _localizedMacroTargetsStatusMessage({
-    required String language,
+    required BuildContext context,
     required int caloriesGoal,
     required double protein,
     required double carbs,
     required double fat,
   }) {
-    final proteinText = _formatOneDecimal(protein);
-    final carbsText = _formatOneDecimal(carbs);
-    final fatText = _formatOneDecimal(fat);
-    switch (language) {
-      case 'es':
-        return 'Tus metas actuales son $caloriesGoal kcal: ${proteinText}g de proteína, '
-            '${carbsText}g de carbohidratos y ${fatText}g de grasas. '
-            'Dime si quieres reducir o aumentar calorías, o cambiar algún macro.';
-      case 'fr':
-        return 'Tes objectifs actuels sont $caloriesGoal kcal : ${proteinText}g de protéines, '
-            '${carbsText}g de glucides et ${fatText}g de lipides. '
-            'Dis-moi si tu veux réduire ou augmenter les calories, ou modifier un macro.';
-      case 'de':
-        return 'Deine aktuellen Ziele sind $caloriesGoal kcal: ${proteinText}g Protein, '
-            '${carbsText}g Kohlenhydrate und ${fatText}g Fett. '
-            'Sag mir, ob du Kalorien senken oder erhöhen oder ein Makro ändern willst.';
-      case 'it':
-        return 'I tuoi obiettivi attuali sono $caloriesGoal kcal: ${proteinText}g di proteine, '
-            '${carbsText}g di carboidrati e ${fatText}g di grassi. '
-            'Dimmi se vuoi ridurre o aumentare le calorie, oppure cambiare un macro.';
-      case 'pt':
-        return 'Suas metas atuais são $caloriesGoal kcal: ${proteinText}g de proteína, '
-            '${carbsText}g de carboidratos e ${fatText}g de gorduras. '
-            'Me diga se quer reduzir ou aumentar calorias, ou mudar algum macro.';
-      default:
-        return 'Your current goals are $caloriesGoal kcal: ${proteinText}g protein, '
-            '${carbsText}g carbs, and ${fatText}g fat. '
-            'Tell me if you want to lower or raise calories, or change any macro.';
-    }
+    return _translate(context, 'agent_macro_targets_status', {
+      'calories': caloriesGoal,
+      'protein': _formatOneDecimal(protein),
+      'carbs': _formatOneDecimal(carbs),
+      'fat': _formatOneDecimal(fat),
+    });
   }
 
   static String _localizedDailyRemainingStatusMessage({
-    required String language,
+    required BuildContext context,
     required DateTime? selectedDate,
     required int caloriesRemaining,
     required double proteinRemaining,
     required double carbsRemaining,
     required double fatRemaining,
   }) {
-    final dateLabel = _dailyStatusDateLabelForLanguage(
-      selectedDate,
-      language: language,
-    );
+    final dateLabel = _dailyStatusDateLabel(context, selectedDate);
     final isToday = selectedDate == null ||
         _isSameDay(
           selectedDate,
           DateTime.now(),
         );
-    final proteinText = _formatOneDecimal(proteinRemaining);
-    final carbsText = _formatOneDecimal(carbsRemaining);
-    final fatText = _formatOneDecimal(fatRemaining);
-    switch (language) {
-      case 'es':
-        return '$dateLabel todavía ${isToday ? 'puedes' : 'podías'} consumir '
-            '$caloriesRemaining kcal, ${proteinText}g de proteína, '
-            '${carbsText}g de carbohidratos y ${fatText}g de grasas.';
-      case 'fr':
-        return '$dateLabel, tu ${isToday ? 'peux encore' : 'pouvais encore'} consommer '
-            '$caloriesRemaining kcal, ${proteinText}g de protéines, '
-            '${carbsText}g de glucides et ${fatText}g de lipides.';
-      case 'de':
-        return '$dateLabel ${isToday ? 'kannst du noch' : 'konntest du noch'} '
-            '$caloriesRemaining kcal, ${proteinText}g Protein, '
-            '${carbsText}g Kohlenhydrate und ${fatText}g Fett zu dir nehmen.';
-      case 'it':
-        return '$dateLabel ${isToday ? 'puoi ancora' : 'potevi ancora'} consumare '
-            '$caloriesRemaining kcal, ${proteinText}g di proteine, '
-            '${carbsText}g di carboidrati e ${fatText}g di grassi.';
-      case 'pt':
-        return '$dateLabel você ainda ${isToday ? 'pode' : 'podia'} consumir '
-            '$caloriesRemaining kcal, ${proteinText}g de proteína, '
-            '${carbsText}g de carboidratos e ${fatText}g de gorduras.';
-      default:
-        return '$dateLabel you ${isToday ? 'still have' : 'had'} '
-            '$caloriesRemaining kcal, ${proteinText}g protein, '
-            '${carbsText}g carbs, and ${fatText}g fat remaining.';
-    }
+    return _translate(
+      context,
+      isToday ? 'agent_daily_remaining_today' : 'agent_daily_remaining_past',
+      {
+        'date': dateLabel,
+        'calories': caloriesRemaining,
+        'protein': _formatOneDecimal(proteinRemaining),
+        'carbs': _formatOneDecimal(carbsRemaining),
+        'fat': _formatOneDecimal(fatRemaining),
+      },
+    );
   }
 
   static String? buildMacroGoalsCommandResultMessage({
@@ -2097,8 +2068,6 @@ class AppAgentService {
       return null;
     }
 
-    final language = _contextLanguageCode(context);
-    final isPortuguese = _isPortugueseLanguage(language);
     final successfulResults =
         executionResults.where((result) => result.success).toList();
 
@@ -2106,13 +2075,9 @@ class AppAgentService {
       final lastError = executionResults.last.errorMessage ??
           executionResults.last.payload['reason']?.toString();
       if (lastError == 'login_required') {
-        return isPortuguese
-            ? 'Faça login para eu acessar e atualizar suas metas de calorias e macros.'
-            : 'Log in so I can access and update your calorie and macro goals.';
+        return _translate(context, 'agent_macro_login_required');
       }
-      return isPortuguese
-          ? 'Não consegui acessar suas metas agora. Tente novamente em instantes.'
-          : 'I could not access your goals right now. Please try again in a moment.';
+      return _translate(context, 'agent_macro_access_failed');
     }
 
     final lastResult = successfulResults.last;
@@ -2141,7 +2106,7 @@ class AppAgentService {
         final carbsRemaining = _tryParseDouble(payload['carbsRemaining']) ?? 0;
         final fatRemaining = _tryParseDouble(payload['fatRemaining']) ?? 0;
         return _localizedDailyRemainingStatusMessage(
-          language: language,
+          context: context,
           selectedDate: selectedDate,
           caloriesRemaining: caloriesRemaining,
           proteinRemaining: proteinRemaining,
@@ -2151,40 +2116,30 @@ class AppAgentService {
       case updateMacroTargetsPercentage:
       case updateMacroTargetsGrams:
       case updateMacroTargetsGramsPerKg:
-        if (isPortuguese) {
-          return 'Pronto, atualizei suas metas para $caloriesGoal kcal: '
-              '${_formatOneDecimal(protein)}g de proteína, '
-              '${_formatOneDecimal(carbs)}g de carboidratos e '
-              '${_formatOneDecimal(fat)}g de gorduras.';
-        }
-        return 'Done, I updated your goals to $caloriesGoal kcal: '
-            '${_formatOneDecimal(protein)}g protein, '
-            '${_formatOneDecimal(carbs)}g carbs, and '
-            '${_formatOneDecimal(fat)}g fat.';
+        return _translate(context, 'agent_macro_targets_updated', {
+          'calories': caloriesGoal,
+          'protein': _formatOneDecimal(protein),
+          'carbs': _formatOneDecimal(carbs),
+          'fat': _formatOneDecimal(fat),
+        });
       case recalculateNutritionGoals:
-        if (isPortuguese) {
-          final proteinNote = proteinPerKg == null
-              ? ''
-              : ' (${_formatOneDecimal(proteinPerKg)}g/kg)';
-          return 'Pronto, recalculei suas metas com uma recomendação padrão '
-              'para o seu objetivo: $caloriesGoal kcal, '
-              '${_formatOneDecimal(protein)}g de proteína$proteinNote, '
-              '${_formatOneDecimal(carbs)}g de carboidratos e '
-              '${_formatOneDecimal(fat)}g de gorduras. '
-              'Se quiser outro alvo, é só me dizer.';
-        }
-        final proteinNote = proteinPerKg == null
-            ? ''
-            : ' (${_formatOneDecimal(proteinPerKg)}g/kg)';
-        return 'Done, I recalculated your goals with a standard '
-            'recommendation for your objective: $caloriesGoal kcal, '
-            '${_formatOneDecimal(protein)}g protein$proteinNote, '
-            '${_formatOneDecimal(carbs)}g carbs, and '
-            '${_formatOneDecimal(fat)}g fat. '
-            'If you want a different target, just tell me.';
+        return _translate(
+          context,
+          proteinPerKg == null
+              ? 'agent_macro_targets_recalculated'
+              : 'agent_macro_targets_recalculated_per_kg',
+          {
+            'calories': caloriesGoal,
+            'protein': _formatOneDecimal(protein),
+            'protein_per_kg':
+                proteinPerKg == null ? '' : _formatOneDecimal(proteinPerKg),
+            'carbs': _formatOneDecimal(carbs),
+            'fat': _formatOneDecimal(fat),
+          },
+        );
       case getMacroTargetsStatus:
         return _localizedMacroTargetsStatusMessage(
-          language: language,
+          context: context,
           caloriesGoal: caloriesGoal,
           protein: protein,
           carbs: carbs,
@@ -2193,9 +2148,7 @@ class AppAgentService {
       case getDietGenerationPreferencesStatus:
       case updateDietGenerationPreferences:
       case generateNewDietPlan:
-        return isPortuguese
-            ? 'Neste chat eu ajusto metas, calorias e macros. Me diga se você quer reduzir ou aumentar calorias, ou mudar proteína, carboidratos ou gorduras.'
-            : 'In this chat I adjust goals, calories, and macros. Tell me if you want to lower or raise calories, or change protein, carbs, or fat.';
+        return _translate(context, 'agent_macro_scope_fallback');
       default:
         return null;
     }
@@ -2245,8 +2198,6 @@ class AppAgentService {
     required String originalUserMessage,
   }) {
     final payload = result.payload;
-    final language = _contextLanguageCode(context);
-    final isPortuguese = _isPortugueseLanguage(language);
     final normalized = _normalizeLooseText(originalUserMessage);
     final caloriesGoal = _tryParseInt(payload['caloriesGoal']) ?? 0;
     final proteinGoal = _tryParseDouble(payload['proteinGoal']) ?? 0;
@@ -2265,10 +2216,7 @@ class AppAgentService {
     final fatRemaining =
         _tryParseDouble(payload['fatRemaining']) ?? (fatGoal - fatConsumed);
     final selectedDate = _tryParseDate(payload['selectedDate']);
-    final dateLabel = _dailyStatusDateLabelForLanguage(
-      selectedDate,
-      language: language,
-    );
+    final dateLabel = _dailyStatusDateLabel(context, selectedDate);
     final meals = (payload['meals'] as List?) ?? const [];
     final hasData = payload['hasData'] == true ||
         meals.isNotEmpty ||
@@ -2313,135 +2261,117 @@ class AppAgentService {
     final asksEvaluation = _looksLikeDailyEvaluationRequest(normalized);
     final asksFoodList = _looksLikeFoodListRequest(normalized);
 
-    if (isPortuguese) {
-      if (asksEvaluation) {
-        if (!hasData) {
-          return 'Não encontrei registros da sua alimentação de ${dateLabel.toLowerCase()}. '
-              'Se você registrou refeições nesse dia, pode ser que elas ainda não tenham sincronizado.';
-        }
-        final calorieRatio =
-            caloriesGoal > 0 ? caloriesConsumed / caloriesGoal : 0.0;
-        final proteinRatio =
-            proteinGoal > 0 ? proteinConsumed / proteinGoal : 0.0;
-        final calorieAssessment = calorieRatio < 0.7
-            ? 'bem abaixo da meta'
-            : calorieRatio > 1.15
-                ? 'acima da meta'
-                : 'perto da meta';
-        final proteinAssessment =
-            proteinRatio >= 0.9 ? 'proteína ficou boa' : 'proteína ficou baixa';
-        final mealCount = meals.length;
-        final mealPhrase = mealCount > 0
-            ? ' com $mealCount ${mealCount == 1 ? 'refeição registrada' : 'refeições registradas'}'
-            : '';
-        return '$dateLabel$mealPhrase: você consumiu $caloriesConsumed kcal de $caloriesGoal kcal, '
-            '${_formatOneDecimal(proteinConsumed)}g de proteína, '
-            '${_formatOneDecimal(carbsConsumed)}g de carboidratos e '
-            '${_formatOneDecimal(fatConsumed)}g de gorduras. '
-            'Foi um dia $calorieAssessment e a $proteinAssessment. '
-            '${calorieRatio < 0.7 ? 'Pelo registro, parece uma alimentação incompleta.' : 'No geral, o ponto principal é manter proteína e calorias dentro da meta.'}';
-      }
-      if (asksFoodList) {
-        return _formatDailyFoodListMessage(
-          meals: meals,
-          dateLabel: dateLabel,
-          isPortuguese: true,
-        );
-      }
-      if (asksSnackSuggestion) {
-        if (caloriesRemaining < 250) {
-          return 'Uma opção de lanche leve: iogurte natural ou uma fruta com '
-              'um pouco de whey, em torno de 150-220 kcal. Hoje você ainda '
-              'tem $caloriesRemaining kcal disponíveis.';
-        }
-        return 'Uma boa opção de lanche: sanduíche de frango com pão integral '
-            'e iogurte natural. Fica em torno de 500 kcal, com cerca de '
-            '35g de proteína, 55g de carboidratos e 12g de gorduras, dentro '
-            'das $caloriesRemaining kcal que você ainda tem hoje.';
-      }
-      if (asksConsumed && asksProtein) {
-        return '$dateLabel você consumiu ${_formatOneDecimal(proteinConsumed)}g de '
-            'proteína de uma meta de ${_formatOneDecimal(proteinGoal)}g. '
-            '${_formatRemainingPhrase(proteinRemaining, 'g', 'proteína', true)}';
-      }
-      if (asksConsumed && asksCarbs) {
-        return '$dateLabel você consumiu ${_formatOneDecimal(carbsConsumed)}g de '
-            'carboidratos de uma meta de ${_formatOneDecimal(carbsGoal)}g. '
-            '${_formatRemainingPhrase(carbsRemaining, 'g', 'carboidratos', true)}';
-      }
-      if (asksConsumed && asksFat) {
-        return '$dateLabel você consumiu ${_formatOneDecimal(fatConsumed)}g de '
-            'gorduras de uma meta de ${_formatOneDecimal(fatGoal)}g. '
-            '${_formatRemainingPhrase(fatRemaining, 'g', 'gorduras', true)}';
-      }
-      if (asksConsumed) {
-        return '$dateLabel você consumiu $caloriesConsumed kcal de $caloriesGoal kcal, '
-            '${_formatOneDecimal(proteinConsumed)}g de proteína, '
-            '${_formatOneDecimal(carbsConsumed)}g de carboidratos e '
-            '${_formatOneDecimal(fatConsumed)}g de gorduras. '
-            'Ainda restam $caloriesRemaining kcal.';
-      }
-      return _localizedDailyRemainingStatusMessage(
-        language: language,
-        selectedDate: selectedDate,
-        caloriesRemaining: caloriesRemaining,
-        proteinRemaining: proteinRemaining,
-        carbsRemaining: carbsRemaining,
-        fatRemaining: fatRemaining,
-      );
-    }
-
     if (asksEvaluation) {
       if (!hasData) {
-        return 'I did not find food records for ${dateLabel.toLowerCase()}. '
-            'If you logged meals for that day, they may not have synced yet.';
+        return _translate(context, 'agent_daily_no_records', {
+          'date': dateLabel.toLowerCase(),
+        });
       }
       final calorieRatio =
           caloriesGoal > 0 ? caloriesConsumed / caloriesGoal : 0.0;
       final proteinRatio =
           proteinGoal > 0 ? proteinConsumed / proteinGoal : 0.0;
-      final calorieAssessment = calorieRatio < 0.7
-          ? 'well below target'
+      final calorieAssessmentKey = calorieRatio < 0.7
+          ? 'agent_daily_calorie_assessment_low'
           : calorieRatio > 1.15
-              ? 'above target'
-              : 'near target';
-      final proteinAssessment =
-          proteinRatio >= 0.9 ? 'protein was good' : 'protein was low';
-      return '$dateLabel: you consumed $caloriesConsumed kcal out of $caloriesGoal kcal, '
-          '${_formatOneDecimal(proteinConsumed)}g protein, '
-          '${_formatOneDecimal(carbsConsumed)}g carbs, and '
-          '${_formatOneDecimal(fatConsumed)}g fat. '
-          'That was $calorieAssessment, and $proteinAssessment.';
+              ? 'agent_daily_calorie_assessment_high'
+              : 'agent_daily_calorie_assessment_near';
+      final proteinAssessmentKey = proteinRatio >= 0.9
+          ? 'agent_daily_protein_assessment_good'
+          : 'agent_daily_protein_assessment_low';
+      final mealCount = meals.length;
+      final mealPhrase = mealCount <= 0
+          ? ''
+          : _translate(
+              context,
+              mealCount == 1
+                  ? 'agent_daily_meal_count_singular'
+                  : 'agent_daily_meal_count_plural',
+              {'count': mealCount},
+            );
+      return _translate(context, 'agent_daily_evaluation', {
+        'date': dateLabel,
+        'meal_phrase': mealPhrase,
+        'calories_consumed': caloriesConsumed,
+        'calories_goal': caloriesGoal,
+        'protein': _formatOneDecimal(proteinConsumed),
+        'carbs': _formatOneDecimal(carbsConsumed),
+        'fat': _formatOneDecimal(fatConsumed),
+        'calorie_assessment': _translate(context, calorieAssessmentKey),
+        'protein_assessment': _translate(context, proteinAssessmentKey),
+        'conclusion': _translate(
+          context,
+          calorieRatio < 0.7
+              ? 'agent_daily_evaluation_incomplete'
+              : 'agent_daily_evaluation_keep_targets',
+        ),
+      });
     }
 
     if (asksFoodList) {
       return _formatDailyFoodListMessage(
+        context: context,
         meals: meals,
         dateLabel: dateLabel,
-        isPortuguese: false,
       );
     }
 
     if (asksSnackSuggestion) {
-      return 'A practical snack that fits your remaining budget: a chicken '
-          'sandwich with whole-grain bread plus plain yogurt, around 500 kcal, '
-          '35g protein, 55g carbs, and 12g fat. You still have '
-          '$caloriesRemaining kcal available today.';
+      return _translate(
+        context,
+        caloriesRemaining < 250
+            ? 'agent_daily_snack_light'
+            : 'agent_daily_snack_regular',
+        {'calories_remaining': caloriesRemaining},
+      );
     }
-    if (asksConsumed && asksProtein) {
-      return '$dateLabel you consumed ${_formatOneDecimal(proteinConsumed)}g '
-          'of protein out of a ${_formatOneDecimal(proteinGoal)}g target. '
-          '${_formatRemainingPhrase(proteinRemaining, 'g', 'protein', false)}';
+    if (asksConsumed && (asksProtein || asksCarbs || asksFat)) {
+      final consumed = asksProtein
+          ? proteinConsumed
+          : asksCarbs
+              ? carbsConsumed
+              : fatConsumed;
+      final goal = asksProtein
+          ? proteinGoal
+          : asksCarbs
+              ? carbsGoal
+              : fatGoal;
+      final remaining = asksProtein
+          ? proteinRemaining
+          : asksCarbs
+              ? carbsRemaining
+              : fatRemaining;
+      final macroKey = asksProtein
+          ? 'protein_full'
+          : asksCarbs
+              ? 'carbohydrate'
+              : 'fat';
+      return _translate(context, 'agent_daily_consumed_macro', {
+        'date': dateLabel,
+        'consumed': _formatOneDecimal(consumed),
+        'macro': _translate(context, macroKey).toLowerCase(),
+        'goal': _formatOneDecimal(goal),
+        'remaining_phrase': _formatRemainingPhrase(
+          context,
+          remaining,
+          'g',
+          _translate(context, macroKey).toLowerCase(),
+        ),
+      });
     }
     if (asksConsumed) {
-      return '$dateLabel you consumed $caloriesConsumed kcal out of '
-          '$caloriesGoal kcal, ${_formatOneDecimal(proteinConsumed)}g protein, '
-          '${_formatOneDecimal(carbsConsumed)}g carbs, and '
-          '${_formatOneDecimal(fatConsumed)}g fat. You still have '
-          '$caloriesRemaining kcal remaining.';
+      return _translate(context, 'agent_daily_consumed_summary', {
+        'date': dateLabel,
+        'calories_consumed': caloriesConsumed,
+        'calories_goal': caloriesGoal,
+        'protein': _formatOneDecimal(proteinConsumed),
+        'carbs': _formatOneDecimal(carbsConsumed),
+        'fat': _formatOneDecimal(fatConsumed),
+        'calories_remaining': caloriesRemaining,
+      });
     }
     return _localizedDailyRemainingStatusMessage(
-      language: language,
+      context: context,
       selectedDate: selectedDate,
       caloriesRemaining: caloriesRemaining,
       proteinRemaining: proteinRemaining,
@@ -2514,9 +2444,9 @@ class AppAgentService {
   }
 
   static String _formatDailyFoodListMessage({
+    required BuildContext context,
     required List<dynamic> meals,
     required String dateLabel,
-    required bool isPortuguese,
   }) {
     final lines = <String>[];
 
@@ -2537,62 +2467,44 @@ class AppAgentService {
       if (foodTexts.isEmpty) continue;
 
       final label = _localizedMealTypeLabel(
+        context,
         meal['type']?.toString(),
-        isPortuguese: isPortuguese,
       );
       lines.add('$label: ${foodTexts.join(', ')}');
     }
 
     if (lines.isEmpty) {
-      return isPortuguese
-          ? 'Não encontrei alimentos registrados em ${dateLabel.toLowerCase()}.'
-          : 'I did not find any foods logged for ${dateLabel.toLowerCase()}.';
+      return _translate(context, 'agent_daily_foods_none', {
+        'date': dateLabel.toLowerCase(),
+      });
     }
 
-    return isPortuguese
-        ? '$dateLabel você registrou:\n${lines.map((line) => '- $line').join('\n')}'
-        : '$dateLabel you logged:\n${lines.map((line) => '- $line').join('\n')}';
+    return _translate(context, 'agent_daily_foods_list', {
+      'date': dateLabel,
+      'foods': lines.map((line) => '- $line').join('\n'),
+    });
   }
 
   static String _localizedMealTypeLabel(
-    String? mealType, {
-    required bool isPortuguese,
-  }) {
+    BuildContext context,
+    String? mealType,
+  ) {
     final normalized = _normalizeLooseText(mealType ?? '');
-    if (isPortuguese) {
-      switch (normalized) {
-        case 'breakfast':
-        case 'cafe da manha':
-          return 'Café da manhã';
-        case 'lunch':
-        case 'almoco':
-          return 'Almoço';
-        case 'dinner':
-        case 'jantar':
-          return 'Jantar';
-        case 'snack':
-        case 'lanche':
-          return 'Lanche';
-        default:
-          return 'Refeição';
-      }
-    }
-
     switch (normalized) {
       case 'breakfast':
       case 'cafe da manha':
-        return 'Breakfast';
+        return _translate(context, 'breakfast');
       case 'lunch':
       case 'almoco':
-        return 'Lunch';
+        return _translate(context, 'lunch');
       case 'dinner':
       case 'jantar':
-        return 'Dinner';
+        return _translate(context, 'dinner');
       case 'snack':
       case 'lanche':
-        return 'Snack';
+        return _translate(context, 'snack');
       default:
-        return 'Meal';
+        return _translate(context, 'meal');
     }
   }
 
@@ -2646,90 +2558,65 @@ class AppAgentService {
   }
 
   static String _dailyStatusDateLabel(
-    DateTime? selectedDate, {
-    required bool isPortuguese,
-  }) {
-    return _dailyStatusDateLabelForLanguage(
-      selectedDate,
-      language: isPortuguese ? 'pt' : 'en',
-    );
-  }
-
-  static String _dailyStatusDateLabelForLanguage(
-    DateTime? selectedDate, {
-    required String language,
-  }) {
+    BuildContext context,
+    DateTime? selectedDate,
+  ) {
     final date = _dateOnly(selectedDate ?? DateTime.now());
     final today = _dateOnly(DateTime.now());
     final yesterday = today.subtract(const Duration(days: 1));
     if (_isSameDay(date, today)) {
-      switch (language) {
-        case 'es':
-          return 'Hoy';
-        case 'fr':
-          return "Aujourd'hui";
-        case 'de':
-          return 'Heute';
-        case 'it':
-          return 'Oggi';
-        case 'pt':
-          return 'Hoje';
-        default:
-          return 'Today';
-      }
+      return _translate(context, 'today');
     }
     if (_isSameDay(date, yesterday)) {
-      switch (language) {
-        case 'es':
-          return 'Ayer';
-        case 'fr':
-          return 'Hier';
-        case 'de':
-          return 'Gestern';
-        case 'it':
-          return 'Ieri';
-        case 'pt':
-          return 'Ontem';
-        default:
-          return 'Yesterday';
-      }
+      return _translate(context, 'yesterday');
     }
-    final formatted =
-        '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-    switch (language) {
-      case 'es':
-        return 'El $formatted';
-      case 'fr':
-        return 'Le $formatted';
-      case 'de':
-        return 'Am ${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.';
-      case 'it':
-        return 'Il $formatted';
-      case 'pt':
-        return 'Em $formatted';
-      default:
-        return 'On $formatted';
-    }
+    return _translate(context, 'agent_date_on', {
+      'date': MaterialLocalizations.of(context).formatShortDate(date),
+    });
   }
 
   static String _formatRemainingPhrase(
+    BuildContext context,
     double remaining,
     String unit,
     String label,
-    bool isPortuguese,
   ) {
     final amount = _formatOneDecimal(remaining.abs());
-    if (isPortuguese) {
-      if (remaining >= 0) {
-        return 'Ainda faltam $amount$unit de $label para bater a meta.';
-      }
-      return 'Você já passou $amount$unit da meta de $label.';
-    }
+    return _translate(
+      context,
+      remaining >= 0
+          ? 'agent_daily_macro_remaining'
+          : 'agent_daily_macro_exceeded',
+      {
+        'amount': amount,
+        'unit': unit,
+        'macro': label,
+      },
+    );
+  }
 
-    if (remaining >= 0) {
-      return 'You still have $amount$unit of $label remaining.';
+  static String _localizedSetupField(BuildContext context, String field) {
+    switch (_normalizeLooseText(field).replaceAll(' ', '_')) {
+      case 'sex':
+      case 'gender':
+        return _translate(context, 'gender');
+      case 'age':
+        return _translate(context, 'age');
+      case 'weight':
+      case 'weight_kg':
+        return _translate(context, 'weight');
+      case 'height':
+      case 'height_cm':
+        return _translate(context, 'height');
+      case 'activity':
+      case 'activity_level':
+        return _translate(context, 'activity_level');
+      case 'goal':
+      case 'fitness_goal':
+        return _translate(context, 'goal');
+      default:
+        return field.replaceAll('_', ' ');
     }
-    return 'You are $amount$unit over your $label target.';
   }
 
   static String sanitizeDisplayMessage(
@@ -2762,10 +2649,6 @@ class AppAgentService {
     }
 
     final result = successfulDietResults.last;
-    final isPortuguese =
-        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-              'pt',
-            );
     final mealCount = _tryParseInt(result.payload['mealCount']) ?? 0;
     final totalCalories = _tryParseInt(result.payload['totalCalories']) ?? 0;
     final totalProtein = _tryParseDouble(result.payload['totalProtein']) ?? 0;
@@ -2774,23 +2657,13 @@ class AppAgentService {
     const hint =
         '\n\n[APP_UI_HINT_BEGIN]{"actions":["view_my_diet_ui"]}[APP_UI_HINT_END]';
 
-    if (isPortuguese) {
-      return 'Dieta gerada. Montei $mealCount refeições personalizadas, '
-          'com cerca de $totalCalories kcal no dia '
-          '(${_formatOneDecimal(totalProtein)}g proteína, '
-          '${_formatOneDecimal(totalCarbs)}g carboidratos, '
-          '${_formatOneDecimal(totalFat)}g gorduras). '
-          'Você pode ver e ajustar tudo em Minha Dieta.'
-          '$hint';
-    }
-
-    return 'Diet generated. I created $mealCount personalized meals, '
-        'with about $totalCalories kcal for the day '
-        '(${_formatOneDecimal(totalProtein)}g protein, '
-        '${_formatOneDecimal(totalCarbs)}g carbs, '
-        '${_formatOneDecimal(totalFat)}g fat). '
-        'You can view and adjust everything in My Diet.'
-        '$hint';
+    return '${_translate(context, 'agent_diet_generated', {
+          'meal_count': mealCount,
+          'calories': totalCalories,
+          'protein': _formatOneDecimal(totalProtein),
+          'carbs': _formatOneDecimal(totalCarbs),
+          'fat': _formatOneDecimal(totalFat),
+        })}$hint';
   }
 
   static bool isMacroTargetAdviceQuestion(String userMessage) {
@@ -2871,10 +2744,6 @@ class AppAgentService {
     }
 
     final normalized = _normalizeLooseText(userMessage);
-    final isPortuguese =
-        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-              'pt',
-            );
     final goalsProvider = Provider.of<NutritionGoalsProvider>(
       context,
       listen: false,
@@ -2889,8 +2758,8 @@ class AppAgentService {
     if (_containsAnyTerm(normalized, const ['proteina', 'protein'])) {
       final range = _recommendedProteinRange(goalsProvider.fitnessGoal);
       final goalLabel = _fitnessGoalAdviceLabel(
+        context,
         goalsProvider.fitnessGoal,
-        isPortuguese: isPortuguese,
       );
       final formattedProtein = _formatOneDecimal(proteinGoal);
       final formattedPerKg =
@@ -2901,60 +2770,34 @@ class AppAgentService {
       final formattedMin = _formatOneDecimal(range[0]);
       final formattedMax = _formatOneDecimal(range[1]);
 
-      if (isPortuguese) {
-        if (proteinPerKg > 0 && proteinPerKg < range[0] - 0.05) {
-          return 'Pode ser interessante subir um pouco. Sua meta atual está em '
-              '$currentProtein, e para $goalLabel uma faixa simples costuma '
-              'ficar perto de $formattedMin a $formattedMax g/kg. '
-              'Para manter $caloriesGoal kcal, eu ajustaria carboidratos ou '
-              'gorduras junto. Se quiser aplicar, diga algo como "coloque '
-              '${_formatOneDecimal((range[0] * weightKg).roundToDouble())}g de proteína".';
-        }
-
-        final qualifier = proteinPerKg > range[1] + 0.05
-            ? 'já está acima da faixa que eu usaria como padrão'
-            : 'já está dentro de uma faixa boa';
-        return 'Não precisa subir por padrão. Sua meta atual está em '
-            '$currentProtein, o que $qualifier para $goalLabel. '
-            'Mais proteína só faz sentido se você sentir mais saciedade ou '
-            'preferir comer assim; mantendo $caloriesGoal kcal, eu teria que '
-            'tirar um pouco de carboidratos ou gorduras. Se quiser testar, '
-            'me diga a nova meta, por exemplo "coloque 185g de proteína".';
-      }
-
       if (proteinPerKg > 0 && proteinPerKg < range[0] - 0.05) {
-        return 'A small increase may make sense. Your current target is '
-            '$currentProtein, and for $goalLabel a simple range is usually '
-            '$formattedMin to $formattedMax g/kg. To keep $caloriesGoal kcal, '
-            'I would adjust carbs or fat too. If you want to apply it, say '
-            'something like "set protein to '
-            '${_formatOneDecimal((range[0] * weightKg).roundToDouble())}g".';
+        return _translate(context, 'agent_protein_advice_increase', {
+          'current': currentProtein,
+          'goal': goalLabel,
+          'minimum': formattedMin,
+          'maximum': formattedMax,
+          'calories': caloriesGoal,
+          'suggested': _formatOneDecimal((range[0] * weightKg).roundToDouble()),
+        });
       }
 
-      final qualifier = proteinPerKg > range[1] + 0.05
-          ? 'already above the range I would use by default'
-          : 'already in a good range';
-      return 'You do not need to raise it by default. Your current target is '
-          '$currentProtein, which is $qualifier for $goalLabel. More protein '
-          'only makes sense if it helps your satiety or preference; keeping '
-          '$caloriesGoal kcal means I would need to take some calories from '
-          'carbs or fat. If you want to test it, tell me the new target, for '
-          'example "set protein to 185g".';
+      final qualifierKey = proteinPerKg > range[1] + 0.05
+          ? 'agent_protein_qualifier_above'
+          : 'agent_protein_qualifier_good';
+      return _translate(context, 'agent_protein_advice_keep', {
+        'current': currentProtein,
+        'qualifier': _translate(context, qualifierKey),
+        'goal': goalLabel,
+        'calories': caloriesGoal,
+      });
     }
 
-    if (isPortuguese) {
-      return 'Esses macros podem funcionar. Hoje suas metas estão em '
-          '$caloriesGoal kcal, ${_formatOneDecimal(proteinGoal)}g de proteína, '
-          '${_formatOneDecimal(carbsGoal)}g de carboidratos e '
-          '${_formatOneDecimal(fatGoal)}g de gorduras. Se quiser mudar algum '
-          'valor, me diga o alvo exato.';
-    }
-
-    return 'Those macros can work. Your current targets are $caloriesGoal kcal, '
-        '${_formatOneDecimal(proteinGoal)}g protein, '
-        '${_formatOneDecimal(carbsGoal)}g carbs, and '
-        '${_formatOneDecimal(fatGoal)}g fat. If you want to change a value, '
-        'tell me the exact target.';
+    return _translate(context, 'agent_macro_advice_current', {
+      'calories': caloriesGoal,
+      'protein': _formatOneDecimal(proteinGoal),
+      'carbs': _formatOneDecimal(carbsGoal),
+      'fat': _formatOneDecimal(fatGoal),
+    });
   }
 
   static List<double> _recommendedProteinRange(FitnessGoal goal) {
@@ -2972,20 +2815,20 @@ class AppAgentService {
   }
 
   static String _fitnessGoalAdviceLabel(
-    FitnessGoal goal, {
-    required bool isPortuguese,
-  }) {
+    BuildContext context,
+    FitnessGoal goal,
+  ) {
     switch (goal) {
       case FitnessGoal.loseWeight:
-        return isPortuguese ? 'perder peso' : 'weight loss';
+        return _translate(context, 'agent_goal_weight_loss');
       case FitnessGoal.loseWeightSlowly:
-        return isPortuguese ? 'perder peso devagar' : 'slow weight loss';
+        return _translate(context, 'agent_goal_slow_weight_loss');
       case FitnessGoal.gainWeight:
-        return isPortuguese ? 'ganhar peso' : 'weight gain';
+        return _translate(context, 'agent_goal_weight_gain');
       case FitnessGoal.gainWeightSlowly:
-        return isPortuguese ? 'ganhar massa aos poucos' : 'lean mass gain';
+        return _translate(context, 'agent_goal_lean_mass_gain');
       case FitnessGoal.maintainWeight:
-        return isPortuguese ? 'manutenção' : 'maintenance';
+        return _translate(context, 'agent_goal_maintenance');
     }
   }
 
@@ -4360,10 +4203,6 @@ class AppAgentService {
     }
 
     final lastResult = successfulResults.last;
-    final isPortuguese =
-        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-              'pt',
-            );
 
     switch (lastResult.commandName) {
       case generateNewDietPlan:
@@ -4386,26 +4225,19 @@ class AppAgentService {
             .toList();
         final preview = mealNames.isEmpty ? '' : mealNames.join(', ');
 
-        if (isPortuguese) {
-          final previewLine =
-              preview.isEmpty ? '' : '\n\nPrimeiras refeições: $preview.';
-          return 'Seu novo plano de dieta foi gerado com sucesso. '
-              'Ele tem $mealCount refeições e cerca de $totalCalories kcal no dia '
-              '(${_formatOneDecimal(totalProtein)}g de proteína, '
-              '${_formatOneDecimal(totalCarbs)}g de carboidratos e '
-              '${_formatOneDecimal(totalFat)}g de gorduras). '
-              'Você já pode ver a dieta na aba Minha Dieta.$previewLine'
-              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
-        }
-
-        final previewLine = preview.isEmpty ? '' : '\n\nFirst meals: $preview.';
-        return 'Your new diet plan was generated successfully. '
-            'It has $mealCount meals and about $totalCalories kcal for the day '
-            '(${_formatOneDecimal(totalProtein)}g protein, '
-            '${_formatOneDecimal(totalCarbs)}g carbs, '
-            '${_formatOneDecimal(totalFat)}g fat). '
-            'You can already view it in the My Diet tab.$previewLine'
-            '\n\nI could not finish the chat reply because you ran out of credits.';
+        final previewLine = preview.isEmpty
+            ? ''
+            : _translate(context, 'agent_credit_diet_preview', {
+                'meals': preview,
+              });
+        return _translate(context, 'agent_credit_diet_result', {
+          'meal_count': mealCount,
+          'calories': totalCalories,
+          'protein': _formatOneDecimal(totalProtein),
+          'carbs': _formatOneDecimal(totalCarbs),
+          'fat': _formatOneDecimal(totalFat),
+          'preview': previewLine,
+        });
       case getDailyNutritionStatus:
         final caloriesRemaining =
             _tryParseInt(lastResult.payload['caloriesRemaining']) ?? 0;
@@ -4415,18 +4247,12 @@ class AppAgentService {
             _tryParseDouble(lastResult.payload['carbsRemaining']) ?? 0;
         final fatRemaining =
             _tryParseDouble(lastResult.payload['fatRemaining']) ?? 0;
-        if (isPortuguese) {
-          return 'Consultei seu status de hoje: você ainda pode consumir '
-              '$caloriesRemaining kcal, ${_formatOneDecimal(proteinRemaining)}g de proteína, '
-              '${_formatOneDecimal(carbsRemaining)}g de carboidratos e '
-              '${_formatOneDecimal(fatRemaining)}g de gorduras.'
-              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
-        }
-        return 'I checked your status for today: you still have '
-            '$caloriesRemaining kcal, ${_formatOneDecimal(proteinRemaining)}g protein, '
-            '${_formatOneDecimal(carbsRemaining)}g carbs, and '
-            '${_formatOneDecimal(fatRemaining)}g fat remaining.'
-            '\n\nI could not finish the chat reply because you ran out of credits.';
+        return _translate(context, 'agent_credit_daily_result', {
+          'calories': caloriesRemaining,
+          'protein': _formatOneDecimal(proteinRemaining),
+          'carbs': _formatOneDecimal(carbsRemaining),
+          'fat': _formatOneDecimal(fatRemaining),
+        });
       case updateGoalSetupProfile:
       case updateGoalSetupPreferences:
       case getGoalSetupStatus:
@@ -4436,20 +4262,14 @@ class AppAgentService {
                     const [])
                 .map((field) => field.toString())
                 .toList();
-        if (isPortuguese) {
-          if (missingFields.isEmpty) {
-            return 'Suas informações iniciais já estão completas no app.'
-                '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
-          }
-          return 'Atualizei suas informações iniciais. Ainda faltam: ${missingFields.join(', ')}.'
-              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
-        }
         if (missingFields.isEmpty) {
-          return 'Your initial setup is already complete in the app.'
-              '\n\nI could not finish the chat reply because you ran out of credits.';
+          return _translate(context, 'agent_credit_setup_complete');
         }
-        return 'I updated your initial setup. Still missing: ${missingFields.join(', ')}.'
-            '\n\nI could not finish the chat reply because you ran out of credits.';
+        return _translate(context, 'agent_credit_setup_missing', {
+          'fields': missingFields
+              .map((field) => _localizedSetupField(context, field))
+              .join(', '),
+        });
       case updateMacroTargetsPercentage:
       case updateMacroTargetsGrams:
       case updateMacroTargetsGramsPerKg:
@@ -4469,22 +4289,14 @@ class AppAgentService {
         final fat = _tryParseDouble(grams['fat']) ??
             _tryParseDouble(lastResult.payload['fatGoal']) ??
             0;
-        if (isPortuguese) {
-          return 'Seus alvos nutricionais atuais são $caloriesGoal kcal, '
-              '${_formatOneDecimal(protein)}g de proteína, '
-              '${_formatOneDecimal(carbs)}g de carboidratos e '
-              '${_formatOneDecimal(fat)}g de gorduras.'
-              '\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.';
-        }
-        return 'Your current nutrition targets are $caloriesGoal kcal, '
-            '${_formatOneDecimal(protein)}g protein, '
-            '${_formatOneDecimal(carbs)}g carbs, and '
-            '${_formatOneDecimal(fat)}g fat.'
-            '\n\nI could not finish the chat reply because you ran out of credits.';
+        return _translate(context, 'agent_credit_macro_result', {
+          'calories': caloriesGoal,
+          'protein': _formatOneDecimal(protein),
+          'carbs': _formatOneDecimal(carbs),
+          'fat': _formatOneDecimal(fat),
+        });
       default:
-        return isPortuguese
-            ? 'Consegui concluir a ação no app, mas não consegui completar a resposta do chat porque seus créditos acabaram.'
-            : 'I completed the action in the app, but I could not finish the chat reply because you ran out of credits.';
+        return _translate(context, 'agent_credit_action_complete');
     }
   }
 
@@ -5738,12 +5550,17 @@ $basePrompt
           const <String, dynamic>{};
       final commandName = response['commandName']?.toString() ?? command.name;
       final success = response['success'] == true;
-      final errorMessage = response['errorMessage']?.toString();
+      final rawErrorMessage = response['errorMessage']?.toString();
+      final errorMessage = success
+          ? null
+          : _safeCommandErrorCode(
+              payload['reason']?.toString() ?? rawErrorMessage,
+            );
 
       logAgentDebug('server_command_response', {
         'commandName': commandName,
         'success': success,
-        'errorMessage': errorMessage,
+        'errorMessage': rawErrorMessage,
         'responseKeys': response.keys.toList(),
         'stateKeys': state.keys.toList(),
         'payloadKeys': payload.keys.toList(),
@@ -5763,7 +5580,7 @@ $basePrompt
       return AppAgentExecutionResult(
         commandName: command.name,
         success: false,
-        errorMessage: error.toString(),
+        errorMessage: 'server_chat_state_error',
         payload: const {
           'reason': 'server_chat_state_error',
         },
@@ -5966,18 +5783,30 @@ $basePrompt
     await dietProvider.generateDietPlan(
       dietProvider.selectedDate,
       goalsProvider,
-      mealTypes: mealTypesProvider.mealTypes,
+      mealTypes: mealTypesProvider.mealTypes
+          .map(
+            (mealType) => mealType.copyWith(
+              name: localizedMealTypeName(
+                AppLocalizations.of(context),
+                mealType,
+              ),
+            ),
+          )
+          .toList(growable: false),
       userId: userId,
       languageCode: languageCode,
     );
 
     if (dietProvider.error != null || dietProvider.currentDietPlan == null) {
+      final errorCode = dietProvider.error == null
+          ? 'diet_generation_failed'
+          : _safeCommandErrorCode(dietProvider.error);
       return AppAgentExecutionResult(
         commandName: command.name,
         success: false,
-        errorMessage: dietProvider.error ?? 'diet_generation_failed',
+        errorMessage: errorCode,
         payload: {
-          'reason': dietProvider.error ?? 'diet_generation_failed',
+          'reason': errorCode,
           'dietMode': dietProvider.dietMode.name,
         },
       );

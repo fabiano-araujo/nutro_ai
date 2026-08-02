@@ -23,24 +23,24 @@ class EssayProvider with ChangeNotifier {
       _essays = [
         Essay(
           id: const Uuid().v4(),
-          title: 'Os desafios da educação no Brasil',
-          text: 'Texto da redação sobre os desafios da educação no Brasil...',
+          title: 'i18n:essay_sample_education_challenges_title',
+          text: 'i18n:essay_sample_education_challenges_text',
           type: 'ENEM',
           date: DateTime(2025, 4, 25),
           score: 800,
           status: 'Corrigido',
           competenceScores: {
-            'Competência 1': 160,
-            'Competência 2': 180,
-            'Competência 3': 160,
-            'Competência 4': 160,
-            'Competência 5': 140,
+            'i18n:essay_competence_1': 160,
+            'i18n:essay_competence_2': 180,
+            'i18n:essay_competence_3': 160,
+            'i18n:essay_competence_4': 160,
+            'i18n:essay_competence_5': 140,
           },
         ),
         Essay(
           id: const Uuid().v4(),
-          title: 'Consequências da desinformação na era digital',
-          text: 'Texto da redação sobre consequências da desinformação...',
+          title: 'i18n:essay_sample_misinformation_title',
+          text: 'i18n:essay_sample_misinformation_text',
           type: 'Vestibular',
           date: DateTime(2025, 4, 20),
           score: 780,
@@ -48,9 +48,8 @@ class EssayProvider with ChangeNotifier {
         ),
         Essay(
           id: const Uuid().v4(),
-          title: 'Sustentabilidade e consumo consciente',
-          text:
-              'Texto da redação sobre sustentabilidade e consumo consciente...',
+          title: 'i18n:essay_sample_sustainability_title',
+          text: 'i18n:essay_sample_sustainability_text',
           type: 'ENEM',
           date: DateTime(2025, 4, 15),
           score: 850,
@@ -58,16 +57,16 @@ class EssayProvider with ChangeNotifier {
         ),
         Essay(
           id: const Uuid().v4(),
-          title: 'O papel da tecnologia na educação',
-          text: 'Texto da redação sobre o papel da tecnologia na educação...',
+          title: 'i18n:essay_sample_technology_education_title',
+          text: 'i18n:essay_sample_technology_education_text',
           type: 'Vestibular',
           date: DateTime(2025, 4, 25),
           status: 'Em Análise',
         ),
         Essay(
           id: const Uuid().v4(),
-          title: 'Desigualdade social no Brasil',
-          text: 'Texto da redação sobre desigualdade social no Brasil...',
+          title: 'i18n:essay_sample_social_inequality_title',
+          text: 'i18n:essay_sample_social_inequality_text',
           type: 'ENEM',
           date: DateTime(2025, 4, 22),
           status: 'Rascunho',
@@ -108,10 +107,10 @@ class EssayProvider with ChangeNotifier {
     );
 
     _essays.add(essay);
-    
+
     // Log analytics
     AnalyticsService.logEssayCreated(essay);
-    
+
     notifyListeners();
     return essay;
   }
@@ -122,10 +121,10 @@ class EssayProvider with ChangeNotifier {
     if (index != -1) {
       final updatedEssay = _essays[index].copyWith(status: 'Em Análise');
       _essays[index] = updatedEssay;
-      
+
       // Log analytics
       AnalyticsService.logEssaySubmitted(updatedEssay);
-      
+
       notifyListeners();
     }
   }
@@ -141,17 +140,17 @@ class EssayProvider with ChangeNotifier {
         competenceScores: competenceScores,
       );
       _essays[index] = updatedEssay;
-      
+
       // Log analytics
       AnalyticsService.logEssayCorrected(updatedEssay);
-      
+
       // Adicionar ao progresso
       try {
         await _progressTracker.addProgressPoint(updatedEssay);
       } catch (e) {
         debugPrint('Erro ao adicionar progresso: $e');
       }
-      
+
       notifyListeners();
     }
   }

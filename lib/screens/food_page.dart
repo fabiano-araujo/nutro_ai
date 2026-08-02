@@ -15,6 +15,7 @@ import '../models/Portion.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/food_history_provider.dart';
+import '../providers/meal_types_provider.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
 import '../services/food_catalog_service.dart';
@@ -27,6 +28,7 @@ import '../widgets/sub_nutrient_row.dart';
 import '../widgets/micro_nutrient_row.dart';
 import '../widgets/food_icon.dart';
 import '../utils/ui_utils.dart';
+import '../utils/meal_type_localization.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
@@ -1321,9 +1323,12 @@ class _FoodPageState extends State<FoodPage> {
     historyProvider.incrementFrequency(scaledFood);
 
     // Get meal name
-    final option = DailyMealsProvider.getMealTypeOption(mealType);
     final navigatorContext = Navigator.of(context).context;
-    final successMessage = '${currentFood.name} added to ${option.name}';
+    final mealName = _mealTypeLabel(mealType);
+    final successMessage = context.tr
+        .translate('food_added_to_meal')
+        .replaceAll('{food}', currentFood.name)
+        .replaceAll('{meal}', mealName);
 
     // Close food page
     Navigator.pop(context);
@@ -1368,7 +1373,7 @@ class _FoodPageState extends State<FoodPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Select Meal Type',
+                      context.tr.translate('select_meal_type'),
                       style: GoogleFonts.poppins(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
@@ -1407,7 +1412,7 @@ class _FoodPageState extends State<FoodPage> {
                               style: const TextStyle(fontSize: 22)),
                           const SizedBox(width: 12),
                           Text(
-                            option.name,
+                            _mealTypeLabel(mealType),
                             style: GoogleFonts.inter(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -1436,7 +1441,7 @@ class _FoodPageState extends State<FoodPage> {
     if (portions == null || portions.isEmpty) {
       UIUtils.showPrimarySnackBar(
         context,
-        'Porções alternativas não disponíveis para este alimento',
+        context.tr.translate('no_alternative_portions'),
       );
       return;
     }
@@ -1479,7 +1484,7 @@ class _FoodPageState extends State<FoodPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Select Portion',
+                      context.tr.translate('select_portion'),
                       style: GoogleFonts.poppins(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
@@ -1587,6 +1592,43 @@ class _FoodPageState extends State<FoodPage> {
           ),
         );
       },
+    );
+  }
+
+  String _mealTypeLabel(MealType mealType) {
+    final option = DailyMealsProvider.getMealTypeOption(mealType);
+    final candidateIds = switch (mealType) {
+      MealType.breakfast => const ['breakfast'],
+      MealType.lunch => const ['lunch'],
+      MealType.dinner => const ['dinner'],
+      MealType.snack => const [
+          'snack',
+          'afternoon_snack',
+          'morning_snack',
+        ],
+      MealType.freeMeal => const ['free_meal'],
+    };
+
+    try {
+      final provider = Provider.of<MealTypesProvider>(context, listen: false);
+      for (final id in candidateIds) {
+        final configuredMealType = provider.getMealTypeById(id);
+        if (configuredMealType != null) {
+          return localizedMealTypeName(context.tr, configuredMealType);
+        }
+      }
+    } catch (_) {
+      // Use the localized built-in fallback when no provider is available.
+    }
+
+    return localizedMealTypeName(
+      context.tr,
+      MealTypeConfig(
+        id: candidateIds.first,
+        name: option.name,
+        emoji: option.emoji,
+        order: mealType.index,
+      ),
     );
   }
 
@@ -1739,7 +1781,7 @@ class _FoodPageState extends State<FoodPage> {
                                         style: const TextStyle(fontSize: 18)),
                                     const SizedBox(width: 8),
                                     Text(
-                                      option.name,
+                                      _mealTypeLabel(mealType),
                                       style: GoogleFonts.poppins(
                                         fontSize: 17,
                                         fontWeight: FontWeight.w600,

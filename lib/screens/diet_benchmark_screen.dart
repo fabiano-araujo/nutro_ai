@@ -13,6 +13,7 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../utils/fabiano_access.dart';
+import '../utils/meal_type_localization.dart';
 import 'nutrition_goals_wizard_screen.dart';
 
 enum _BenchmarkStatus { pending, running, completed, failed }
@@ -363,7 +364,13 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
       final languageCode =
           '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
       final selectedDate = dietProvider.selectedDate;
-      final mealTypes = mealTypesProvider.mealTypes;
+      final mealTypes = mealTypesProvider.mealTypes
+          .map(
+            (mealType) => mealType.copyWith(
+              name: localizedMealTypeName(context.tr, mealType),
+            ),
+          )
+          .toList(growable: false);
       final targetCalories = nutritionGoals.caloriesGoal;
       final reasoningEffort = _benchmarkReasoningEffort;
       final benchmarkSignature = _buildBenchmarkSignature(
@@ -422,21 +429,21 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
           });
           await _cacheEntry(benchmarkSignature, entry);
           await _saveModels();
-        } catch (error) {
+        } catch (_) {
           await _removeCachedEntry(benchmarkSignature, entry.modelId);
           if (!mounted) return;
           setState(() {
-            entry.error = error.toString();
+            entry.error = context.tr.translate('benchmark_model_failed');
             entry.status = _BenchmarkStatus.failed;
             entry.completedAt = DateTime.now();
           });
           await _saveModels();
         }
       }
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
-        _runError = error.toString();
+        _runError = context.tr.translate('benchmark_model_failed');
       });
     } finally {
       if (mounted) {
@@ -1357,7 +1364,7 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
                                 ),
                               ),
                               Text(
-                                meal.time,
+                                localizedMealTime(context, meal.time),
                                 style: TextStyle(
                                   color: secondaryTextColor,
                                   fontWeight: FontWeight.w600,
@@ -1413,9 +1420,9 @@ class _DietBenchmarkScreenState extends State<DietBenchmarkScreen> {
         : food.amount.toStringAsFixed(1);
     return '- ${food.name}: $amount ${food.unit} '
         '(${food.calories} kcal, '
-        'P ${food.protein.toStringAsFixed(1)}g, '
-        'C ${food.carbs.toStringAsFixed(1)}g, '
-        'G ${food.fat.toStringAsFixed(1)}g)';
+        '${context.tr.translate('protein_short')} ${food.protein.toStringAsFixed(1)}g, '
+        '${context.tr.translate('carbs_short')} ${food.carbs.toStringAsFixed(1)}g, '
+        '${context.tr.translate('fat_short')} ${food.fat.toStringAsFixed(1)}g)';
   }
 
   String _formatCost(double? cost) {

@@ -19,6 +19,9 @@ class ActivityTrackingProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _loadedDateKey;
   DateTime? _lastLoadedAt;
+  Future<void>? _activeLoad;
+  String? _activeLoadDateKey;
+  bool _activeLoadIsForced = false;
   final List<ManualActivityEntry> _manualActivities = [];
   final List<CustomActivityDefinition> _customActivities = [];
   bool _manualDataLoaded = false;
@@ -37,7 +40,6 @@ class ActivityTrackingProvider extends ChangeNotifier {
   int get caloriesBurned => (_summary?.activeCalories ?? 0).round();
   int get steps => _summary?.steps ?? 0;
   int get exerciseMinutes => _summary?.exerciseMinutes ?? 0;
-  int get exerciseCount => _summary?.exerciseCount ?? 0;
   bool get hasActivityData => _summary?.hasActivityData ?? false;
   bool get hasAllPermissions =>
       _healthStatus?.hasAllPermissions ?? _summary?.hasAllPermissions ?? false;
@@ -52,8 +54,7 @@ class ActivityTrackingProvider extends ChangeNotifier {
   bool get isHealthConnectUnsupported =>
       _healthStatus?.isUnsupported ?? _summary?.isUnsupported ?? false;
   bool get canReadCalories =>
-      _hasGrantedPermission('READ_ACTIVE_CALORIES_BURNED') ||
-      _hasGrantedPermission('READ_TOTAL_CALORIES_BURNED');
+      _hasGrantedPermission('READ_ACTIVE_CALORIES_BURNED');
   bool get canReadSteps => _hasGrantedPermission('READ_STEPS');
   bool get canReadExercise => _hasGrantedPermission('READ_EXERCISE');
   bool get hasCaloriesData => _summary?.activeCalories != null;
@@ -69,10 +70,8 @@ class ActivityTrackingProvider extends ChangeNotifier {
         0,
         (total, activity) => total + activity.durationMinutes,
       );
-  int get manualExerciseCount => _manualActivitiesForLoadedDate.length;
   int get totalCaloriesBurned => caloriesBurned + manualCaloriesBurned;
   int get totalExerciseMinutes => exerciseMinutes + manualExerciseMinutes;
-  int get totalExerciseCount => exerciseCount + manualExerciseCount;
   bool get hasCombinedActivityData =>
       hasActivityData || _manualActivitiesForLoadedDate.isNotEmpty;
 
@@ -93,9 +92,40 @@ class ActivityTrackingProvider extends ChangeNotifier {
   }
 
   Future<void> loadForDate(DateTime date, {bool force = false}) async {
+    final dateKey = _dateKey(date);
+
+    while (true) {
+      final activeLoad = _activeLoad;
+      if (activeLoad == null) break;
+
+      final canShareActiveLoad =
+          _activeLoadDateKey == dateKey && (!force || _activeLoadIsForced);
+      await activeLoad;
+      if (canShareActiveLoad) return;
+    }
+
+    late final Future<void> operation;
+    operation = _loadForDate(date, dateKey: dateKey, force: force).whenComplete(
+      () {
+        if (!identical(_activeLoad, operation)) return;
+        _activeLoad = null;
+        _activeLoadDateKey = null;
+        _activeLoadIsForced = false;
+      },
+    );
+    _activeLoad = operation;
+    _activeLoadDateKey = dateKey;
+    _activeLoadIsForced = force;
+    await operation;
+  }
+
+  Future<void> _loadForDate(
+    DateTime date, {
+    required String dateKey,
+    required bool force,
+  }) async {
     final manualWasLoaded = _manualDataLoaded;
     await _ensureManualDataLoaded();
-    final dateKey = _dateKey(date);
     final cacheIsFresh = _lastLoadedAt != null &&
         DateTime.now().difference(_lastLoadedAt!) < _cacheDuration;
     if (!force &&
@@ -168,12 +198,12 @@ class ActivityTrackingProvider extends ChangeNotifier {
     return _launcher.isAppInstalled(packageName);
   }
 
-  Future<TrackingAppLaunchResult> openTrackingApp(String packageName) {
-    return _launcher.openAppOrStore(packageName);
+  Future<int?> getAndroidSdkInt() {
+    return _launcher.getAndroidSdkInt();
   }
 
-  Future<TrackingAppLaunchResult> openTrackingAppOfficialStore(String url) {
-    return _launcher.openOfficialStore(url);
+  Future<TrackingAppLaunchResult> openTrackingApp(String packageName) {
+    return _launcher.openAppOrStore(packageName);
   }
 
   Future<void> loadManualActivities() async {

@@ -11,6 +11,7 @@ import '../services/app_integrity_service.dart';
 import '../services/diet_generation_background_service.dart';
 import '../services/user_app_state_service.dart';
 import '../util/app_constants.dart';
+import '../utils/diet_stream_meal_parser.dart';
 
 class DietGenerationUsage {
   final int promptTokens;
@@ -131,18 +132,13 @@ class DietPlanProvider extends ChangeNotifier {
   static const List<Map<String, String>> dietGenerationModelOptions = [
     {
       'id': DietPreferences.defaultDietGenerationModel,
-      'name': 'Gemini 3 Flash',
-      'description': 'Modelo padrão da tela Minha Dieta',
-    },
-    {
-      'id': 'deepseek/deepseek-v4-flash',
-      'name': 'DeepSeek V4 Flash',
-      'description': 'Alternativa rápida para testar geração de dietas',
+      'name': 'DeepSeek V4 Flash 0731',
+      'descriptionKey': 'diet_model_gemini3_description',
     },
     {
       'id': 'google/gemini-2.5-flash-lite',
       'name': 'Gemini 2.5 Flash Lite',
-      'description': 'Modelo leve para testes com menor custo',
+      'descriptionKey': 'diet_model_gemini_lite_description',
     },
   ];
   static final RegExp _openRouterModelIdPattern = RegExp(
@@ -165,6 +161,9 @@ class DietPlanProvider extends ChangeNotifier {
       'diet_preferences_pending_server_sync';
   DietGenerationBackgroundTask? _activeDietGenerationJob;
   bool _isPollingDietGenerationJob = false;
+  String _lastDietProgressText = '';
+  StreamSubscription<Map<String, dynamic>?>?
+      _dietGenerationProgressSubscription;
 
   // Getters para status de autenticação
   bool get isAuthenticated => _authToken != null && _userId != null;
@@ -229,9 +228,23 @@ class DietPlanProvider extends ChangeNotifier {
 
   DietPlanProvider() {
     _loadFuture = _loadFromPreferences();
+    _dietGenerationProgressSubscription =
+        DietGenerationBackgroundService.onProgress().listen(
+      _handleDietGenerationProgress,
+      onError: (Object error) {
+        print('⚠️ Erro no canal de progresso da dieta: $error');
+      },
+    );
   }
 
   Future<void> ensureLoaded() => _loadFuture;
+
+  @override
+  void dispose() {
+    _preferencesSyncDebounce?.cancel();
+    unawaited(_dietGenerationProgressSubscription?.cancel());
+    super.dispose();
+  }
 
   /// Define as credenciais de autenticação e carrega dados do servidor
   Future<void> setAuth(
@@ -636,6 +649,7 @@ class DietPlanProvider extends ChangeNotifier {
     _error = 'Créditos insuficientes para gerar texto';
     _partialDietPlan = null;
     _activeMealTypes = const [];
+    _lastDietProgressText = '';
     notifyListeners();
   }
 
@@ -681,12 +695,12 @@ class DietPlanProvider extends ChangeNotifier {
     )['name']!;
   }
 
-  String getDietGenerationModelDescription(String modelId) {
+  String getDietGenerationModelDescriptionKey(String modelId) {
     final normalizedModel = _normalizeDietGenerationModel(modelId);
     return dietGenerationModelOptions.firstWhere(
       (option) => option['id'] == normalizedModel,
-      orElse: () => {'description': 'Modelo personalizado do OpenRouter'},
-    )['description']!;
+      orElse: () => {'descriptionKey': 'diet_model_custom_description'},
+    )['descriptionKey']!;
   }
 
   // Generate diet plan for a specific date
@@ -722,7 +736,7 @@ class DietPlanProvider extends ChangeNotifier {
     _error = null;
     _activeMealTypes = _resolveMealTypes(mealTypes);
     _expectedMealsCount = _activeMealTypes.length;
-    _parsedMealIndices.clear(); // Reset parsed meals tracker
+    _lastDietProgressText = '';
     final targetNutrition = DailyNutrition(
       calories: nutritionGoals.caloriesGoal,
       protein: nutritionGoals.proteinGoal.toDouble(),
@@ -775,6 +789,7 @@ class DietPlanProvider extends ChangeNotifier {
       _error = _formatDietGenerationError(e);
       _partialDietPlan = null; // Clear partial state on error
       _activeMealTypes = const [];
+      _lastDietProgressText = '';
       notifyListeners();
 
       print('❌ $_error');
@@ -829,8 +844,7 @@ class DietPlanProvider extends ChangeNotifier {
     );
   }
 
-  // Try to parse and add complete meals incrementally from partial JSON
-  Set<int> _parsedMealIndices = {};
+  // Meal types used to map compact streamed rows to localized display names.
   List<MealTypeConfig> _activeMealTypes = const [];
 
   Future<DietPlan> _generateDietPlanCandidate({
@@ -1039,6 +1053,7 @@ class DietPlanProvider extends ChangeNotifier {
         if (text == null || text.isEmpty) {
           throw Exception('Serviço de dieta finalizou sem resposta da IA');
         }
+        _applyDietGenerationProgress(text);
         return latestJob;
       }
 
@@ -1052,6 +1067,7 @@ class DietPlanProvider extends ChangeNotifier {
 
       if (_activeDietGenerationJob?.taskId == latestJob.taskId) {
         _activeDietGenerationJob = latestJob;
+        _applyDietGenerationProgress(latestJob.responseText);
       }
 
       await Future.delayed(_dietGenerationJobPollInterval);
@@ -1072,13 +1088,14 @@ class DietPlanProvider extends ChangeNotifier {
     _error = null;
     _activeMealTypes = _resolveMealTypes(_mealTypesFromBackgroundTask(job));
     _expectedMealsCount = _activeMealTypes.length;
-    _parsedMealIndices.clear();
+    _lastDietProgressText = '';
     _partialDietPlan = DietPlan(
       date: job.date,
       totalNutrition: targetNutrition,
       generatedForNutrition: targetNutrition,
       meals: const [],
     );
+    _applyDietGenerationProgress(job.responseText, notify: false);
   }
 
   DailyNutrition _targetNutritionFromBackgroundTask(
@@ -1094,6 +1111,17 @@ class DietPlanProvider extends ChangeNotifier {
         .map(MealTypeConfig.fromJson)
         .where((meal) => meal.id.isNotEmpty && meal.name.isNotEmpty)
         .toList();
+  }
+
+  void _handleDietGenerationProgress(Map<String, dynamic>? data) {
+    if (data == null || !_isLoading) return;
+
+    final taskId = data['taskId']?.toString();
+    if (taskId == null || _activeDietGenerationJob?.taskId != taskId) {
+      return;
+    }
+
+    _applyDietGenerationProgress(data['responseText']?.toString());
   }
 
   Future<void> _resumeActiveDietGenerationJob() async {
@@ -1127,6 +1155,7 @@ class DietPlanProvider extends ChangeNotifier {
       _error = null;
       _partialDietPlan = null;
       _activeMealTypes = const [];
+      _lastDietProgressText = '';
       await _clearActiveDietGenerationJob(job.taskId);
       await _saveToPreferences();
       await _saveToServer(job.dateKey, dietPlan);
@@ -1139,6 +1168,7 @@ class DietPlanProvider extends ChangeNotifier {
         _error = formattedError;
         _partialDietPlan = null;
         _activeMealTypes = const [];
+        _lastDietProgressText = '';
         await _clearActiveDietGenerationJob(job.taskId);
         notifyListeners();
       }
@@ -1185,6 +1215,7 @@ class DietPlanProvider extends ChangeNotifier {
         _error = 'Serviço de geração de dieta não encontrado';
         _partialDietPlan = null;
         _activeMealTypes = const [];
+        _lastDietProgressText = '';
         notifyListeners();
       } else if (hadActiveJob) {
         notifyListeners();
@@ -1202,68 +1233,64 @@ class DietPlanProvider extends ChangeNotifier {
     }
 
     _activeDietGenerationJob = null;
+    _lastDietProgressText = '';
     await DietGenerationBackgroundService.clearActiveTask();
   }
 
   void _tryParseIncrementalMeals(String partialJson) {
-    if (_partialDietPlan == null) return;
+    _applyDietGenerationProgress(partialJson);
+  }
 
-    try {
-      // Try to extract the meals array from partial JSON
-      final mealsMatch = RegExp(r'"(?:meals|m)"\s*:\s*\[(.*)', dotAll: true)
-          .firstMatch(partialJson);
-      if (mealsMatch == null) return;
+  void _applyDietGenerationProgress(
+    String? responseText, {
+    bool notify = true,
+  }) {
+    final partialPlan = _partialDietPlan;
+    if (partialPlan == null || responseText == null || responseText.isEmpty) {
+      return;
+    }
+    if (responseText == _lastDietProgressText) {
+      return;
+    }
 
-      final mealsContent = mealsMatch.group(1)!;
+    final isNewStreamAttempt = _lastDietProgressText.isNotEmpty &&
+        !responseText.startsWith(_lastDietProgressText);
+    final rawMeals = DietStreamMealParser.extractCompleteMeals(responseText);
+    final parsedMeals = <PlannedMeal>[];
 
-      // Find complete meal objects (those with closing })
-      final mealPattern =
-          RegExp(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', dotAll: true);
-      final mealMatches = mealPattern.allMatches(mealsContent).toList();
-
-      print(
-          '🍽️ Detectadas ${mealMatches.length} refeições completas no JSON parcial');
-
-      for (var i = 0; i < mealMatches.length; i++) {
-        // Skip if already parsed
-        if (_parsedMealIndices.contains(i)) continue;
-
-        try {
-          final mealJson = mealMatches[i].group(0)!;
-          final mealData = jsonDecode(mealJson) as Map<String, dynamic>;
-
-          // Validate that it's a complete meal with required fields
-          final hasLegacyFields =
-              mealData.containsKey('type') && mealData.containsKey('foods');
-          final hasCompactFields =
-              mealData.containsKey('t') && mealData.containsKey('f');
-          if (hasLegacyFields || hasCompactFields) {
-            final meal = PlannedMeal.fromAiJson(
-              mealData,
-              mealNames: _buildMealNameMap(_activeMealTypes),
-            );
-
-            // Add to partial diet plan if not already there
-            if (_partialDietPlan!.meals.length <= i) {
-              final updatedMeals =
-                  List<PlannedMeal>.from(_partialDietPlan!.meals)..add(meal);
-              _partialDietPlan =
-                  _partialDietPlan!.copyWith(meals: updatedMeals);
-              _parsedMealIndices.add(i);
-
-              print(
-                  '✅ Refeição #${i + 1} adicionada: ${meal.name} (${meal.type})');
-              notifyListeners(); // Update UI immediately
-            }
-          }
-        } catch (e) {
-          // Silently skip invalid meals during streaming
-          print('⚠️ Erro ao parsear refeição #${i + 1}: $e');
-        }
+    for (var index = 0; index < rawMeals.length; index++) {
+      try {
+        parsedMeals.add(
+          PlannedMeal.fromAiJson(
+            rawMeals[index],
+            mealNames: _buildMealNameMap(_activeMealTypes),
+          ),
+        );
+      } catch (e) {
+        // Preserve the valid prefix. A later snapshot may complete or repair
+        // the next row without hiding meals that are already usable.
+        print('⚠️ Erro ao parsear refeição #${index + 1}: $e');
+        break;
       }
-    } catch (e) {
-      // Silently fail during incremental parsing
-      print('⚠️ Erro durante parsing incremental: $e');
+    }
+
+    final visibleMealsChanged =
+        isNewStreamAttempt || parsedMeals.length != partialPlan.meals.length;
+    _lastDietProgressText = responseText;
+    if (!visibleMealsChanged) {
+      return;
+    }
+
+    _partialDietPlan = partialPlan.copyWith(meals: parsedMeals);
+    if (parsedMeals.isNotEmpty) {
+      final latestMeal = parsedMeals.last;
+      print(
+        '✅ Progresso da dieta: ${parsedMeals.length}/$_expectedMealsCount '
+        'refeições (${latestMeal.name})',
+      );
+    }
+    if (notify) {
+      notifyListeners();
     }
   }
 
@@ -2103,9 +2130,9 @@ Rules:
     _partialDietPlan = null;
     _isLoading = false;
     _error = null;
-    _parsedMealIndices.clear();
     _activeMealTypes = const [];
     _activeDietGenerationJob = null;
+    _lastDietProgressText = '';
     _hasPendingPreferencesSync = false;
     _isSyncingPreferences = false;
     _preferencesSyncDebounce?.cancel();
@@ -2198,6 +2225,10 @@ Rules:
 
   String _normalizeDietGenerationModel(String? modelId) {
     final requestedModel = modelId?.trim();
+    if (requestedModel == 'deepseek/deepseek-v4-flash' ||
+        requestedModel == 'google/gemini-3-flash-preview') {
+      return DietPreferences.defaultDietGenerationModel;
+    }
     final isAllowed = dietGenerationModelOptions.any(
       (option) => option['id'] == requestedModel,
     );

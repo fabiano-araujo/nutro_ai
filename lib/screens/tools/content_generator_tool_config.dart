@@ -12,7 +12,7 @@ class ContentGeneratorToolConfig {
           translationKey: 'poem',
           icon: Icons.format_quote,
           promptTemplate:
-              '{create_poem_style} {poem_style}, {with_emotion} {poem_emotion} {and_length} {poem_length} {about}: {input_text}. {use_language}.',
+              '{create_poem_style} {poem_style}, {with_emotion} {poem_emotion} {and_length} {poem_length} {about_connector}: {input_text}. {use_language}.',
           parameters: [
             // Parâmetros específicos para poema
             ToolParameter(
@@ -63,7 +63,7 @@ class ContentGeneratorToolConfig {
           translationKey: 'script',
           icon: Icons.movie,
           promptTemplate:
-              '{create_script_for_audience} {script_target_audience}, {with_language_level} {script_language_level} {and_genre} {script_genre} {about}: {input_text}. {use_language}.',
+              '{create_script_for_audience} {script_target_audience}, {with_language_level} {script_language_level} {and_genre} {script_genre} {about_connector}: {input_text}. {use_language}.',
           parameters: [
             // Parâmetros específicos para roteiro
             ToolParameter(

@@ -103,9 +103,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
         if (!authUpdated || !authService.isAuthenticated) {
           if (mounted) {
             setState(() {
-              _errorMessage = authService.errorMessage ??
-                  data['message']?.toString() ??
-                  context.tr.translate('server_connection_error');
+              _errorMessage = context.tr.translate('server_connection_error');
             });
           }
           return;
@@ -134,8 +132,7 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
               message.contains('email already')) {
             _errorMessage = context.tr.translate('email_already_in_use');
           } else {
-            _errorMessage =
-                data['message'] ?? context.tr.translate('registration_failed');
+            _errorMessage = context.tr.translate('registration_failed');
           }
         });
       }
@@ -275,7 +272,9 @@ class _EmailRegisterScreenState extends State<EmailRegisterScreen>
                                         color: fieldTextColor,
                                       ),
                                       decoration: _fieldDecoration(
-                                        hintText: 'exemplo@email.com',
+                                        hintText: context.tr.translate(
+                                          'email_example_hint',
+                                        ),
                                         icon: Icons.email_outlined,
                                         isDarkMode: isDarkMode,
                                         textSecondary: textSecondary,

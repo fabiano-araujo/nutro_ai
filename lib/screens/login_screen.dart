@@ -104,8 +104,7 @@ class _LoginScreenState extends State<LoginScreen>
           _closeAfterSuccessfulLogin();
         }
       } else if (!success && mounted) {
-        final errorMsg = authService.errorMessage ??
-            'Falha ao fazer login com Google. Tente novamente.';
+        final errorMsg = _localizedGoogleLoginError(authService.errorMessage);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -119,11 +118,11 @@ class _LoginScreenState extends State<LoginScreen>
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao conectar: $e'),
+            content: Text(context.tr.translate('server_connection_error')),
             backgroundColor: AppTheme.errorColor,
             duration: const Duration(seconds: 4),
           ),
@@ -134,6 +133,19 @@ class _LoginScreenState extends State<LoginScreen>
         });
       }
     }
+  }
+
+  String _localizedGoogleLoginError(String? error) {
+    final normalized = error?.toLowerCase() ?? '';
+    if (normalized.contains('cancel')) {
+      return context.tr.translate('login_cancelled');
+    }
+    if (normalized.contains('conectar') ||
+        normalized.contains('connection') ||
+        normalized.contains('network')) {
+      return context.tr.translate('server_connection_error');
+    }
+    return context.tr.translate('google_login_failed');
   }
 
   @override
@@ -213,7 +225,8 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    context.tr.translate('welcome_description'),
+                                    context.tr
+                                        .translate('login_welcome_description'),
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 15,
@@ -311,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ? IconButton(
                     icon: Icon(Icons.menu, color: textColor),
                     onPressed: widget.onOpenDrawer,
-                    tooltip: 'Menu',
+                    tooltip: context.tr.translate('menu'),
                   )
                 : canPop
                     ? IconButton(
@@ -346,7 +359,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 IconButton(
                   icon: Icon(Icons.settings, color: textColor),
-                  tooltip: context.tr.translate('settings'),
+                  tooltip: context.tr.translate('settings_title'),
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(

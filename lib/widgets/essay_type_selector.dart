@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../models/essay_template_model.dart';
 
 /// Widget para seleção de tipo e template de redação
@@ -45,13 +46,13 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
       children: [
         // Seleção de tipo
         _buildTypeSelection(theme, isDarkMode),
-        
+
         const SizedBox(height: 16),
-        
+
         // Seleção de template
         if (widget.availableTemplates.isNotEmpty)
           _buildTemplateSelection(theme, isDarkMode),
-        
+
         // Detalhes do template selecionado
         if (widget.showTemplateDetails && _selectedTemplate != null)
           _buildTemplateDetails(_selectedTemplate!, theme, isDarkMode),
@@ -61,19 +62,19 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
 
   Widget _buildTypeSelection(ThemeData theme, bool isDarkMode) {
     final types = ['ENEM', 'Vestibular', 'Concurso', 'Livre'];
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Tipo de Redação',
+          context.tr.translate('essay_type_label'),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 8),
-        
+
         // Chips para seleção de tipo
         Wrap(
           spacing: 8,
@@ -81,7 +82,7 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
           children: types.map((type) {
             final isSelected = type == _selectedType;
             return FilterChip(
-              label: Text(type),
+              label: Text(_essayTypeLabel(type)),
               selected: isSelected,
               onSelected: (selected) {
                 if (selected) {
@@ -93,7 +94,7 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
                   widget.onTemplateChanged(null);
                 }
               },
-              selectedColor: theme.primaryColor.withOpacity(0.2),
+              selectedColor: theme.primaryColor.withValues(alpha: 0.2),
               checkmarkColor: theme.primaryColor,
             );
           }).toList(),
@@ -115,42 +116,41 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Template',
+          context.tr.translate('essay_template_label'),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 8),
-        
+
         // Lista de templates
         ...templatesForType.map((template) {
           final isSelected = template.id == _selectedTemplate?.id;
-          
+
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
             elevation: isSelected ? 4 : 1,
-            color: isSelected 
-                ? theme.primaryColor.withOpacity(0.1)
-                : null,
+            color:
+                isSelected ? theme.primaryColor.withValues(alpha: 0.1) : null,
             child: ListTile(
               leading: Icon(
                 _getIconForTemplate(template),
                 color: isSelected ? theme.primaryColor : null,
               ),
               title: Text(
-                template.name,
+                _localizedStoredText(template.name),
                 style: TextStyle(
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color: isSelected ? theme.primaryColor : null,
                 ),
               ),
               subtitle: Text(
-                template.description,
+                _localizedStoredText(template.description),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: isSelected 
+              trailing: isSelected
                   ? Icon(Icons.check_circle, color: theme.primaryColor)
                   : null,
               onTap: () {
@@ -162,13 +162,13 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
             ),
           );
         }).toList(),
-        
+
         // Opção "Sem template"
         Card(
           margin: const EdgeInsets.only(bottom: 8),
           elevation: _selectedTemplate == null ? 4 : 1,
-          color: _selectedTemplate == null 
-              ? theme.primaryColor.withOpacity(0.1)
+          color: _selectedTemplate == null
+              ? theme.primaryColor.withValues(alpha: 0.1)
               : null,
           child: ListTile(
             leading: Icon(
@@ -176,14 +176,18 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
               color: _selectedTemplate == null ? theme.primaryColor : null,
             ),
             title: Text(
-              'Formato Livre',
+              context.tr.translate('essay_free_format'),
               style: TextStyle(
-                fontWeight: _selectedTemplate == null ? FontWeight.bold : FontWeight.normal,
+                fontWeight: _selectedTemplate == null
+                    ? FontWeight.bold
+                    : FontWeight.normal,
                 color: _selectedTemplate == null ? theme.primaryColor : null,
               ),
             ),
-            subtitle: Text('Escreva sem seguir um template específico'),
-            trailing: _selectedTemplate == null 
+            subtitle: Text(
+              context.tr.translate('essay_free_format_description'),
+            ),
+            trailing: _selectedTemplate == null
                 ? Icon(Icons.check_circle, color: theme.primaryColor)
                 : null,
             onTap: () {
@@ -198,7 +202,8 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
     );
   }
 
-  Widget _buildTemplateDetails(EssayTemplate template, ThemeData theme, bool isDarkMode) {
+  Widget _buildTemplateDetails(
+      EssayTemplate template, ThemeData theme, bool isDarkMode) {
     return Container(
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(16),
@@ -206,7 +211,7 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
         color: isDarkMode ? Colors.grey[800] : Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.primaryColor.withOpacity(0.3),
+          color: theme.primaryColor.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -222,7 +227,7 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  template.name,
+                  _localizedStoredText(template.name),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -232,31 +237,45 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Descrição
           Text(
-            template.description,
+            _localizedStoredText(template.description),
             style: TextStyle(fontSize: 14),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Informações técnicas
-          _buildInfoRow('Tempo estimado', '${template.estimatedTime} minutos'),
+          _buildInfoRow(
+            context.tr.translate('essay_estimated_time'),
+            _translateWithValues(
+              template.estimatedTime == 1
+                  ? 'essay_minute_count_one'
+                  : 'essay_minute_count_other',
+              {'count': template.estimatedTime.toString()},
+            ),
+          ),
           if (template.minWords > 0 || template.maxWords > 0)
             _buildInfoRow(
-              'Palavras',
-              '${template.minWords} - ${template.maxWords}',
+              context.tr.translate('essay_words_label'),
+              _translateWithValues(
+                'essay_word_range',
+                {
+                  'min': template.minWords.toString(),
+                  'max': template.maxWords.toString(),
+                },
+              ),
             ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Estrutura
           if (template.structure.isNotEmpty) ...[
             Text(
-              'Estrutura Sugerida:',
+              context.tr.translate('essay_suggested_structure'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -270,7 +289,7 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                template.structure,
+                _localizedStoredText(template.structure),
                 style: TextStyle(
                   fontSize: 13,
                   fontFamily: 'monospace',
@@ -279,11 +298,11 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
             ),
             const SizedBox(height: 16),
           ],
-          
+
           // Diretrizes
           if (template.guidelines.isNotEmpty) ...[
             Text(
-              'Diretrizes:',
+              context.tr.translate('essay_guidelines_title'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -304,7 +323,7 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        guideline,
+                        _localizedStoredText(guideline),
                         style: TextStyle(fontSize: 13),
                       ),
                     ),
@@ -353,5 +372,35 @@ class _EssayTypeSelectorState extends State<EssayTypeSelector> {
       default:
         return Icons.edit;
     }
+  }
+
+  String _localizedStoredText(String value) {
+    const prefix = 'i18n:';
+    return value.startsWith(prefix)
+        ? context.tr.translate(value.substring(prefix.length))
+        : value;
+  }
+
+  String _essayTypeLabel(String type) {
+    switch (type) {
+      case 'Vestibular':
+        return context.tr.translate('essay_type_vestibular');
+      case 'Concurso':
+        return context.tr.translate('essay_type_public_exam');
+      case 'Outro':
+        return context.tr.translate('essay_type_other');
+      case 'Livre':
+        return context.tr.translate('essay_type_free');
+      default:
+        return type;
+    }
+  }
+
+  String _translateWithValues(String key, Map<String, String> values) {
+    var result = context.tr.translate(key);
+    for (final entry in values.entries) {
+      result = result.replaceAll('{${entry.key}}', entry.value);
+    }
+    return result;
   }
 }

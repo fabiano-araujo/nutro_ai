@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
+import '../i18n/app_localizations.dart';
+
 class MediaPickerHelper {
   static final ImagePicker _imagePicker = ImagePicker();
   static const int maxUploadImageDimension = 1600;
@@ -40,7 +42,9 @@ class MediaPickerHelper {
       // Mostra uma mensagem de erro para o usuário
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro ao selecionar imagem: $e'),
+          content: Text(
+            AppLocalizations.of(context).translate('image_selection_error'),
+          ),
           backgroundColor: Colors.red,
         ),
       );

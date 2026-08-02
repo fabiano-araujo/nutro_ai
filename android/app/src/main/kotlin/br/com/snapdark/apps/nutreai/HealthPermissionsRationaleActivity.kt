@@ -15,7 +15,9 @@ class HealthPermissionsRationaleActivity : Activity() {
         val density = resources.displayMetrics.density
         fun dp(value: Int): Int = (value * density).toInt()
 
-        val scrollView = ScrollView(this)
+        val scrollView = ScrollView(this).apply {
+            setBackgroundColor(0xFFFFFFFF.toInt())
+        }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.START
@@ -23,16 +25,13 @@ class HealthPermissionsRationaleActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "Política de privacidade"
+            text = getString(R.string.health_permissions_privacy_title)
             textSize = 24f
             setTextColor(0xFF1F2937.toInt())
         }
 
         val body = TextView(this).apply {
-            text = "O Nutro AI usa dados do Health Connect somente para mostrar, dentro do app, " +
-                "calorias gastas, passos e exercícios que ajudam no acompanhamento " +
-                "nutricional. Esses dados não são vendidos. Você pode permitir, negar ou remover o " +
-                "acesso a qualquer momento nas configurações do Health Connect."
+            text = getString(R.string.health_permissions_privacy_body)
             textSize = 16f
             setTextColor(0xFF4B5563.toInt())
             setPadding(0, dp(16), 0, 0)

@@ -3,6 +3,22 @@ import 'package:provider/provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
+import '../utils/meal_type_localization.dart';
+
+String _formatStoredTimeForDisplay(BuildContext context, String value) {
+  final parts = value.split(':');
+  final hour = int.tryParse(parts.first) ?? 12;
+  final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+  final time = TimeOfDay(
+    hour: hour.clamp(0, 23).toInt(),
+    minute: minute.clamp(0, 59).toInt(),
+  );
+
+  return MaterialLocalizations.of(context).formatTimeOfDay(
+    time,
+    alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+  );
+}
 
 class ManageMealTypesScreen extends StatefulWidget {
   const ManageMealTypesScreen({Key? key}) : super(key: key);
@@ -265,7 +281,9 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
   }
 
   void _showEditDialog(MealTypeConfig mealType) {
-    final nameController = TextEditingController(text: mealType.name);
+    final nameController = TextEditingController(
+      text: localizedMealTypeName(context.tr, mealType),
+    );
     String selectedEmoji = mealType.emoji;
     String selectedTime = mealType.reminderTime;
 
@@ -378,7 +396,7 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
             }
           },
           icon: Icon(Icons.schedule_rounded, size: 18),
-          label: Text(time),
+          label: Text(_formatTimeForDisplay(context, time)),
         ),
       ],
     );
@@ -398,15 +416,20 @@ class _ManageMealTypesScreenState extends State<ManageMealTypesScreen> {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
+  String _formatTimeForDisplay(BuildContext context, String value) {
+    return _formatStoredTimeForDisplay(context, value);
+  }
+
   void _showDeleteDialog(MealTypeConfig mealType) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr.translate('delete_meal')),
         content: Text(
-          context.tr
-              .translate('delete_meal_confirmation')
-              .replaceAll('{mealName}', mealType.name),
+          context.tr.translate('delete_meal_confirmation').replaceAll(
+                '{mealName}',
+                localizedMealTypeName(context.tr, mealType),
+              ),
         ),
         actions: [
           TextButton(
@@ -683,7 +706,7 @@ class _MealTypeCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    mealType.name,
+                    localizedMealTypeName(context.tr, mealType),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -702,7 +725,10 @@ class _MealTypeCard extends StatelessWidget {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        mealType.reminderTime,
+                        _formatStoredTimeForDisplay(
+                          context,
+                          mealType.reminderTime,
+                        ),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,

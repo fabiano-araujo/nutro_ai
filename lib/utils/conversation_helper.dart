@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart';
+
+import '../i18n/app_localizations.dart';
+import '../main.dart';
 import '../models/study_item.dart';
 import '../services/storage_service.dart';
 import 'dart:convert';
@@ -129,7 +133,13 @@ class ConversationHelper {
 
         String messageText = msg['message'] ?? '';
         if (msg.containsKey('hasImage') && msg['hasImage'] == true) {
-          messageText = "Imagem enviada: " + messageText;
+          final context = navigatorKey.currentContext;
+          final localizations = context == null
+              ? AppLocalizations(const Locale('pt', 'BR'))
+              : AppLocalizations.of(context);
+          messageText = localizations
+              .translate('image_sent_message')
+              .replaceAll('{message}', messageText);
         }
 
         userMessages[currentUserMessage] = messageText;

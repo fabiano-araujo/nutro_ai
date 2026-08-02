@@ -134,8 +134,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     scanWindow: scanWindow,
                     fit: BoxFit.cover,
                     onDetect: _handleBarcode,
-                    errorBuilder: (context, error) =>
-                        _ScannerError(error: error),
+                    errorBuilder: (context, error) => const _ScannerError(),
                   ),
                 ),
                 Positioned.fill(
@@ -300,9 +299,7 @@ class _ScannerCircleButton extends StatelessWidget {
 }
 
 class _ScannerError extends StatelessWidget {
-  final MobileScannerException error;
-
-  const _ScannerError({required this.error});
+  const _ScannerError();
 
   @override
   Widget build(BuildContext context) {
@@ -327,16 +324,6 @@ class _ScannerError extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                error.errorCode.name,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.62),
-                  fontSize: 13,
                   letterSpacing: 0,
                 ),
               ),

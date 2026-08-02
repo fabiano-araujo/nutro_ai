@@ -184,24 +184,25 @@ class EnhancedProgressTracker {
         : history;
     
     final competencyAverages = <String, double>{};
-    final competencyNames = {
-      'competencia1': 'Norma Culta',
-      'competencia2': 'Compreensão',
-      'competencia3': 'Argumentação',
-      'competencia4': 'Coesão',
-      'competencia5': 'Proposta',
-    };
+    const competencyKeys = [
+      'competencia1',
+      'competencia2',
+      'competencia3',
+      'competencia4',
+      'competencia5',
+    ];
     
-    for (final entry in competencyNames.entries) {
+    for (final competencyKey in competencyKeys) {
       final scores = recentHistory
-          .map((p) => p.competencyScores[entry.key] ?? 0)
+          .map((p) => p.competencyScores[competencyKey] ?? 0)
           .where((score) => score > 0)
           .toList();
       
       if (scores.isNotEmpty) {
-        competencyAverages[entry.value] = scores.reduce((a, b) => a + b) / scores.length;
+        competencyAverages[competencyKey] =
+            scores.reduce((a, b) => a + b) / scores.length;
       } else {
-        competencyAverages[entry.value] = 0.0;
+        competencyAverages[competencyKey] = 0.0;
       }
     }
     

@@ -124,9 +124,8 @@ class CreditIndicator extends StatelessWidget {
   void _showWatchAdDialog(BuildContext context) {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Esta funcionalidade não está disponível na versão web.'),
+        SnackBar(
+          content: Text(context.tr.translate('web_feature_unavailable')),
           backgroundColor: Colors.orange,
         ),
       );

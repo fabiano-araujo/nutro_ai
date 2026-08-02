@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../i18n/app_localizations_extension.dart';
 import '../providers/free_chat_provider.dart';
 import '../providers/daily_meals_provider.dart';
 
@@ -84,7 +85,11 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
     final freeHits = q.isEmpty
         ? <FreeChatConversation>[]
         : freeChatProvider.conversations.where((c) {
-            if (c.title.toLowerCase().contains(q)) return true;
+            if (_localizedConversationTitle(c.title)
+                .toLowerCase()
+                .contains(q)) {
+              return true;
+            }
             for (final m in c.messages) {
               final text = (m['message'] as String?)?.toLowerCase() ?? '';
               if (text.contains(q)) return true;
@@ -108,7 +113,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
           style: TextStyle(
               fontSize: 16, color: isDarkMode ? Colors.white : Colors.black87),
           decoration: InputDecoration(
-            hintText: 'Buscar em conversas e diário...',
+            hintText: context.tr.translate('unified_search_hint'),
             hintStyle:
                 TextStyle(color: isDarkMode ? Colors.white38 : Colors.black38),
             border: InputBorder.none,
@@ -122,7 +127,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
       body: q.isEmpty
           ? Center(
               child: Text(
-                'Digite para buscar',
+                context.tr.translate('type_to_search'),
                 style: TextStyle(
                   color: isDarkMode ? Colors.white38 : Colors.black38,
                 ),
@@ -131,13 +136,16 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
           : ListView(
               children: [
                 if (freeHits.isNotEmpty) ...[
-                  _sectionHeader('Conversas livres', isDarkMode),
+                  _sectionHeader(
+                    context.tr.translate('free_chats'),
+                    isDarkMode,
+                  ),
                   ...freeHits.map((c) => ListTile(
                         leading: Icon(Icons.chat_bubble_outline,
                             size: 20,
                             color:
                                 isDarkMode ? Colors.white70 : Colors.black54),
-                        title: Text(c.title,
+                        title: Text(_localizedConversationTitle(c.title),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -147,7 +155,10 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                                     : Colors.black87)),
                         onTap: () {
                           Navigator.pop(context);
-                          widget.onOpenFreeChat(c.id, c.title);
+                          widget.onOpenFreeChat(
+                            c.id,
+                            _localizedConversationTitle(c.title),
+                          );
                         },
                       )),
                 ],
@@ -161,13 +172,13 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2))),
                   ),
                 if (_diaryHits.isNotEmpty) ...[
-                  _sectionHeader('Diário', isDarkMode),
+                  _sectionHeader(context.tr.translate('diary'), isDarkMode),
                   ..._diaryHits.map((h) => ListTile(
                         leading: Icon(Icons.calendar_today,
                             size: 20,
                             color:
                                 isDarkMode ? Colors.white70 : Colors.black54),
-                        title: Text(_formatDate(h.date),
+                        title: Text(_formatDate(context, h.date),
                             style: TextStyle(
                                 fontSize: 14,
                                 color: isDarkMode
@@ -194,7 +205,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Center(
-                      child: Text('Nenhum resultado',
+                      child: Text(context.tr.translate('no_results'),
                           style: TextStyle(
                               color: isDarkMode
                                   ? Colors.white38
@@ -220,14 +231,20 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(BuildContext context, DateTime date) {
     final now = DateTime.now();
     final d = DateTime(date.year, date.month, date.day);
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(d).inDays;
-    if (diff == 0) return 'Hoje';
-    if (diff == 1) return 'Ontem';
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    if (diff == 0) return context.tr.translate('today');
+    if (diff == 1) return context.tr.translate('yesterday');
+    return MaterialLocalizations.of(context).formatShortDate(date);
+  }
+
+  String _localizedConversationTitle(String title) {
+    return title.trim() == 'Nova conversa'
+        ? context.tr.translate('new_conversation')
+        : title;
   }
 }
 

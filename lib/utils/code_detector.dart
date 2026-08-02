@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../i18n/app_localizations_extension.dart';
+
 class CodeDetector {
   /// Verifica se o texto provavelmente contém código HTML.
   static bool isHtmlCode(String text) {
@@ -176,7 +178,7 @@ $html
         size: 18,
       ),
       onPressed: onTap,
-      tooltip: 'Visualizar HTML',
+      tooltip: context.tr.translate('view_html'),
       constraints: BoxConstraints(),
       padding: EdgeInsets.zero,
     );

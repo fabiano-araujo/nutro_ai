@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -62,13 +61,9 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Update prompt based on scan mode
         if (_selectedScanMode == 'translate') {
-          _questionController.text =
-              context.tr.translate('translate_to_local') ??
-                  'Traduza para o idioma local';
+          _questionController.text = context.tr.translate('translate_to_local');
         } else if (_selectedScanMode == 'math') {
-          _questionController.text =
-              context.tr.translate('solve_math_problem') ??
-                  'Resolva este problema de matemática com todos os passos';
+          _questionController.text = context.tr.translate('solve_math_problem');
         }
       });
     }
@@ -90,9 +85,8 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
           _response = null;
         });
       }
-    } catch (e) {
-      _showErrorSnackBar(
-          '${context.tr.translate('failed_to_capture_image')}: $e');
+    } catch (_) {
+      _showErrorSnackBar(context.tr.translate('failed_to_capture_image'));
     }
   }
 
@@ -105,15 +99,14 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
           _response = null;
         });
       }
-    } catch (e) {
-      _showErrorSnackBar('${context.tr.translate('failed_to_pick_image')}: $e');
+    } catch (_) {
+      _showErrorSnackBar(context.tr.translate('failed_to_pick_image'));
     }
   }
 
   Future<void> _processImage() async {
     if (_imageBytes == null) {
-      _showErrorSnackBar(context.tr.translate('please_select_image_first') ??
-          'Por favor, capture ou selecione uma imagem primeiro');
+      _showErrorSnackBar(context.tr.translate('please_select_image_first'));
       return;
     }
 
@@ -126,7 +119,8 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Sem créditos suficientes para análise de arquivo. A análise de arquivo custa 4 créditos.'),
+            context.tr.translate('file_analysis_insufficient_credits'),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -169,7 +163,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
 
       final question = _questionController.text.trim();
       final prompt = question.isEmpty
-          ? '$promptPrefix${context.tr.translate('solve_and_explain_detailed') ?? 'Por favor, resolva este problema e forneça uma explicação detalhada da solução.'}'
+          ? '$promptPrefix${context.tr.translate('solve_and_explain_detailed')}'
           : '$promptPrefix$question';
 
       print(
@@ -215,11 +209,9 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
 
             // Salva no histórico quando a resposta estiver completa
             final studyItem = StudyItem(
-              title: context.tr.translate('scanned_question') ??
-                  'Pergunta Digitalizada',
+              title: context.tr.translate('scanned_question'),
               content: question.isEmpty
-                  ? context.tr.translate('image_scan') ??
-                      'Digitalização de imagem'
+                  ? context.tr.translate('image_scan')
                   : question,
               response: responseContent,
               type: 'scan',
@@ -232,8 +224,10 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
           print('❌ DocumentScanScreen - Erro durante streaming: $error');
 
           if (mounted && _messageNotifier != null) {
-            _messageNotifier!.setError(true,
-                'Desculpe, tive um problema ao processar sua imagem. Pode tentar novamente?\n\nErro: ${error.toString().replaceAll("Exception: ", "")}');
+            _messageNotifier!.setError(
+              true,
+              context.tr.translate('image_processing_retry_message'),
+            );
 
             setState(() {
               _isLoading = false;
@@ -246,8 +240,10 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
       print('❌ DocumentScanScreen - Exceção ao processar imagem: $e');
 
       if (_messageNotifier != null) {
-        _messageNotifier!
-            .setError(true, 'Ocorreu um erro inesperado: ${e.toString()}');
+        _messageNotifier!.setError(
+          true,
+          context.tr.translate('image_processing_retry_message'),
+        );
       }
 
       setState(() {
@@ -255,8 +251,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
         _isError = true;
       });
 
-      _showErrorSnackBar(
-          '${context.tr.translate('error_processing_image') ?? 'Erro ao processar imagem'}: $e');
+      _showErrorSnackBar(context.tr.translate('error_processing_image'));
     }
   }
 
@@ -277,9 +272,8 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
         backgroundColor:
             isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
         title: Text(widget.showScanOptions
-            ? context.tr.translate('scan') ?? 'Digitalizar'
-            : context.tr.translate('scan_and_solve') ??
-                'Digitalizar e Resolver'),
+            ? context.tr.translate('scan')
+            : context.tr.translate('scan_and_solve')),
         centerTitle: false,
         actions: [
           Padding(
@@ -309,11 +303,8 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                 TextField(
                   controller: _questionController,
                   decoration: InputDecoration(
-                    labelText:
-                        context.tr.translate('additional_instructions') ??
-                            'Instruções adicionais (opcional)',
-                    hintText: context.tr.translate('prompt_hint') ??
-                        'Ex: "Resolva este problema" ou "Explique este conceito"',
+                    labelText: context.tr.translate('additional_instructions'),
+                    hintText: context.tr.translate('prompt_hint'),
                     prefixIcon: Icon(Icons.lightbulb_outline),
                     fillColor:
                         isDarkMode ? AppTheme.darkComponentColor : Colors.white,
@@ -336,8 +327,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                         ? _processImage
                         : null,
                     icon: Icon(Icons.auto_awesome),
-                    label: Text(context.tr.translate('get_solution') ??
-                        'Obter Solução'),
+                    label: Text(context.tr.translate('get_solution')),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -351,7 +341,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
 
                 // Response section
                 Text(
-                  context.tr.translate('solution') ?? 'Solução',
+                  context.tr.translate('solution'),
                   style: AppTheme.headingSmall,
                 ),
                 SizedBox(height: 8),
@@ -368,27 +358,24 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
     final List<Map<String, dynamic>> scanOptions = [
       {
         'value': 'translate',
-        'label': context.tr.translate('translate') ?? 'Traduzir',
+        'label': context.tr.translate('translate'),
         'icon': Icons.translate,
         'color': Color(0xFF21AAFF),
-        'description': context.tr.translate('translate_description') ??
-            'Traduza textos de qualquer idioma',
+        'description': context.tr.translate('translate_description'),
       },
       {
         'value': 'general',
-        'label': context.tr.translate('general') ?? 'Geral',
+        'label': context.tr.translate('general'),
         'icon': Icons.auto_awesome,
         'color': AppTheme.primaryColor,
-        'description': context.tr.translate('general_description') ??
-            'Digitalize e receba explicações detalhadas',
+        'description': context.tr.translate('general_description'),
       },
       {
         'value': 'math',
-        'label': context.tr.translate('math') ?? 'Matemática',
+        'label': context.tr.translate('math'),
         'icon': Icons.functions,
         'color': Color(0xFFFF7A50),
-        'description': context.tr.translate('math_description') ??
-            'Resolva problemas matemáticos com passos',
+        'description': context.tr.translate('math_description'),
       },
     ];
 
@@ -396,7 +383,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          context.tr.translate('scan_mode') ?? 'Modo de Digitalização',
+          context.tr.translate('scan_mode'),
           style: AppTheme.headingSmall,
         ),
         SizedBox(height: 12),
@@ -420,12 +407,10 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                     // Update placeholder text based on scan mode
                     if (_selectedScanMode == 'translate') {
                       _questionController.text =
-                          context.tr.translate('translate_to_local') ??
-                              'Traduza para o idioma local';
+                          context.tr.translate('translate_to_local');
                     } else if (_selectedScanMode == 'math') {
-                      _questionController.text = context.tr
-                              .translate('solve_math_problem') ??
-                          'Resolva este problema de matemática com todos os passos';
+                      _questionController.text =
+                          context.tr.translate('solve_math_problem');
                     } else {
                       _questionController.text = '';
                     }
@@ -560,8 +545,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  context.tr.translate('capture_or_select_image') ??
-                      'Capture ou selecione uma imagem',
+                  context.tr.translate('capture_or_select_image'),
                   style: AppTheme.bodyMedium.copyWith(
                     color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                   ),
@@ -573,7 +557,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                     ElevatedButton.icon(
                       onPressed: _captureImage,
                       icon: Icon(Icons.camera_alt),
-                      label: Text(context.tr.translate('camera') ?? 'Câmera'),
+                      label: Text(context.tr.translate('camera')),
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -584,7 +568,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                     OutlinedButton.icon(
                       onPressed: _pickImage,
                       icon: Icon(Icons.image),
-                      label: Text(context.tr.translate('gallery') ?? 'Galeria'),
+                      label: Text(context.tr.translate('gallery')),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -671,7 +655,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
               ),
               SizedBox(width: 8),
               Text(
-                'IA Assistant',
+                context.tr.translate('ai_assistant'),
                 style: AppTheme.bodyMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: isDarkMode
@@ -728,13 +712,12 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                     Clipboard.setData(ClipboardData(text: message));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content:
-                            Text('Texto copiado para a área de transferência'),
+                        content: Text(context.tr.translate('text_copied')),
                         duration: Duration(seconds: 1),
                       ),
                     );
                   },
-                  tooltip: 'Copiar resposta',
+                  tooltip: context.tr.translate('copy_response'),
                   padding: EdgeInsets.zero,
                   constraints: BoxConstraints(),
                   color: isDarkMode
@@ -748,7 +731,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
                     onPressed: () {
                       // Adicionar visualização de HTML se necessário
                     },
-                    tooltip: 'Visualizar HTML',
+                    tooltip: context.tr.translate('view_html'),
                     padding: EdgeInsets.zero,
                     constraints: BoxConstraints(),
                     color: AppTheme.primaryColor,
@@ -819,7 +802,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
           ),
           SizedBox(height: 16),
           Text(
-            'Processando sua solicitação...',
+            context.tr.translate('processing_request'),
             style: AppTheme.bodyMedium.copyWith(
               color: isDarkMode
                   ? AppTheme.darkTextColor
@@ -848,7 +831,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
           ),
           SizedBox(height: 16),
           Text(
-            'Ocorreu um erro ao processar a imagem',
+            context.tr.translate('error_processing_image'),
             style: AppTheme.bodyMedium.copyWith(
               fontWeight: FontWeight.bold,
               color: isDarkMode
@@ -859,7 +842,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
           ),
           SizedBox(height: 8),
           Text(
-            'Por favor, tente novamente',
+            context.tr.translate('try_again'),
             style: AppTheme.bodySmall.copyWith(
               color: isDarkMode
                   ? AppTheme.darkTextColor.withOpacity(0.7)
@@ -892,7 +875,7 @@ class _DocumentScanScreenState extends State<DocumentScanScreen> {
           ),
           SizedBox(height: 16),
           Text(
-            'Selecione uma imagem e clique em "Obter Solução"',
+            context.tr.translate('select_image_get_solution'),
             style: AppTheme.bodyMedium.copyWith(
               color: isDarkMode
                   ? AppTheme.darkTextColor

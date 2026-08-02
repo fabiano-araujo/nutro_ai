@@ -39,34 +39,6 @@ class FeedActivity {
     );
   }
 
-  /// Mensagem formatada
-  String get message {
-    if (data != null && data!['message'] != null) {
-      return data!['message'];
-    }
-
-    switch (type) {
-      case 'CHECKIN_PROTEIN':
-        return 'Bateu a meta de proteína! 💪';
-      case 'CHECKIN_GOAL':
-        return 'Dentro da meta calórica! 🎯';
-      case 'CHECKIN_OVER':
-        return 'Registrou o dia';
-      case 'STREAK_MILESTONE':
-        return 'Alcançou um marco de streak! 🔥';
-      case 'FRIEND_STREAK':
-        return 'Duo streak! 🤝';
-      case 'CHALLENGE_JOIN':
-        return 'Entrou em um desafio! 🏆';
-      case 'CHALLENGE_WIN':
-        return 'Ganhou um desafio! 🥇';
-      case 'PROFILE_SHAPE_PREVIEW':
-        return 'Compartilhou uma prévia do shape ✨';
-      default:
-        return 'Atividade';
-    }
-  }
-
   /// Emoji principal
   String get emoji {
     switch (type) {

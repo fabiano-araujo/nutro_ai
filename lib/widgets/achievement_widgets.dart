@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import '../models/essay_progress_model.dart';
+import '../i18n/app_localizations.dart';
+import '../models/achievement.dart' as progress_model;
+import '../models/essay_progress_model.dart' as legacy_model;
 import 'state_animation.dart';
 
 /// Widget para exibir uma conquista individual
 class AchievementCard extends StatelessWidget {
-  final Achievement achievement;
+  final Object achievement;
   final bool showAnimation;
 
   const AchievementCard({
@@ -16,16 +18,16 @@ class AchievementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: achievement.isUnlocked ? 4 : 2,
+      elevation: _isAchievementUnlocked(achievement) ? 4 : 2,
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          gradient: achievement.isUnlocked
+          gradient: _isAchievementUnlocked(achievement)
               ? LinearGradient(
                   colors: [
-                    _getAchievementColor(achievement.type).withOpacity(0.1),
-                    _getAchievementColor(achievement.type).withOpacity(0.05),
+                    _getAchievementColor(achievement).withOpacity(0.1),
+                    _getAchievementColor(achievement).withOpacity(0.05),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -38,27 +40,38 @@ class AchievementCard extends StatelessWidget {
             _buildIcon(context),
             const SizedBox(height: 12),
             Text(
-              achievement.name,
+              _localizedAchievementName(context, achievement),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: achievement.isUnlocked ? null : Colors.grey[600],
+                    color: _isAchievementUnlocked(achievement)
+                        ? null
+                        : Colors.grey[600],
                   ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              achievement.description,
+              _localizedAchievementDescription(context, achievement),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: achievement.isUnlocked ? null : Colors.grey[500],
+                    color: _isAchievementUnlocked(achievement)
+                        ? null
+                        : Colors.grey[500],
                   ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            if (achievement.isUnlocked) ...[
+            if (_isAchievementUnlocked(achievement)) ...[
               const SizedBox(height: 8),
               Text(
-                'Desbloqueado em ${_formatDate(achievement.unlockedAt)}',
+                _translateWith(
+                  context,
+                  'progress_unlocked_on',
+                  {
+                    'date': MaterialLocalizations.of(context)
+                        .formatFullDate(_achievementUnlockedAt(achievement)),
+                  },
+                ),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.grey[600],
                       fontSize: 10,
@@ -73,17 +86,17 @@ class AchievementCard extends StatelessWidget {
   }
 
   Widget _buildIcon(BuildContext context) {
-    final color = achievement.isUnlocked
-        ? _getAchievementColor(achievement.type)
+    final color = _isAchievementUnlocked(achievement)
+        ? _getAchievementColor(achievement)
         : Colors.grey[400];
 
     Widget icon = Icon(
-      _getIconData(achievement.iconName),
+      _getIconData(_achievementIconName(achievement)),
       size: 48,
       color: color,
     );
 
-    if (achievement.isUnlocked && showAnimation) {
+    if (_isAchievementUnlocked(achievement) && showAnimation) {
       return TweenAnimationBuilder<double>(
         duration: const Duration(milliseconds: 1000),
         tween: Tween(begin: 0.0, end: 1.0),
@@ -133,38 +146,21 @@ class AchievementCard extends StatelessWidget {
     }
   }
 
-  Color _getAchievementColor(AchievementType type) {
-    switch (type) {
-      case AchievementType.general:
-        return Colors.blue;
-      case AchievementType.score:
-        return Colors.amber;
-      case AchievementType.frequency:
-        return Colors.green;
-      case AchievementType.improvement:
-        return Colors.purple;
-      case AchievementType.competency:
-        return Colors.orange;
-      case AchievementType.streak:
-        return Colors.red;
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  Color _getAchievementColor(Object achievement) {
+    return _achievementColor(achievement);
   }
 }
 
 /// Widget para exibir grade de conquistas
 class AchievementGrid extends StatelessWidget {
-  final List<Achievement> achievements;
-  final String title;
+  final List<Object> achievements;
+  final String? title;
   final int crossAxisCount;
 
   const AchievementGrid({
     Key? key,
     required this.achievements,
-    this.title = 'Conquistas',
+    this.title,
     this.crossAxisCount = 2,
   }) : super(key: key);
 
@@ -176,9 +172,9 @@ class AchievementGrid extends StatelessWidget {
 
     // Separar conquistas desbloqueadas e bloqueadas
     final unlockedAchievements =
-        achievements.where((a) => a.isUnlocked).toList();
+        achievements.where(_isAchievementUnlocked).toList();
     final lockedAchievements =
-        achievements.where((a) => !a.isUnlocked).toList();
+        achievements.where((a) => !_isAchievementUnlocked(a)).toList();
     final sortedAchievements = [...unlockedAchievements, ...lockedAchievements];
 
     return Card(
@@ -192,7 +188,7 @@ class AchievementGrid extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  title,
+                  title ?? _translate(context, 'progress_achievements'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -238,14 +234,14 @@ class AchievementGrid extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Nenhuma conquista disponível',
+              _translate(context, 'progress_no_achievements_available'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.grey[600],
                   ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Complete redações para desbloquear conquistas!',
+              _translate(context, 'progress_complete_essays_to_unlock'),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.grey[500],
                   ),
@@ -258,7 +254,7 @@ class AchievementGrid extends StatelessWidget {
   }
 
   Widget _buildProgressIndicator(BuildContext context) {
-    final unlockedCount = achievements.where((a) => a.isUnlocked).length;
+    final unlockedCount = achievements.where(_isAchievementUnlocked).length;
     final totalCount = achievements.length;
     final progress = totalCount > 0 ? unlockedCount / totalCount : 0.0;
 
@@ -289,7 +285,7 @@ class AchievementGrid extends StatelessWidget {
 
 /// Widget para exibir conquista recém-desbloqueada
 class AchievementUnlockedDialog extends StatefulWidget {
-  final Achievement achievement;
+  final Object achievement;
   final VoidCallback? onDismiss;
 
   const AchievementUnlockedDialog({
@@ -393,7 +389,7 @@ class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Conquista Desbloqueada!',
+                    _translate(context, 'progress_achievement_unlocked'),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.amber,
@@ -401,7 +397,7 @@ class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.achievement.name,
+                    _localizedAchievementName(context, widget.achievement),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -409,7 +405,10 @@ class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.achievement.description,
+                    _localizedAchievementDescription(
+                      context,
+                      widget.achievement,
+                    ),
                     style: Theme.of(context).textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -427,7 +426,7 @@ class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
                         vertical: 12,
                       ),
                     ),
-                    child: const Text('Continuar'),
+                    child: Text(_translate(context, 'continue')),
                   ),
                 ],
               ),
@@ -441,7 +440,7 @@ class _AchievementUnlockedDialogState extends State<AchievementUnlockedDialog>
 
 /// Widget para exibir badge compacto de conquista
 class AchievementBadge extends StatelessWidget {
-  final Achievement achievement;
+  final Object achievement;
   final double size;
 
   const AchievementBadge({
@@ -453,20 +452,20 @@ class AchievementBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: '${achievement.name}\n${achievement.description}',
+      message:
+          '${_localizedAchievementName(context, achievement)}\n${_localizedAchievementDescription(context, achievement)}',
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: achievement.isUnlocked
-              ? _getAchievementColor(achievement.type)
+          color: _isAchievementUnlocked(achievement)
+              ? _getAchievementColor(achievement)
               : Colors.grey[300],
           shape: BoxShape.circle,
-          boxShadow: achievement.isUnlocked
+          boxShadow: _isAchievementUnlocked(achievement)
               ? [
                   BoxShadow(
-                    color:
-                        _getAchievementColor(achievement.type).withOpacity(0.3),
+                    color: _getAchievementColor(achievement).withOpacity(0.3),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -474,9 +473,11 @@ class AchievementBadge extends StatelessWidget {
               : null,
         ),
         child: Icon(
-          _getIconData(achievement.iconName),
+          _getIconData(_achievementIconName(achievement)),
           size: size * 0.6,
-          color: achievement.isUnlocked ? Colors.white : Colors.grey[600],
+          color: _isAchievementUnlocked(achievement)
+              ? Colors.white
+              : Colors.grey[600],
         ),
       ),
     );
@@ -505,27 +506,158 @@ class AchievementBadge extends StatelessWidget {
     }
   }
 
-  Color _getAchievementColor(AchievementType type) {
-    switch (type) {
-      case AchievementType.general:
-        return Colors.blue;
-      case AchievementType.score:
-        return Colors.amber;
-      case AchievementType.frequency:
-        return Colors.green;
-      case AchievementType.improvement:
-        return Colors.purple;
-      case AchievementType.competency:
-        return Colors.orange;
-      case AchievementType.streak:
-        return Colors.red;
-    }
+  Color _getAchievementColor(Object achievement) {
+    return _achievementColor(achievement);
   }
+}
+
+const Map<String, String> _achievementKeyById = {
+  'first_essay': 'first_essay',
+  'essay_5': 'essay_5',
+  'essay_10': 'essay_10',
+  'essay_25': 'essay_25',
+  'essay_50': 'essay_50',
+  'essay_100': 'essay_100',
+  'score_600': 'score_600',
+  'score_600_plus': 'score_600',
+  'score_700': 'score_700',
+  'score_800': 'score_800',
+  'score_800_plus': 'score_800',
+  'score_900': 'score_900',
+  'score_900_plus': 'score_900',
+  'score_1000': 'score_1000',
+  'perfect_score': 'score_1000',
+  'daily_streak_3': 'daily_streak_3',
+  'daily_writer': 'daily_streak_3',
+  'daily_streak_7': 'daily_streak_7',
+  'weekly_streak': 'daily_streak_7',
+  'consistency_week': 'daily_streak_7',
+  'monthly_champion': 'monthly_champion',
+  'improvement_100': 'improvement_100',
+  'improver': 'improvement_100',
+  'improvement_200': 'improvement_200',
+  'big_improver': 'improvement_200',
+  'competency_1_master': 'competency_1_master',
+  'competency_2_master': 'competency_2_master',
+  'competency_3_master': 'competency_3_master',
+  'competency_4_master': 'competency_4_master',
+  'competency_5_master': 'competency_5_master',
+  'all_competencies_master': 'all_competencies_master',
+  'night_owl': 'night_owl',
+  'early_bird': 'early_bird',
+  'speed_writer': 'speed_writer',
+  'perfectionist': 'perfectionist',
+  'dedication_50': 'dedication_50',
+};
+
+String _achievementId(Object achievement) {
+  if (achievement is legacy_model.Achievement) return achievement.id;
+  if (achievement is progress_model.Achievement) return achievement.id;
+  return '';
+}
+
+String _achievementName(Object achievement) {
+  if (achievement is legacy_model.Achievement) return achievement.name;
+  if (achievement is progress_model.Achievement) return achievement.title;
+  return '';
+}
+
+String _achievementDescription(Object achievement) {
+  if (achievement is legacy_model.Achievement) return achievement.description;
+  if (achievement is progress_model.Achievement) return achievement.description;
+  return '';
+}
+
+DateTime _achievementUnlockedAt(Object achievement) {
+  if (achievement is legacy_model.Achievement) return achievement.unlockedAt;
+  if (achievement is progress_model.Achievement) return achievement.unlockedAt;
+  return DateTime.fromMillisecondsSinceEpoch(0);
+}
+
+bool _isAchievementUnlocked(Object achievement) {
+  if (achievement is legacy_model.Achievement) return achievement.isUnlocked;
+  if (achievement is progress_model.Achievement) return achievement.isCompleted;
+  return false;
+}
+
+String _achievementIconName(Object achievement) {
+  if (achievement is legacy_model.Achievement) return achievement.iconName;
+  if (achievement is progress_model.Achievement) {
+    return switch (achievement.category) {
+      progress_model.AchievementCategory.milestone => 'trophy',
+      progress_model.AchievementCategory.consistency => 'calendar_today',
+      progress_model.AchievementCategory.improvement => 'trending_up',
+      progress_model.AchievementCategory.excellence => 'star',
+      progress_model.AchievementCategory.dedication => 'fire',
+      progress_model.AchievementCategory.competency => 'lightbulb',
+    };
+  }
+  return 'trophy';
+}
+
+Color _achievementColor(Object achievement) {
+  if (achievement is legacy_model.Achievement) {
+    return switch (achievement.type) {
+      legacy_model.AchievementType.general => Colors.blue,
+      legacy_model.AchievementType.score => Colors.amber,
+      legacy_model.AchievementType.frequency => Colors.green,
+      legacy_model.AchievementType.improvement => Colors.purple,
+      legacy_model.AchievementType.competency => Colors.orange,
+      legacy_model.AchievementType.streak => Colors.red,
+    };
+  }
+  if (achievement is progress_model.Achievement) {
+    return switch (achievement.category) {
+      progress_model.AchievementCategory.milestone => Colors.purple,
+      progress_model.AchievementCategory.consistency => Colors.green,
+      progress_model.AchievementCategory.improvement => Colors.orange,
+      progress_model.AchievementCategory.excellence => Colors.amber,
+      progress_model.AchievementCategory.dedication => Colors.blue,
+      progress_model.AchievementCategory.competency => Colors.red,
+    };
+  }
+  return Colors.grey;
+}
+
+String _localizedAchievementName(
+  BuildContext context,
+  Object achievement,
+) {
+  final key = _achievementKeyById[_achievementId(achievement)];
+  return key == null
+      ? _achievementName(achievement)
+      : _translate(context, 'progress_achievement_${key}_title');
+}
+
+String _localizedAchievementDescription(
+  BuildContext context,
+  Object achievement,
+) {
+  final key = _achievementKeyById[_achievementId(achievement)];
+  return key == null
+      ? _achievementDescription(achievement)
+      : _translate(context, 'progress_achievement_${key}_description');
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
+}
+
+String _translateWith(
+  BuildContext context,
+  String key,
+  Map<String, String> values,
+) {
+  var text = _translate(context, key);
+  values.forEach((placeholder, value) {
+    text = text.replaceAll('{$placeholder}', value);
+  });
+  return text;
 }
 
 /// Widget para exibir lista horizontal de badges
 class AchievementBadgeRow extends StatelessWidget {
-  final List<Achievement> achievements;
+  final List<Object> achievements;
   final double badgeSize;
   final int maxVisible;
 
@@ -539,7 +671,7 @@ class AchievementBadgeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unlockedAchievements =
-        achievements.where((a) => a.isUnlocked).toList();
+        achievements.where(_isAchievementUnlocked).toList();
     final visibleAchievements = unlockedAchievements.take(maxVisible).toList();
     final remainingCount = unlockedAchievements.length - maxVisible;
 

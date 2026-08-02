@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../i18n/app_localizations.dart';
 import '../services/progress_tracker.dart';
 import '../services/auth_service.dart';
 import '../models/essay_progress.dart';
@@ -14,14 +15,15 @@ class ProgressAnalyticsScreen extends StatefulWidget {
   const ProgressAnalyticsScreen({Key? key}) : super(key: key);
 
   @override
-  State<ProgressAnalyticsScreen> createState() => _ProgressAnalyticsScreenState();
+  State<ProgressAnalyticsScreen> createState() =>
+      _ProgressAnalyticsScreenState();
 }
 
 class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ProgressTracker _progressTracker = ProgressTracker();
-  
+
   List<ProgressPoint> _progressHistory = [];
   List<Achievement> _achievements = [];
   ProgressSummary _summary = ProgressSummary.empty();
@@ -47,16 +49,17 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.currentUser?.id.toString() ?? 'anonymous';
-      
+
       // Load progress history
       _progressHistory = await _progressTracker.getProgressHistory(userId);
-      
+
       // Load achievements
       _achievements = await _progressTracker.getUserAchievements(userId);
-      
+
       // Calculate summary for selected range
-      _summary = await _progressTracker.calculateSummary(userId, _selectedRange);
-      
+      _summary =
+          await _progressTracker.calculateSummary(userId, _selectedRange);
+
       // Check for new achievements
       final newAchievements = await _progressTracker.checkAchievements(userId);
       if (newAchievements.isNotEmpty) {
@@ -68,7 +71,7 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
       print('Error loading progress data: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro ao carregar dados de progresso: $e'),
+          content: Text(_translate(context, 'progress_load_error')),
           backgroundColor: Colors.red,
         ),
       );
@@ -82,11 +85,11 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.emoji_events, color: Colors.amber, size: 28),
-              SizedBox(width: 8),
-              Text('Nova Conquista!'),
+              const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
+              const SizedBox(width: 8),
+              Text(_translate(context, 'progress_new_achievement')),
             ],
           ),
           content: Column(
@@ -102,15 +105,16 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
                   ),
                   child: const Icon(Icons.star, color: Colors.white),
                 ),
-                title: Text(achievement.title),
-                subtitle: Text(achievement.description),
+                title: Text(_localizedAchievementTitle(context, achievement)),
+                subtitle: Text(
+                    _localizedAchievementDescription(context, achievement)),
               );
             }).toList(),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Continuar'),
+              child: Text(_translate(context, 'continue')),
             ),
           ],
         );
@@ -122,13 +126,22 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Progresso e Analytics'),
+        title: Text(_translate(context, 'progress_analytics_title')),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.analytics), text: 'Gráficos'),
-            Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
-            Tab(icon: Icon(Icons.assessment), text: 'Relatórios'),
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.analytics),
+              text: _translate(context, 'progress_tab_charts'),
+            ),
+            Tab(
+              icon: const Icon(Icons.emoji_events),
+              text: _translate(context, 'progress_achievements'),
+            ),
+            Tab(
+              icon: const Icon(Icons.assessment),
+              text: _translate(context, 'progress_tab_reports'),
+            ),
           ],
         ),
         actions: [
@@ -141,26 +154,32 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
               _loadData();
             },
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: null,
-                child: Text('Período', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(
+                  _translate(context, 'progress_period'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
               PopupMenuItem(
                 value: DateRange.lastWeek(),
-                child: const Text('Última semana'),
+                child: Text(_translate(context, 'progress_last_week')),
               ),
               PopupMenuItem(
                 value: DateRange.lastMonth(),
-                child: const Text('Último mês'),
+                child: Text(_translate(context, 'progress_last_month')),
               ),
               PopupMenuItem(
                 value: DateRange.lastQuarter(),
-                child: const Text('Últimos 3 meses'),
+                child: Text(
+                  _translate(context, 'progress_last_three_months'),
+                ),
               ),
             ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: _translate(context, 'progress_refresh'),
             onPressed: _loadData,
           ),
         ],
@@ -186,21 +205,23 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
           _buildSummaryCards(),
           const SizedBox(height: 16),
           ProgressChart(
-            progressData: _progressHistory.where((p) =>
-                p.date.isAfter(_selectedRange.start) &&
-                p.date.isBefore(_selectedRange.end)
-            ).toList(),
-            title: 'Evolução da Pontuação Total',
+            progressData: _progressHistory
+                .where((p) =>
+                    p.date.isAfter(_selectedRange.start) &&
+                    p.date.isBefore(_selectedRange.end))
+                .toList(),
+            title: _translate(context, 'progress_total_score_evolution'),
             chartType: ChartType.line,
             primaryColor: Theme.of(context).primaryColor,
           ),
           const SizedBox(height: 16),
           ProgressChart(
-            progressData: _progressHistory.where((p) =>
-                p.date.isAfter(_selectedRange.start) &&
-                p.date.isBefore(_selectedRange.end)
-            ).toList(),
-            title: 'Desempenho por Competência',
+            progressData: _progressHistory
+                .where((p) =>
+                    p.date.isAfter(_selectedRange.start) &&
+                    p.date.isBefore(_selectedRange.end))
+                .toList(),
+            title: _translate(context, 'progress_competency_performance'),
             chartType: ChartType.competency,
             primaryColor: Theme.of(context).primaryColor,
           ),
@@ -235,10 +256,11 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
         children: [
           CompetencyPerformanceReport(
             summary: _summary,
-            recentProgress: _progressHistory.where((p) =>
-                p.date.isAfter(_selectedRange.start) &&
-                p.date.isBefore(_selectedRange.end)
-            ).toList(),
+            recentProgress: _progressHistory
+                .where((p) =>
+                    p.date.isAfter(_selectedRange.start) &&
+                    p.date.isBefore(_selectedRange.end))
+                .toList(),
             onCompetencyTap: () {
               // Navigate to detailed competency analysis
             },
@@ -255,7 +277,7 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
       children: [
         Expanded(
           child: _buildSummaryCard(
-            'Total de Redações',
+            _translate(context, 'progress_total_essays'),
             _summary.totalEssays.toString(),
             Icons.edit,
             Colors.blue,
@@ -264,7 +286,7 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
         const SizedBox(width: 12),
         Expanded(
           child: _buildSummaryCard(
-            'Média Geral',
+            _translate(context, 'progress_overall_average'),
             _summary.averageScore.toStringAsFixed(1),
             Icons.analytics,
             Colors.green,
@@ -273,7 +295,7 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
         const SizedBox(width: 12),
         Expanded(
           child: _buildSummaryCard(
-            'Conquistas',
+            _translate(context, 'progress_achievements'),
             _achievements.length.toString(),
             Icons.emoji_events,
             Colors.amber,
@@ -283,7 +305,8 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+      String title, String value, IconData icon, Color color) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -294,9 +317,9 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
             Text(
               value,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
             ),
             Text(
               title,
@@ -312,7 +335,8 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
   Widget _buildAchievementStats() {
     final categoryStats = <AchievementCategory, int>{};
     for (final achievement in _achievements) {
-      categoryStats[achievement.category] = (categoryStats[achievement.category] ?? 0) + 1;
+      categoryStats[achievement.category] =
+          (categoryStats[achievement.category] ?? 0) + 1;
     }
 
     return Card(
@@ -322,10 +346,10 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Conquistas por Categoria',
+              _translate(context, 'progress_achievements_by_category'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 12),
             ...categoryStats.entries.map((entry) {
@@ -334,9 +358,10 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(entry.key.displayName),
+                    Text(_localizedCategory(context, entry.key)),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Theme.of(context).primaryColor.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -362,8 +387,11 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
   Widget _buildComparisonCard() {
     return FutureBuilder(
       future: _progressTracker.compareWithPeers(
-        Provider.of<AuthService>(context, listen: false).currentUser?.id.toString() ?? 'anonymous'
-      ),
+          Provider.of<AuthService>(context, listen: false)
+                  .currentUser
+                  ?.id
+                  .toString() ??
+              'anonymous'),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Card(
@@ -382,10 +410,10 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Comparação com Outros Usuários',
+                  _translate(context, 'progress_compare_users'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -394,45 +422,50 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
                     Column(
                       children: [
                         Text(
-                          'Sua Média',
+                          _translate(context, 'progress_your_average'),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         Text(
                           comparison.userAverage.toStringAsFixed(1),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
                         ),
                       ],
                     ),
                     Column(
                       children: [
                         Text(
-                          'Média Geral',
+                          _translate(context, 'progress_peer_average'),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         Text(
                           comparison.peerAverage.toStringAsFixed(1),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                  ),
                         ),
                       ],
                     ),
                     Column(
                       children: [
                         Text(
-                          'Percentil',
+                          _translate(context, 'progress_percentile'),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         Text(
                           '${comparison.percentile.toStringAsFixed(0)}%',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: comparison.isAboveAverage ? Colors.green : Colors.orange,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: comparison.isAboveAverage
+                                        ? Colors.green
+                                        : Colors.orange,
+                                  ),
                         ),
                       ],
                     ),
@@ -443,18 +476,26 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: comparison.isAboveAverage 
+                    color: comparison.isAboveAverage
                         ? Colors.green.withOpacity(0.1)
                         : Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     comparison.isAboveAverage
-                        ? 'Você está acima da média! Continue assim!'
-                        : 'Continue praticando para melhorar sua posição!',
+                        ? _translate(
+                            context,
+                            'progress_above_average_message',
+                          )
+                        : _translate(
+                            context,
+                            'progress_keep_practicing_position_message',
+                          ),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: comparison.isAboveAverage ? Colors.green : Colors.orange,
+                      color: comparison.isAboveAverage
+                          ? Colors.green
+                          : Colors.orange,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -466,4 +507,72 @@ class _ProgressAnalyticsScreenState extends State<ProgressAnalyticsScreen>
       },
     );
   }
+}
+
+const Map<String, String> _achievementKeyById = {
+  'first_essay': 'first_essay',
+  'essay_5': 'essay_5',
+  'essay_10': 'essay_10',
+  'essay_25': 'essay_25',
+  'essay_50': 'essay_50',
+  'essay_100': 'essay_100',
+  'score_600': 'score_600',
+  'score_700': 'score_700',
+  'score_800': 'score_800',
+  'score_900': 'score_900',
+  'score_1000': 'score_1000',
+  'daily_streak_3': 'daily_streak_3',
+  'daily_streak_7': 'daily_streak_7',
+  'consistency_week': 'daily_streak_7',
+  'monthly_champion': 'monthly_champion',
+  'improvement_100': 'improvement_100',
+  'improvement_200': 'improvement_200',
+  'competency_1_master': 'competency_1_master',
+  'competency_2_master': 'competency_2_master',
+  'competency_3_master': 'competency_3_master',
+  'competency_4_master': 'competency_4_master',
+  'competency_5_master': 'competency_5_master',
+  'night_owl': 'night_owl',
+  'early_bird': 'early_bird',
+  'perfectionist': 'perfectionist',
+  'dedication_50': 'dedication_50',
+};
+
+String _localizedAchievementTitle(
+  BuildContext context,
+  Achievement achievement,
+) {
+  final key = _achievementKeyById[achievement.id];
+  return key == null
+      ? achievement.title
+      : _translate(context, 'progress_achievement_${key}_title');
+}
+
+String _localizedAchievementDescription(
+  BuildContext context,
+  Achievement achievement,
+) {
+  final key = _achievementKeyById[achievement.id];
+  return key == null
+      ? achievement.description
+      : _translate(context, 'progress_achievement_${key}_description');
+}
+
+String _localizedCategory(
+  BuildContext context,
+  AchievementCategory category,
+) {
+  final key = switch (category) {
+    AchievementCategory.milestone => 'milestone',
+    AchievementCategory.consistency => 'consistency',
+    AchievementCategory.improvement => 'improvement',
+    AchievementCategory.excellence => 'excellence',
+    AchievementCategory.dedication => 'dedication',
+    AchievementCategory.competency => 'competency',
+  };
+  return _translate(context, 'progress_achievement_category_$key');
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
 }

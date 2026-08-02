@@ -177,7 +177,12 @@ class _NutritionCardState extends State<NutritionCard> {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  'de ${widget.caloriesGoal} kcal',
+                                  context.tr
+                                      .translate('nutrition_calorie_goal_total')
+                                      .replaceAll(
+                                        '{goal}',
+                                        '${widget.caloriesGoal}',
+                                      ),
                                   maxLines: 1,
                                   style: TextStyle(
                                     fontSize: compact ? 11 : 11.5,
@@ -198,7 +203,7 @@ class _NutritionCardState extends State<NutritionCard> {
                                       vertical: 1,
                                     ),
                                     child: Text(
-                                      'alterar meta',
+                                      context.tr.translate('change_goal'),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(

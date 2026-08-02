@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../models/essay_correction_model.dart';
 
 class ExpandableFeedbackSection extends StatefulWidget {
@@ -12,7 +13,8 @@ class ExpandableFeedbackSection extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<ExpandableFeedbackSection> createState() => _ExpandableFeedbackSectionState();
+  State<ExpandableFeedbackSection> createState() =>
+      _ExpandableFeedbackSectionState();
 }
 
 class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
@@ -143,7 +145,7 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.feedback.competency,
+                                _localizedContent(widget.feedback.competency),
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -151,10 +153,12 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                widget.feedback.summary,
+                                _localizedContent(widget.feedback.summary),
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  color: isDarkMode
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -165,10 +169,11 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
                       ],
                     ),
                   ),
-                  
+
                   // Score display
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: scoreColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
@@ -182,9 +187,9 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(width: 8),
-                  
+
                   // Expand/collapse icon
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0,
@@ -198,7 +203,7 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
               ),
             ),
           ),
-          
+
           // Expandable content
           SizeTransition(
             sizeFactor: _expandAnimation,
@@ -210,11 +215,11 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
                 children: [
                   const Divider(height: 1),
                   const SizedBox(height: 16),
-                  
+
                   // Detailed summary
                   if (widget.feedback.summary.isNotEmpty) ...[
                     Text(
-                      'Análise Detalhada',
+                      context.tr.translate('essay_detailed_analysis'),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -230,17 +235,17 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        widget.feedback.summary,
+                        _localizedContent(widget.feedback.summary),
                         style: const TextStyle(fontSize: 14, height: 1.4),
                       ),
                     ),
                     const SizedBox(height: 16),
                   ],
-                  
+
                   // Comments section
                   if (widget.feedback.comments.isNotEmpty) ...[
                     Text(
-                      'Comentários Específicos',
+                      context.tr.translate('essay_specific_comments'),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -248,106 +253,120 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ...widget.feedback.comments.map((comment) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            _getCommentIcon(comment.type),
-                            size: 16,
-                            color: _getCommentColor(comment.type),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              comment.text,
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )).toList(),
-                    const SizedBox(height: 16),
-                  ],
-                  
-                  // Tips section
-                  if (widget.feedback.tips.isNotEmpty) ...[
-                    Text(
-                      'Dicas de Melhoria',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: theme.primaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...widget.feedback.tips.map((tip) => Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border(
-                          left: BorderSide(
-                            width: 3,
-                            color: Colors.blue.withValues(alpha: 0.3),
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            _getTipIcon(tip.category),
-                            size: 16,
-                            color: Colors.blue,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tip.title,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                    ...widget.feedback.comments
+                        .map((comment) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    _getCommentIcon(comment.type),
+                                    size: 16,
+                                    color: _getCommentColor(comment.type),
                                   ),
-                                ),
-                                if (tip.description.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    tip.description,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _localizedContent(comment.text),
+                                      style: const TextStyle(fontSize: 13),
                                     ),
                                   ),
                                 ],
-                              ],
-                            ),
-                          ),
-                          // Priority indicator
-                          if (tip.priority <= 2)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: tip.priority == 1 ? Colors.red : Colors.orange,
-                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                tip.priority == 1 ? 'Alta' : 'Média',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
+                            ))
+                        .toList(),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Tips section
+                  if (widget.feedback.tips.isNotEmpty) ...[
+                    Text(
+                      context.tr.translate('essay_improvement_tips'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: theme.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...widget.feedback.tips
+                        .map((tip) => Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border(
+                                  left: BorderSide(
+                                    width: 3,
+                                    color: Colors.blue.withValues(alpha: 0.3),
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    )).toList(),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    _getTipIcon(tip.category),
+                                    size: 16,
+                                    color: Colors.blue,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _localizedContent(tip.title),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (tip.description.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _localizedContent(tip.description),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDarkMode
+                                                  ? Colors.grey[400]
+                                                  : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  // Priority indicator
+                                  if (tip.priority <= 2)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: tip.priority == 1
+                                            ? Colors.red
+                                            : Colors.orange,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        context.tr.translate(
+                                          tip.priority == 1
+                                              ? 'essay_priority_high'
+                                              : 'essay_priority_medium',
+                                        ),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ))
+                        .toList(),
                   ],
                 ],
               ),
@@ -356,5 +375,12 @@ class _ExpandableFeedbackSectionState extends State<ExpandableFeedbackSection>
         ],
       ),
     );
+  }
+
+  String _localizedContent(String value) {
+    const prefix = 'i18n:';
+    return value.startsWith(prefix)
+        ? context.tr.translate(value.substring(prefix.length))
+        : value;
   }
 }

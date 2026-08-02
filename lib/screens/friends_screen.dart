@@ -1,9 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../providers/friends_provider.dart';
 import '../services/social_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/diet_style_message_state.dart';
+
+String _friendsText(
+  BuildContext context,
+  String key, [
+  Map<String, String> placeholders = const {},
+]) {
+  var text = context.tr.translate(key);
+  for (final entry in placeholders.entries) {
+    text = text.replaceAll('{${entry.key}}', entry.value);
+  }
+  return text;
+}
+
+String _friendsDayCount(BuildContext context, int count) {
+  return _friendsText(
+    context,
+    count == 1 ? 'social_day_count_singular' : 'social_day_count_plural',
+    {'count': '$count'},
+  );
+}
+
+String _friendsRelativeTime(BuildContext context, DateTime dateTime) {
+  final diff = DateTime.now().difference(dateTime);
+  if (diff.inDays > 0) {
+    if (diff.inDays == 1) return context.tr.translate('yesterday');
+    return _friendsText(
+      context,
+      'relative_days_ago',
+      {'count': '${diff.inDays}'},
+    );
+  }
+  if (diff.inHours > 0) {
+    return _friendsText(
+      context,
+      'relative_hours_ago',
+      {'count': '${diff.inHours}'},
+    );
+  }
+  return _friendsText(
+    context,
+    'relative_minutes_ago',
+    {'count': '${diff.inMinutes.clamp(0, 59)}'},
+  );
+}
 
 class FriendsScreen extends StatefulWidget {
   final bool isEmbedded;
@@ -92,7 +137,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     decoration: InputDecoration(
-                      hintText: 'Buscar usuarios...',
+                      hintText: context.tr.translate('friends_search_hint'),
                       hintStyle: TextStyle(
                         color: isDarkMode
                             ? Colors.white.withValues(alpha: 0.35)
@@ -139,11 +184,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 )
               else if (showErrorState)
                 DietStyleMessageState(
-                  title: 'Nao foi possivel carregar seus amigos',
-                  message:
-                      'Verifique sua conexao e tente novamente para buscar sua rede social.',
+                  title: context.tr.translate('friends_load_error_title'),
+                  message: context.tr.translate('friends_load_error_message'),
                   fallbackIcon: Icons.cloud_off_rounded,
-                  primaryActionLabel: 'Tentar novamente',
+                  primaryActionLabel: context.tr.translate('retry'),
                   primaryActionIcon: Icons.refresh_rounded,
                   onPrimaryAction: friendsProvider.refresh,
                   topSpacing: 24,
@@ -158,7 +202,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           await friendsProvider.sendFriendRequest(userId);
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Pedido enviado!')),
+                          SnackBar(
+                            content: Text(
+                              context.tr.translate('friends_request_sent'),
+                            ),
+                          ),
                         );
                         _searchUsers(_searchController.text);
                       }
@@ -168,8 +216,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   _CollapsibleSection(
                     icon: Icons.person_add_rounded,
                     iconColor: const Color(0xFFFF9800),
-                    title:
-                        '${friendsProvider.receivedRequests.length} pedido${friendsProvider.receivedRequests.length > 1 ? 's' : ''} de amizade',
+                    title: _friendsText(
+                      context,
+                      friendsProvider.receivedRequests.length == 1
+                          ? 'friends_received_request_singular'
+                          : 'friends_received_request_plural',
+                      {
+                        'count': '${friendsProvider.receivedRequests.length}',
+                      },
+                    ),
                     isExpanded: _showPendingRequests,
                     onToggle: () => setState(
                         () => _showPendingRequests = !_showPendingRequests),
@@ -187,8 +242,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(success
-                                  ? 'Pedido aceito! ${request.user.name} agora e seu amigo.'
-                                  : 'Erro ao aceitar pedido'),
+                                  ? _friendsText(
+                                      context,
+                                      'friends_request_accepted',
+                                      {'name': request.user.name},
+                                    )
+                                  : context.tr.translate(
+                                      'friends_accept_request_error',
+                                    )),
                               backgroundColor:
                                   success ? Colors.green : Colors.red,
                             ),
@@ -202,8 +263,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(success
-                                  ? 'Pedido rejeitado'
-                                  : 'Erro ao rejeitar pedido'),
+                                  ? context.tr.translate(
+                                      'friends_request_rejected',
+                                    )
+                                  : context.tr.translate(
+                                      'friends_reject_request_error',
+                                    )),
                             ),
                           );
                         }
@@ -214,8 +279,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   _CollapsibleSection(
                     icon: Icons.send_rounded,
                     iconColor: const Color(0xFF2196F3),
-                    title:
-                        '${friendsProvider.sentRequests.length} pedido${friendsProvider.sentRequests.length > 1 ? 's' : ''} enviado${friendsProvider.sentRequests.length > 1 ? 's' : ''}',
+                    title: _friendsText(
+                      context,
+                      friendsProvider.sentRequests.length == 1
+                          ? 'friends_sent_request_singular'
+                          : 'friends_sent_request_plural',
+                      {'count': '${friendsProvider.sentRequests.length}'},
+                    ),
                     isExpanded: _showSentRequests,
                     onToggle: () =>
                         setState(() => _showSentRequests = !_showSentRequests),
@@ -230,7 +300,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             await friendsProvider.cancelSentRequest(request.id);
                         if (success) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Pedido cancelado')),
+                            SnackBar(
+                              content: Text(
+                                context.tr
+                                    .translate('friends_request_cancelled'),
+                              ),
+                            ),
                           );
                         }
                       },
@@ -238,7 +313,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   }),
                 if (friendsProvider.duoStreaks.isNotEmpty) ...[
                   _SectionHeader(
-                    title: 'Duo Streaks',
+                    title: context.tr.translate('streak_duo_title'),
                     icon: Icons.local_fire_department_rounded,
                     iconColor: const Color(0xFFFF5722),
                   ),
@@ -251,7 +326,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   }),
                 ],
                 _SectionHeader(
-                  title: 'Amigos',
+                  title: context.tr.translate('streak_tab_friends'),
                   icon: Icons.people_rounded,
                   count: friendsProvider.friends.length,
                 ),
@@ -285,9 +360,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 ? AppTheme.darkBackgroundColor
                 : AppTheme.backgroundColor,
             elevation: 0,
-            title: const Text(
-              'Amigos',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+            title: Text(
+              context.tr.translate('streak_tab_friends'),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
             ),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -325,21 +403,28 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-                child: Text('Cutucar ${friendData.friend.name}',
-                    overflow: TextOverflow.ellipsis)),
+              child: Text(
+                _friendsText(
+                  context,
+                  'friends_ping_title',
+                  {'name': friendData.friend.name},
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: TextField(
           controller: messageController,
-          decoration: const InputDecoration(
-            hintText: 'Mensagem opcional...',
+          decoration: InputDecoration(
+            hintText: context.tr.translate('friends_optional_message'),
           ),
           maxLength: 100,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -351,8 +436,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content:
-                      Text(success ? 'Ping enviado!' : 'Erro ao enviar ping'),
+                  content: Text(success
+                      ? context.tr.translate('friends_ping_sent')
+                      : context.tr.translate('friends_ping_error')),
                 ),
               );
             },
@@ -360,7 +446,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Enviar'),
+            child: Text(context.tr.translate('submit')),
           ),
         ],
       ),
@@ -388,15 +474,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   color: Colors.red, size: 20),
             ),
             const SizedBox(width: 12),
-            const Text('Remover amigo'),
+            Text(context.tr.translate('friends_remove_title')),
           ],
         ),
-        content:
-            Text('Remover ${friendData.friend.name} da sua lista de amigos?'),
+        content: Text(
+          _friendsText(
+            context,
+            'friends_remove_message',
+            {'name': friendData.friend.name},
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text(context.tr.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -408,7 +499,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Remover', style: TextStyle(color: Colors.white)),
+            child: Text(
+              context.tr.translate('remove'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -610,7 +704,7 @@ class _SearchResultsSection extends StatelessWidget {
                           : AppTheme.textSecondaryColor),
                   const SizedBox(width: 6),
                   Text(
-                    'Resultados da busca',
+                    context.tr.translate('friends_search_results'),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -722,9 +816,9 @@ class _SearchResultTile extends StatelessWidget {
           children: [
             const Icon(Icons.check_rounded, color: Color(0xFF4CAF50), size: 14),
             const SizedBox(width: 4),
-            const Text(
-              'Amigo',
-              style: TextStyle(
+            Text(
+              context.tr.translate('friends_status_friend'),
+              style: const TextStyle(
                 color: Color(0xFF4CAF50),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -751,9 +845,9 @@ class _SearchResultTile extends StatelessWidget {
             const Icon(Icons.schedule_rounded,
                 color: Color(0xFFFF9800), size: 14),
             const SizedBox(width: 4),
-            const Text(
-              'Pendente',
-              style: TextStyle(
+            Text(
+              context.tr.translate('benchmark_pending'),
+              style: const TextStyle(
                 color: Color(0xFFFF9800),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -773,8 +867,10 @@ class _SearchResultTile extends StatelessWidget {
         elevation: 0,
       ),
       icon: const Icon(Icons.person_add_rounded, size: 16, color: Colors.white),
-      label: const Text('Adicionar',
-          style: TextStyle(fontSize: 12, color: Colors.white)),
+      label: Text(
+        context.tr.translate('add'),
+        style: const TextStyle(fontSize: 12, color: Colors.white),
+      ),
     );
   }
 }
@@ -874,7 +970,7 @@ class _PendingRequestCardState extends State<_PendingRequestCard> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _formatTime(widget.request.createdAt),
+                      _friendsRelativeTime(context, widget.request.createdAt),
                       style: TextStyle(
                         fontSize: 12,
                         color: isDarkMode
@@ -914,13 +1010,6 @@ class _PendingRequestCardState extends State<_PendingRequestCard> {
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final diff = DateTime.now().difference(dateTime);
-    if (diff.inDays > 0) return '${diff.inDays}d atras';
-    if (diff.inHours > 0) return '${diff.inHours}h atras';
-    return '${diff.inMinutes}min atras';
   }
 }
 
@@ -1020,7 +1109,16 @@ class _SentRequestCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Enviado ${_formatTime(request.createdAt)}',
+                      _friendsText(
+                        context,
+                        'friends_sent_at',
+                        {
+                          'time': _friendsRelativeTime(
+                            context,
+                            request.createdAt,
+                          ),
+                        },
+                      ),
                       style: TextStyle(
                         fontSize: 12,
                         color: isDarkMode
@@ -1041,22 +1139,19 @@ class _SentRequestCard extends StatelessWidget {
                     side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
                   ),
                 ),
-                child: const Text('Cancelar',
-                    style:
-                        TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                child: Text(
+                  context.tr.translate('cancel'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final diff = DateTime.now().difference(dateTime);
-    if (diff.inDays > 0) return '${diff.inDays}d atras';
-    if (diff.inHours > 0) return '${diff.inHours}h atras';
-    return '${diff.inMinutes}min atras';
   }
 }
 
@@ -1152,7 +1247,7 @@ class _DuoStreakCard extends StatelessWidget {
                                   color: streakColor, size: 14),
                               const SizedBox(width: 3),
                               Text(
-                                '$currentStreak dias',
+                                _friendsDayCount(context, currentStreak),
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -1164,7 +1259,11 @@ class _DuoStreakCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Recorde: $bestStreak',
+                          _friendsText(
+                            context,
+                            'streak_friend_best',
+                            {'count': '$bestStreak'},
+                          ),
                           style: TextStyle(
                             fontSize: 11,
                             color: isDarkMode
@@ -1185,7 +1284,7 @@ class _DuoStreakCard extends StatelessWidget {
                   Row(
                     children: [
                       _CheckInDot(
-                        label: 'Voce',
+                        label: context.tr.translate('streak_you'),
                         checked: duoStreak.myCheckIn,
                       ),
                       const SizedBox(width: 10),
@@ -1207,11 +1306,14 @@ class _DuoStreakCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8)),
                         elevation: 0,
                       ),
-                      child: const Text('Check-in',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
+                      child: Text(
+                        context.tr.translate('streak_duo_checkin'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ],
                 ],
@@ -1349,7 +1451,7 @@ class _FriendCard extends StatelessWidget {
                                 color: Color(0xFFFF5722), size: 13),
                             const SizedBox(width: 3),
                             Text(
-                              '$currentStreak dias',
+                              _friendsDayCount(context, currentStreak),
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -1395,18 +1497,21 @@ class _FriendCard extends StatelessWidget {
                         Icon(Icons.notifications_active_rounded,
                             size: 18, color: primaryColor),
                         const SizedBox(width: 10),
-                        const Text('Cutucar'),
+                        Text(context.tr.translate('friends_ping')),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'remove',
                     child: Row(
                       children: [
-                        Icon(Icons.person_remove_rounded,
+                        const Icon(Icons.person_remove_rounded,
                             size: 18, color: Colors.red),
-                        SizedBox(width: 10),
-                        Text('Remover', style: TextStyle(color: Colors.red)),
+                        const SizedBox(width: 10),
+                        Text(
+                          context.tr.translate('remove'),
+                          style: const TextStyle(color: Colors.red),
+                        ),
                       ],
                     ),
                   ),
@@ -1431,10 +1536,10 @@ class _EmptyFriendsState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DietStyleMessageState(
-      title: 'Nenhum amigo ainda',
-      message: 'Use a busca acima para encontrar usuarios e montar sua rede.',
+      title: context.tr.translate('friends_empty_title'),
+      message: context.tr.translate('friends_empty_message'),
       fallbackIcon: Icons.people_outline_rounded,
-      primaryActionLabel: 'Buscar amigos',
+      primaryActionLabel: context.tr.translate('friends_search_action'),
       primaryActionIcon: Icons.search_rounded,
       onPrimaryAction: onSearchTap,
       topSpacing: 16,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../theme/app_theme.dart';
 
 class CameraTipsScreen extends StatelessWidget {
@@ -63,7 +64,7 @@ class CameraTipsScreen extends StatelessWidget {
 
                     // Título
                     Text(
-                      'Algumas dicas rápidas',
+                      context.tr.translate('camera_tips_title'),
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -77,21 +78,21 @@ class CameraTipsScreen extends StatelessWidget {
                     // Lista de dicas
                     _buildTipCard(
                       icon: Icons.crop_free,
-                      text: 'Enquadre toda a refeição',
+                      text: context.tr.translate('camera_tip_frame_meal'),
                       iconColor: AppTheme.primaryColor,
                       isDarkMode: isDarkMode,
                     ),
                     SizedBox(height: 12),
                     _buildTipCard(
                       icon: Icons.remove_red_eye_outlined,
-                      text: 'Mostre cada item nitidamente',
+                      text: context.tr.translate('camera_tip_show_items'),
                       iconColor: Color(0xFF7C4DFF),
                       isDarkMode: isDarkMode,
                     ),
                     SizedBox(height: 12),
                     _buildTipCard(
                       icon: Icons.lightbulb_outline,
-                      text: 'Garanta uma boa iluminação',
+                      text: context.tr.translate('camera_tip_good_light'),
                       iconColor: Color(0xFFFFA726),
                       isDarkMode: isDarkMode,
                     ),
@@ -117,7 +118,7 @@ class CameraTipsScreen extends StatelessWidget {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Começar',
+                    context.tr.translate('start'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -259,8 +260,8 @@ class _FramePainter extends CustomPainter {
       paint,
     );
     canvas.drawArc(
-      Rect.fromLTWH(
-          size.width - radius * 2, size.height - radius * 2, radius * 2, radius * 2),
+      Rect.fromLTWH(size.width - radius * 2, size.height - radius * 2,
+          radius * 2, radius * 2),
       0,
       1.57,
       false,

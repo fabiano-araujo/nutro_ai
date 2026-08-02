@@ -54,9 +54,6 @@ class MessageNotifier extends ChangeNotifier {
     if (errorMessage != null && errorMessage.isNotEmpty) {
       _message = errorMessage;
       _displayMessage = errorMessage;
-    } else if (error && _message.isEmpty) {
-      _message = "Ocorreu um erro ao processar sua solicitação.";
-      _displayMessage = _message;
     }
     notifyListeners();
   }

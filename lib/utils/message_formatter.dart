@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../i18n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../main.dart'; // Importar o arquivo main.dart para acessar navigatorKey
 
@@ -257,7 +258,8 @@ class MessageFormatter {
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Deslize para ver completo',
+                                      AppLocalizations.of(context)
+                                          .translate('swipe_to_view_full'),
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: isDarkMode
@@ -300,21 +302,27 @@ class MessageFormatter {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (isDarkMode)
-                    Text(
-                      'Erro ao processar fórmula:',
-                      style: TextStyle(
-                        color: Colors.red[300],
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
+                    Builder(
+                      builder: (context) => Text(
+                        AppLocalizations.of(context)
+                            .translate('formula_processing_error'),
+                        style: TextStyle(
+                          color: Colors.red[300],
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     )
                   else
-                    Text(
-                      'Erro ao processar fórmula:',
-                      style: TextStyle(
-                        color: Colors.red[700],
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
+                    Builder(
+                      builder: (context) => Text(
+                        AppLocalizations.of(context)
+                            .translate('formula_processing_error'),
+                        style: TextStyle(
+                          color: Colors.red[700],
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ),
                   SizedBox(height: 4),
@@ -611,12 +619,17 @@ class MessageFormatter {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      language ?? 'código',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.grey[300] : Colors.grey[800],
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                    Builder(
+                      builder: (context) => Text(
+                        language ??
+                            AppLocalizations.of(context)
+                                .translate('code_label'),
+                        style: TextStyle(
+                          color:
+                              isDarkMode ? Colors.grey[300] : Colors.grey[800],
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     MouseRegion(
@@ -626,12 +639,12 @@ class MessageFormatter {
                           Clipboard.setData(ClipboardData(text: codeContent));
 
                           // Mostrar um feedback ao usuário usando o navigatorKey
-                          if (navigatorKey.currentContext != null) {
-                            ScaffoldMessenger.of(navigatorKey.currentContext!)
-                                .showSnackBar(
+                          final context = navigatorKey.currentContext;
+                          if (context != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(
-                                    'Código copiado para a área de transferência'),
+                                content: Text(AppLocalizations.of(context)
+                                    .translate('code_copied_to_clipboard')),
                                 duration: Duration(seconds: 1),
                                 backgroundColor: Colors.green[700],
                               ),
@@ -1461,11 +1474,8 @@ class MessageFormatter {
 
     for (String line in tableLines) {
       final trimmedLine = line.trim();
-      final bool isAsciiDivider = trimmedLine
-          .replaceAll('-', '')
-          .replaceAll('+', '')
-          .trim()
-          .isEmpty;
+      final bool isAsciiDivider =
+          trimmedLine.replaceAll('-', '').replaceAll('+', '').trim().isEmpty;
       final bool isMarkdownDivider = RegExp(
         r'^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$',
       ).hasMatch(trimmedLine);

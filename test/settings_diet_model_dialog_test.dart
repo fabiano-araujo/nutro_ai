@@ -76,12 +76,17 @@ void main() {
     final dietProvider = await pumpSettings(tester);
     await openDietModelDialog(tester);
 
-    await tester.tap(find.text('DeepSeek V4 Flash'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('DeepSeek V4 Flash 0731'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(
       dietProvider.dietGenerationModel,
-      'deepseek/deepseek-v4-flash',
+      'deepseek/deepseek-v4-flash-0731',
     );
     expect(tester.takeException(), isNull);
   });

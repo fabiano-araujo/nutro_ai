@@ -430,7 +430,10 @@ class _DailyActivityWaterSectionState extends State<DailyActivityWaterSection> {
                             key: ValueKey('animated-water-glass-$index'),
                             isFilled: isFilled,
                             waterColor: waterColor,
-                            outlineColor: isFilled ? waterColor : textColor,
+                            emptyGlassColor: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : const Color(0xFFF7F8FC),
+                            plusColor: textColor,
                           ),
                         ),
                       ),
@@ -451,12 +454,14 @@ class _AnimatedWaterGlass extends StatefulWidget {
     super.key,
     required this.isFilled,
     required this.waterColor,
-    required this.outlineColor,
+    required this.emptyGlassColor,
+    required this.plusColor,
   });
 
   final bool isFilled;
   final Color waterColor;
-  final Color outlineColor;
+  final Color emptyGlassColor;
+  final Color plusColor;
 
   @override
   State<_AnimatedWaterGlass> createState() => _AnimatedWaterGlassState();
@@ -508,18 +513,14 @@ class _AnimatedWaterGlassState extends State<_AnimatedWaterGlass>
           painter: _WaterGlassPainter(
             fillLevel: _animation.value,
             waterColor: widget.waterColor,
-            outlineColor: Color.lerp(
-              widget.outlineColor.withValues(alpha: 0.72),
-              widget.waterColor,
-              _animation.value,
-            )!,
+            emptyGlassColor: widget.emptyGlassColor,
           ),
           child: Opacity(
             opacity: 1 - _animation.value,
             child: Icon(
               Icons.add_rounded,
               size: 22,
-              color: widget.outlineColor.withValues(alpha: 0.75),
+              color: widget.plusColor.withValues(alpha: 0.9),
             ),
           ),
         );
@@ -532,194 +533,69 @@ class _WaterGlassPainter extends CustomPainter {
   const _WaterGlassPainter({
     required this.fillLevel,
     required this.waterColor,
-    required this.outlineColor,
+    required this.emptyGlassColor,
   });
 
   final double fillLevel;
   final Color waterColor;
-  final Color outlineColor;
+  final Color emptyGlassColor;
 
-  Path _outerGlassPath(Size size) {
+  Path _glassPath(Size size) {
     return Path()
-      ..moveTo(size.width * 0.13, size.height * 0.07)
+      ..moveTo(size.width * 0.09, size.height * 0.06)
       ..quadraticBezierTo(
         size.width * 0.5,
-        size.height * 0.04,
-        size.width * 0.87,
-        size.height * 0.07,
+        size.height * 0.035,
+        size.width * 0.91,
+        size.height * 0.06,
       )
-      ..lineTo(size.width * 0.76, size.height * 0.84)
+      ..lineTo(size.width * 0.84, size.height * 0.88)
       ..quadraticBezierTo(
-        size.width * 0.74,
-        size.height * 0.94,
-        size.width * 0.61,
-        size.height * 0.96,
+        size.width * 0.83,
+        size.height * 0.97,
+        size.width * 0.73,
+        size.height * 0.98,
       )
-      ..lineTo(size.width * 0.39, size.height * 0.96)
+      ..lineTo(size.width * 0.27, size.height * 0.98)
       ..quadraticBezierTo(
-        size.width * 0.26,
-        size.height * 0.94,
-        size.width * 0.24,
-        size.height * 0.84,
-      )
-      ..close();
-  }
-
-  Path _innerGlassPath(Size size) {
-    return Path()
-      ..moveTo(size.width * 0.18, size.height * 0.11)
-      ..lineTo(size.width * 0.82, size.height * 0.11)
-      ..lineTo(size.width * 0.72, size.height * 0.82)
-      ..quadraticBezierTo(
-        size.width * 0.7,
-        size.height * 0.9,
-        size.width * 0.6,
-        size.height * 0.91,
-      )
-      ..lineTo(size.width * 0.4, size.height * 0.91)
-      ..quadraticBezierTo(
-        size.width * 0.3,
-        size.height * 0.9,
-        size.width * 0.28,
-        size.height * 0.82,
+        size.width * 0.17,
+        size.height * 0.97,
+        size.width * 0.16,
+        size.height * 0.88,
       )
       ..close();
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final glass = _outerGlassPath(size);
-    final innerGlass = _innerGlassPath(size);
+    final glass = _glassPath(size);
 
-    canvas.drawPath(
-      glass.shift(const Offset(0, 1.5)),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.07)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
-    );
     canvas.drawPath(
       glass,
       Paint()
-        ..color = outlineColor.withValues(
-          alpha: 0.055 + (fillLevel * 0.08),
-        )
+        ..color = emptyGlassColor
         ..style = PaintingStyle.fill,
     );
 
     if (fillLevel > 0) {
       canvas.save();
-      canvas.clipPath(innerGlass);
-      final bottom = size.height * 0.92;
-      final waterHeight = size.height * 0.81 * fillLevel;
+      canvas.clipPath(glass);
+      final bottom = size.height;
+      final waterHeight = size.height * fillLevel;
       final top = bottom - waterHeight;
-
-      final waterPath = Path()
-        ..moveTo(0, top)
-        ..cubicTo(
-          size.width * 0.18,
-          top - 2.2,
-          size.width * 0.32,
-          top + 2.2,
-          size.width * 0.5,
-          top,
-        )
-        ..cubicTo(
-          size.width * 0.68,
-          top - 2.2,
-          size.width * 0.82,
-          top + 2.2,
-          size.width,
-          top,
-        )
-        ..lineTo(size.width, bottom + 3)
-        ..lineTo(0, bottom + 3)
-        ..close();
-      final waterBounds = Rect.fromLTRB(0, top - 3, size.width, bottom + 3);
-      canvas.drawPath(
-        waterPath,
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF8DE3FF),
-              waterColor,
-              const Color(0xFF2196D3),
-            ],
-          ).createShader(waterBounds),
-      );
-
-      final bubbleOpacity = ((fillLevel - 0.2) / 0.8).clamp(0.0, 1.0);
-      final bubblePaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.62 * bubbleOpacity)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-      canvas.drawCircle(
-        Offset(size.width * 0.58, bottom - waterHeight * 0.35),
-        1.7,
-        bubblePaint,
-      );
-      canvas.drawCircle(
-        Offset(size.width * 0.43, bottom - waterHeight * 0.62),
-        1.2,
-        bubblePaint,
+      canvas.drawRect(
+        Rect.fromLTRB(0, top, size.width, bottom),
+        Paint()..color = waterColor,
       );
       canvas.restore();
     }
-
-    canvas.drawPath(
-      glass,
-      Paint()
-        ..color = outlineColor.withValues(
-          alpha: 0.24 + (fillLevel * 0.48),
-        )
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4
-        ..strokeJoin = StrokeJoin.round,
-    );
-
-    final rim = Path()
-      ..moveTo(size.width * 0.13, size.height * 0.07)
-      ..quadraticBezierTo(
-        size.width * 0.5,
-        size.height * 0.1,
-        size.width * 0.87,
-        size.height * 0.07,
-      );
-    canvas.drawPath(
-      rim,
-      Paint()
-        ..color = outlineColor.withValues(
-          alpha: 0.3 + (fillLevel * 0.5),
-        )
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..strokeCap = StrokeCap.round,
-    );
-
-    final shine = Path()
-      ..moveTo(size.width * 0.3, size.height * 0.19)
-      ..quadraticBezierTo(
-        size.width * 0.31,
-        size.height * 0.44,
-        size.width * 0.35,
-        size.height * 0.64,
-      );
-    canvas.drawPath(
-      shine,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.72)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6
-        ..strokeCap = StrokeCap.round,
-    );
   }
 
   @override
   bool shouldRepaint(covariant _WaterGlassPainter oldDelegate) {
     return oldDelegate.fillLevel != fillLevel ||
         oldDelegate.waterColor != waterColor ||
-        oldDelegate.outlineColor != outlineColor;
+        oldDelegate.emptyGlassColor != emptyGlassColor;
   }
 }
 

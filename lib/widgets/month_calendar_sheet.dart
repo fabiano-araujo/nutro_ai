@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../i18n/app_localizations_extension.dart';
+
 /// Bottom sheet com calendário mensal personalizado.
 ///
 /// - Navegação entre meses com swipe horizontal (e setas).
@@ -94,7 +96,7 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
                       IconButton(
                         icon: Icon(Icons.chevron_left, color: textColor),
                         onPressed: () => _goToOffset(-1),
-                        tooltip: 'Mês anterior',
+                        tooltip: context.tr.translate('previous_month'),
                       ),
                       Expanded(
                         child: Center(
@@ -113,7 +115,7 @@ class _MonthCalendarSheetState extends State<MonthCalendarSheet> {
                       IconButton(
                         icon: Icon(Icons.chevron_right, color: textColor),
                         onPressed: () => _goToOffset(1),
-                        tooltip: 'Próximo mês',
+                        tooltip: context.tr.translate('next_month'),
                       ),
                     ],
                   ),

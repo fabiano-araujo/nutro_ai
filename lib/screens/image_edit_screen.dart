@@ -186,7 +186,7 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
       print('[PROCESS] Erro: $e\n$stacktrace');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Erro ao processar imagem: $e'),
+            content: Text(context.tr.translate('error_processing_image')),
             backgroundColor: Colors.red),
       );
       setState(() {
@@ -213,45 +213,48 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
     final String base64Image = base64Encode(processedImage);
 
     // Definir título com base no modo de escaneamento
-    String toolTitle = 'Digitalização';
+    String toolTitle = context.tr.translate('scan');
     String toolType = 'scan';
 
     switch (widget.scanMode) {
       case 'math':
-        toolTitle = 'Matemática';
+        toolTitle = context.tr.translate('math');
         toolType = 'math';
         break;
       case 'translate':
-        toolTitle = 'Tradução';
+        toolTitle = context.tr.translate('translation');
         toolType = 'translate';
         break;
       case 'physics':
-        toolTitle = 'Física';
+        toolTitle = context.tr.translate('physics');
         toolType = 'physics';
         break;
       case 'chemistry':
-        toolTitle = 'Química';
+        toolTitle = context.tr.translate('chemistry');
         toolType = 'chemistry';
         break;
       case 'history':
-        toolTitle = 'História';
+        toolTitle = context.tr.translate('history');
         toolType = 'history';
         break;
       default:
-        toolTitle = 'Digitalização';
+        toolTitle = context.tr.translate('scan');
         toolType = 'scan';
     }
 
     // Criar dados da ferramenta para passar ao AI Tutor
     final Map<String, dynamic> toolData = {
-      'toolName': 'Camera Scan',
+      'toolName': context.tr.translate('camera_scan'),
       'toolTab': toolTitle,
       'sourceType': 'camera',
       'scanMode': widget.scanMode,
       'imageData': base64Image,
-      'userInput': 'Análise de imagem: $toolTitle',
-      'fullPrompt':
-          'Analise esta imagem capturada com a câmera no modo "$toolTitle" e forneça uma resposta detalhada.',
+      'userInput': context.tr
+          .translate('image_analysis_with_mode')
+          .replaceAll('{mode}', toolTitle),
+      'fullPrompt': context.tr
+          .translate('camera_analysis_prompt')
+          .replaceAll('{mode}', toolTitle),
       'hasImage': true,
     };
 
@@ -500,7 +503,7 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
         title: Text(
-          context.tr.translate('editarImagem') ?? 'Editar Imagem',
+          context.tr.translate('editarImagem'),
           style: TextStyle(color: Colors.white),
         ),
       ),
@@ -554,7 +557,7 @@ class _ImageEditScreenState extends State<ImageEditScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      "Selecione apenas uma pergunta",
+                      context.tr.translate('select_one_question'),
                       style: TextStyle(color: Colors.white, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),

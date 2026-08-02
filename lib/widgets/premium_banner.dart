@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../i18n/app_localizations_extension.dart';
 import '../services/purchase_service.dart';
 
 class PremiumBanner extends StatelessWidget {
@@ -75,9 +77,9 @@ class PremiumBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "Upgrade para Premium",
-                        style: TextStyle(
+                      Text(
+                        context.tr.translate('subscribe_premium'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -107,9 +109,9 @@ class PremiumBanner extends StatelessWidget {
                       vertical: 8,
                     ),
                   ),
-                  child: const Text(
-                    "ASSINAR",
-                    style: TextStyle(
+                  child: Text(
+                    context.tr.translate('subscribe_now'),
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),

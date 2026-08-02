@@ -41,18 +41,24 @@ class ToolsScreen extends StatefulWidget {
 
 class _ToolsScreenState extends State<ToolsScreen> {
   late Meal _exampleMeal;
+  Locale? _exampleMealLocale;
 
   @override
-  void initState() {
-    super.initState();
-    _initializeExampleMeal();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (_exampleMealLocale != locale) {
+      _exampleMealLocale = locale;
+      _initializeExampleMeal();
+    }
   }
 
   void _initializeExampleMeal() {
+    final localizations = context.tr;
     final foods = <Food>[
       Food(
-        name: 'Egg',
-        amount: '1 large',
+        name: localizations.translate('example_food_egg'),
+        amount: localizations.translate('example_portion_one_large'),
         emoji: '🥚',
         photo:
             'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
@@ -86,36 +92,36 @@ class _ToolsScreenState extends State<ToolsScreen> {
         foodRegions: [
           FoodRegion(
             regionCode: 'US',
-            languageCode: 'en',
+            languageCode: localizations.locale.languageCode,
             idFood: 0,
-            translation: 'Egg',
+            translation: localizations.translate('example_food_egg'),
             portions: [
               Portion(
                 idFoodRegion: 0,
                 proportion: 1.0,
-                description: 'Large (50g)',
+                description: localizations.translate('example_portion_large'),
               ),
               Portion(
                 idFoodRegion: 0,
                 proportion: 0.8,
-                description: 'Medium (40g)',
+                description: localizations.translate('example_portion_medium'),
               ),
               Portion(
                 idFoodRegion: 0,
                 proportion: 0.6,
-                description: 'Small (30g)',
+                description: localizations.translate('example_portion_small'),
               ),
               Portion(
                 idFoodRegion: 0,
                 proportion: 2.0,
-                description: '100g',
+                description: localizations.translate('example_portion_100g'),
               ),
             ],
           ),
         ],
       ),
       Food(
-        name: 'Couscous',
+        name: localizations.translate('example_food_couscous'),
         amount: '100g',
         emoji: '🍚',
         photo:
@@ -144,7 +150,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
         ],
       ),
       Food(
-        name: 'Milk',
+        name: localizations.translate('example_food_milk'),
         amount: '200ml',
         emoji: '🥛',
         photo:
@@ -178,29 +184,31 @@ class _ToolsScreenState extends State<ToolsScreen> {
         foodRegions: [
           FoodRegion(
             regionCode: 'US',
-            languageCode: 'en',
+            languageCode: localizations.locale.languageCode,
             idFood: 0,
-            translation: 'Milk',
+            translation: localizations.translate('example_food_milk'),
             portions: [
               Portion(
                 idFoodRegion: 0,
                 proportion: 1.0,
-                description: 'Glass (200ml)',
+                description: localizations.translate('example_portion_glass'),
               ),
               Portion(
                 idFoodRegion: 0,
                 proportion: 0.5,
-                description: 'Half glass (100ml)',
+                description:
+                    localizations.translate('example_portion_half_glass'),
               ),
               Portion(
                 idFoodRegion: 0,
                 proportion: 1.25,
-                description: 'Cup (250ml)',
+                description: localizations.translate('example_portion_cup'),
               ),
               Portion(
                 idFoodRegion: 0,
                 proportion: 0.25,
-                description: 'Tablespoon (50ml)',
+                description:
+                    localizations.translate('example_portion_tablespoon'),
               ),
             ],
           ),
@@ -228,11 +236,10 @@ class _ToolsScreenState extends State<ToolsScreen> {
             final user = authService.currentUser;
             if (user != null && user.name.isNotEmpty) {
               return Text(context.tr
-                      .translate('hello_user')
-                      ?.replaceAll('{name}', user.name) ??
-                  'Oi, ${user.name}');
+                  .translate('hello_user')
+                  .replaceAll('{name}', user.name));
             } else {
-              return Text(context.tr.translate('hello') ?? 'Oi');
+              return Text(context.tr.translate('hello'));
             }
           },
         ),
@@ -250,14 +257,14 @@ class _ToolsScreenState extends State<ToolsScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.card_giftcard),
-            tooltip: 'Assistir anúncio para ganhar créditos',
+            tooltip: context.tr.translate('watch_ad_for_credits'),
             onPressed: () {
               _showRewardDialog(context);
             },
           ),
           IconButton(
             icon: const Icon(Icons.restaurant_menu),
-            tooltip: 'Pesquisa Nutricional',
+            tooltip: context.tr.translate('nutrition_search'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -269,6 +276,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.settings),
+            tooltip: context.tr.translate('settings_title'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -321,9 +329,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    context.tr.translate(
-                                            'welcome_message_card') ??
-                                        'Olá! Sou Nutro AI, seu assistente de nutrição',
+                                    context.tr
+                                        .translate('welcome_message_card'),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -335,8 +342,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                                   SizedBox(height: 4),
                                   Text(
                                     context.tr
-                                            .translate('welcome_description') ??
-                                        'Assistente inteligente para potencializar seu aprendizado 📚👩‍🎓',
+                                        .translate('tools_welcome_description'),
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: isDarkMode
@@ -372,8 +378,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                                 const Icon(Icons.chat_bubble_outline, size: 20),
                                 const SizedBox(width: 8),
                                 Text(
-                                  context.tr.translate('start_conversation') ??
-                                      'Iniciar conversa',
+                                  context.tr.translate('start_conversation'),
                                   style: const TextStyle(fontSize: 16),
                                 ),
                               ],
@@ -393,7 +398,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
                   onEditFood: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Edit food - feature coming soon'),
+                        content:
+                            Text(context.tr.translate('edit_food_coming_soon')),
                         duration: Duration(seconds: 2),
                       ),
                     );
@@ -409,7 +415,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
 
                 // Título da seção "Ferramentas de IA"
                 Text(
-                  context.tr.translate('ai_tools') ?? 'Ferramentas de IA',
+                  context.tr.translate('ai_tools'),
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -428,11 +434,9 @@ class _ToolsScreenState extends State<ToolsScreen> {
                           children: [
                             Expanded(
                               child: _buildIAToolCard(
-                                context.tr.translate('youtube_summary_short') ??
-                                    'Resumo do YouTube',
+                                context.tr.translate('youtube_summary_short'),
                                 context.tr.translate(
-                                        'youtube_summary_short_description') ??
-                                    'Obtenha resumos detalhados de vídeos',
+                                    'youtube_summary_short_description'),
                                 Icons.play_circle_fill,
                                 const Color(0xFFE57575),
                                 () => _navigateToTool('youtube_summary'),
@@ -441,12 +445,10 @@ class _ToolsScreenState extends State<ToolsScreen> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildIAToolCard(
+                                context.tr
+                                    .translate('learning_assistant_short'),
                                 context.tr.translate(
-                                        'learning_assistant_short') ??
-                                    'Assistente de aprendizagem',
-                                context.tr.translate(
-                                        'learning_assistant_short_description') ??
-                                    'Perguntar, explicar, criar quiz',
+                                    'learning_assistant_short_description'),
                                 Icons.question_mark,
                                 const Color(0xFF8C65D3),
                                 () => _navigateToTool('ai_tutor'),
@@ -459,12 +461,9 @@ class _ToolsScreenState extends State<ToolsScreen> {
                           children: [
                             Expanded(
                               child: _buildIAToolCard(
-                                context.tr
-                                        .translate('content_generator_short') ??
-                                    'Gerador de conteúdo',
+                                context.tr.translate('content_generator_short'),
                                 context.tr.translate(
-                                        'content_generator_short_description') ??
-                                    'Escrever ensaio, poema, blog',
+                                    'content_generator_short_description'),
                                 Icons.edit,
                                 const Color(0xFFD39F65),
                                 () => _navigateToTool('content_generator'),
@@ -473,11 +472,9 @@ class _ToolsScreenState extends State<ToolsScreen> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildIAToolCard(
-                                context.tr.translate('language_tool') ??
-                                    'Idioma',
-                                context.tr.translate(
-                                        'language_tool_description') ??
-                                    'Traduzir, verificar gramática',
+                                context.tr.translate('language_tool'),
+                                context.tr
+                                    .translate('language_tool_description'),
                                 Icons.description,
                                 const Color(0xFF7BC58C),
                                 () => _navigateToTool('language'),
@@ -493,11 +490,9 @@ class _ToolsScreenState extends State<ToolsScreen> {
                           children: [
                             Expanded(
                               child: _buildIAToolCard(
-                                context.tr.translate('essay_helper_short') ??
-                                    'Ajudante de ensaios',
+                                context.tr.translate('essay_helper_short'),
                                 context.tr.translate(
-                                        'essay_helper_short_description') ??
-                                    'Melhorar, parafrasear',
+                                    'essay_helper_short_description'),
                                 Icons.text_snippet,
                                 const Color(0xFFD268BE),
                                 () => _navigateToTool('text_enhancement'),
@@ -506,11 +501,9 @@ class _ToolsScreenState extends State<ToolsScreen> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildIAToolCard(
-                                context.tr.translate('summarizer_short') ??
-                                    'Resumidor',
-                                context.tr.translate(
-                                        'summarizer_short_description') ??
-                                    'Texto, livro, obter palavras-chave',
+                                context.tr.translate('summarizer_short'),
+                                context.tr
+                                    .translate('summarizer_short_description'),
                                 Icons.menu_book,
                                 const Color(0xFF5B9BD5),
                                 () => _navigateToTool('document_summary'),
@@ -523,11 +516,9 @@ class _ToolsScreenState extends State<ToolsScreen> {
                           children: [
                             Expanded(
                               child: _buildIAToolCard(
-                                context.tr.translate('code_enhancer_short') ??
-                                    'Aprimorador de código',
+                                context.tr.translate('code_enhancer_short'),
                                 context.tr.translate(
-                                        'code_enhancer_short_description') ??
-                                    'Analisar, verificar, otimizar',
+                                    'code_enhancer_short_description'),
                                 Icons.code,
                                 const Color(0xFF8C8C8C),
                                 () => _navigateToTool('code_enhancer'),
@@ -786,9 +777,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
     // Na web, apenas mostre mensagem
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Esta funcionalidade não está disponível na versão web.'),
+        SnackBar(
+          content: Text(context.tr.translate('web_feature_unavailable')),
           backgroundColor: Colors.orange,
         ),
       );
@@ -801,9 +791,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
   void _showWatchAdDialog(BuildContext context) {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Esta funcionalidade não está disponível na versão web.'),
+        SnackBar(
+          content: Text(context.tr.translate('web_feature_unavailable')),
           backgroundColor: Colors.orange,
         ),
       );

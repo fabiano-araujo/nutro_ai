@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nutro_ai/i18n/app_localizations.dart';
 import 'package:nutro_ai/models/Nutrient.dart';
 import 'package:nutro_ai/models/food_model.dart';
 import 'package:nutro_ai/models/meal_model.dart';
@@ -23,6 +25,14 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(
           body: MonthCalendarSheet(
             selectedDate: DateTime(2026, 5, 15),

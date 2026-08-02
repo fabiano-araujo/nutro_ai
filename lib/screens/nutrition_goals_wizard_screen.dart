@@ -147,11 +147,6 @@ class _NutritionGoalsWizardScreenState
     if (mounted) setState(() {});
   }
 
-  String _translateOrFallback(String key, String fallback) {
-    final translated = context.tr.translate(key);
-    return translated == key ? fallback : translated;
-  }
-
   Color _profileInputColor({
     required ThemeData theme,
     required bool isDarkMode,
@@ -692,10 +687,7 @@ class _NutritionGoalsWizardScreenState
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
-        _translateOrFallback(
-          'goal_setup_profile_badge',
-          'Objetivo & perfil',
-        ),
+        context.tr.translate('goal_setup_profile_badge'),
         style: theme.textTheme.labelLarge?.copyWith(
           color: _onAccentColor(theme),
           fontSize: 12,

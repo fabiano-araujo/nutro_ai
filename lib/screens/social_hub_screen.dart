@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../providers/feed_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/challenges_provider.dart';
@@ -34,6 +35,49 @@ class SocialTabController {
 }
 
 final socialTabController = SocialTabController();
+
+String _socialText(
+  BuildContext context,
+  String key, [
+  Map<String, String> placeholders = const {},
+]) {
+  var text = context.tr.translate(key);
+  for (final entry in placeholders.entries) {
+    text = text.replaceAll('{${entry.key}}', entry.value);
+  }
+  return text;
+}
+
+String _localizedChallengeType(BuildContext context, String type) {
+  switch (type.toUpperCase()) {
+    case 'LOGGING_STREAK':
+      return context.tr.translate('challenge_type_logging');
+    case 'PROTEIN_TARGET':
+      return context.tr.translate('challenge_type_protein');
+    case 'CALORIE_DEFICIT':
+      return context.tr.translate('challenge_type_calorie_deficit');
+    case 'FIBER_TARGET':
+      return context.tr.translate('challenge_type_fiber');
+    default:
+      return context.tr.translate('challenge_type_custom');
+  }
+}
+
+String _socialDayCount(BuildContext context, int count) {
+  return _socialText(
+    context,
+    count == 1 ? 'social_day_count_singular' : 'social_day_count_plural',
+    {'count': '$count'},
+  );
+}
+
+String _socialPointCount(BuildContext context, int count) {
+  return _socialText(
+    context,
+    count == 1 ? 'social_point_count_singular' : 'social_point_count_plural',
+    {'count': '$count'},
+  );
+}
 
 Color _socialSurfaceColor(bool isDarkMode) =>
     AppTheme.profileCardColor(isDarkMode);
@@ -173,11 +217,10 @@ class _SocialHubScreenState extends State<SocialHubScreen>
               _SocialShellHeader(onOpenDrawer: widget.onOpenDrawer),
               Expanded(
                 child: DietStyleMessageState(
-                  title: 'Entre para acessar a Comunidade',
-                  message:
-                      'Faça login para ver seus desafios, acompanhar amigos e manter suas sequências.',
+                  title: context.tr.translate('social_sign_in_title'),
+                  message: context.tr.translate('social_sign_in_message'),
                   fallbackIcon: Icons.people_alt_rounded,
-                  primaryActionLabel: 'Entrar',
+                  primaryActionLabel: context.tr.translate('login'),
                   primaryActionIcon: Icons.login_rounded,
                   onPrimaryAction: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -205,7 +248,7 @@ class _SocialHubScreenState extends State<SocialHubScreen>
                 elevation: 0,
                 icon: Icon(Icons.add_rounded, color: fabForegroundColor),
                 label: Text(
-                  'Criar desafio',
+                  context.tr.translate('social_create_challenge'),
                   style: TextStyle(
                     color: fabForegroundColor,
                     fontSize: 14,
@@ -233,10 +276,12 @@ class _SocialHubScreenState extends State<SocialHubScreen>
                   alignment: Alignment.topCenter,
                   child: _SocialShellHeader(
                     onOpenDrawer: widget.onOpenDrawer,
-                    title: _tabController.index == 0 ? 'Amigos' : 'Comunidade',
+                    title: _tabController.index == 0
+                        ? context.tr.translate('streak_tab_friends')
+                        : context.tr.translate('social_community'),
                     subtitle: _tabController.index == 0
-                        ? 'Atualizações recentes'
-                        : 'Crie desafios e compare o progresso.',
+                        ? context.tr.translate('social_recent_updates')
+                        : context.tr.translate('social_challenges_subtitle'),
                     showStreakBadge: true,
                     trailing: _tabController.index == 0
                         ? const _SocialFriendsHeaderActions()
@@ -304,41 +349,61 @@ class _SocialHubScreenState extends State<SocialHubScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: _socialSurfaceColor(isDark),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Text('Novo desafio',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        title: Text(
+          context.tr.translate('social_new_challenge'),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Nome do desafio',
-                  hintText: 'Ex: 7 dias registrando',
+                decoration: InputDecoration(
+                  labelText: context.tr.translate('social_challenge_name'),
+                  hintText: context.tr.translate('social_challenge_name_hint'),
                 ),
               ),
               const SizedBox(height: 14),
               TextField(
                 controller: descCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Descrição (opcional)'),
+                decoration: InputDecoration(
+                  labelText:
+                      context.tr.translate('social_optional_description'),
+                ),
                 maxLines: 2,
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: type,
-                decoration: const InputDecoration(labelText: 'Tipo'),
-                items: const [
+                decoration: InputDecoration(
+                  labelText: context.tr.translate('social_challenge_type'),
+                ),
+                items: [
                   DropdownMenuItem(
-                      value: 'LOGGING_STREAK',
-                      child: Text('Registrar refeições')),
+                    value: 'LOGGING_STREAK',
+                    child: Text(
+                      context.tr.translate('challenge_type_logging'),
+                    ),
+                  ),
                   DropdownMenuItem(
-                      value: 'PROTEIN_TARGET', child: Text('Meta de proteína')),
+                    value: 'PROTEIN_TARGET',
+                    child: Text(
+                      context.tr.translate('challenge_type_protein'),
+                    ),
+                  ),
                   DropdownMenuItem(
-                      value: 'CALORIE_DEFICIT',
-                      child: Text('Déficit calórico')),
+                    value: 'CALORIE_DEFICIT',
+                    child: Text(
+                      context.tr.translate('challenge_type_calorie_deficit'),
+                    ),
+                  ),
                   DropdownMenuItem(
-                      value: 'FIBER_TARGET', child: Text('Meta de fibra')),
+                    value: 'FIBER_TARGET',
+                    child: Text(
+                      context.tr.translate('challenge_type_fiber'),
+                    ),
+                  ),
                 ],
                 onChanged: (v) => type = v ?? 'LOGGING_STREAK',
               ),
@@ -348,7 +413,7 @@ class _SocialHubScreenState extends State<SocialHubScreen>
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar')),
+              child: Text(context.tr.translate('cancel'))),
           ElevatedButton(
             onPressed: () async {
               final name = nameCtrl.text.trim();
@@ -368,7 +433,10 @@ class _SocialHubScreenState extends State<SocialHubScreen>
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('Criar', style: TextStyle(color: foreground)),
+            child: Text(
+              context.tr.translate('social_create'),
+              style: TextStyle(color: foreground),
+            ),
           ),
         ],
       ),
@@ -378,14 +446,14 @@ class _SocialHubScreenState extends State<SocialHubScreen>
 
 class _SocialShellHeader extends StatelessWidget {
   final VoidCallback? onOpenDrawer;
-  final String title;
+  final String? title;
   final String? subtitle;
   final bool showStreakBadge;
   final Widget? trailing;
 
   const _SocialShellHeader({
     this.onOpenDrawer,
-    this.title = 'Social',
+    this.title,
     this.subtitle,
     this.showStreakBadge = false,
     this.trailing,
@@ -412,7 +480,7 @@ class _SocialShellHeader extends StatelessWidget {
                   child: IconButton(
                     icon: Icon(Icons.menu_rounded, color: textColor),
                     onPressed: onOpenDrawer,
-                    tooltip: 'Menu',
+                    tooltip: context.tr.translate('social_menu'),
                   ),
                 ),
               )
@@ -423,7 +491,7 @@ class _SocialShellHeader extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    title,
+                    title ?? context.tr.translate('social_title'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
@@ -503,14 +571,14 @@ class _SocialModeTabs extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _SocialModeChip(
-            label: 'Social',
+            label: context.tr.translate('social_title'),
             selected: selectedIndex == 0,
             isDarkMode: isDarkMode,
             onTap: () => onChanged(0),
           ),
           const SizedBox(width: 12),
           _SocialModeChip(
-            label: 'Desafios',
+            label: context.tr.translate('social_summary_challenges'),
             selected: selectedIndex == 1,
             isDarkMode: isDarkMode,
             onTap: () => onChanged(1),
@@ -600,7 +668,7 @@ class _SocialTabContent extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: _InfoCard(
                   icon: Icons.cloud_off_rounded,
-                  message: 'Não foi possível carregar. Puxe para atualizar.',
+                  message: context.tr.translate('social_feed_load_error'),
                 ),
               )
             else if (feedProvider.isEmpty)
@@ -659,7 +727,9 @@ class _FriendsHeaderIconButton extends StatelessWidget {
         final hasPending = friendsProvider.hasPendingRequests;
 
         return Tooltip(
-          message: hasPending ? 'Pedidos de amizade' : 'Gerenciar amigos',
+          message: hasPending
+              ? context.tr.translate('social_friend_requests')
+              : context.tr.translate('social_manage_friends'),
           child: InkWell(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -727,7 +797,7 @@ class _EmptyFriendsCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Adicione amigos para começar',
+            context.tr.translate('social_empty_feed_title'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -737,7 +807,7 @@ class _EmptyFriendsCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Quando seus amigos registrarem refeições ou baterem metas, você vai ver aqui.',
+            context.tr.translate('social_empty_feed_message'),
             style: TextStyle(
               fontSize: 13,
               color: _socialMutedTextColor(isDarkMode),
@@ -757,7 +827,7 @@ class _EmptyFriendsCard extends StatelessWidget {
               icon: Icon(Icons.person_add_rounded,
                   size: 18, color: foregroundColor),
               label: Text(
-                'Adicionar amigos',
+                context.tr.translate('social_add_friends'),
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -828,7 +898,10 @@ class _ActivityCard extends StatelessWidget {
     final profileShapeAfterImageUrl = _profileShapeAfterImageUrl;
     final profileShapeBeforeImageUrl = _profileShapeBeforeImageUrl;
     final challengeName = _challengeName;
-    final stats = _stats;
+    final stats = _stats(context);
+    final message = _message(context);
+    final detail = _detail(context);
+    final summaryTitle = _summaryTitle(context);
     final currentUserId = context.watch<AuthService>().currentUser?.id;
     final friendship = _friendshipWith(
       context.watch<FriendsProvider>().friends,
@@ -862,7 +935,7 @@ class _ActivityCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      _secondaryLine,
+                      _secondaryLine(context),
                       style: TextStyle(
                         fontSize: 12,
                         color: _socialMutedTextColor(isDarkMode),
@@ -895,7 +968,7 @@ class _ActivityCard extends StatelessWidget {
           const SizedBox(height: 14),
           // Mensagem da atividade
           Text(
-            _message,
+            message,
             style: TextStyle(
               fontSize: 15,
               height: 1.35,
@@ -903,10 +976,10 @@ class _ActivityCard extends StatelessWidget {
               color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
             ),
           ),
-          if (_detail != null) ...[
+          if (detail != null) ...[
             const SizedBox(height: 3),
             Text(
-              _detail!,
+              detail,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -918,7 +991,7 @@ class _ActivityCard extends StatelessWidget {
             const SizedBox(height: 12),
             _ActivityContextPill(
               icon: Icons.emoji_events_rounded,
-              label: 'Desafio',
+              label: context.tr.translate('challenge_title'),
               value: challengeName,
               color: const Color(0xFFFFC107),
             ),
@@ -927,8 +1000,12 @@ class _ActivityCard extends StatelessWidget {
             const SizedBox(height: 10),
             _ActivityContextPill(
               icon: Icons.lock_rounded,
-              label: 'Privado',
-              value: 'Detalhes visíveis só para ${activity.user.name}',
+              label: context.tr.translate('social_private'),
+              value: _socialText(
+                context,
+                'social_private_details',
+                {'name': activity.user.name},
+              ),
               color: _socialMutedTextColor(isDarkMode),
             ),
           ],
@@ -945,7 +1022,7 @@ class _ActivityCard extends StatelessWidget {
             const SizedBox(height: 14),
             _ActivitySummaryPanel(
               icon: typeInfo.icon,
-              title: _summaryTitle,
+              title: summaryTitle,
               stats: stats,
               color: typeInfo.color,
             ),
@@ -990,35 +1067,65 @@ class _ActivityCard extends StatelessWidget {
     }
   }
 
-  String get _message {
+  String _message(BuildContext context) {
     final customMessage = _readString(activity.data, ['message', 'text']);
     if (customMessage != null) return customMessage;
 
     switch (activity.type.toUpperCase()) {
       case 'CHECKIN_PROTEIN':
-        return 'Bateu a meta de proteína!';
+        return context.tr.translate('social_feed_hit_protein');
       case 'CHECKIN_GOAL':
-        return 'Atingiu o objetivo calórico!';
+        return context.tr.translate('social_feed_hit_calorie_goal');
       case 'CHECKIN_OVER':
-        return 'Registrou as refeições do dia';
+        return context.tr.translate('social_feed_logged_meals');
       case 'STREAK_MILESTONE':
-        final days = activity.data?['days'] ?? 0;
-        return 'Alcançou $days dias de sequência!';
+        final days = activity.data == null
+            ? 0
+            : _readNumber(activity.data!, ['days'])?.round() ?? 0;
+        return _socialText(
+          context,
+          days == 1
+              ? 'social_feed_streak_singular'
+              : 'social_feed_streak_plural',
+          {'count': '$days'},
+        );
       case 'FRIEND_STREAK':
-        final friendName = activity.data?['friendName'] ?? 'amigo';
-        final days = activity.data?['days'] ?? 0;
-        return 'Sequência em duo de $days dias com $friendName!';
+        final friendName = activity.data?['friendName']?.toString().trim();
+        final days = activity.data == null
+            ? 0
+            : _readNumber(activity.data!, ['days'])?.round() ?? 0;
+        return _socialText(
+          context,
+          days == 1
+              ? 'social_feed_duo_streak_singular'
+              : 'social_feed_duo_streak_plural',
+          {
+            'count': '$days',
+            'name': friendName == null || friendName.isEmpty
+                ? context.tr.translate('social_friend_fallback')
+                : friendName,
+          },
+        );
       case 'CHALLENGE_JOIN':
-        final challengeName = activity.data?['challengeName'] ?? 'desafio';
-        return 'Entrou no desafio "$challengeName"';
+        final challengeName =
+            activity.data?['challengeName']?.toString().trim();
+        return _socialText(
+          context,
+          'social_feed_joined_challenge',
+          {
+            'name': challengeName == null || challengeName.isEmpty
+                ? context.tr.translate('social_challenge_fallback')
+                : challengeName,
+          },
+        );
       case 'PROFILE_SHAPE_PREVIEW':
-        return 'Compartilhou uma prévia do shape';
+        return context.tr.translate('social_feed_shared_shape_preview');
       default:
-        return 'Atividade no app';
+        return context.tr.translate('social_feed_app_activity');
     }
   }
 
-  String? get _detail {
+  String? _detail(BuildContext context) {
     if (activity.isPrivate || activity.data == null) return null;
     final direct = _readString(activity.data, [
       'mealName',
@@ -1033,21 +1140,33 @@ class _ActivityCard extends StatelessWidget {
       case 'CHECKIN_PROTEIN':
         final p = activity.data!['protein'];
         final g = activity.data!['proteinGoal'];
-        if (p != null && g != null) return '${p}g de ${g}g';
+        if (p != null && g != null) {
+          return _socialText(
+            context,
+            'social_feed_protein_progress',
+            {'current': '$p', 'goal': '$g'},
+          );
+        }
         return null;
       case 'CHECKIN_GOAL':
         final c = activity.data!['calories'];
         final g = activity.data!['calorieGoal'];
-        if (c != null && g != null) return '$c de $g kcal';
+        if (c != null && g != null) {
+          return _socialText(
+            context,
+            'social_feed_calorie_progress',
+            {'current': '$c', 'goal': '$g'},
+          );
+        }
         return null;
       default:
         return null;
     }
   }
 
-  String get _secondaryLine {
+  String _secondaryLine(BuildContext context) {
     final username = activity.user.username?.trim();
-    final time = _formatTime(activity.createdAt);
+    final time = _formatTime(context, activity.createdAt);
     if (username != null && username.isNotEmpty) return '@$username · $time';
     return time;
   }
@@ -1059,24 +1178,24 @@ class _ActivityCard extends StatelessWidget {
         type == 'CHECKIN_OVER';
   }
 
-  String get _summaryTitle {
+  String _summaryTitle(BuildContext context) {
     switch (activity.type.toUpperCase()) {
       case 'CHECKIN_PROTEIN':
-        return 'Resumo da refeição';
+        return context.tr.translate('social_meal_summary');
       case 'CHECKIN_GOAL':
-        return 'Resumo do dia';
+        return context.tr.translate('social_day_summary');
       case 'CHECKIN_OVER':
-        return 'Registro nutricional';
+        return context.tr.translate('social_nutrition_log');
       case 'STREAK_MILESTONE':
-        return 'Sequência atualizada';
+        return context.tr.translate('social_streak_updated');
       case 'FRIEND_STREAK':
-        return 'Atividade em dupla';
+        return context.tr.translate('social_duo_activity');
       case 'CHALLENGE_JOIN':
-        return 'Novo desafio';
+        return context.tr.translate('social_new_challenge');
       case 'PROFILE_SHAPE_PREVIEW':
-        return 'Evolução visual';
+        return context.tr.translate('social_visual_progress');
       default:
-        return 'Atividade';
+        return context.tr.translate('social_activity');
     }
   }
 
@@ -1145,7 +1264,7 @@ class _ActivityCard extends StatelessWidget {
     return _readString(activity.data, ['beforeImageUrl']);
   }
 
-  List<_ActivityStat> get _stats {
+  List<_ActivityStat> _stats(BuildContext context) {
     final data = activity.data;
     if (data == null || activity.isPrivate) return const [];
 
@@ -1163,42 +1282,58 @@ class _ActivityCard extends StatelessWidget {
       stats.add(_ActivityStat(
         icon: Icons.local_fire_department_rounded,
         value: '${calories.round()} kcal',
-        label: calorieGoal == null ? 'consumidas' : 'de ${calorieGoal.round()}',
+        label: calorieGoal == null
+            ? context.tr.translate('social_stat_consumed')
+            : _socialText(
+                context,
+                'social_stat_of_value',
+                {'value': '${calorieGoal.round()}'},
+              ),
       ));
     }
     if (protein != null) {
       stats.add(_ActivityStat(
         icon: Icons.fitness_center_rounded,
         value: '${protein.round()}g',
-        label: proteinGoal == null ? 'proteína' : 'de ${proteinGoal.round()}g',
+        label: proteinGoal == null
+            ? context.tr.translate('protein_full')
+            : _socialText(
+                context,
+                'social_stat_of_grams',
+                {'value': '${proteinGoal.round()}'},
+              ),
       ));
     }
     if (days != null) {
       stats.add(_ActivityStat(
         icon: Icons.local_fire_department_rounded,
         value: '${days.round()}',
-        label: 'dias',
+        label: days.round() == 1
+            ? context.tr.translate('social_day_singular')
+            : context.tr.translate('social_day_plural'),
       ));
     }
     if (points != null) {
       stats.add(_ActivityStat(
         icon: Icons.bolt_rounded,
         value: '${points.round()}',
-        label: 'pontos',
+        label: points.round() == 1
+            ? context.tr.translate('social_point_singular')
+            : context.tr.translate('social_point_plural'),
       ));
     }
     if (stats.isEmpty && hitProtein) {
-      stats.add(const _ActivityStat(
+      stats.add(_ActivityStat(
         icon: Icons.fitness_center_rounded,
-        value: 'Proteína',
-        label: 'meta batida',
+        value: context.tr.translate('protein_full'),
+        label: context.tr.translate('social_goal_reached'),
       ));
     }
     if (stats.length < 3 && hitGoal) {
-      stats.add(const _ActivityStat(
+      stats.add(_ActivityStat(
         icon: Icons.flag_rounded,
-        value: 'Calorias',
-        label: 'dentro da meta',
+        value: context.tr.translate('calories'),
+        label: context.tr.translate('social_within_goal'),
       ));
     }
 
@@ -1228,14 +1363,36 @@ class _ActivityCard extends StatelessWidget {
     return null;
   }
 
-  String _formatTime(DateTime dt) {
+  String _formatTime(BuildContext context, DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'agora';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}min atrás';
-    if (diff.inHours < 24) return '${diff.inHours}h atrás';
-    if (diff.inDays == 1) return 'ontem';
-    if (diff.inDays < 7) return '${diff.inDays} dias atrás';
-    return '${dt.day}/${dt.month}';
+    if (diff.inMinutes < 1) return context.tr.translate('relative_now');
+    if (diff.inMinutes < 60) {
+      return _socialText(
+        context,
+        'relative_minutes_ago',
+        {'count': '${diff.inMinutes}'},
+      );
+    }
+    if (diff.inHours < 24) {
+      return _socialText(
+        context,
+        'relative_hours_ago',
+        {'count': '${diff.inHours}'},
+      );
+    }
+    if (diff.inDays == 1) return context.tr.translate('yesterday');
+    if (diff.inDays < 7) {
+      return _socialText(
+        context,
+        'relative_days_ago',
+        {'count': '${diff.inDays}'},
+      );
+    }
+    return _socialText(
+      context,
+      'short_date_without_year',
+      {'day': '${dt.day}', 'month': '${dt.month}'},
+    );
   }
 }
 
@@ -1265,7 +1422,7 @@ class _ActivityOverflowMenu extends StatelessWidget {
       width: 34,
       height: 34,
       child: PopupMenuButton<_ActivityMenuAction>(
-        tooltip: 'Mais opções',
+        tooltip: context.tr.translate('social_more_options'),
         padding: EdgeInsets.zero,
         icon: Icon(Icons.more_horiz_rounded, size: 22, color: iconColor),
         color: _socialSurfaceColor(isDarkMode),
@@ -1273,20 +1430,20 @@ class _ActivityOverflowMenu extends StatelessWidget {
         onSelected: (action) => _handleAction(context, action),
         itemBuilder: (context) => [
           if (isOwnPost)
-            const PopupMenuItem(
+            PopupMenuItem(
               value: _ActivityMenuAction.delete,
               child: _ActivityMenuItem(
                 icon: Icons.delete_outline_rounded,
-                label: 'Excluir publicação',
+                label: context.tr.translate('social_delete_post'),
                 isDestructive: true,
               ),
             )
           else ...[
-            const PopupMenuItem(
+            PopupMenuItem(
               value: _ActivityMenuAction.hide,
               child: _ActivityMenuItem(
                 icon: Icons.visibility_off_outlined,
-                label: 'Ocultar publicação',
+                label: context.tr.translate('social_hide_post'),
               ),
             ),
             if (friendship != null)
@@ -1294,7 +1451,7 @@ class _ActivityOverflowMenu extends StatelessWidget {
                 value: _ActivityMenuAction.unfriend,
                 child: _ActivityMenuItem(
                   icon: Icons.person_remove_alt_1_outlined,
-                  label: 'Deixar de ser amigo',
+                  label: context.tr.translate('social_unfriend'),
                   subtitle: activity.user.name,
                   isDestructive: true,
                 ),
@@ -1315,7 +1472,7 @@ class _ActivityOverflowMenu extends StatelessWidget {
         return;
       case _ActivityMenuAction.hide:
         context.read<FeedProvider>().hideActivity(activity.id);
-        _showSnackBar(context, 'Publicação ocultada');
+        _showSnackBar(context, context.tr.translate('social_post_hidden'));
         return;
       case _ActivityMenuAction.unfriend:
         await _removeFriend(context);
@@ -1326,9 +1483,9 @@ class _ActivityOverflowMenu extends StatelessWidget {
   Future<void> _deletePost(BuildContext context) async {
     final confirmed = await _confirmAction(
       context: context,
-      title: 'Excluir publicação?',
-      message: 'Essa publicação será removida do feed.',
-      confirmLabel: 'Excluir',
+      title: context.tr.translate('social_delete_post_title'),
+      message: context.tr.translate('social_delete_post_message'),
+      confirmLabel: context.tr.translate('delete'),
       isDestructive: true,
     );
     if (confirmed != true || !context.mounted) return;
@@ -1340,7 +1497,9 @@ class _ActivityOverflowMenu extends StatelessWidget {
 
     _showSnackBar(
       context,
-      success ? 'Publicação excluída' : 'Não foi possível excluir a publicação',
+      success
+          ? context.tr.translate('social_post_deleted')
+          : context.tr.translate('social_delete_post_error'),
     );
   }
 
@@ -1350,10 +1509,13 @@ class _ActivityOverflowMenu extends StatelessWidget {
 
     final confirmed = await _confirmAction(
       context: context,
-      title: 'Deixar de ser amigo?',
-      message:
-          'Você deixará de ver publicações de ${activity.user.name} no feed.',
-      confirmLabel: 'Remover',
+      title: context.tr.translate('social_unfriend_title'),
+      message: _socialText(
+        context,
+        'social_unfriend_message',
+        {'name': activity.user.name},
+      ),
+      confirmLabel: context.tr.translate('remove'),
       isDestructive: true,
     );
     if (confirmed != true || !context.mounted) return;
@@ -1370,8 +1532,12 @@ class _ActivityOverflowMenu extends StatelessWidget {
     _showSnackBar(
       context,
       success
-          ? '${activity.user.name} removido dos amigos'
-          : 'Não foi possível remover amizade',
+          ? _socialText(
+              context,
+              'social_friend_removed',
+              {'name': activity.user.name},
+            )
+          : context.tr.translate('social_remove_friend_error'),
     );
   }
 
@@ -1413,7 +1579,7 @@ class _ActivityOverflowMenu extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+              child: Text(context.tr.translate('cancel')),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -1687,7 +1853,7 @@ class _ProfileShapeActivityPreview extends StatelessWidget {
                       Expanded(
                         child: _ShapeFeedImagePanel(
                           imageUrl: beforeImageUrl!,
-                          label: 'ANTES',
+                          label: context.tr.translate('profile_shape_before'),
                           labelColor: Colors.black.withValues(alpha: 0.72),
                         ),
                       ),
@@ -1698,7 +1864,7 @@ class _ProfileShapeActivityPreview extends StatelessWidget {
                       Expanded(
                         child: _ShapeFeedImagePanel(
                           imageUrl: afterImageUrl,
-                          label: 'DEPOIS',
+                          label: context.tr.translate('profile_shape_after'),
                           labelColor: _socialPrimaryColor(isDarkMode),
                         ),
                       ),
@@ -1714,7 +1880,7 @@ class _ProfileShapeActivityPreview extends StatelessWidget {
                 color: _socialInputFillColor(isDarkMode),
                 child: _ShapeFeedImagePanel(
                   imageUrl: afterImageUrl,
-                  label: 'DEPOIS',
+                  label: context.tr.translate('profile_shape_after'),
                   labelColor: _socialPrimaryColor(isDarkMode),
                 ),
               ),
@@ -1942,7 +2108,7 @@ class _ActivitySummaryPanel extends StatelessWidget {
                 const SizedBox(height: 8),
                 if (stats.isEmpty)
                   Text(
-                    'Sem foto adicionada neste registro.',
+                    context.tr.translate('social_no_photo_in_record'),
                     style: TextStyle(
                       fontSize: 12,
                       color: _socialMutedTextColor(isDarkMode),
@@ -2140,20 +2306,22 @@ class _ChallengesContentState extends State<_ChallengesContent> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _socialSurfaceColor(isDark),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Text('Entrar com código',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        title: Text(
+          context.tr.translate('social_join_with_code'),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
         content: TextField(
           controller: codeCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Código do desafio',
-            hintText: 'Ex: ABC12345',
+          decoration: InputDecoration(
+            labelText: context.tr.translate('social_challenge_code'),
+            hintText: context.tr.translate('social_challenge_code_hint'),
           ),
           textCapitalization: TextCapitalization.characters,
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar')),
+              child: Text(context.tr.translate('cancel'))),
           ElevatedButton(
             onPressed: () async {
               final code = codeCtrl.text.trim().toUpperCase();
@@ -2163,8 +2331,13 @@ class _ChallengesContentState extends State<_ChallengesContent> {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content:
-                          Text(ok ? 'Entrou no desafio!' : 'Código inválido')),
+                    content: Text(
+                      ok
+                          ? context.tr
+                              .translate('social_join_challenge_success')
+                          : context.tr.translate('social_invalid_code'),
+                    ),
+                  ),
                 );
               }
             },
@@ -2174,7 +2347,10 @@ class _ChallengesContentState extends State<_ChallengesContent> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('Entrar', style: TextStyle(color: foreground)),
+            child: Text(
+              context.tr.translate('login'),
+              style: TextStyle(color: foreground),
+            ),
           ),
         ],
       ),
@@ -2238,7 +2414,7 @@ class _PublicChallengesList extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: _InfoCard(
           icon: Icons.emoji_events_rounded,
-          message: 'Nenhum desafio público disponível no momento.',
+          message: context.tr.translate('social_no_public_challenges'),
         ),
       );
     }
@@ -2283,7 +2459,7 @@ class _EmptyChallengesCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Nenhum desafio ativo',
+            context.tr.translate('social_no_active_challenges'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -2292,7 +2468,7 @@ class _EmptyChallengesCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Crie um desafio ou entre em um com um código de amigo.',
+            context.tr.translate('social_no_active_challenges_message'),
             style: TextStyle(
               fontSize: 13,
               color: _socialMutedTextColor(isDarkMode),
@@ -2306,7 +2482,7 @@ class _EmptyChallengesCard extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onCodeTap,
               icon: Icon(Icons.qr_code_rounded, size: 18, color: primaryColor),
-              label: Text('Entrar com código',
+              label: Text(context.tr.translate('social_join_with_code'),
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -2404,7 +2580,7 @@ class _ChallengeCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        challenge.typeFormatted,
+                        _localizedChallengeType(context, challenge.type),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -2422,7 +2598,7 @@ class _ChallengeCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
-                    '$daysLeft dias',
+                    _socialDayCount(context, daysLeft),
                     style: TextStyle(
                       color: daysColor,
                       fontSize: 12,
@@ -2457,13 +2633,16 @@ class _ChallengeCard extends StatelessWidget {
                 ),
                 _ChallengeInfoChip(
                   icon: Icons.flag_rounded,
-                  label: '${challenge.targetDays} dias',
+                  label: _socialDayCount(context, challenge.targetDays),
                   isDark: isDark,
                 ),
                 if (challenge.myParticipation != null)
                   _ChallengeInfoChip(
                     icon: Icons.bolt_rounded,
-                    label: '${challenge.myParticipation!.totalPoints} pts',
+                    label: _socialPointCount(
+                      context,
+                      challenge.myParticipation!.totalPoints,
+                    ),
                     isDark: isDark,
                   ),
               ],
@@ -2508,11 +2687,14 @@ class _ChallengeCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18)),
                   ),
-                  child: const Text('Participar',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: Colors.white)),
+                  child: Text(
+                    context.tr.translate('social_join_challenge'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -2589,7 +2771,7 @@ class _ChallengeToolbar extends StatelessWidget {
         const SizedBox(width: 10),
         _RoundActionButton(
           icon: Icons.qr_code_rounded,
-          tooltip: 'Entrar com código',
+          tooltip: context.tr.translate('social_join_with_code'),
           onTap: onCodeTap,
         ),
       ],
@@ -2611,14 +2793,16 @@ class _ChallengeScopeTitle extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : AppTheme.textPrimaryColor;
     final mutedColor = _socialMutedTextColor(isDark);
-    final title = showPublic ? 'Públicos' : 'Meus desafios';
+    final title = showPublic
+        ? context.tr.translate('social_public')
+        : context.tr.translate('social_my_challenges');
     final subtitle = showPublic
-        ? 'Desafios abertos para participar'
-        : 'Criados ou em andamento';
+        ? context.tr.translate('social_public_challenges')
+        : context.tr.translate('social_my_challenges_subtitle');
     final icon = showPublic ? Icons.public_rounded : Icons.inventory_2_rounded;
 
     return PopupMenuButton<bool>(
-      tooltip: 'Filtrar desafios',
+      tooltip: context.tr.translate('social_filter_challenges'),
       initialValue: showPublic,
       onSelected: onChanged,
       color: _socialSurfaceColor(isDark),
@@ -2631,7 +2815,10 @@ class _ChallengeScopeTitle extends StatelessWidget {
             children: [
               Icon(Icons.inventory_2_rounded, size: 18, color: textColor),
               const SizedBox(width: 10),
-              Text('Meus desafios', style: TextStyle(color: textColor)),
+              Text(
+                context.tr.translate('social_my_challenges'),
+                style: TextStyle(color: textColor),
+              ),
             ],
           ),
         ),
@@ -2641,7 +2828,10 @@ class _ChallengeScopeTitle extends StatelessWidget {
             children: [
               Icon(Icons.public_rounded, size: 18, color: textColor),
               const SizedBox(width: 10),
-              Text('Públicos', style: TextStyle(color: textColor)),
+              Text(
+                context.tr.translate('social_public'),
+                style: TextStyle(color: textColor),
+              ),
             ],
           ),
         ),

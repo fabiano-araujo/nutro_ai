@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../i18n/app_localizations_extension.dart';
 import '../theme/app_theme.dart';
 
 class StandardPageHeader extends StatelessWidget {
@@ -36,7 +37,7 @@ class StandardPageHeader extends StatelessWidget {
                 color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
               ),
               onPressed: onOpenDrawer,
-              tooltip: 'Menu',
+              tooltip: context.tr.translate('menu'),
             )
           else
             const SizedBox(width: 48),

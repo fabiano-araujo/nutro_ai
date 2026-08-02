@@ -227,10 +227,13 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      final message = _friendlyError(e);
+      final isCreditsError = _isCreditsError(e);
+      final message = isCreditsError
+          ? context.tr.translate('insufficient_credits')
+          : _friendlyError(e);
       _showSnackBar(message);
 
-      if (message.toLowerCase().contains('crédit')) {
+      if (isCreditsError) {
         await context.read<CreditProvider>().markCreditsExhausted();
         if (mounted) {
           RewardAdDialog.show(
@@ -460,7 +463,12 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
         lowerRaw.contains('unexpected character')) {
       return context.tr.translate('profile_shape_generation_error');
     }
-    return raw;
+    return context.tr.translate('profile_shape_generation_error');
+  }
+
+  bool _isCreditsError(Object error) {
+    final normalized = error.toString().toLowerCase();
+    return normalized.contains('credit') || normalized.contains('crédit');
   }
 
   void _showSnackBar(String message) {

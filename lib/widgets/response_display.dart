@@ -143,7 +143,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
                       ),
                       SizedBox(width: 8),
                       Text(
-                        context.tr.translate('ai_response') ?? 'AI Response',
+                        context.tr.translate('ai_response'),
                         style: AppTheme.bodyMedium.copyWith(
                           fontWeight: FontWeight.bold,
                           color: isDarkMode
@@ -160,13 +160,11 @@ class _ResponseDisplayState extends State<ResponseDisplay>
                           ClipboardData(text: widget.response ?? ''));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(context.tr.translate('text_copied') ??
-                                'Response copied to clipboard'),
+                            content: Text(context.tr.translate('text_copied')),
                             duration: Duration(seconds: 1)),
                       );
                     },
-                    tooltip: context.tr.translate('copy_to_clipboard') ??
-                        'Copy to clipboard',
+                    tooltip: context.tr.translate('copy_to_clipboard'),
                     color: isDarkMode
                         ? AppTheme.darkTextColor.withOpacity(0.7)
                         : AppTheme.textSecondaryColor,
@@ -210,7 +208,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
                     ),
                     SizedBox(width: 8),
                     Text(
-                      context.tr.translate('ai_response') ?? 'AI Response',
+                      context.tr.translate('ai_response'),
                       style: AppTheme.bodyMedium.copyWith(
                         fontWeight: FontWeight.bold,
                         color: isDarkMode
@@ -281,7 +279,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
             ),
             SizedBox(height: 24),
             Text(
-              context.tr.translate('thinking') ?? 'Thinking...',
+              context.tr.translate('thinking'),
               style: AppTheme.bodyMedium.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor
@@ -291,8 +289,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
             ),
             SizedBox(height: 8),
             Text(
-              context.tr.translate('generating_best_response') ??
-                  'Generating the best response for you',
+              context.tr.translate('generating_best_response'),
               style: AppTheme.bodySmall.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor.withOpacity(0.7)
@@ -325,8 +322,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
             ),
             SizedBox(height: 16),
             Text(
-              context.tr.translate('something_went_wrong') ??
-                  'Something went wrong',
+              context.tr.translate('something_went_wrong'),
               style: AppTheme.bodyMedium.copyWith(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode
@@ -337,8 +333,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
             ),
             SizedBox(height: 8),
             Text(
-              context.tr.translate('try_again_or_check_connection') ??
-                  'Please try again or check your connection',
+              context.tr.translate('try_again_or_check_connection'),
               style: AppTheme.bodySmall.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor.withOpacity(0.7)
@@ -349,7 +344,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {},
-              child: Text(context.tr.translate('try_again') ?? 'Try Again'),
+              child: Text(context.tr.translate('try_again')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.errorColor,
                 foregroundColor: Colors.white,
@@ -382,7 +377,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
             ),
             SizedBox(height: 16),
             Text(
-              context.tr.translate('no_response_yet') ?? 'No Response Yet',
+              context.tr.translate('no_response_yet'),
               style: AppTheme.bodyMedium.copyWith(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode
@@ -393,8 +388,7 @@ class _ResponseDisplayState extends State<ResponseDisplay>
             ),
             SizedBox(height: 8),
             Text(
-              context.tr.translate('ask_question_or_upload') ??
-                  'Ask a question or upload content to get started',
+              context.tr.translate('ask_question_or_upload'),
               style: AppTheme.bodySmall.copyWith(
                 color: isDarkMode
                     ? AppTheme.darkTextColor.withOpacity(0.7)

@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart';
 import '../i18n/app_localizations_extension.dart';
-import '../services/ai_service.dart';
 // import '../widgets/animated_gradient_background.dart';
 // import '../widgets/custom_expandable_panel.dart';
 import '../widgets/streaming_response_display.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../i18n/language_controller.dart';
-import 'package:provider/provider.dart';
 import '../screens/nutrition_assistant_screen.dart';
 import 'dart:convert';
 
@@ -106,8 +102,6 @@ class _GenericAIScreenState extends State<GenericAIScreen>
   final int _maxCharacters = 2000;
   String? _selectedImagePath;
   String? _selectedFileName;
-
-  final AIService _aiService = AIService();
 
   @override
   void initState() {
@@ -220,29 +214,30 @@ class _GenericAIScreenState extends State<GenericAIScreen>
           stringValue = value.toString();
         }
 
-        // Armazenar o parâmetro traduzido e seu valor
-        String paramName = context.tr.translate(paramId) ?? paramId;
+        ToolParameter? selectedParameter;
+        for (final parameter in _currentTab.parameters) {
+          if (parameter.id == paramId) {
+            selectedParameter = parameter;
+            break;
+          }
+        }
+
+        // Armazenar o parâmetro e o valor no idioma selecionado.
+        final paramName = context.tr.translate(
+          selectedParameter?.translationKey ?? paramId,
+        );
 
         // Para valores de dropdown, traduzir o valor selecionado
-        if (value is String) {
-          // Procurar o parâmetro na lista de parâmetros da aba atual
-          for (var param in _currentTab.parameters) {
-            if (param.id == paramId && param.type == ParameterType.dropdown) {
-              // Procurar a opção correspondente
-              for (var option in param.options ?? []) {
-                if (option.id == value) {
-                  String translatedValue =
-                      context.tr.translate(option.translationKey) ?? value;
-                  advancedParams[paramName] = translatedValue;
-                  break;
-                }
-              }
+        if (value is String &&
+            selectedParameter?.type == ParameterType.dropdown) {
+          for (final option in selectedParameter?.options ?? []) {
+            if (option.id == value) {
+              stringValue = context.tr.translate(option.translationKey);
               break;
             }
           }
-        } else {
-          advancedParams[paramName] = stringValue;
         }
+        advancedParams[paramName] = stringValue;
 
         return stringValue;
       } else {
@@ -948,4 +943,3 @@ class _GenericAIScreenState extends State<GenericAIScreen>
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../i18n/app_localizations.dart';
 import '../models/essay_progress.dart';
 
 /// Widget that displays progress charts over time
@@ -31,13 +32,13 @@ class ProgressChart extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             SizedBox(
               height: 200,
-              child: _buildChart(),
+              child: _buildChart(context),
             ),
             const SizedBox(height: 8),
             _buildLegend(context),
@@ -47,24 +48,24 @@ class ProgressChart extends StatelessWidget {
     );
   }
 
-  Widget _buildChart() {
+  Widget _buildChart(BuildContext context) {
     if (progressData.isEmpty) {
-      return const Center(
-        child: Text('Nenhum dado disponível'),
+      return Center(
+        child: Text(_translate(context, 'progress_no_data_available')),
       );
     }
 
     switch (chartType) {
       case ChartType.line:
-        return _buildLineChart();
+        return _buildLineChart(context);
       case ChartType.bar:
-        return _buildBarChart();
+        return _buildBarChart(context);
       case ChartType.competency:
-        return _buildCompetencyChart();
+        return _buildCompetencyChart(context);
     }
   }
 
-  Widget _buildLineChart() {
+  Widget _buildLineChart(BuildContext context) {
     final spots = progressData.asMap().entries.map((entry) {
       return FlSpot(entry.key.toDouble(), entry.value.totalScore.toDouble());
     }).toList();
@@ -107,9 +108,9 @@ class ProgressChart extends StatelessWidget {
                 if (index >= 0 && index < progressData.length) {
                   final date = progressData[index].date;
                   return SideTitleWidget(
-                    axisSide: meta.axisSide,
+                    meta: meta,
                     child: Text(
-                      '${date.day}/${date.month}',
+                      MaterialLocalizations.of(context).formatShortDate(date),
                       style: const TextStyle(
                         color: Colors.grey,
                         fontWeight: FontWeight.bold,
@@ -185,7 +186,7 @@ class ProgressChart extends StatelessWidget {
     );
   }
 
-  Widget _buildBarChart() {
+  Widget _buildBarChart(BuildContext context) {
     final barGroups = progressData.asMap().entries.map((entry) {
       return BarChartGroupData(
         x: entry.key,
@@ -210,11 +211,12 @@ class ProgressChart extends StatelessWidget {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: Colors.blueGrey,
+            getTooltipColor: (_) => Colors.blueGrey,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final date = progressData[group.x.toInt()].date;
+              final points = rod.toY.round();
               return BarTooltipItem(
-                '${date.day}/${date.month}\n',
+                '${MaterialLocalizations.of(context).formatShortDate(date)}\n',
                 const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -222,7 +224,16 @@ class ProgressChart extends StatelessWidget {
                 ),
                 children: <TextSpan>[
                   TextSpan(
-                    text: '${rod.toY.round()} pontos',
+                    text: _translateWith(
+                      context,
+                      points == 1
+                          ? 'progress_data_points_one'
+                          : 'progress_data_points_other',
+                      {
+                        'count': MaterialLocalizations.of(context)
+                            .formatDecimal(points),
+                      },
+                    ),
                     style: const TextStyle(
                       color: Colors.yellow,
                       fontSize: 12,
@@ -252,7 +263,7 @@ class ProgressChart extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      '${date.day}/${date.month}',
+                      MaterialLocalizations.of(context).formatShortDate(date),
                       style: const TextStyle(
                         color: Colors.grey,
                         fontWeight: FontWeight.bold,
@@ -293,27 +304,36 @@ class ProgressChart extends StatelessWidget {
     );
   }
 
-  Widget _buildCompetencyChart() {
+  Widget _buildCompetencyChart(BuildContext context) {
     if (progressData.isEmpty) {
-      return const Center(child: Text('Nenhum dado disponível'));
+      return Center(
+        child: Text(_translate(context, 'progress_no_data_available')),
+      );
     }
 
     // Calculate average scores for each competency
     final competencyAverages = <String, double>{};
-    final competencyNames = ['Competência 1', 'Competência 2', 'Competência 3', 'Competência 4', 'Competência 5'];
-    
+    final competencyNames = List.generate(
+      5,
+      (index) => _translateWith(
+        context,
+        'progress_competency_number',
+        {'number': '${index + 1}'},
+      ),
+    );
+
     for (int i = 1; i <= 5; i++) {
       final key = 'competencia$i';
       final scores = progressData
           .map((p) => p.competencyScores[key] ?? 0)
           .where((score) => score > 0)
           .toList();
-      
+
       if (scores.isNotEmpty) {
-        competencyAverages[competencyNames[i-1]] = 
+        competencyAverages[competencyNames[i - 1]] =
             scores.reduce((a, b) => a + b) / scores.length;
       } else {
-        competencyAverages[competencyNames[i-1]] = 0.0;
+        competencyAverages[competencyNames[i - 1]] = 0.0;
       }
     }
 
@@ -342,9 +362,10 @@ class ProgressChart extends StatelessWidget {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: Colors.blueGrey,
+            getTooltipColor: (_) => Colors.blueGrey,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final competencyName = competencyNames[group.x.toInt()];
+              final points = rod.toY.round();
               return BarTooltipItem(
                 '$competencyName\n',
                 const TextStyle(
@@ -354,7 +375,16 @@ class ProgressChart extends StatelessWidget {
                 ),
                 children: <TextSpan>[
                   TextSpan(
-                    text: '${rod.toY.round()} pontos',
+                    text: _translateWith(
+                      context,
+                      points == 1
+                          ? 'progress_data_points_one'
+                          : 'progress_data_points_other',
+                      {
+                        'count': MaterialLocalizations.of(context)
+                            .formatDecimal(points),
+                      },
+                    ),
                     style: const TextStyle(
                       color: Colors.yellow,
                       fontSize: 12,
@@ -383,7 +413,11 @@ class ProgressChart extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      'C${index + 1}',
+                      _translateWith(
+                        context,
+                        'progress_competency_short',
+                        {'number': '${index + 1}'},
+                      ),
                       style: const TextStyle(
                         color: Colors.grey,
                         fontWeight: FontWeight.bold,
@@ -437,7 +471,7 @@ class ProgressChart extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Pontuação Total',
+            _translate(context, 'progress_total_score'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
@@ -461,7 +495,11 @@ class ProgressChart extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              'C${index + 1}',
+              _translateWith(
+                context,
+                'progress_competency_short',
+                {'number': '${index + 1}'},
+              ),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -487,4 +525,20 @@ enum ChartType {
   line,
   bar,
   competency,
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
+}
+
+String _translateWith(
+  BuildContext context,
+  String key,
+  Map<String, String> values,
+) {
+  var text = _translate(context, key);
+  values.forEach((placeholder, value) {
+    text = text.replaceAll('{$placeholder}', value);
+  });
+  return text;
 }

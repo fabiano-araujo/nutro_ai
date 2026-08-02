@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:ui' show Locale;
+
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'dart:math' as math;
 import '../i18n/language_controller.dart';
+import '../i18n/app_localizations.dart';
 import 'dart:async';
 import '../services/app_integrity_service.dart';
 import '../util/app_constants.dart'; // Importar constantes
@@ -17,6 +20,15 @@ import '../util/app_constants.dart'; // Importar constantes
 ///
 /// Todas as respostas da IA são entregues no idioma do dispositivo,
 /// utilizando o LanguageController para determinar o idioma atual.
+class AIServiceException implements Exception {
+  final String code;
+
+  const AIServiceException(this.code);
+
+  @override
+  String toString() => 'AIServiceException($code)';
+}
+
 class AIService {
   static const String _model = "gpt-4o-mini";
 
@@ -39,6 +51,20 @@ class AIService {
 
   AIService({http.Client? httpClient})
       : _httpClient = httpClient ?? http.Client();
+
+  String _localizedMessage(String languageCode, String key) {
+    final normalized = languageCode.trim().replaceAll('-', '_');
+    final parts = normalized.split('_');
+    final language = parts.first.toLowerCase();
+    final country = parts.length > 1 ? parts[1].toUpperCase() : null;
+    final locale = AppLocalizations.supportedLocales.firstWhere(
+      (candidate) =>
+          candidate.languageCode == language &&
+          (country == null || candidate.countryCode == country),
+      orElse: () => const Locale('pt', 'BR'),
+    );
+    return AppLocalizations(locale).translate(key);
+  }
 
   // Função para estimar o número de tokens em um texto
   // Esta é uma estimativa aproximada - para inglês: ~4 caracteres = 1 token
@@ -101,8 +127,8 @@ class AIService {
   // Get answer to a text question with streaming
   Stream<String> getAnswerStream(String question,
       {String subject = '',
-      String languageCode = 'pt_BR',
-      String quality = 'bom',
+      required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition',
       String provider = '',
@@ -243,7 +269,9 @@ class AIService {
                     // Evento de erro
                     print(
                         '❌ Erro reportado pelo servidor: ${jsonData['error']}');
-                    streamController.add('\nErro: ${jsonData['error']}');
+                    streamController.add(
+                      _localizedMessage(languageCode, 'process_error'),
+                    );
                   } else if (jsonData.containsKey('status')) {
                     // Evento de status
                     print(
@@ -306,13 +334,13 @@ class AIService {
         final errorMsg = _buildTextRequestErrorMessage(
           statusCode: response.statusCode,
           responseBody: responseBody,
+          languageCode: languageCode,
         );
         print('❌ $errorMsg');
         yield errorMsg;
       }
     } catch (e) {
-      final errorMsg =
-          'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.';
+      final errorMsg = _localizedMessage(languageCode, 'process_error');
       print('❌ Erro ao processar a solicitação (getAnswer): $e');
       yield errorMsg;
     }
@@ -321,6 +349,7 @@ class AIService {
   String _buildTextRequestErrorMessage({
     required int statusCode,
     required String responseBody,
+    required String languageCode,
   }) {
     String? serverMessage;
 
@@ -336,23 +365,22 @@ class AIService {
       // Ignore malformed error bodies and fallback to generic text below.
     }
 
+    final normalizedServerMessage = serverMessage?.toLowerCase() ?? '';
     if (statusCode == 403 &&
-        serverMessage != null &&
-        serverMessage.toLowerCase().contains('créditos insuficientes')) {
-      return 'Você está sem créditos para continuar agora. '
-          'Ganhe mais créditos no app e tente novamente.';
+        (normalizedServerMessage.contains('crédito') ||
+            normalizedServerMessage.contains('credit'))) {
+      return _localizedMessage(
+        languageCode,
+        'chat_credit_exhausted_inline',
+      );
     }
 
-    if (serverMessage != null && serverMessage.isNotEmpty) {
-      return serverMessage;
-    }
-
-    return 'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.';
+    return _localizedMessage(languageCode, 'process_error');
   }
 
   // Método de processamento de imagem com streaming
   Stream<String> processImageStream(Uint8List imageBytes, String prompt,
-      {String languageCode = 'pt_BR',
+      {required String languageCode,
       String quality = 'baixo',
       String userId = '',
       String agentType = 'nutrition',
@@ -458,7 +486,9 @@ class AIService {
                     // Evento de erro
                     print(
                         '❌ Erro reportado pelo servidor para imagem: ${jsonData['error']}');
-                    streamController.add('\nErro: ${jsonData['error']}');
+                    streamController.add(
+                      _localizedMessage(languageCode, 'error_processing_image'),
+                    );
                   } else if (jsonData.containsKey('status')) {
                     // Evento de status
                     print(
@@ -502,14 +532,14 @@ class AIService {
       } else {
         final responseBody = await response.stream.bytesToString();
         final errorMsg =
-            'Desculpe, ocorreu um erro ao processar sua imagem. Por favor, tente novamente.';
+            _localizedMessage(languageCode, 'error_processing_image');
         print(
             '❌ Erro na requisição de imagem: ${response.statusCode}, Resposta: $responseBody');
         yield errorMsg;
       }
     } catch (e) {
       final errorMsg =
-          'Desculpe, ocorreu um erro ao processar sua imagem. Por favor, tente novamente.';
+          _localizedMessage(languageCode, 'error_processing_image');
       print('❌ Erro ao processar a imagem com streaming: $e');
       yield errorMsg;
     }
@@ -517,7 +547,7 @@ class AIService {
 
   // Método para obter a resposta completa de um stream como string
   Future<String> processImage(Uint8List imageBytes, String prompt,
-      {String languageCode = 'pt_BR',
+      {required String languageCode,
       String quality = 'baixo',
       String userId = '',
       String agentType = 'nutrition'}) async {
@@ -555,7 +585,7 @@ class AIService {
       return result;
     } catch (e) {
       final errorMsg =
-          'Desculpe, ocorreu um erro ao processar sua imagem. Por favor, tente novamente.';
+          _localizedMessage(languageCode, 'error_processing_image');
       print('Erro ao processar imagem (sync): $e');
       return errorMsg;
     }
@@ -564,7 +594,7 @@ class AIService {
   // Process audio and transcribe it on the server
   Future<String> processAudio(Uint8List audioBytes,
       {String mimeType = 'audio/wav',
-      String languageCode = 'pt-BR',
+      required String languageCode,
       String? appLanguageCode,
       String contextHint = 'nutrition_chat',
       int? audioDurationMs}) async {
@@ -604,25 +634,22 @@ class AIService {
         print('✅ Transcrição concluída com sucesso: $transcription');
         return transcription;
       } else {
-        final errorMsg =
-            'Desculpe, ocorreu um erro ao processar seu áudio. Por favor, tente novamente.';
         print(
             '❌ Erro na transcrição: ${response.statusCode} - ${utf8.decode(response.bodyBytes)}');
-        return errorMsg;
+        throw const AIServiceException('audio_transcription_failed');
       }
     } catch (e) {
-      final errorMsg =
-          'Desculpe, ocorreu um erro ao processar seu áudio. Por favor, tente novamente.';
       print('❌ Exceção ao transcrever áudio: $e');
-      return errorMsg;
+      if (e is AIServiceException) rethrow;
+      throw const AIServiceException('audio_transcription_failed');
     }
   }
 
   // Método para melhorar texto com streaming
   Stream<String> enhanceTextStream(String text, String enhancementType,
       {int? targetWordCount,
-      String languageCode = 'pt_BR',
-      String quality = 'mediano',
+      required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando aprimoramento de texto com streaming');
@@ -746,7 +773,9 @@ class AIService {
                     // Evento de erro
                     print(
                         '❌ Erro reportado pelo servidor para melhoria de texto: ${jsonData['error']}');
-                    streamController.add('\nErro: ${jsonData['error']}');
+                    streamController.add(
+                      _localizedMessage(languageCode, 'text_enhancement_error'),
+                    );
                   } else if (jsonData.containsKey('status')) {
                     // Evento de status
                     print(
@@ -791,14 +820,14 @@ class AIService {
       } else {
         final responseBody = await response.stream.bytesToString();
         final errorMsg =
-            'Desculpe, ocorreu um erro ao aprimorar o texto. Por favor, tente novamente.';
+            _localizedMessage(languageCode, 'text_enhancement_error');
         print(
             '❌ Erro na requisição de melhoria de texto: ${response.statusCode}, Resposta: $responseBody');
         yield errorMsg;
       }
     } catch (e) {
       final errorMsg =
-          'Desculpe, ocorreu um erro ao aprimorar o texto. Por favor, tente novamente.';
+          _localizedMessage(languageCode, 'text_enhancement_error');
       print('❌ Erro ao melhorar o texto com streaming: $e');
       yield errorMsg;
     }
@@ -807,8 +836,8 @@ class AIService {
   // Enhance text (paraphrase, simplify, expand, etc.)
   Future<String> enhanceText(String text, String enhancementType,
       {int? targetWordCount,
-      String languageCode = 'pt_BR',
-      String quality = 'mediano',
+      required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async {
     try {
@@ -846,7 +875,7 @@ class AIService {
       return result;
     } catch (e) {
       final errorMsg =
-          'Desculpe, ocorreu um erro ao aprimorar o texto. Por favor, tente novamente.';
+          _localizedMessage(languageCode, 'text_enhancement_error');
       print('Erro ao melhorar texto (sync): $e');
       return errorMsg;
     }
@@ -855,8 +884,8 @@ class AIService {
   // Summarize document with streaming
   Stream<String> summarizeDocumentStream(String documentText,
       {String summaryLength = 'medium',
-      String languageCode = 'pt_BR',
-      String quality = 'mediano',
+      required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async* {
     print(
@@ -971,7 +1000,9 @@ class AIService {
                     // Evento de erro
                     print(
                         '❌ AIService.summarizeDocumentStream - Erro reportado pelo servidor: ${jsonData['error']}');
-                    streamController.add('\nErro: ${jsonData['error']}');
+                    streamController.add(
+                      _localizedMessage(languageCode, 'document_summary_error'),
+                    );
                   } else if (jsonData.containsKey('status')) {
                     // Evento de status
                     print(
@@ -1018,14 +1049,14 @@ class AIService {
       } else {
         final responseBody = await response.stream.bytesToString();
         final errorMsg =
-            'Desculpe, ocorreu um erro ao resumir o documento. Por favor, tente novamente.';
+            _localizedMessage(languageCode, 'document_summary_error');
         print(
             '❌ AIService.summarizeDocumentStream - Erro na requisição: ${response.statusCode}, Resposta: $responseBody');
         yield errorMsg;
       }
     } catch (e) {
       final errorMsg =
-          'Desculpe, ocorreu um erro ao resumir o documento. Por favor, tente novamente.';
+          _localizedMessage(languageCode, 'document_summary_error');
       print(
           '❌ AIService.summarizeDocumentStream - Erro ao resumir o documento: $e');
       yield errorMsg;
@@ -1035,8 +1066,8 @@ class AIService {
   // Método para obter o resumo completo como string
   Future<String> summarizeDocument(String documentText,
       {String summaryLength = 'medium',
-      String languageCode = 'pt_BR',
-      String quality = 'mediano',
+      required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async {
     try {
@@ -1073,7 +1104,7 @@ class AIService {
       return result;
     } catch (e) {
       final errorMsg =
-          'Desculpe, ocorreu um erro ao resumir o documento. Por favor, tente novamente.';
+          _localizedMessage(languageCode, 'document_summary_error');
       print('Erro ao resumir documento (sync): $e');
       return errorMsg;
     }
@@ -1082,8 +1113,8 @@ class AIService {
   // Método para ajuda com código via streaming
   Stream<String> getCodeHelpStream(
       String code, String language, String requestType,
-      {String languageCode = 'pt_BR',
-      String quality = 'bom',
+      {required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando ajuda com código (streaming)');
@@ -1200,7 +1231,9 @@ class AIService {
                     // Evento de erro
                     print(
                         '❌ Erro reportado pelo servidor para ajuda com código: ${jsonData['error']}');
-                    streamController.add('\nErro: ${jsonData['error']}');
+                    streamController.add(
+                      _localizedMessage(languageCode, 'code_processing_error'),
+                    );
                   } else if (jsonData.containsKey('status')) {
                     // Evento de status
                     print(
@@ -1245,14 +1278,13 @@ class AIService {
       } else {
         final responseBody = await response.stream.bytesToString();
         final errorMsg =
-            'Desculpe, ocorreu um erro ao processar o código. Por favor, tente novamente.';
+            _localizedMessage(languageCode, 'code_processing_error');
         print(
             '❌ Erro na requisição de ajuda com código: ${response.statusCode}, Resposta: $responseBody');
         yield errorMsg;
       }
     } catch (e) {
-      final errorMsg =
-          'Desculpe, ocorreu um erro ao processar o código. Por favor, tente novamente.';
+      final errorMsg = _localizedMessage(languageCode, 'code_processing_error');
       print('❌ Erro ao processar a ajuda com código: $e');
       yield errorMsg;
     }
@@ -1260,8 +1292,8 @@ class AIService {
 
   // Get help with code (versão síncrona usando stream)
   Future<String> getCodeHelp(String code, String language, String requestType,
-      {String languageCode = 'pt_BR',
-      String quality = 'bom',
+      {required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async {
     try {
@@ -1298,8 +1330,7 @@ class AIService {
       subscription.cancel();
       return result;
     } catch (e) {
-      final errorMsg =
-          'Desculpe, ocorreu um erro ao processar o código. Por favor, tente novamente.';
+      final errorMsg = _localizedMessage(languageCode, 'code_processing_error');
       print('Erro ao processar código (sync): $e');
       return errorMsg;
     }
@@ -1308,8 +1339,8 @@ class AIService {
   // Método para obter resumo de transcrição do YouTube com streaming
   Stream<String> summarizeYouTubeTranscriptStream(String transcript,
       {String videoTitle = '',
-      String languageCode = 'pt_BR',
-      String quality = 'ruim',
+      required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async* {
     print('\n🚀 Iniciando resumo de transcrição do YouTube (streaming)');
@@ -1424,7 +1455,9 @@ $transcript
                     // Evento de erro
                     print(
                         '❌ Erro reportado pelo servidor para resumo de vídeo: ${jsonData['error']}');
-                    streamController.add('\nErro: ${jsonData['error']}');
+                    streamController.add(
+                      _localizedMessage(languageCode, 'youtube_error_generic'),
+                    );
                   } else if (jsonData.containsKey('status')) {
                     // Evento de status
                     print(
@@ -1469,14 +1502,13 @@ $transcript
       } else {
         final responseBody = await response.stream.bytesToString();
         final errorMsg =
-            'Desculpe, ocorreu um erro ao resumir o vídeo. Por favor, tente novamente.';
+            _localizedMessage(languageCode, 'youtube_error_generic');
         print(
             '❌ Erro na requisição de resumo de vídeo: ${response.statusCode}, Resposta: $responseBody');
         yield errorMsg;
       }
     } catch (e) {
-      final errorMsg =
-          'Desculpe, ocorreu um erro ao resumir o vídeo. Por favor, tente novamente.';
+      final errorMsg = _localizedMessage(languageCode, 'youtube_error_generic');
       print('❌ Erro ao resumir transcrição de vídeo: $e');
       yield errorMsg;
     }
@@ -1485,8 +1517,8 @@ $transcript
   // Summarize YouTube transcript
   Future<Map<String, String>> summarizeYouTubeTranscript(String transcript,
       {String videoTitle = '',
-      String languageCode = 'pt_BR',
-      String quality = 'ruim',
+      required String languageCode,
+      String quality = AppConstants.DEFAULT_AI_MODEL,
       String userId = '',
       String agentType = 'nutrition'}) async {
     try {
@@ -1536,7 +1568,7 @@ $transcript
               .firstMatch(content);
       if (resumoMatch != null) {
         result['summary'] = resumoMatch.group(1)?.trim() ??
-            'Não foi possível gerar um resumo para este vídeo.';
+            _localizedMessage(languageCode, 'youtube_error_generic');
       }
 
       // Extrair os tópicos principais
@@ -1545,7 +1577,7 @@ $transcript
               .firstMatch(content);
       if (topicosMatch != null) {
         result['main_topics'] = topicosMatch.group(1)?.trim() ??
-            'Não foram identificados tópicos principais.';
+            _localizedMessage(languageCode, 'youtube_error_generic');
       }
 
       // Extrair as palavras-chave
@@ -1554,7 +1586,7 @@ $transcript
               .firstMatch(content);
       if (palavrasChaveMatch != null) {
         result['keywords'] = palavrasChaveMatch.group(1)?.trim() ??
-            'Não foram identificadas palavras-chave.';
+            _localizedMessage(languageCode, 'youtube_error_generic');
       }
 
       // Extrair a avaliação
@@ -1562,21 +1594,20 @@ $transcript
           RegExp(r'AVALIAÇÃO:(.*?)$', dotAll: true).firstMatch(content);
       if (avaliacaoMatch != null) {
         result['assessment'] = avaliacaoMatch.group(1)?.trim() ??
-            'Não foi possível avaliar a complexidade deste conteúdo.';
+            _localizedMessage(languageCode, 'youtube_error_generic');
       }
 
       return result;
     } catch (e) {
-      final errorMsg =
-          'Desculpe, ocorreu um erro ao resumir o vídeo. Por favor, tente novamente.';
+      final errorMsg = _localizedMessage(languageCode, 'youtube_error_generic');
       print('Erro ao resumir a transcrição do vídeo (sync): $e');
       return {
         'error': errorMsg,
         'full_response': errorMsg,
-        'summary': 'Erro ao gerar resumo.',
-        'main_topics': 'Não foi possível extrair os tópicos principais.',
-        'keywords': 'Não foi possível extrair palavras-chave.',
-        'assessment': 'Não foi possível avaliar o conteúdo.',
+        'summary': errorMsg,
+        'main_topics': errorMsg,
+        'keywords': errorMsg,
+        'assessment': errorMsg,
       };
     }
   }

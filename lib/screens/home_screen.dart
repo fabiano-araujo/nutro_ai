@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 SizedBox(width: 8),
                 Text(
-                  context.tr.translate('app_title') ?? 'Nutro AI',
+                  context.tr.translate('app_title'),
                   style: AppTheme.headingSmall,
                 ),
               ],
@@ -162,16 +162,14 @@ class _HomeScreenState extends State<HomeScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            context.tr.translate('your_ultimate') ??
-                                'Your Ultimate',
+                            context.tr.translate('your_ultimate'),
                             style: AppTheme.headingMedium.copyWith(
                               color: Colors.white,
                               fontSize: 26,
                             ),
                           ),
                           Text(
-                            context.tr.translate('nutrition_companion') ??
-                                'Assistente de Nutrição',
+                            context.tr.translate('nutrition_companion'),
                             style: AppTheme.headingLarge.copyWith(
                               color: Colors.white,
                               fontSize: 32,
@@ -180,8 +178,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           SizedBox(height: 16),
                           Text(
-                            context.tr.translate('transform_your_learning') ??
-                                'Transform your learning with AI-powered tools for instant answers, essay enhancement, and more.',
+                            context.tr.translate('transform_your_learning'),
                             style: AppTheme.bodyMedium.copyWith(
                               color: Colors.white.withOpacity(0.9),
                             ),
@@ -228,8 +225,7 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       Icon(Icons.camera_alt),
                       SizedBox(width: 8),
-                      Text(context.tr.translate('scan_a_question') ??
-                          'Scan a Question'),
+                      Text(context.tr.translate('scan_a_question')),
                     ],
                   ),
                 ),
@@ -245,10 +241,8 @@ class _HomeScreenState extends State<HomeScreen>
     final features = [
       {
         'icon': Icons.document_scanner,
-        'title': context.tr.translate('instant_scan_solve') ??
-            'Instant Scan & Solve',
-        'description': context.tr.translate('instant_scan_description') ??
-            'Capture questions with your camera and get step-by-step solutions',
+        'title': context.tr.translate('instant_scan_solve'),
+        'description': context.tr.translate('instant_scan_description'),
         'color': AppTheme.primaryColor,
         'onTap': () => Navigator.push(
               context,
@@ -257,10 +251,8 @@ class _HomeScreenState extends State<HomeScreen>
       },
       {
         'icon': Icons.edit_note,
-        'title':
-            context.tr.translate('essay_enhancement') ?? 'Essay Enhancement',
-        'description': context.tr.translate('essay_enhancement_description') ??
-            'Improve, paraphrase, or expand your writing with AI assistance',
+        'title': context.tr.translate('essay_enhancement'),
+        'description': context.tr.translate('essay_enhancement_description'),
         'color': Color(0xFF5E60CE),
         'onTap': () => Navigator.push(
               context,
@@ -269,10 +261,8 @@ class _HomeScreenState extends State<HomeScreen>
       },
       {
         'icon': Icons.description,
-        'title': context.tr.translate('document_summary') ??
-            'Document Summarization',
-        'description': context.tr.translate('document_summary_description') ??
-            'Upload PDFs or text files to get concise summaries',
+        'title': context.tr.translate('document_summary'),
+        'description': context.tr.translate('document_summary_description'),
         'color': Color(0xFF2DC96B),
         'onTap': () => Navigator.push(
               context,
@@ -281,31 +271,27 @@ class _HomeScreenState extends State<HomeScreen>
       },
       {
         'icon': Icons.quiz,
-        'title':
-            context.tr.translate('knowledge_quizzes') ?? 'Knowledge Quizzes',
-        'description': context.tr.translate('knowledge_quizzes_description') ??
-            'Test your knowledge with AI-generated quizzes on any topic',
+        'title': context.tr.translate('knowledge_quizzes'),
+        'description': context.tr.translate('knowledge_quizzes_description'),
         'color': Color(0xFFFFB800),
         'onTap': () => _showComingSoonDialog(
-            context.tr.translate('knowledge_quizzes') ?? 'Knowledge Quizzes'),
+              context.tr.translate('knowledge_quizzes'),
+            ),
       },
       {
         'icon': Icons.language,
-        'title': context.tr.translate('language') ?? 'Language Mastery',
-        'description': context.tr.translate('language_description') ??
-            'Improve your language skills with translation and grammar help',
+        'title': context.tr.translate('language'),
+        'description': context.tr.translate('language_description'),
         'color': Color(0xFF21AAFF),
-        'onTap': () => _showComingSoonDialog(
-            context.tr.translate('language') ?? 'Language Mastery'),
+        'onTap': () => _showComingSoonDialog(context.tr.translate('language')),
       },
       {
         'icon': Icons.code,
-        'title': context.tr.translate('coding_support') ?? 'Coding Support',
-        'description': context.tr.translate('coding_support_description') ??
-            'Get explanations, code reviews, and programming assistance',
+        'title': context.tr.translate('coding_support'),
+        'description': context.tr.translate('coding_support_description'),
         'color': Color(0xFFFF5252),
-        'onTap': () => _showComingSoonDialog(
-            context.tr.translate('coding_support') ?? 'Coding Support'),
+        'onTap': () =>
+            _showComingSoonDialog(context.tr.translate('coding_support')),
       },
     ];
 
@@ -362,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen>
         return AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(context.tr.translate('coming_soon') ?? 'Coming Soon!'),
+          title: Text(context.tr.translate('coming_soon')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -384,16 +370,14 @@ class _HomeScreenState extends State<HomeScreen>
               SizedBox(height: 16),
               Text(
                 context.tr
-                        .translate('feature_available_soon')
-                        ?.replaceAll('{feature}', feature) ??
-                    '$feature will be available in the next update!',
+                    .translate('feature_available_soon')
+                    .replaceAll('{feature}', feature),
                 textAlign: TextAlign.center,
                 style: AppTheme.bodyMedium,
               ),
               SizedBox(height: 8),
               Text(
-                context.tr.translate('working_hard_feature') ??
-                    "We're working hard to bring you this feature soon.",
+                context.tr.translate('working_hard_feature'),
                 textAlign: TextAlign.center,
                 style: AppTheme.bodySmall.copyWith(
                   color: isDarkMode
@@ -405,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           actions: [
             TextButton(
-              child: Text(context.tr.translate('cant_wait') ?? 'Can\'t Wait!'),
+              child: Text(context.tr.translate('cant_wait')),
               onPressed: () {
                 Navigator.of(context).pop();
               },

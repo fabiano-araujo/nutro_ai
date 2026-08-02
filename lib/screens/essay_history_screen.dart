@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../models/essay_model.dart';
@@ -33,7 +32,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Histórico de Redações'),
+        title: Text(context.tr.translate('essay_history_title')),
         elevation: 0,
       ),
       body: Consumer<EssayProvider>(
@@ -48,7 +47,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Acompanhe suas redações e seu progresso',
+                  context.tr.translate('essay_history_subtitle'),
                   style: TextStyle(
                     fontSize: 16,
                     color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
@@ -66,7 +65,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                           _buildStatCard(
                             context,
                             totalEssays.toString(),
-                            'Total de Redações',
+                            context.tr.translate('essay_total_count'),
                             Colors.blue,
                             isDarkMode,
                           ),
@@ -74,15 +73,19 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                           _buildStatCard(
                             context,
                             averageScore.toString(),
-                            'Média de Pontuação',
+                            context.tr.translate('essay_average_score'),
                             Colors.green,
                             isDarkMode,
                           ),
                           const SizedBox(height: 12),
                           _buildStatCard(
                             context,
-                            '+30 pontos',
-                            'Evolução no último mês',
+                            _translateWithValues(
+                              context,
+                              'essay_points_gain',
+                              {'count': '30'},
+                            ),
+                            context.tr.translate('essay_last_month_progress'),
                             Colors.purple,
                             isDarkMode,
                             icon: Icons.trending_up,
@@ -97,7 +100,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                             child: _buildStatCard(
                               context,
                               totalEssays.toString(),
-                              'Total de Redações',
+                              context.tr.translate('essay_total_count'),
                               Colors.blue,
                               isDarkMode,
                             ),
@@ -107,7 +110,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                             child: _buildStatCard(
                               context,
                               averageScore.toString(),
-                              'Média de Pontuação',
+                              context.tr.translate('essay_average_score'),
                               Colors.green,
                               isDarkMode,
                             ),
@@ -116,8 +119,12 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                           Expanded(
                             child: _buildStatCard(
                               context,
-                              '+30 pontos',
-                              'Evolução no último mês',
+                              _translateWithValues(
+                                context,
+                                'essay_points_gain',
+                                {'count': '30'},
+                              ),
+                              context.tr.translate('essay_last_month_progress'),
                               Colors.purple,
                               isDarkMode,
                               icon: Icons.trending_up,
@@ -163,7 +170,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           );
         },
         child: Icon(Icons.add),
-        tooltip: 'Nova Redação',
+        tooltip: context.tr.translate('essay_new_title'),
       ),
     );
   }
@@ -176,7 +183,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           Expanded(
             flex: 3,
             child: Text(
-              'Título',
+              context.tr.translate('essay_table_title'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
@@ -186,7 +193,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              'Info',
+              context.tr.translate('essay_table_info'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
@@ -208,7 +215,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           Expanded(
             flex: 3,
             child: Text(
-              'Título',
+              context.tr.translate('essay_table_title'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
@@ -218,7 +225,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           Expanded(
             flex: 1,
             child: Text(
-              'Tipo',
+              context.tr.translate('essay_table_type'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
@@ -228,7 +235,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           Expanded(
             flex: 1,
             child: Text(
-              'Data',
+              context.tr.translate('essay_table_date'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
@@ -238,7 +245,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           Expanded(
             flex: 1,
             child: Text(
-              'Status',
+              context.tr.translate('essay_table_status'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
@@ -248,7 +255,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
           Expanded(
             flex: 1,
             child: Text(
-              'Pontuação',
+              context.tr.translate('essay_table_score'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
@@ -276,7 +283,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: Offset(0, 4),
           ),
@@ -326,8 +333,6 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
   Widget _buildCompactEssayItem(BuildContext context, Essay essay) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final dateFormat = DateFormat('dd/MM/yyyy');
-
     // Definir cores para os diferentes status
     Color statusColor;
     switch (essay.status) {
@@ -373,7 +378,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    essay.title,
+                    _localizedStoredText(context, essay.title),
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
                       color: isDarkMode ? Colors.white : Colors.black87,
@@ -382,7 +387,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                     maxLines: 2,
                   ),
                   Text(
-                    essay.type,
+                    _essayTypeLabel(context, essay.type),
                     style: TextStyle(
                       fontSize: 12,
                       color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
@@ -401,11 +406,11 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      essay.status,
+                      _essayStatusLabel(context, essay.status),
                       style: TextStyle(
                         color: statusColor,
                         fontSize: 12,
@@ -416,7 +421,13 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    essay.status == 'Corrigido' ? '${essay.score}pts' : '-',
+                    essay.status == 'Corrigido'
+                        ? _translateWithValues(
+                            context,
+                            'essay_score_points_short',
+                            {'score': essay.score.toString()},
+                          )
+                        : '-',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -443,8 +454,6 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
   Widget _buildEssayItem(BuildContext context, Essay essay) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final dateFormat = DateFormat('dd/MM/yyyy');
-
     // Definir cores para os diferentes status
     Color statusColor;
     switch (essay.status) {
@@ -487,7 +496,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
             Expanded(
               flex: 3,
               child: Text(
-                essay.title,
+                _localizedStoredText(context, essay.title),
                 style: TextStyle(
                   fontWeight: FontWeight.w500,
                   color: isDarkMode ? Colors.white : Colors.black87,
@@ -500,7 +509,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
             Expanded(
               flex: 1,
               child: Text(
-                essay.type,
+                _essayTypeLabel(context, essay.type),
                 style: TextStyle(
                   color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
                 ),
@@ -511,7 +520,7 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
             Expanded(
               flex: 1,
               child: Text(
-                dateFormat.format(essay.date),
+                MaterialLocalizations.of(context).formatCompactDate(essay.date),
                 style: TextStyle(
                   color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
                 ),
@@ -524,11 +533,11 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  essay.status,
+                  _essayStatusLabel(context, essay.status),
                   style: TextStyle(
                     color: statusColor,
                     fontSize: 12,
@@ -571,7 +580,9 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
     if (essay.status == 'Corrigido') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Funcionalidade de visualização de correção em desenvolvimento.'),
+          content: Text(
+            context.tr.translate('essay_correction_view_coming_soon'),
+          ),
           backgroundColor: Colors.blue,
         ),
       );
@@ -589,11 +600,59 @@ class _EssayHistoryScreenState extends State<EssayHistoryScreen> {
       // Mostrar mensagem que está em análise
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Esta redação está em análise e será corrigida em breve.'),
+          content: Text(context.tr.translate('essay_under_review_message')),
           backgroundColor: Colors.orange,
         ),
       );
     }
+  }
+
+  String _localizedStoredText(BuildContext context, String value) {
+    const prefix = 'i18n:';
+    return value.startsWith(prefix)
+        ? context.tr.translate(value.substring(prefix.length))
+        : value;
+  }
+
+  String _essayTypeLabel(BuildContext context, String type) {
+    switch (type) {
+      case 'Vestibular':
+        return context.tr.translate('essay_type_vestibular');
+      case 'Concurso':
+        return context.tr.translate('essay_type_public_exam');
+      case 'Outro':
+        return context.tr.translate('essay_type_other');
+      case 'Livre':
+        return context.tr.translate('essay_type_free');
+      default:
+        return type;
+    }
+  }
+
+  String _essayStatusLabel(BuildContext context, String status) {
+    switch (status) {
+      case 'Corrigido':
+        return context.tr.translate('essay_status_corrected');
+      case 'Em Análise':
+        return context.tr.translate('essay_status_under_review');
+      case 'Rascunho':
+        return context.tr.translate('essay_status_draft');
+      case 'Arquivado':
+        return context.tr.translate('essay_status_archived');
+      default:
+        return status;
+    }
+  }
+
+  String _translateWithValues(
+    BuildContext context,
+    String key,
+    Map<String, String> values,
+  ) {
+    var result = context.tr.translate(key);
+    for (final entry in values.entries) {
+      result = result.replaceAll('{${entry.key}}', entry.value);
+    }
+    return result;
   }
 }

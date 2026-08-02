@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../i18n/app_localizations_extension.dart';
 import '../models/essay_progress_model.dart';
 import 'achievement_widgets.dart';
 
@@ -12,10 +14,12 @@ class AchievementNotificationManager extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<AchievementNotificationManager> createState() => _AchievementNotificationManagerState();
+  State<AchievementNotificationManager> createState() =>
+      _AchievementNotificationManagerState();
 
   /// Método estático para mostrar notificação de conquista
-  static void showAchievementUnlocked(BuildContext context, Achievement achievement) {
+  static void showAchievementUnlocked(
+      BuildContext context, Achievement achievement) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -29,14 +33,16 @@ class AchievementNotificationManager extends StatefulWidget {
   }
 
   /// Método estático para mostrar múltiplas conquistas
-  static void showMultipleAchievements(BuildContext context, List<Achievement> achievements) {
+  static void showMultipleAchievements(
+      BuildContext context, List<Achievement> achievements) {
     if (achievements.isEmpty) return;
 
     // Mostrar uma por vez com delay
     _showAchievementsSequentially(context, achievements, 0);
   }
 
-  static void _showAchievementsSequentially(BuildContext context, List<Achievement> achievements, int index) {
+  static void _showAchievementsSequentially(
+      BuildContext context, List<Achievement> achievements, int index) {
     if (index >= achievements.length) return;
 
     showDialog(
@@ -57,7 +63,8 @@ class AchievementNotificationManager extends StatefulWidget {
   }
 }
 
-class _AchievementNotificationManagerState extends State<AchievementNotificationManager> {
+class _AchievementNotificationManagerState
+    extends State<AchievementNotificationManager> {
   @override
   Widget build(BuildContext context) {
     return widget.child;
@@ -117,17 +124,17 @@ class AchievementToast extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Conquista Desbloqueada!',
+                      context.tr.translate('progress_achievement_unlocked'),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.amber,
-                        fontWeight: FontWeight.bold,
-                      ),
+                            color: Colors.amber,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                     Text(
                       achievement.name,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ],
                 ),
@@ -191,7 +198,8 @@ class AchievementToast extends StatelessWidget {
 /// Mixin para facilitar o uso de notificações de conquista
 mixin AchievementNotificationMixin<T extends StatefulWidget> on State<T> {
   void showAchievementUnlocked(Achievement achievement) {
-    AchievementNotificationManager.showAchievementUnlocked(context, achievement);
+    AchievementNotificationManager.showAchievementUnlocked(
+        context, achievement);
   }
 
   void showAchievementToast(Achievement achievement) {
@@ -199,6 +207,7 @@ mixin AchievementNotificationMixin<T extends StatefulWidget> on State<T> {
   }
 
   void showMultipleAchievements(List<Achievement> achievements) {
-    AchievementNotificationManager.showMultipleAchievements(context, achievements);
+    AchievementNotificationManager.showMultipleAchievements(
+        context, achievements);
   }
 }

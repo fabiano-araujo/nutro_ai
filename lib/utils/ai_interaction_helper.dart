@@ -59,6 +59,7 @@ class AIInteractionHelper {
     VoidCallback?
         onStreamComplete, // Callback chamado quando o stream termina (para salvar mensagens)
   }) {
+    final localizations = AppLocalizations.of(context);
     int receivedChunks = 0;
     String acumuladoAtual = '';
     StreamSubscription? subscription;
@@ -262,10 +263,8 @@ class AIInteractionHelper {
             FoodJsonParser.containsFoodJson(responseContent);
         if (responseContent.trim().isEmpty ||
             (finalDisplayContent.trim().isEmpty && !hasRenderableFoodJson)) {
-          final fallbackMessage = context.mounted
-              ? AppLocalizations.of(context)
-                  .translate('agent_empty_response_fallback')
-              : 'Não recebi uma resposta da IA. Tente enviar novamente.';
+          final fallbackMessage =
+              localizations.translate('agent_empty_response_fallback');
           AppDebugLogService.add('APP_AI_STREAM', 'empty_visible_response', {
             'fallback': fallbackMessage,
           });
@@ -322,9 +321,7 @@ class AIInteractionHelper {
             final Map<String, dynamic> toolData = jsonDecode(toolDataJson);
 
             String toolName = toolData['toolName'] as String? ??
-                (context.mounted
-                    ? AppLocalizations.of(context).translate('ai_tool')
-                    : 'AI Tool');
+                localizations.translate('ai_tool');
             String userInput = toolData['userInput'] as String? ?? '';
 
             // Sempre dar prioridade ao sourceType da ferramenta se existir
@@ -414,28 +411,21 @@ class AIInteractionHelper {
             final userContent = compiledData['userContent'] ?? '';
             final aiResponse = compiledData['aiResponse'] ?? '';
 
-            String title = (context.mounted
-                ? AppLocalizations.of(context).translate('ai_tutor_chat_title')
-                : 'Nutrition Assistant');
+            String title = localizations.translate('ai_tutor_chat_title');
             if (studyItemType == 'image_analysis') {
               try {
-                if (context.mounted) {
-                  title =
-                      AppLocalizations.of(context).translate('image_analysis');
-                } else {
-                  title = 'Image Analysis';
-                }
+                title = localizations.translate('image_analysis');
               } catch (e) {
                 print(
                     "⚠️ AIInteractionHelper - Erro ao obter título traduzido para image_analysis: $e");
-                title = 'Image Analysis'; // Fallback
+                title = localizations.translate('ai_tutor_chat_title');
               }
             }
             // Garantir que o título não seja nulo ou vazio
             if (title.isEmpty) {
               title = studyItemType == 'image_analysis'
-                  ? 'Image Analysis'
-                  : 'Nutrition Assistant';
+                  ? localizations.translate('image_analysis')
+                  : localizations.translate('ai_tutor_chat_title');
             }
 
             studyItem = StudyItem(
@@ -481,8 +471,10 @@ class AIInteractionHelper {
             '❌ AIInteractionHelper - Erro durante streaming (stream: ${aiStream.hashCode}): $error');
 
         // Mensagem de erro genérica para o usuário
-        messageNotifier.setError(true,
-            'Desculpe, ocorreu um erro durante a comunicação. Por favor, tente novamente.');
+        messageNotifier.setError(
+          true,
+          localizations.translate('try_again_or_check_connection'),
+        );
 
         // Atualizar o estado na NutritionAssistantScreen via callbacks
         setLoading(false);

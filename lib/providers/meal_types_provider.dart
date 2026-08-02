@@ -7,6 +7,8 @@ import '../services/notification_service.dart';
 import '../services/user_app_state_service.dart';
 
 class MealTypeConfig {
+  static const String generatedExtraNameTokenPrefix = '__extra_meal_';
+
   final String id;
   final String name;
   final String emoji;
@@ -94,6 +96,17 @@ class MealTypeConfig {
     }
 
     return '12:00';
+  }
+
+  static String generatedExtraNameToken(int number) {
+    return '$generatedExtraNameTokenPrefix${number}__';
+  }
+
+  static int? generatedExtraNumberFromName(String name) {
+    final match = RegExp(
+      '^${RegExp.escape(generatedExtraNameTokenPrefix)}(\\d+)__\$',
+    ).firstMatch(name.trim());
+    return match == null ? null : int.tryParse(match.group(1)!);
   }
 
   static String? normalizeReminderTime(Object? value) {
@@ -373,7 +386,7 @@ class MealTypesProvider extends ChangeNotifier {
       mealTypes.add(
         MealTypeConfig(
           id: 'extra_${mealTypes.length + 1}',
-          name: 'Refeição extra $extraIndex',
+          name: MealTypeConfig.generatedExtraNameToken(extraIndex),
           emoji: '🍽️',
           order: mealTypes.length,
         ),

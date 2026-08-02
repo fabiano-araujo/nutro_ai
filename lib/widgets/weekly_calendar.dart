@@ -101,7 +101,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     } else if (_isSameDay(_selectedDate, tomorrow)) {
       return context.tr.translate('tomorrow');
     } else {
-      final formatter = DateFormat('MMM. d, yyyy', 'pt_BR');
+      final locale = Localizations.localeOf(context).toLanguageTag();
+      final formatter = DateFormat.yMMMd(locale);
       return formatter.format(_selectedDate);
     }
   }
@@ -130,7 +131,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      locale: Locale('pt', 'BR'),
+      locale: Localizations.localeOf(context),
     );
 
     if (picked != null) {
@@ -173,7 +174,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
               IconButton(
                 icon: Icon(Icons.menu, color: textColor),
                 onPressed: widget.onOpenDrawer,
-                tooltip: 'Menu',
+                tooltip: context.tr.translate('menu'),
               ),
             Expanded(
               child: Center(
@@ -210,7 +211,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                     IconButton(
                       icon: Icon(Icons.menu, color: textColor),
                       onPressed: widget.onOpenDrawer,
-                      tooltip: 'Menu',
+                      tooltip: context.tr.translate('menu'),
                     )
                   else
                     const SizedBox(width: 48),
@@ -224,8 +225,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                           padding:
                               EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).primaryColor.withAlpha(38),
+                            color: Theme.of(context).primaryColor.withAlpha(38),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -260,7 +260,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                   if (widget.onSearchPressed != null)
                     IconButton(
                       icon: Icon(Icons.search, color: textColor),
-                      tooltip: 'Pesquisar alimentos',
+                      tooltip: context.tr.translate('search_food'),
                       onPressed: widget.onSearchPressed,
                     ),
                 ],

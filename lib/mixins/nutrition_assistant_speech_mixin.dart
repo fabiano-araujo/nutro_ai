@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show ValueListenable, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../i18n/app_localizations_extension.dart';
 import '../screens/nutrition_assistant_screen.dart';
 import '../services/ai_service.dart';
 import '../services/chat_audio_recorder.dart';
@@ -244,7 +245,10 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
       print(
           '❌ NutritionAssistantSpeechMixin - Erro ao iniciar gravação de áudio: $e');
       if (!_cancelPendingStart) {
-        UIUtils.showSimpleToast(context, 'Erro ao iniciar a gravação de áudio');
+        UIUtils.showSimpleToast(
+          context,
+          context.tr.translate('audio_recording_start_error'),
+        );
       }
       keepScreenOn(false);
       _setAudioCaptureUiState(
@@ -295,7 +299,10 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
       final recordedAudio = await _audioRecorder.stopRecording();
 
       if (recordedAudio == null || recordedAudio.bytes.isEmpty) {
-        UIUtils.showSimpleToast(context, 'Nenhum áudio foi capturado');
+        UIUtils.showSimpleToast(
+          context,
+          context.tr.translate('no_audio_captured'),
+        );
         _setAudioCaptureUiState(isTranscribingAudio: false);
         return;
       }
@@ -325,19 +332,18 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
             '⚠️ NutritionAssistantSpeechMixin - Transcrição repetitiva detectada e colapsada: "$rawPreview" -> "$transcription"');
       }
 
-      if (transcription.startsWith('Desculpe, ocorreu um erro')) {
-        UIUtils.showSimpleToast(context, transcription);
-      } else {
-        _committedRecognizedText = _mergeRecognizedText(
-          _committedRecognizedText,
-          transcription,
-        );
-        _updateRecognizedText(_committedRecognizedText);
-      }
+      _committedRecognizedText = _mergeRecognizedText(
+        _committedRecognizedText,
+        transcription,
+      );
+      _updateRecognizedText(_committedRecognizedText);
     } catch (e) {
       print(
           '❌ NutritionAssistantSpeechMixin - Erro ao finalizar gravação/transcrição: $e');
-      UIUtils.showSimpleToast(context, 'Erro ao transcrever o áudio');
+      UIUtils.showSimpleToast(
+        context,
+        context.tr.translate('audio_transcription_error'),
+      );
     } finally {
       _startRecordingOperation = null;
       _isPreparingAudioCapture = false;
@@ -633,7 +639,10 @@ mixin NutritionAssistantSpeechMixin on State<NutritionAssistantScreen> {
       _logMicPerf(perf, 'permission_web_hasPermission_done granted=$granted');
       if (!granted) {
         _resetPendingRecordingUi();
-        UIUtils.showErrorDialog(context, 'Permissão do microfone negada');
+        UIUtils.showErrorDialog(
+          context,
+          context.tr.translate('microphone_permission_denied'),
+        );
       }
       return granted;
     }

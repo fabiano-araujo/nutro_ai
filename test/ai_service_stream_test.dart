@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:nutro_ai/i18n/translations/en_us_translations.dart';
 import 'package:nutro_ai/services/ai_service.dart';
 
 class _MockStreamClient extends http.BaseClient {
@@ -31,6 +32,19 @@ class _MockStreamClient extends http.BaseClient {
       controller.stream,
       200,
       headers: {'content-type': 'text/event-stream'},
+    );
+  }
+}
+
+class _MockErrorClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(
+      Stream.value(
+        utf8.encode(jsonEncode({'error': 'Falha interna em português'})),
+      ),
+      500,
+      headers: {'content-type': 'application/json'},
     );
   }
 }
@@ -77,5 +91,20 @@ void main() {
 
     expect(result.contains('"date":"2024-01-01"'), isTrue);
     expect(chunkCount, greaterThanOrEqualTo(3));
+  });
+
+  test('AIService localiza erro sem expor mensagem crua do servidor', () async {
+    final service = AIService(httpClient: _MockErrorClient());
+
+    final chunks = await service
+        .getAnswerStream(
+          'Test request',
+          languageCode: 'en_US',
+          agentType: 'nutrition',
+        )
+        .toList();
+
+    expect(chunks, [enUSTranslations['process_error']]);
+    expect(chunks.single, isNot(contains('Falha interna')));
   });
 }

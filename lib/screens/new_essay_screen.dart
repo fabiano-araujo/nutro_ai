@@ -34,14 +34,15 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
     super.initState();
 
     if (widget.isEditing && widget.essayId != null) {
-      Future.microtask(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         final essayProvider =
             Provider.of<EssayProvider>(context, listen: false);
         final essay = essayProvider.getEssayById(widget.essayId!);
 
         if (essay != null) {
-          _titleController.text = essay.title;
-          _textController.text = essay.text;
+          _titleController.text = _localizedStoredText(essay.title);
+          _textController.text = _localizedStoredText(essay.text);
           setState(() {
             _selectedType = essay.type;
             _updateWordCount();
@@ -107,17 +108,19 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
         }
 
         Navigator.pop(context);
-      } catch (e) {
+      } catch (_) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao salvar a redação: $e'),
+            content: Text(context.tr.translate('essay_save_error')),
             backgroundColor: Colors.red,
           ),
         );
       } finally {
-        setState(() {
-          _isSubmitting = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+          });
+        }
       }
     }
   }
@@ -164,26 +167,31 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
         // Enviar para correção
         essayProvider.submitForCorrection(essayId);
 
+        final successMessage =
+            context.tr.translate('essay_submitted_successfully');
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context);
 
         // Mostrar mensagem de sucesso
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
-            content: Text('Redação enviada para correção com sucesso!'),
+            content: Text(successMessage),
             backgroundColor: Colors.green,
           ),
         );
-      } catch (e) {
+      } catch (_) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao enviar a redação: $e'),
+            content: Text(context.tr.translate('essay_submit_error')),
             backgroundColor: Colors.red,
           ),
         );
       } finally {
-        setState(() {
-          _isSubmitting = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+          });
+        }
       }
     }
   }
@@ -197,7 +205,11 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditing ? 'Editar Redação' : 'Nova Redação'),
+        title: Text(
+          context.tr.translate(
+            widget.isEditing ? 'essay_edit_title' : 'essay_new_title',
+          ),
+        ),
         elevation: 0,
         actions: [
           // Botão adaptado para economizar espaço em telas pequenas
@@ -207,7 +219,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
               icon: Icon(Icons.send,
                   color: Colors.white, size: isSmallDevice ? 18 : 24),
               label: Text(
-                isSmallDevice ? '' : 'Enviar',
+                isSmallDevice ? '' : context.tr.translate('essay_send_action'),
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -224,7 +236,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Escreva sua redação ou copie de um documento existente.',
+                      context.tr.translate('essay_write_or_copy_hint'),
                       style: TextStyle(
                         fontSize: isSmallDevice ? 14 : 16,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
@@ -234,7 +246,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
 
                     // Tipo de redação
                     Text(
-                      'Tipo de Redação',
+                      context.tr.translate('essay_type_label'),
                       style: TextStyle(
                         fontSize: isSmallDevice ? 14 : 16,
                         fontWeight: FontWeight.w500,
@@ -261,7 +273,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                             return DropdownMenuItem<String>(
                               value: type,
                               child: Text(
-                                type,
+                                _essayTypeLabel(type),
                                 style: TextStyle(
                                   fontSize: isSmallDevice ? 14 : 16,
                                 ),
@@ -283,7 +295,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Text(
-                          'Dissertação-argumentativa no formato exigido pelo ENEM',
+                          context.tr.translate('essay_enem_format_description'),
                           style: TextStyle(
                             fontSize: isSmallDevice ? 12 : 14,
                             color: isDarkMode
@@ -297,7 +309,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
 
                     // Título
                     Text(
-                      'Título',
+                      context.tr.translate('essay_title_label'),
                       style: TextStyle(
                         fontSize: isSmallDevice ? 14 : 16,
                         fontWeight: FontWeight.w500,
@@ -311,7 +323,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                         fontSize: isSmallDevice ? 14 : 16,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Adicione um título à sua redação',
+                        hintText: context.tr.translate('essay_title_hint'),
                         hintStyle: TextStyle(
                           fontSize: isSmallDevice ? 14 : 16,
                         ),
@@ -326,7 +338,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Por favor, informe um título';
+                          return context.tr.translate('essay_title_required');
                         }
                         return null;
                       },
@@ -339,7 +351,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Texto',
+                          context.tr.translate('essay_text_label'),
                           style: TextStyle(
                             fontSize: isSmallDevice ? 14 : 16,
                             fontWeight: FontWeight.w500,
@@ -347,7 +359,12 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                         ),
                         // Contador de palavras movido para o topo
                         Text(
-                          '$_wordCount palavras',
+                          _translateWithValues(
+                            _wordCount == 1
+                                ? 'essay_word_count_one'
+                                : 'essay_word_count_other',
+                            {'count': _wordCount.toString()},
+                          ),
                           style: TextStyle(
                             fontSize: isSmallDevice ? 12 : 14,
                             color: isDarkMode
@@ -381,7 +398,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                         ),
                         textAlignVertical: TextAlignVertical.top,
                         decoration: InputDecoration(
-                          hintText: 'Digite aqui sua redação...',
+                          hintText: context.tr.translate('essay_text_hint'),
                           hintStyle: TextStyle(
                             fontSize: isSmallDevice ? 14 : 16,
                           ),
@@ -390,7 +407,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Por favor, escreva sua redação';
+                            return context.tr.translate('essay_text_required');
                           }
                           return null;
                         },
@@ -415,7 +432,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Dicas:',
+                            context.tr.translate('essay_tips_title'),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: isSmallDevice ? 14 : 16,
@@ -429,7 +446,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Redações do ENEM devem ter entre 7 e 30 linhas.',
+                                  context.tr.translate('essay_enem_lines_tip'),
                                   style: TextStyle(
                                     fontSize: isSmallDevice ? 12 : 14,
                                   ),
@@ -445,7 +462,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Divida seu texto em introdução, desenvolvimento e conclusão.',
+                                  context.tr.translate('essay_structure_tip'),
                                   style: TextStyle(
                                     fontSize: isSmallDevice ? 12 : 14,
                                   ),
@@ -474,7 +491,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                         Navigator.pop(context);
                       },
                       child: Text(
-                        'Cancelar',
+                        context.tr.translate('essay_cancel_action'),
                         style: TextStyle(
                           fontSize: isSmallDevice ? 14 : 16,
                         ),
@@ -497,7 +514,7 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
                               ),
                             )
                           : Text(
-                              'Salvar rascunho',
+                              context.tr.translate('essay_save_draft_action'),
                               style: TextStyle(
                                 fontSize: isSmallDevice ? 14 : 16,
                               ),
@@ -511,5 +528,35 @@ class _NewEssayScreenState extends State<NewEssayScreen> {
         ),
       ),
     );
+  }
+
+  String _localizedStoredText(String value) {
+    const prefix = 'i18n:';
+    return value.startsWith(prefix)
+        ? context.tr.translate(value.substring(prefix.length))
+        : value;
+  }
+
+  String _essayTypeLabel(String type) {
+    switch (type) {
+      case 'Vestibular':
+        return context.tr.translate('essay_type_vestibular');
+      case 'Concurso':
+        return context.tr.translate('essay_type_public_exam');
+      case 'Outro':
+        return context.tr.translate('essay_type_other');
+      case 'Livre':
+        return context.tr.translate('essay_type_free');
+      default:
+        return type;
+    }
+  }
+
+  String _translateWithValues(String key, Map<String, String> values) {
+    var result = context.tr.translate(key);
+    for (final entry in values.entries) {
+      result = result.replaceAll('{${entry.key}}', entry.value);
+    }
+    return result;
   }
 }

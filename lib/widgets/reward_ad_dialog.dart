@@ -312,9 +312,8 @@ class RewardAdDialog {
           debugPrint('Erro ao exibir anúncio premiado: $showError');
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                    'Erro ao exibir o anúncio. Tente novamente mais tarde.'),
+              SnackBar(
+                content: Text(context.tr.translate('reward_ad_show_error')),
                 backgroundColor: Colors.red,
               ),
             );
@@ -374,7 +373,7 @@ class RewardAdDialog {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro inesperado: $e'),
+            content: Text(context.tr.translate('reward_ad_show_error')),
             backgroundColor: Colors.red,
           ),
         );

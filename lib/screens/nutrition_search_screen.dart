@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations_extension.dart';
 import '../widgets/my_inapp_webview.dart';
 import '../helpers/scraper_helper.dart';
 import '../helpers/webview_helper.dart';
@@ -16,7 +17,8 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
   final ScraperHelper _scraperHelper = ScraperHelper();
   final TextEditingController _urlController = TextEditingController();
 
-  String _currentUrl = 'https://mobile.fatsecret.com.br/calorias-nutri%C3%A7%C3%A3o/coca-cola/coca-cola-zero-(lata)/1-lata';
+  String _currentUrl =
+      'https://mobile.fatsecret.com.br/calorias-nutri%C3%A7%C3%A3o/coca-cola/coca-cola-zero-(lata)/1-lata';
   Map<String, dynamic>? _extractedData;
   bool _isExtracting = false;
   bool _showWebView = true;
@@ -80,7 +82,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pesquisa Nutricional'),
+        title: Text(context.tr.translate('nutrition_search')),
         actions: [
           IconButton(
             icon: Icon(_showWebView ? Icons.visibility_off : Icons.visibility),
@@ -89,7 +91,9 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
                 _showWebView = !_showWebView;
               });
             },
-            tooltip: _showWebView ? 'Ocultar WebView' : 'Mostrar WebView',
+            tooltip: _showWebView
+                ? context.tr.translate('hide_webview')
+                : context.tr.translate('show_webview'),
           ),
         ],
       ),
@@ -125,8 +129,8 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
           TextField(
             controller: _urlController,
             decoration: InputDecoration(
-              labelText: 'URL da página',
-              hintText: 'Cole a URL aqui...',
+              labelText: context.tr.translate('page_url'),
+              hintText: context.tr.translate('paste_url_hint'),
               prefixIcon: const Icon(Icons.link),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.clear),
@@ -147,7 +151,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
           ElevatedButton.icon(
             onPressed: _loadUrl,
             icon: const Icon(Icons.search),
-            label: const Text('Carregar URL'),
+            label: Text(context.tr.translate('load_url')),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
@@ -179,7 +183,9 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
                       ),
                     )
                   : const Icon(Icons.download),
-              label: Text(_isExtracting ? 'Extraindo...' : 'Extrair Dados'),
+              label: Text(_isExtracting
+                  ? context.tr.translate('extracting_data')
+                  : context.tr.translate('extract_data')),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 backgroundColor: Colors.green,
@@ -213,9 +219,9 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
       child: ExpansionTile(
         initiallyExpanded: true,
         leading: const Icon(Icons.info_outline, color: Colors.blue),
-        title: const Text(
-          'Dados Extraídos',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          context.tr.translate('extracted_data'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         children: [
           Padding(
@@ -242,7 +248,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                _extractedData!['erro'].toString(),
+                context.tr.translate('data_extraction_error'),
                 style: const TextStyle(color: Colors.red),
               ),
             ),
@@ -257,7 +263,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
         // Nome do alimento
         if (_extractedData!.containsKey('nome'))
           _buildInfoCard(
-            'Nome',
+            context.tr.translate('name'),
             _extractedData!['nome'].toString(),
             Icons.restaurant,
             Colors.blue,
@@ -268,7 +274,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
         // Porção
         if (_extractedData!.containsKey('porcao'))
           _buildInfoCard(
-            'Porção',
+            context.tr.translate('serving'),
             _extractedData!['porcao'].toString(),
             Icons.scale,
             Colors.orange,
@@ -279,7 +285,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
         // Calorias
         if (_extractedData!.containsKey('calorias'))
           _buildInfoCard(
-            'Calorias',
+            context.tr.translate('calories'),
             _extractedData!['calorias'].toString(),
             Icons.local_fire_department,
             Colors.red,
@@ -301,20 +307,21 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
           onPressed: () {
             // Implementar cópia para clipboard
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Dados copiados para área de transferência!'),
+              SnackBar(
+                content: Text(context.tr.translate('data_copied_clipboard')),
               ),
             );
           },
           icon: const Icon(Icons.copy),
-          label: const Text('Copiar JSON'),
+          label: Text(context.tr.translate('copy_json')),
         ),
       ],
     );
   }
 
   /// Card de informação individual
-  Widget _buildInfoCard(String label, String value, IconData icon, Color color) {
+  Widget _buildInfoCard(
+      String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -376,7 +383,7 @@ class _NutritionSearchScreenState extends State<NutritionSearchScreen> {
               Icon(Icons.analytics, color: Colors.green.shade700, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Valores Nutricionais',
+                context.tr.translate('nutritional_values'),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.green.shade700,

@@ -19,6 +19,7 @@ import 'nutrition_goals_screen.dart';
 import 'food_search_screen.dart';
 import 'food_page.dart';
 import '../i18n/app_localizations.dart';
+import '../utils/meal_type_localization.dart';
 
 class DailyMealsScreen extends StatefulWidget {
   final bool showBackButton;
@@ -274,7 +275,10 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             // Create meal info from provider config
             final mealInfo = MealTypeOption(
               type: type,
-              name: mealTypeConfig.name,
+              name: localizedMealTypeName(
+                AppLocalizations.of(context),
+                mealTypeConfig,
+              ),
               emoji: mealTypeConfig.emoji,
             );
 
@@ -613,6 +617,13 @@ class _MealCard extends StatelessWidget {
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final actionIconColor = Theme.of(context).colorScheme.primary;
     final cardBorderRadius = BorderRadius.circular(24);
+    final l10n = AppLocalizations.of(context);
+    final foodCount = meal?.foods.length ?? 0;
+    final foodCountLabel = l10n
+        .translate(
+          foodCount == 1 ? 'meal_item_count_one' : 'meal_item_count_other',
+        )
+        .replaceAll('{count}', foodCount.toString());
 
     return Container(
       decoration: AppTheme.profileCardDecoration(isDarkMode),
@@ -649,7 +660,7 @@ class _MealCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             hasFoods
-                                ? '${meal!.foods.length} ${meal!.foods.length == 1 ? 'item' : 'itens'} • ${meal!.totalCalories.toStringAsFixed(0)} kcal'
+                                ? '$foodCountLabel • ${meal!.totalCalories.toStringAsFixed(0)} kcal'
                                 : '0 kcal',
                             style: GoogleFonts.inter(
                               fontSize: 12,
@@ -704,6 +715,7 @@ class _MealCard extends StatelessWidget {
     BuildContext context,
     Color secondaryTextColor,
   ) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Container(
@@ -744,24 +756,30 @@ class _MealCard extends StatelessWidget {
               _buildMacroDivider(isDarkMode),
               _buildMacroCardCompact(
                 icon: MacroTheme.proteinIcon,
-                value: meal!.totalProtein.toStringAsFixed(1),
-                unit: 'g prot',
+                value: l10n.translate('protein_grams_short').replaceAll(
+                      '{value}',
+                      meal!.totalProtein.toStringAsFixed(1),
+                    ),
                 color: MacroTheme.proteinColor,
                 isSmall: true,
               ),
               _buildMacroDivider(isDarkMode),
               _buildMacroCardCompact(
                 icon: MacroTheme.carbsIcon,
-                value: meal!.totalCarbs.toStringAsFixed(1),
-                unit: 'g carb',
+                value: l10n.translate('carbs_grams_short').replaceAll(
+                      '{value}',
+                      meal!.totalCarbs.toStringAsFixed(1),
+                    ),
                 color: MacroTheme.carbsColor,
                 isSmall: true,
               ),
               _buildMacroDivider(isDarkMode),
               _buildMacroCardCompact(
                 icon: MacroTheme.fatIcon,
-                value: meal!.totalFat.toStringAsFixed(1),
-                unit: 'g gord',
+                value: l10n.translate('fat_grams_short').replaceAll(
+                      '{value}',
+                      meal!.totalFat.toStringAsFixed(1),
+                    ),
                 color: MacroTheme.fatColor,
                 isSmall: true,
               ),
@@ -775,7 +793,7 @@ class _MealCard extends StatelessWidget {
   Widget _buildMacroCardCompact({
     required IconData icon,
     required String value,
-    required String unit,
+    String? unit,
     required Color color,
     bool isSmall = false,
   }) {
@@ -801,13 +819,14 @@ class _MealCard extends StatelessWidget {
             color: color,
           ),
         ),
-        Text(
-          unit,
-          style: GoogleFonts.inter(
-            fontSize: isSmall ? 9.5 : 10,
-            color: secondaryColor,
+        if (unit != null && unit.isNotEmpty)
+          Text(
+            unit,
+            style: GoogleFonts.inter(
+              fontSize: isSmall ? 9.5 : 10,
+              color: secondaryColor,
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1335,15 +1354,18 @@ class _DiarySideMetric extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          maxLines: 2,
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            color: textColor.withValues(alpha: 0.6),
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: textColor.withValues(alpha: 0.6),
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         const SizedBox(height: 4),

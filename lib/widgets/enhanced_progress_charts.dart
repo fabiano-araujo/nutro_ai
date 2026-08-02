@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../i18n/app_localizations.dart';
 import '../models/essay_progress.dart';
 import '../services/enhanced_progress_tracker.dart';
 import '../utils/date_time_utils.dart';
@@ -8,7 +9,7 @@ import 'state_animation.dart';
 /// Enhanced temporal progress chart with multiple visualization options
 class EnhancedTemporalChart extends StatefulWidget {
   final List<ChartDataPoint> chartData;
-  final String title;
+  final String? title;
   final Color primaryColor;
   final Color secondaryColor;
   final double height;
@@ -18,7 +19,7 @@ class EnhancedTemporalChart extends StatefulWidget {
   const EnhancedTemporalChart({
     Key? key,
     required this.chartData,
-    this.title = 'Evolução Temporal',
+    this.title,
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.lightBlue,
     this.height = 250,
@@ -91,7 +92,7 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          widget.title,
+          widget.title ?? _translate(context, 'progress_temporal_evolution'),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -103,7 +104,16 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            '${widget.chartData.length} pontos',
+            _translateWith(
+              context,
+              widget.chartData.length == 1
+                  ? 'progress_data_points_one'
+                  : 'progress_data_points_other',
+              {
+                'count': MaterialLocalizations.of(context)
+                    .formatDecimal(widget.chartData.length),
+              },
+            ),
             style: TextStyle(
               color: widget.primaryColor,
               fontSize: 12,
@@ -131,7 +141,7 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
             ),
             const SizedBox(height: 16),
             Text(
-              'Nenhum dado disponível',
+              _translate(context, 'progress_no_data_available'),
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 16,
@@ -140,7 +150,7 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
             ),
             const SizedBox(height: 8),
             Text(
-              'Complete algumas redações para ver seu progresso',
+              _translate(context, 'progress_complete_essays_hint'),
               style: TextStyle(
                 color: Colors.grey[500],
                 fontSize: 14,
@@ -190,9 +200,9 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
               if (index >= 0 && index < widget.chartData.length) {
                 final date = widget.chartData[index].date;
                 return SideTitleWidget(
-                  axisSide: meta.axisSide,
+                  meta: meta,
                   child: Text(
-                    DateTimeUtils.formatShortDate(date),
+                    MaterialLocalizations.of(context).formatShortDate(date),
                     style: const TextStyle(
                       color: Colors.grey,
                       fontWeight: FontWeight.bold,
@@ -267,14 +277,15 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
       lineTouchData: LineTouchData(
         enabled: true,
         touchTooltipData: LineTouchTooltipData(
-          tooltipBgColor: Colors.blueGrey,
+          getTooltipColor: (_) => Colors.blueGrey,
           getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
               final index = spot.x.toInt();
               if (index >= 0 && index < widget.chartData.length) {
                 final dataPoint = widget.chartData[index];
+                final points = dataPoint.value.round();
                 return LineTooltipItem(
-                  '${DateTimeUtils.formatDisplayDate(dataPoint.date)}\n',
+                  '${MaterialLocalizations.of(context).formatFullDate(dataPoint.date)}\n',
                   const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -282,7 +293,16 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
                   ),
                   children: [
                     TextSpan(
-                      text: '${dataPoint.value.toStringAsFixed(0)} pontos',
+                      text: _translateWith(
+                        context,
+                        points == 1
+                            ? 'progress_data_points_one'
+                            : 'progress_data_points_other',
+                        {
+                          'count': MaterialLocalizations.of(context)
+                              .formatDecimal(points),
+                        },
+                      ),
                       style: const TextStyle(
                         color: Colors.yellow,
                         fontSize: 12,
@@ -291,7 +311,7 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
                     ),
                     if (dataPoint.count > 1)
                       TextSpan(
-                        text: '\n${dataPoint.count} redações',
+                        text: '\n${_essayCount(context, dataPoint.count)}',
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 10,
@@ -319,11 +339,14 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatItem('Mín', minValue.toStringAsFixed(0), Colors.red),
-        _buildStatItem('Máx', maxValue.toStringAsFixed(0), Colors.green),
-        _buildStatItem(
-            'Média', avgValue.toStringAsFixed(0), widget.primaryColor),
-        _buildStatItem('Total', totalEssays.toString(), Colors.orange),
+        _buildStatItem(_translate(context, 'progress_minimum_short'),
+            minValue.toStringAsFixed(0), Colors.red),
+        _buildStatItem(_translate(context, 'progress_maximum_short'),
+            maxValue.toStringAsFixed(0), Colors.green),
+        _buildStatItem(_translate(context, 'progress_average'),
+            avgValue.toStringAsFixed(0), widget.primaryColor),
+        _buildStatItem(_translate(context, 'progress_total'),
+            totalEssays.toString(), Colors.orange),
       ],
     );
   }
@@ -364,13 +387,13 @@ class _EnhancedTemporalChartState extends State<EnhancedTemporalChart>
 /// Enhanced competency analysis chart
 class CompetencyAnalysisChart extends StatefulWidget {
   final Map<String, CompetencyAnalysis> competencyAnalysis;
-  final String title;
+  final String? title;
   final double height;
 
   const CompetencyAnalysisChart({
     Key? key,
     required this.competencyAnalysis,
-    this.title = 'Análise por Competência',
+    this.title,
     this.height = 300,
   }) : super(key: key);
 
@@ -420,7 +443,8 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.title,
+              widget.title ??
+                  _translate(context, 'progress_competency_analysis'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -464,7 +488,7 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
             ),
             const SizedBox(height: 16),
             Text(
-              'Nenhuma análise disponível',
+              _translate(context, 'progress_no_analysis_available'),
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 16,
@@ -494,7 +518,11 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
             children: [
               Expanded(
                 child: Text(
-                  analysis.competencyName,
+                  _localizedCompetencyName(
+                    context,
+                    competencyKey,
+                    fallback: analysis.competencyName,
+                  ),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -574,7 +602,11 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
         ),
         const SizedBox(width: 4),
         Text(
-          'Consistência: ${(consistency * 100).toStringAsFixed(0)}%',
+          _translateWith(
+            context,
+            'progress_consistency_percentage',
+            {'percentage': (consistency * 100).toStringAsFixed(0)},
+          ),
           style: TextStyle(
             fontSize: 11,
             color: consistencyColor,
@@ -609,25 +641,28 @@ class _CompetencyAnalysisChartState extends State<CompetencyAnalysisChart>
   }
 
   String _getPerformanceDescription(double score) {
-    if (score >= 180) return 'Excelente desempenho';
-    if (score >= 160) return 'Muito bom desempenho';
-    if (score >= 140) return 'Bom desempenho';
-    if (score >= 120) return 'Desempenho regular';
-    return 'Precisa melhorar';
+    if (score >= 180)
+      return _translate(context, 'progress_performance_excellent');
+    if (score >= 160)
+      return _translate(context, 'progress_performance_very_good');
+    if (score >= 140) return _translate(context, 'progress_performance_good');
+    if (score >= 120)
+      return _translate(context, 'progress_performance_regular');
+    return _translate(context, 'progress_performance_needs_improvement');
   }
 }
 
 /// Activity heatmap widget
 class ActivityHeatmapWidget extends StatefulWidget {
   final List<ProgressPoint> progressHistory;
-  final String title;
+  final String? title;
   final double height;
   final int daysToShow;
 
   const ActivityHeatmapWidget({
     Key? key,
     required this.progressHistory,
-    this.title = 'Atividade de Escrita',
+    this.title,
     this.height = 120,
     this.daysToShow = 90,
   }) : super(key: key);
@@ -673,7 +708,8 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  widget.title,
+                  widget.title ??
+                      _translate(context, 'progress_writing_activity'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -700,7 +736,6 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
   }
 
   Widget _buildActivitySummary() {
-    final now = DateTime.now();
     final thisWeek = widget.progressHistory
         .where((p) => DateTimeUtils.isThisWeek(p.date))
         .length;
@@ -712,11 +747,24 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
-          'Esta semana: $thisWeek',
+          _translateWith(
+            context,
+            'progress_this_week_count',
+            {
+              'count': MaterialLocalizations.of(context).formatDecimal(thisWeek)
+            },
+          ),
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
         Text(
-          'Este mês: $thisMonth',
+          _translateWith(
+            context,
+            'progress_this_month_count',
+            {
+              'count':
+                  MaterialLocalizations.of(context).formatDecimal(thisMonth)
+            },
+          ),
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
       ],
@@ -735,8 +783,6 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
         activityMap[dateKey] = (activityMap[dateKey] ?? 0) + 1;
       }
     }
-
-    final weeks = (widget.daysToShow / 7).ceil();
 
     return GridView.builder(
       scrollDirection: Axis.horizontal,
@@ -760,8 +806,17 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
             borderRadius: BorderRadius.circular(2),
           ),
           child: Tooltip(
-            message:
-                '${DateTimeUtils.formatDisplayDate(date)}: $activity redação${activity != 1 ? 'ões' : ''}',
+            message: _translateWith(
+              context,
+              activity == 1
+                  ? 'progress_activity_tooltip_one'
+                  : 'progress_activity_tooltip_other',
+              {
+                'date': MaterialLocalizations.of(context).formatFullDate(date),
+                'count':
+                    MaterialLocalizations.of(context).formatDecimal(activity),
+              },
+            ),
             child: Container(),
           ),
         );
@@ -773,7 +828,10 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text('Menos', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          _translate(context, 'progress_less'),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
         const SizedBox(width: 8),
         ...List.generate(
             5,
@@ -787,7 +845,10 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
                   ),
                 )),
         const SizedBox(width: 8),
-        const Text('Mais', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          _translate(context, 'progress_more'),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
       ],
     );
   }
@@ -799,4 +860,42 @@ class _ActivityHeatmapWidgetState extends State<ActivityHeatmapWidget>
     if (activity >= 3) return Colors.green[600]!;
     return Colors.green[800]!;
   }
+}
+
+String _essayCount(BuildContext context, int count) {
+  return _translateWith(
+    context,
+    count == 1 ? 'progress_essay_count_one' : 'progress_essay_count_other',
+    {'count': MaterialLocalizations.of(context).formatDecimal(count)},
+  );
+}
+
+String _localizedCompetencyName(
+  BuildContext context,
+  String value, {
+  String? fallback,
+}) {
+  final match = RegExp(r'([1-5])').firstMatch(value);
+  if (match == null) return fallback ?? value;
+  return _translateWith(
+    context,
+    'progress_competency_number',
+    {'number': match.group(1)!},
+  );
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
+}
+
+String _translateWith(
+  BuildContext context,
+  String key,
+  Map<String, String> values,
+) {
+  var text = _translate(context, key);
+  values.forEach((placeholder, value) {
+    text = text.replaceAll('{$placeholder}', value);
+  });
+  return text;
 }

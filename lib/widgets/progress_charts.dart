@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations.dart';
 import '../models/essay_progress_model.dart';
 import '../utils/date_time_utils.dart';
 import 'state_animation.dart';
@@ -6,14 +7,14 @@ import 'state_animation.dart';
 /// Widget para exibir gráfico de linha do progresso temporal
 class ProgressLineChart extends StatelessWidget {
   final List<ProgressPoint> progressHistory;
-  final String title;
+  final String? title;
   final Color primaryColor;
   final double height;
 
   const ProgressLineChart({
     Key? key,
     required this.progressHistory,
-    this.title = 'Evolução da Pontuação',
+    this.title,
     this.primaryColor = Colors.blue,
     this.height = 200,
   }) : super(key: key);
@@ -21,7 +22,7 @@ class ProgressLineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (progressHistory.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
     return Card(
@@ -32,7 +33,7 @@ class ProgressLineChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              title ?? _translate(context, 'progress_score_evolution'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -56,7 +57,7 @@ class ProgressLineChart extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Card(
       elevation: 1,
       child: Container(
@@ -72,7 +73,7 @@ class ProgressLineChart extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Nenhum dado de progresso disponível',
+              _translate(context, 'progress_no_progress_data'),
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 16,
@@ -80,7 +81,7 @@ class ProgressLineChart extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Complete algumas redações para ver seu progresso',
+              _translate(context, 'progress_complete_essays_hint'),
               style: TextStyle(
                 color: Colors.grey[500],
                 fontSize: 14,
@@ -106,9 +107,12 @@ class ProgressLineChart extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildLegendItem('Mín', minScore.toString(), Colors.red),
-        _buildLegendItem('Máx', maxScore.toString(), Colors.green),
-        _buildLegendItem('Média', avgScore.toStringAsFixed(0), primaryColor),
+        _buildLegendItem(_translate(context, 'progress_minimum_short'),
+            minScore.toString(), Colors.red),
+        _buildLegendItem(_translate(context, 'progress_maximum_short'),
+            maxScore.toString(), Colors.green),
+        _buildLegendItem(_translate(context, 'progress_average'),
+            avgScore.toStringAsFixed(0), primaryColor),
       ],
     );
   }
@@ -141,20 +145,20 @@ class ProgressLineChart extends StatelessWidget {
 /// Widget para exibir gráfico de barras por competência
 class CompetencyBarChart extends StatelessWidget {
   final Map<String, CompetencyProgress> competencyProgress;
-  final String title;
+  final String? title;
   final double height;
 
   const CompetencyBarChart({
     Key? key,
     required this.competencyProgress,
-    this.title = 'Progresso por Competência',
+    this.title,
     this.height = 250,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     if (competencyProgress.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
     final sortedCompetencies = competencyProgress.entries.toList()
@@ -168,7 +172,7 @@ class CompetencyBarChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              title ?? _translate(context, 'progress_by_competency'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -190,7 +194,7 @@ class CompetencyBarChart extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Card(
       elevation: 1,
       child: Container(
@@ -206,7 +210,7 @@ class CompetencyBarChart extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Nenhum dado de competência disponível',
+              _translate(context, 'progress_no_competency_data'),
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 16,
@@ -234,7 +238,7 @@ class CompetencyBarChart extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  competency,
+                  _localizedCompetencyName(context, competency),
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
               ),
@@ -306,13 +310,13 @@ class CompetencyBarChart extends StatelessWidget {
 /// Widget para exibir heatmap de atividade
 class ActivityHeatmap extends StatelessWidget {
   final List<ProgressPoint> progressHistory;
-  final String title;
+  final String? title;
   final double height;
 
   const ActivityHeatmap({
     Key? key,
     required this.progressHistory,
-    this.title = 'Atividade de Escrita',
+    this.title,
     this.height = 120,
   }) : super(key: key);
 
@@ -326,7 +330,7 @@ class ActivityHeatmap extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              title ?? _translate(context, 'progress_writing_activity'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -337,7 +341,7 @@ class ActivityHeatmap extends StatelessWidget {
               child: _buildHeatmapGrid(context),
             ),
             const SizedBox(height: 8),
-            _buildHeatmapLegend(),
+            _buildHeatmapLegend(context),
           ],
         ),
       ),
@@ -377,8 +381,17 @@ class ActivityHeatmap extends StatelessWidget {
             borderRadius: BorderRadius.circular(2),
           ),
           child: Tooltip(
-            message:
-                '${DateTimeUtils.formatDate(date, 'dd/MM')}: $activity redação(ões)',
+            message: _translateWith(
+              context,
+              activity == 1
+                  ? 'progress_activity_tooltip_one'
+                  : 'progress_activity_tooltip_other',
+              {
+                'date': MaterialLocalizations.of(context).formatShortDate(date),
+                'count':
+                    MaterialLocalizations.of(context).formatDecimal(activity),
+              },
+            ),
             child: Container(),
           ),
         );
@@ -386,11 +399,12 @@ class ActivityHeatmap extends StatelessWidget {
     );
   }
 
-  Widget _buildHeatmapLegend() {
+  Widget _buildHeatmapLegend(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text('Menos', style: TextStyle(fontSize: 12)),
+        Text(_translate(context, 'progress_less'),
+            style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 8),
         ...List.generate(
             5,
@@ -404,7 +418,8 @@ class ActivityHeatmap extends StatelessWidget {
                   ),
                 )),
         const SizedBox(width: 8),
-        const Text('Mais', style: TextStyle(fontSize: 12)),
+        Text(_translate(context, 'progress_more'),
+            style: const TextStyle(fontSize: 12)),
       ],
     );
   }
@@ -416,6 +431,32 @@ class ActivityHeatmap extends StatelessWidget {
     if (activity == 3) return Colors.green[600]!;
     return Colors.green[800]!;
   }
+}
+
+String _localizedCompetencyName(BuildContext context, String value) {
+  final match = RegExp(r'([1-5])').firstMatch(value);
+  if (match == null) return value;
+  return _translateWith(
+    context,
+    'progress_competency_number',
+    {'number': match.group(1)!},
+  );
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
+}
+
+String _translateWith(
+  BuildContext context,
+  String key,
+  Map<String, String> values,
+) {
+  var text = _translate(context, key);
+  values.forEach((placeholder, value) {
+    text = text.replaceAll('{$placeholder}', value);
+  });
+  return text;
 }
 
 /// Painter personalizado para o gráfico de linha

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nutro_ai/providers/activity_tracking_provider.dart';
 import 'package:nutro_ai/services/tracking_app_launcher.dart';
@@ -45,18 +47,82 @@ void main() {
       expect(launcher.readCount, 2);
     });
 
-    test('never treats total calories as active activity calories', () async {
+    test('shares an in-flight forced read for the same date', () async {
+      final readStarted = Completer<void>();
+      final releaseRead = Completer<void>();
+      final launcher = _FakeTrackingAppLauncher(
+        status: _healthStatus(),
+        summary: _summary(),
+        readHandler: (date) async {
+          readStarted.complete();
+          await releaseRead.future;
+          return _summary(date: date);
+        },
+      );
+      final provider = ActivityTrackingProvider(launcher: launcher);
+      final date = DateTime(2026, 7, 15);
+
+      final firstLoad = provider.loadForDate(date, force: true);
+      await readStarted.future;
+      final secondLoad = provider.loadForDate(date, force: true);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(launcher.readCount, 1);
+
+      releaseRead.complete();
+      await Future.wait([firstLoad, secondLoad]);
+
+      expect(launcher.readCount, 1);
+    });
+
+    test('serializes different dates and keeps the latest request', () async {
+      final firstReadStarted = Completer<void>();
+      final releaseFirstRead = Completer<void>();
+      final launcher = _FakeTrackingAppLauncher(
+        status: _healthStatus(),
+        summary: _summary(),
+        readHandler: (date) async {
+          if (date.day == 14) {
+            firstReadStarted.complete();
+            await releaseFirstRead.future;
+          }
+          return _summary(date: date, steps: date.day);
+        },
+      );
+      final provider = ActivityTrackingProvider(launcher: launcher);
+
+      final olderLoad = provider.loadForDate(
+        DateTime(2026, 7, 14),
+        force: true,
+      );
+      await firstReadStarted.future;
+      final latestLoad = provider.loadForDate(
+        DateTime(2026, 7, 15),
+        force: true,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(launcher.readCount, 1);
+
+      releaseFirstRead.complete();
+      await Future.wait([olderLoad, latestLoad]);
+
+      expect(launcher.readCount, 2);
+      expect(provider.summary?.start, DateTime(2026, 7, 15));
+      expect(provider.steps, 15);
+    });
+
+    test('does not expose calories without active-calorie permission',
+        () async {
       final launcher = _FakeTrackingAppLauncher(
         status: _healthStatus(
           grantedPermissions: const [
-            'android.permission.health.READ_TOTAL_CALORIES_BURNED',
             'android.permission.health.READ_STEPS',
             'android.permission.health.READ_EXERCISE',
           ],
         ),
         summary: _summary(
           activeCalories: null,
-          totalCalories: 415.4,
           steps: 1990,
         ),
       );
@@ -64,17 +130,16 @@ void main() {
 
       await provider.loadForDate(DateTime(2026, 7, 15));
 
-      expect(provider.canReadCalories, isTrue);
+      expect(provider.canReadCalories, isFalse);
       expect(provider.hasCaloriesData, isFalse);
       expect(provider.caloriesBurned, 0);
       expect(provider.steps, 1990);
     });
 
-    test('uses active calories when active and total values are available',
-        () async {
+    test('uses active calories when available', () async {
       final launcher = _FakeTrackingAppLauncher(
         status: _healthStatus(),
-        summary: _summary(activeCalories: 215.6, totalCalories: 1980.4),
+        summary: _summary(activeCalories: 215.6),
       );
       final provider = ActivityTrackingProvider(launcher: launcher);
 
@@ -123,7 +188,6 @@ void main() {
 
       expect(provider.totalCaloriesBurned, 320);
       expect(provider.totalExerciseMinutes, 35);
-      expect(provider.totalExerciseCount, 1);
       expect(provider.hasCombinedActivityData, isTrue);
 
       final restored = ActivityTrackingProvider(launcher: launcher);
@@ -161,11 +225,13 @@ class _FakeTrackingAppLauncher extends TrackingAppLauncher {
     required this.status,
     required this.summary,
     HealthConnectStatus? requestStatus,
+    this.readHandler,
   }) : requestStatus = requestStatus ?? status;
 
   HealthConnectStatus status;
   HealthConnectStatus requestStatus;
   ActivityTrackingSummary summary;
+  final Future<ActivityTrackingSummary> Function(DateTime date)? readHandler;
   int readCount = 0;
   int permissionRequestCount = 0;
 
@@ -182,6 +248,8 @@ class _FakeTrackingAppLauncher extends TrackingAppLauncher {
   @override
   Future<ActivityTrackingSummary> readHealthSummary(DateTime date) async {
     readCount++;
+    final handler = readHandler;
+    if (handler != null) return handler(date);
     return summary;
   }
 }
@@ -194,7 +262,6 @@ HealthConnectStatus _healthStatus({
       (hasAnyPermission
           ? const [
               'android.permission.health.READ_ACTIVE_CALORIES_BURNED',
-              'android.permission.health.READ_TOTAL_CALORIES_BURNED',
               'android.permission.health.READ_STEPS',
               'android.permission.health.READ_EXERCISE',
             ]
@@ -203,7 +270,7 @@ HealthConnectStatus _healthStatus({
   return HealthConnectStatus(
     sdkStatus: 'available',
     isAvailable: true,
-    hasAllPermissions: hasAnyPermission && granted.length == 4,
+    hasAllPermissions: hasAnyPermission && granted.length == 3,
     hasAnyPermission: hasAnyPermission,
     grantedPermissions: granted,
     missingPermissions: const [],
@@ -211,11 +278,11 @@ HealthConnectStatus _healthStatus({
 }
 
 ActivityTrackingSummary _summary({
+  DateTime? date,
   double? activeCalories = 120,
-  double? totalCalories = 320,
   int? steps = 1000,
 }) {
-  final start = DateTime(2026, 7, 15);
+  final start = date ?? DateTime(2026, 7, 15);
   return ActivityTrackingSummary(
     status: 'ok',
     sdkStatus: 'available',
@@ -223,12 +290,10 @@ ActivityTrackingSummary _summary({
     hasAnyPermission: true,
     missingPermissions: const [],
     start: start,
-    end: DateTime(2026, 7, 16),
+    end: DateTime(start.year, start.month, start.day + 1),
     syncedAt: DateTime(2026, 7, 15, 20, 46),
     activeCalories: activeCalories,
-    totalCalories: totalCalories,
     steps: steps,
-    exerciseCount: 0,
     exerciseMinutes: 0,
     dataOrigins: const ['com.sec.android.app.shealth'],
   );

@@ -51,13 +51,18 @@ class Challenge {
       description: json['description'],
       type: json['type'] ?? 'LOGGING_STREAK',
       durationDays: json['durationDays'] ?? 7,
-      startDate: DateTime.parse(json['startDate'] ?? DateTime.now().toIso8601String()),
-      endDate: DateTime.parse(json['endDate'] ?? DateTime.now().toIso8601String()),
+      startDate:
+          DateTime.parse(json['startDate'] ?? DateTime.now().toIso8601String()),
+      endDate:
+          DateTime.parse(json['endDate'] ?? DateTime.now().toIso8601String()),
       maxParticipants: json['maxParticipants'] ?? 10,
       joinCode: json['joinCode'],
       isActive: json['isActive'] ?? true,
-      creator: json['creator'] != null ? SimpleUser.fromJson(json['creator']) : null,
-      participantCount: json['participantCount'] ?? (json['participants'] as List?)?.length ?? 0,
+      creator:
+          json['creator'] != null ? SimpleUser.fromJson(json['creator']) : null,
+      participantCount: json['participantCount'] ??
+          (json['participants'] as List?)?.length ??
+          0,
       participants: json['participants'] != null
           ? (json['participants'] as List)
               .map((p) => ChallengeParticipant.fromJson(p))
@@ -81,23 +86,24 @@ class Challenge {
     return endDate.difference(now).inDays;
   }
 
-  /// Tipo formatado
-  String get typeFormatted {
+  /// Chave de localização do tipo.
+  String get typeLocalizationKey {
     switch (type) {
       case 'LOGGING_STREAK':
-        return 'Registrar Refeições';
+        return 'challenge_type_logging';
       case 'PROTEIN_TARGET':
-        return 'Bater Proteína';
+        return 'challenge_type_protein';
       case 'CALORIE_DEFICIT':
-        return 'Déficit Calórico';
+        return 'challenge_type_calorie_deficit';
       case 'FIBER_TARGET':
-        return 'Meta de Fibra';
+        return 'challenge_type_fiber';
       default:
-        return 'Personalizado';
+        return 'challenge_type_custom';
     }
   }
 
-  int get targetDays => progress?.targetDays ?? objective?.targetDays ?? durationDays;
+  int get targetDays =>
+      progress?.targetDays ?? objective?.targetDays ?? durationDays;
 
   double get completionPercent => progress?.percent ?? 0;
 }
@@ -270,7 +276,8 @@ class ChallengeService {
   static const String baseUrl = AppConstants.API_BASE_URL;
 
   /// Listar meus desafios
-  static Future<List<Challenge>> getMyChallenges({required String token}) async {
+  static Future<List<Challenge>> getMyChallenges(
+      {required String token}) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/challenges'),
@@ -296,7 +303,8 @@ class ChallengeService {
   }
 
   /// Desafios públicos
-  static Future<List<Challenge>> getPublicChallenges({required String token}) async {
+  static Future<List<Challenge>> getPublicChallenges(
+      {required String token}) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/challenges/public'),

@@ -1,9 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:nutro_ai/models/diet_plan_model.dart';
 import 'package:nutro_ai/services/diet_pdf_share_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() => initializeDateFormatting('pt_BR'));
 
   test('buildDietPlanPdfBytes generates a valid PDF file', () async {
     final plan = DietPlan(
@@ -82,6 +85,7 @@ void main() {
         portion: 'Porção',
         nutrition: 'Nutrição',
         page: 'Página',
+        localeName: 'pt_BR',
       ),
       generatedAt: DateTime(2026, 6, 4),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:async';
+import '../i18n/app_localizations_extension.dart';
 import '../models/essay_model.dart';
 import '../models/essay_template_model.dart';
 
@@ -34,27 +34,36 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
   final _textController = TextEditingController();
   final _titleFocusNode = FocusNode();
   final _textFocusNode = FocusNode();
-  
+
   Timer? _autoSaveTimer;
   Timer? _debounceTimer;
-  
+
   int _wordCount = 0;
   int _characterCount = 0;
   int _paragraphCount = 0;
   bool _hasUnsavedChanges = false;
-  
+  bool _didInitializeEditor = false;
+
   // Configurações do editor
   bool _showWordCount = true;
   bool _showCharacterCount = true;
   bool _showParagraphCount = true;
   bool _enableSpellCheck = true;
-  
+
   @override
   void initState() {
     super.initState();
-    _initializeEditor();
     _setupAutoSave();
     _setupTextListeners();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInitializeEditor) {
+      _didInitializeEditor = true;
+      _initializeEditor();
+    }
   }
 
   @override
@@ -70,8 +79,8 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
 
   void _initializeEditor() {
     if (widget.initialEssay != null) {
-      _titleController.text = widget.initialEssay!.title;
-      _textController.text = widget.initialEssay!.text;
+      _titleController.text = _localizedStoredText(widget.initialEssay!.title);
+      _textController.text = _localizedStoredText(widget.initialEssay!.text);
       _updateCounts();
     }
   }
@@ -95,9 +104,9 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
     setState(() {
       _hasUnsavedChanges = true;
     });
-    
+
     _updateCounts();
-    
+
     // Debounce para evitar muitas chamadas
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
@@ -164,17 +173,17 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     return Column(
       children: [
         // Barra de ferramentas
         _buildToolbar(theme, isDarkMode),
-        
+
         // Editor principal
         Expanded(
           child: _buildEditor(theme, isDarkMode),
         ),
-        
+
         // Barra de status
         _buildStatusBar(theme, isDarkMode),
       ],
@@ -197,31 +206,31 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
           // Botões de formatação
           _buildToolbarButton(
             icon: Icons.format_bold,
-            tooltip: 'Negrito',
+            tooltip: context.tr.translate('essay_format_bold'),
             onPressed: () => _insertFormatting('**', '**'),
           ),
           _buildToolbarButton(
             icon: Icons.format_italic,
-            tooltip: 'Itálico',
+            tooltip: context.tr.translate('essay_format_italic'),
             onPressed: () => _insertFormatting('*', '*'),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // Botões de estrutura
           _buildToolbarButton(
             icon: Icons.format_list_bulleted,
-            tooltip: 'Lista',
+            tooltip: context.tr.translate('essay_format_list'),
             onPressed: () => _insertText('• '),
           ),
           _buildToolbarButton(
             icon: Icons.format_quote,
-            tooltip: 'Citação',
+            tooltip: context.tr.translate('essay_format_quote'),
             onPressed: () => _insertText('"'),
           ),
-          
+
           const Spacer(),
-          
+
           // Indicador de auto-save
           if (_hasUnsavedChanges)
             Row(
@@ -233,7 +242,7 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Não salvo',
+                  context.tr.translate('essay_unsaved_status'),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.orange,
@@ -251,7 +260,7 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Salvo',
+                  context.tr.translate('essay_saved_status'),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.green,
@@ -294,7 +303,7 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
               fontWeight: FontWeight.bold,
             ),
             decoration: InputDecoration(
-              hintText: 'Título da redação...',
+              hintText: context.tr.translate('essay_editor_title_hint'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -304,13 +313,13 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => _textFocusNode.requestFocus(),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Template info (se disponível)
           if (widget.template != null)
             _buildTemplateInfo(widget.template!, theme, isDarkMode),
-          
+
           // Campo de texto principal
           Expanded(
             child: TextField(
@@ -323,7 +332,7 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
                 height: 1.6,
               ),
               decoration: InputDecoration(
-                hintText: 'Escreva sua redação aqui...',
+                hintText: context.tr.translate('essay_editor_text_hint'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -342,15 +351,16 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
     );
   }
 
-  Widget _buildTemplateInfo(EssayTemplate template, ThemeData theme, bool isDarkMode) {
+  Widget _buildTemplateInfo(
+      EssayTemplate template, ThemeData theme, bool isDarkMode) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.primaryColor.withOpacity(0.1),
+        color: theme.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: theme.primaryColor.withOpacity(0.3),
+          color: theme.primaryColor.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -365,7 +375,10 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Template: ${template.name}',
+                _translateWithValues(
+                  'essay_template_name',
+                  {'name': _localizedStoredText(template.name)},
+                ),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: theme.primaryColor,
@@ -375,14 +388,20 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
           ),
           const SizedBox(height: 8),
           Text(
-            template.description,
+            _localizedStoredText(template.description),
             style: TextStyle(fontSize: 14),
           ),
           if (template.minWords > 0 || template.maxWords > 0)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Palavras recomendadas: ${template.minWords} - ${template.maxWords}',
+                _translateWithValues(
+                  'essay_recommended_word_range',
+                  {
+                    'min': template.minWords.toString(),
+                    'max': template.maxWords.toString(),
+                  },
+                ),
                 style: TextStyle(
                   fontSize: 12,
                   color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
@@ -409,33 +428,58 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
         children: [
           // Contadores
           if (_showWordCount)
-            _buildCounter('Palavras', _wordCount, _getWordCountColor()),
-          
+            _buildCounter(
+              context.tr.translate(
+                _wordCount == 1
+                    ? 'essay_word_label_one'
+                    : 'essay_word_label_other',
+              ),
+              _wordCount,
+              _getWordCountColor(),
+            ),
+
           if (_showWordCount && (_showCharacterCount || _showParagraphCount))
             _buildDivider(),
-          
+
           if (_showCharacterCount)
-            _buildCounter('Caracteres', _characterCount, Colors.grey),
-          
-          if (_showCharacterCount && _showParagraphCount)
-            _buildDivider(),
-          
+            _buildCounter(
+              context.tr.translate(
+                _characterCount == 1
+                    ? 'essay_character_label_one'
+                    : 'essay_character_label_other',
+              ),
+              _characterCount,
+              Colors.grey,
+            ),
+
+          if (_showCharacterCount && _showParagraphCount) _buildDivider(),
+
           if (_showParagraphCount)
-            _buildCounter('Parágrafos', _paragraphCount, Colors.grey),
-          
+            _buildCounter(
+              context.tr.translate(
+                _paragraphCount == 1
+                    ? 'essay_paragraph_label_one'
+                    : 'essay_paragraph_label_other',
+              ),
+              _paragraphCount,
+              Colors.grey,
+            ),
+
           const Spacer(),
-          
+
           // Botões de ação
           Row(
             children: [
               TextButton(
                 onPressed: _saveEssay,
-                child: Text('Salvar'),
+                child: Text(context.tr.translate('essay_save_action')),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: _canSubmit() ? _submitEssay : null,
-                child: Text('Enviar para Correção'),
+                child: Text(
+                  context.tr.translate('essay_submit_for_correction_action'),
+                ),
               ),
             ],
           ),
@@ -493,14 +537,14 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
 
   bool _canSubmit() {
     return _titleController.text.trim().isNotEmpty &&
-           _textController.text.trim().isNotEmpty &&
-           _wordCount >= 50; // Mínimo de 50 palavras
+        _textController.text.trim().isNotEmpty &&
+        _wordCount >= 50; // Mínimo de 50 palavras
   }
 
   void _insertFormatting(String startTag, String endTag) {
     final text = _textController.text;
     final selection = _textController.selection;
-    
+
     if (selection.isValid) {
       final selectedText = text.substring(selection.start, selection.end);
       final newText = text.replaceRange(
@@ -508,11 +552,14 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
         selection.end,
         '$startTag$selectedText$endTag',
       );
-      
+
       _textController.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(
-          offset: selection.start + startTag.length + selectedText.length + endTag.length,
+          offset: selection.start +
+              startTag.length +
+              selectedText.length +
+              endTag.length,
         ),
       );
     }
@@ -521,18 +568,33 @@ class _EssayEditorWidgetState extends State<EssayEditorWidget> {
   void _insertText(String textToInsert) {
     final text = _textController.text;
     final selection = _textController.selection;
-    
+
     final newText = text.replaceRange(
       selection.start,
       selection.end,
       textToInsert,
     );
-    
+
     _textController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(
         offset: selection.start + textToInsert.length,
       ),
     );
+  }
+
+  String _localizedStoredText(String value) {
+    const prefix = 'i18n:';
+    return value.startsWith(prefix)
+        ? context.tr.translate(value.substring(prefix.length))
+        : value;
+  }
+
+  String _translateWithValues(String key, Map<String, String> values) {
+    var result = context.tr.translate(key);
+    for (final entry in values.entries) {
+      result = result.replaceAll('{${entry.key}}', entry.value);
+    }
+    return result;
   }
 }

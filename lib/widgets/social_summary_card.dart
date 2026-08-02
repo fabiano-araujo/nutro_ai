@@ -20,9 +20,11 @@ class SocialSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer3<StreakProvider, FriendsProvider, ChallengesProvider>(
-      builder: (context, streakProvider, friendsProvider, challengesProvider, _) {
+      builder:
+          (context, streakProvider, friendsProvider, challengesProvider, _) {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        final isLoading = (streakProvider.isLoading && !streakProvider.hasStreak) ||
+        final isLoading = (streakProvider.isLoading &&
+                !streakProvider.hasStreak) ||
             (friendsProvider.isLoading && friendsProvider.friendCount == 0) ||
             (challengesProvider.isLoading &&
                 challengesProvider.activeChallengeCount == 0 &&
@@ -49,7 +51,9 @@ class SocialSummaryCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                      color: Theme.of(context)
+                          .primaryColor
+                          .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -126,7 +130,8 @@ class SocialSummaryCard extends StatelessWidget {
                       child: _SummaryStat(
                         icon: Icons.emoji_events_rounded,
                         color: const Color(0xFFF4B400),
-                        label: context.tr.translate('social_summary_challenges'),
+                        label:
+                            context.tr.translate('social_summary_challenges'),
                         value: '${challengesProvider.activeChallengeCount}',
                       ),
                     ),
@@ -162,8 +167,11 @@ class SocialSummaryCard extends StatelessWidget {
                     final streak = duo.friendStreak?.currentStreak ?? 0;
                     return _PreviewRow(
                       title: duo.friend.name,
-                      subtitle:
-                          '$streak ${context.tr.translate('challenge_days_completed')}',
+                      subtitle: '$streak ${context.tr.translate(
+                        streak == 1
+                            ? 'challenge_days_completed_one'
+                            : 'challenge_days_completed_other',
+                      )}',
                       trailing: duo.myCheckIn
                           ? context.tr.translate('challenge_updated_today')
                           : context.tr.translate('challenge_waiting_today'),
@@ -172,16 +180,22 @@ class SocialSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 _PreviewSection(
-                  title: context.tr.translate('social_summary_challenge_preview'),
+                  title:
+                      context.tr.translate('social_summary_challenge_preview'),
                   emptyLabel:
                       context.tr.translate('social_summary_challenge_empty'),
-                  children: challengesProvider.previewChallenges.map((challenge) {
+                  children:
+                      challengesProvider.previewChallenges.map((challenge) {
                     final progress = challenge.progress;
                     return _PreviewRow(
                       title: challenge.name,
                       subtitle: progress == null
-                          ? challenge.typeFormatted
-                          : '${progress.completedDays}/${progress.targetDays} ${context.tr.translate('challenge_days_completed')}',
+                          ? context.tr.translate(challenge.typeLocalizationKey)
+                          : '${progress.completedDays}/${progress.targetDays} ${context.tr.translate(
+                              progress.targetDays == 1
+                                  ? 'challenge_days_completed_one'
+                                  : 'challenge_days_completed_other',
+                            )}',
                       trailing: progress == null
                           ? '--'
                           : '${progress.percent.toStringAsFixed(0)}%',
@@ -253,9 +267,7 @@ class _SummaryStat extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isDarkMode
-                  ? Colors.white54
-                  : AppTheme.textSecondaryColor,
+              color: isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor,
             ),
           ),
         ],
@@ -369,9 +381,8 @@ class _PreviewRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: isDarkMode
-                          ? Colors.white
-                          : AppTheme.textPrimaryColor,
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                     ),
                   ),
                   const SizedBox(height: 2),

@@ -59,7 +59,7 @@ class ChallengeProgressPanel extends StatelessWidget {
                     Text(
                       objective.label.isNotEmpty
                           ? objective.label
-                          : challenge.typeFormatted,
+                          : context.tr.translate(challenge.typeLocalizationKey),
                       style: TextStyle(
                         fontSize: compact ? 13 : 14,
                         fontWeight: FontWeight.w600,
@@ -80,13 +80,16 @@ class ChallengeProgressPanel extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${progress.completedDays}/${progress.targetDays} ${context.tr.translate('challenge_days_completed')}',
+                  '${progress.completedDays}/${progress.targetDays} ${context.tr.translate(
+                    progress.targetDays == 1
+                        ? 'challenge_days_completed_one'
+                        : 'challenge_days_completed_other',
+                  )}',
                   style: TextStyle(
                     fontSize: compact ? 12 : 13,
                     fontWeight: FontWeight.w600,
-                    color: isDarkMode
-                        ? Colors.white70
-                        : AppTheme.textPrimaryColor,
+                    color:
+                        isDarkMode ? Colors.white70 : AppTheme.textPrimaryColor,
                   ),
                 ),
               ),
@@ -166,7 +169,11 @@ class ChallengeProgressPanel extends StatelessWidget {
   ) {
     switch (challenge.type.toUpperCase()) {
       case 'LOGGING_STREAK':
-        return '${objective.targetDays} ${context.tr.translate('challenge_days_completed')}';
+        return '${objective.targetDays} ${context.tr.translate(
+          objective.targetDays == 1
+              ? 'challenge_days_completed_one'
+              : 'challenge_days_completed_other',
+        )}';
       case 'PROTEIN_TARGET':
       case 'FIBER_TARGET':
         return '${_formatNumber(progress.targetValue)} g';
@@ -266,9 +273,7 @@ class _MetricPill extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: compact ? 10 : 11,
-              color: isDarkMode
-                  ? Colors.white54
-                  : AppTheme.textSecondaryColor,
+              color: isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor,
             ),
           ),
           const SizedBox(height: 4),
@@ -277,8 +282,7 @@ class _MetricPill extends StatelessWidget {
             style: TextStyle(
               fontSize: compact ? 12 : 13,
               fontWeight: FontWeight.w700,
-              color:
-                  isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
             ),
           ),
         ],

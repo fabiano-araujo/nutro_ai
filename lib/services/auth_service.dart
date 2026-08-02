@@ -93,9 +93,12 @@ class AuthService with ChangeNotifier {
           '[AuthService] Usuário Google obtido: ${googleUser.displayName}, ${googleUser.email}');
 
       // Obter informações do usuário Google
+      final googleDisplayName = googleUser.displayName?.trim();
       final userData = {
         'email': googleUser.email,
-        'name': googleUser.displayName ?? 'Usuário Google',
+        'name': googleDisplayName?.isNotEmpty == true
+            ? googleDisplayName!
+            : googleUser.email.split('@').first,
         'googleId': googleUser.id,
         'picture': googleUser.photoUrl ?? '',
       };

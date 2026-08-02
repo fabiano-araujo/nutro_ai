@@ -1086,7 +1086,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _waitingForPremiumActivation = true;
       await purchaseService.restorePurchases();
       if (purchaseService.errorMessage != null) {
-        final message = purchaseService.errorMessage!;
+        final message = context.tr.translate('subscription_error');
         _waitingForPremiumActivation = false;
         setState(() {
           _hasError = false;
@@ -1116,8 +1116,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     await purchaseService.reloadProducts();
 
     if (!mounted) return;
-    final message = purchaseService.errorMessage;
-    if (message != null && message.isNotEmpty) {
+    final storeError = purchaseService.errorMessage;
+    if (storeError != null && storeError.isNotEmpty) {
+      final message = context.tr.translate('subscription_error');
       setState(() {
         _hasError = false;
         _errorMessage = message;
@@ -1149,7 +1150,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _waitingForPremiumActivation = true;
       await purchaseService.buySubscription(selectedProduct);
       if (purchaseService.errorMessage != null) {
-        final message = purchaseService.errorMessage!;
+        final message = context.tr.translate('subscription_error');
         _waitingForPremiumActivation = false;
         setState(() {
           _hasError = false;
@@ -1157,8 +1158,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         });
         _showPurchaseError(context, message);
       }
-    } catch (e) {
-      final message = '${context.tr.translate('subscription_error')}: $e';
+    } catch (_) {
+      final message = context.tr.translate('subscription_error');
       _waitingForPremiumActivation = false;
       setState(() {
         _hasError = false;
@@ -1200,7 +1201,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   String _productTitle(ProductDetails? product, SubscriptionPlan plan) {
-    if (product == null) return plan.title;
+    if (product == null) return _localizedPlanTitle(context, plan);
     final raw = product.title.trim();
     final suffix = raw.indexOf('(');
     return suffix > 0 && raw.endsWith(')')
@@ -1411,7 +1412,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         context.tr.translate('subscription_annual_card_description'),
       PurchaseService.planoMensal =>
         context.tr.translate('subscription_monthly_card_description'),
-      _ => plan.description,
+      _ => context.tr.translate('subscription_weekly_card_description'),
+    };
+  }
+
+  String _localizedPlanTitle(
+    BuildContext context,
+    SubscriptionPlan plan,
+  ) {
+    return switch (plan.id) {
+      PurchaseService.planoAnual =>
+        context.tr.translate('subscription_annual_plan_title'),
+      PurchaseService.planoMensal =>
+        context.tr.translate('subscription_monthly_plan_title'),
+      _ => context.tr.translate('subscription_weekly_plan_title'),
     };
   }
 

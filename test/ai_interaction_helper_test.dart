@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nutro_ai/i18n/app_localizations.dart';
 import 'package:nutro_ai/services/storage_service.dart';
 import 'package:nutro_ai/utils/ai_interaction_helper.dart';
 import 'package:nutro_ai/widgets/message_notifier.dart';
@@ -17,6 +19,14 @@ void main() {
     late BuildContext context;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Builder(
           builder: (builderContext) {
             context = builderContext;
@@ -25,6 +35,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     final notifier = MessageNotifier();
     final timestamp = DateTime(2026, 7, 8, 9, 30);

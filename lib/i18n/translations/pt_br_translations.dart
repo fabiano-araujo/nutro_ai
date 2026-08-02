@@ -1,5 +1,58 @@
 // Traduções para Português (Brasil)
 final Map<String, String> ptBRTranslations = {
+  'anger': 'Raiva',
+  'blog_language_level': 'Nível de linguagem do blog',
+  'blog_target_audience': 'Público-alvo do blog',
+  'hope': 'Esperança',
+  'joy': 'Alegria',
+  'long': 'Longo',
+  'love': 'Amor',
+  'medium': 'Médio',
+  'nostalgia': 'Nostalgia',
+  'professional_audience': 'Público profissional',
+  'sadness': 'Tristeza',
+  'script_language_level': 'Nível de linguagem do roteiro',
+  'script_target_audience': 'Público-alvo do roteiro',
+  'short': 'Curto',
+  'summary_result': 'Resultado do resumo',
+  'email_example_hint': 'nome@exemplo.com',
+  'nutrition_calorie_goal_total': 'de {goal} kcal',
+  'youtube_video_fallback_title': 'Vídeo do YouTube {id}',
+  'youtube_creator_channel': 'Canal do criador',
+  'youtube_views_one': '{count} visualização',
+  'youtube_views_other': '{count} visualizações',
+  'diet_model_gemini3_description': 'Modelo padrão da tela Minha Dieta',
+  'diet_model_deepseek_description':
+      'Alternativa rápida para testar a geração de dietas',
+  'diet_model_gemini_lite_description':
+      'Modelo leve para testes com menor custo',
+  'diet_model_custom_description': 'Modelo personalizado do OpenRouter',
+  'meal_item_count_one': '{count} item',
+  'meal_item_count_other': '{count} itens',
+  'protein_grams_short': '{value} g prot',
+  'carbs_grams_short': '{value} g carb',
+  'fat_grams_short': '{value} g gord',
+  'fat_short': 'Gord',
+  'extra_meal_number': 'Refeição extra {number}',
+  'used_times_one': 'Usado {count} vez',
+  'used_times_other': 'Usado {count} vezes',
+  'notifications_enabled_count_one': '{count} ativa',
+  'notifications_enabled_count_other': '{count} ativas',
+  'streak_share_message_one':
+      'Estou com {count} dia de sequência no Nutro AI. Vem acompanhar comigo!',
+  'streak_share_message_other':
+      'Estou com {count} dias de sequência no Nutro AI. Vem acompanhar comigo!',
+  'streak_hero_record_one': 'Seu recorde: {count} dia',
+  'streak_hero_record_other': 'Seu recorde: {count} dias',
+  'streak_freeze_available_title_one': 'Você tem {count} proteção',
+  'streak_freeze_available_title_other': 'Você tem {count} proteções',
+  'challenge_days_completed_one': 'dia',
+  'challenge_days_completed_other': 'dias',
+  'notification_streak_risk_body_one':
+      'Você está há {count} dia registrando refeições. Registre uma hoje para não perder a sequência.',
+  'notification_streak_risk_body_other':
+      'Você está há {count} dias registrando refeições. Registre uma hoje para não perder a sequência.',
+  'image_save_error': 'Não foi possível salvar a imagem.',
   // Títulos de telas
   'app_title': 'Nutro AI',
   'app_subtitle': 'Seu assistente inteligente de nutrição',
@@ -13,8 +66,6 @@ final Map<String, String> ptBRTranslations = {
   'login_title': 'Entrar',
   'email_login_title': 'Entrar com Email',
   'welcome': 'Bem-vindo',
-  'welcome_description':
-      'Entre com sua conta para acompanhar suas calorias e alcançar seus objetivos nutricionais',
   'sign_in_with_google': 'Entrar com Google',
   'sign_in_with_email': 'Entrar com email e senha',
   'or': 'ou',
@@ -31,12 +82,8 @@ final Map<String, String> ptBRTranslations = {
   'please_enter_password': 'Por favor, insira sua senha',
   'password_min_length': 'A senha deve ter pelo menos 6 caracteres',
   'remember_email_password': 'Lembrar email e senha',
-  'login_to_access_profile': 'Entre para acessar seu perfil',
-  'login_description':
-      'Entre para ver seu histórico, favoritos e configurações personalizadas.',
   'login_required_for_diet':
       'É necessário estar logado para gerar dietas personalizadas',
-  'sign_in': 'Entrar',
   'sign_out': 'Sair da Conta',
   'logout': 'Sair',
   'logout_confirmation': 'Tem certeza que deseja sair da sua conta?',
@@ -337,13 +384,13 @@ final Map<String, String> ptBRTranslations = {
       'Atualizando seus macronutrientes em g/kg...',
   'agent_loading_generic': 'Consultando seus dados no app...',
   'agent_command_limit_reached':
-      'Nao consegui concluir a acao interna. Tente novamente.',
+      'Não consegui concluir a ação interna. Tente novamente.',
   'agent_command_invalid_response':
-      'Nao consegui interpretar a acao interna solicitada. Tente novamente.',
+      'Não consegui interpretar a ação interna solicitada. Tente novamente.',
   'agent_macro_scope_fallback':
-      'Neste chat eu ajusto metas, calorias e macros. Me diga se voce quer reduzir ou aumentar calorias, mudar proteina, carboidratos ou gorduras.',
+      'Neste chat eu ajusto metas, calorias e macros. Diga se você quer reduzir ou aumentar calorias, ajustar proteína, carboidratos ou gorduras.',
   'agent_empty_response_fallback':
-      'Nao recebi uma resposta da IA. Tente enviar novamente.',
+      'Não recebi uma resposta da IA. Tente enviar novamente.',
   'chat_credit_exhausted_inline':
       'Você está sem créditos para continuar agora. Assista a um vídeo curto para ganhar mais créditos.',
   'chat_action_login': 'Fazer login',
@@ -355,49 +402,49 @@ final Map<String, String> ptBRTranslations = {
   'chat_action_edit_macros_ui': 'Editar macros na interface',
   'chat_action_view_my_diet_ui': 'Ver em Minha Dieta',
   'chat_diet_personalization_question':
-      'Posso gerar uma dieta padrao agora. Se quiser personalizar, me diga em uma frase: vegetariana ou vegana, intolerancias ou alergias, condicoes de saude, alimentos que prefere ou evita e rotina. Quer adicionar algo ou posso gerar padrao?',
+      'Posso gerar uma dieta padrão agora. Se quiser personalizar, diga em uma frase: vegetariana ou vegana, intolerâncias ou alergias, condições de saúde, alimentos que prefere ou evita e rotina. Quer adicionar algo ou posso gerar o padrão?',
   'chat_action_continue_macros_chat': 'Ajustar metas e macros com IA',
   'chat_setup_reminder_prefix': 'Vamos terminar de configurar suas informações',
   'chat_setup_reminder_with_fields':
       'Vamos terminar de configurar suas informações. Ainda faltam: {fields}.',
   'chat_goal_setup_chat_prompt':
-      'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faca uma pergunta por vez e comece pela idade, altura, peso e genero.',
+      'Quero configurar minhas metas nutricionais pelo chat. Use os comandos do app quando precisar, faça uma pergunta por vez e comece pela idade, altura, peso e gênero.',
   'chat_macro_edit_chat_prompt':
       'Quero revisar minhas calorias e macros atuais com IA.',
   'diet_generation_preferences_title': 'Antes de montar sua dieta',
   'diet_generation_preferences_description':
-      'Me conte as particularidades que devo considerar para escolher melhor os alimentos. Se algum campo nao se aplicar, deixe em branco e eu vou entender como nenhum.',
+      'Conte as particularidades que devo considerar para escolher melhor os alimentos. Se algum campo não se aplicar, deixe em branco e eu vou entender como nenhum.',
   'diet_generation_preferences_diet_style_label': 'Tipo de dieta preferido',
   'diet_generation_preferences_restrictions_label':
-      'Restricoes ou alergias alimentares',
+      'Restrições ou alergias alimentares',
   'diet_generation_preferences_restrictions_hint':
-      'Ex.: lactose, gluten, vegetariano',
+      'Ex.: lactose, glúten, vegetariano',
   'diet_generation_preferences_restrictions_quick_label':
-      'Atalhos de restricoes',
+      'Atalhos de restrições',
   'diet_generation_preferences_favorite_foods_label':
-      'Alimentos que voce gosta de incluir',
+      'Alimentos que você gosta de incluir',
   'diet_generation_preferences_favorite_foods_hint':
-      'Ex.: frango, iogurte, tapioca, arroz e feijao',
+      'Ex.: frango, iogurte, tapioca, arroz e feijão',
   'diet_generation_preferences_avoided_foods_label':
       'Alimentos que prefere evitar',
   'diet_generation_preferences_avoided_foods_hint':
-      'Ex.: peixe, brocolis, cafe',
+      'Ex.: peixe, brócolis, café',
   'diet_generation_preferences_avoided_quick_label':
       'Atalhos de alimentos evitados',
   'diet_generation_preferences_hungriest_label':
-      'Em qual refeicao voce costuma ter mais fome?',
-  'diet_generation_preferences_health_quick_label': 'Condicoes de saude',
+      'Em qual refeição você costuma ter mais fome?',
+  'diet_generation_preferences_health_quick_label': 'Condições de saúde',
   'diet_generation_preferences_routine_label':
       'Particularidades de apetite e rotina',
   'diet_generation_preferences_routine_hint':
-      'Ex.: muito sono de manha, pouca fome cedo, muita fome a noite, dificuldade em comer ou ganhar peso',
+      'Ex.: muito sono de manhã, pouca fome cedo, muita fome à noite, dificuldade em comer ou ganhar peso',
   'diet_option_none': 'Nenhum',
   'diet_option_vegetarian': 'Vegetariano',
   'diet_option_vegan': 'Vegano',
-  'diet_option_gluten_free': 'Sem gluten',
+  'diet_option_gluten_free': 'Sem glúten',
   'diet_option_lactose_free': 'Sem lactose',
-  'diet_option_no_red_meat': 'Nao gosta de carne vermelha',
-  'diet_option_high_blood_pressure': 'Pressao alta',
+  'diet_option_no_red_meat': 'Não gosta de carne vermelha',
+  'diet_option_high_blood_pressure': 'Pressão alta',
   'diet_option_diabetes': 'Diabetes',
   'diet_option_high_cholesterol': 'Colesterol alto',
   'diet_option_other': 'Outro',
@@ -414,7 +461,6 @@ final Map<String, String> ptBRTranslations = {
       'Use os recursos do app para ver seu histórico aqui',
   'no_favorites_found': 'Nenhum favorito encontrado',
   'add_items_to_favorites': 'Adicione itens aos favoritos para vê-los aqui',
-  'added_to_favorites': 'Adicionado aos Favoritos',
   'removed_from_favorites': 'Removido dos Favoritos',
   'error_adding_to_favorites': 'Erro ao adicionar aos favoritos',
   'error_removing_from_favorites': 'Erro ao remover dos favoritos',
@@ -434,7 +480,6 @@ final Map<String, String> ptBRTranslations = {
   'today_time': 'Hoje às {time}',
   'yesterday_time': 'Ontem às {time}',
   'add_to_favorites': 'Adicionar aos favoritos',
-  'remove_from_favorites': 'Remover dos favoritos',
 
   // Tela de câmera
   'scan': 'Digitalizar',
@@ -477,11 +522,9 @@ final Map<String, String> ptBRTranslations = {
   // Dicas de câmera
   'math_hint': 'Tire uma foto de um problema de matemática',
   'general_hint': 'Tire uma foto de uma pergunta',
-  'translate_hint': 'Idioma para traduzir',
   'translate_hint_short': 'Traduzir para',
 
   // Tela de chat (IA Tutor)
-  'ai_tutor': 'Assistente de Nutrição',
   'ai_tutor_welcome':
       'O que você comeu hoje? Eu calculo as calorias e os nutrientes para você.',
   'ai_tutor_short_welcome':
@@ -661,7 +704,6 @@ final Map<String, String> ptBRTranslations = {
   'grammar_only': 'Apenas gramática',
   'spelling_only': 'Apenas ortografia',
   'complete_check': 'Completa',
-  'style_check': 'Estilo e fluidez',
   'suggest_alternatives': 'Sugerir alternativas',
   'check_grammar': 'Verificar gramática',
   'translating': 'Traduzindo...',
@@ -761,7 +803,6 @@ final Map<String, String> ptBRTranslations = {
   'writing_tone': 'Tom da escrita',
   'friendly_tone': 'Amigável',
   'enthusiastic_tone': 'Entusiasmado',
-  'professional_tone': 'Profissional',
 
   // Parâmetros para Paráfrase
   'paraphrase_level': 'Nível de paráfrase',
@@ -798,7 +839,6 @@ final Map<String, String> ptBRTranslations = {
   'quotes': 'Citações',
 
   // Assistente de aprendizagem
-  'ask_anything': 'Ex: comi 2 ovos e um pão',
   'explain_concepts': 'Explique conceitos',
   'explique_conceitos': 'Explique conceitos',
   'quiz_generator': 'Gerador de quiz',
@@ -894,7 +934,7 @@ final Map<String, String> ptBRTranslations = {
   'create_poem_style': 'Crie um poema no estilo',
   'with_emotion': 'com emoção',
   'and_length': 'e tamanho',
-  'about': 'sobre',
+  'about_connector': 'sobre',
   'create_blog_article_with_tone': 'Crie um artigo de blog com tom',
   'for_audience': 'para público',
   'with_language_level': 'com nível de linguagem',
@@ -928,9 +968,6 @@ final Map<String, String> ptBRTranslations = {
 
   // Assinaturas e Premium
   'tap_for_premium': 'Toque para obter Premium',
-
-  // Botão de sair da conta
-  'sign_out': 'Sair da Conta',
 
   // Abas adicionais da tela de câmera
   'physics': 'Física',
@@ -1016,7 +1053,7 @@ final Map<String, String> ptBRTranslations = {
   'subscription_guarantee_subtitle':
       'Não gostou? Devolvemos 100% do seu dinheiro.',
   'subscription_free_trial_badge': 'Teste grátis',
-  'subscription_free_trial_days': '{days} dias grátis',
+  'subscription_free_trial_days': 'Período de teste grátis (dias): {days}',
   'premium_activated_title': 'Premium ativado',
   'premium_activated_subtitle':
       'Sua assinatura foi confirmada. Estes recursos já estão liberados:',
@@ -1144,7 +1181,7 @@ final Map<String, String> ptBRTranslations = {
   'barcode_temporary_error_message':
       'O serviço recusou a busca duas vezes seguidas. Tente novamente daqui a 1 ou 2 minutos.',
   'barcode_temporary_error_message_minutes':
-      'O serviço recusou a busca duas vezes seguidas. Tente novamente daqui a {minutes} minutos.',
+      'Tempo para tentar novamente: {minutes} min.',
   'food_claims_title': 'Claims nutricionais',
   'food_claims_free_from': 'Livre de',
   'food_claims_contains': 'Contém',
@@ -1509,7 +1546,7 @@ final Map<String, String> ptBRTranslations = {
   'profile_daily_target': 'Meta Diária',
   'profile_daily_macro_goals': 'Metas Diárias de Macros',
   'profile_auto_calculated_description':
-      'Calculado automaticamente com base em seus objetivos, ou definir manualmente.',
+      'Calculado automaticamente com base nos seus objetivos ou definido manualmente.',
   'profile_daily_calories_consumed': 'Calorias consumidas diariamente',
   'profile_7_days': '7 dias',
   'profile_30_days': '30 dias',
@@ -1719,8 +1756,6 @@ final Map<String, String> ptBRTranslations = {
   'daily_diet_ai_description':
       'Gere automaticamente um plano de dieta personalizado com inteligência artificial',
   'premium_feature': 'Recurso Premium',
-  'daily_diet_premium_description':
-      'A geração automática de dietas com IA é um recurso exclusivo para assinantes Premium. Faça upgrade para ter acesso a dietas personalizadas geradas automaticamente!',
   'upgrade_to_pro': 'Fazer Upgrade',
   'replace_all': 'Substituir',
   'weekly_diet_active': 'Sua dieta semanal está ativa',
@@ -1770,7 +1805,7 @@ final Map<String, String> ptBRTranslations = {
       'Selecione os próximos dias em que deseja copiar este cardápio. Dietas já existentes serão substituídas.',
   'repeat_diet_replace_existing': 'Substitui a dieta já salva nesse dia',
   'repeat_diet_apply': 'Repetir dieta',
-  'repeat_diet_success': 'Dieta repetida em {count} dia(s)',
+  'repeat_diet_success': 'Datas atualizadas com esta dieta: {count}.',
 
   // Rastreamento de atividades
   'automatic_tracking_apps_title': 'Rastreamento automático',
@@ -1791,8 +1826,8 @@ final Map<String, String> ptBRTranslations = {
   'tracking_kcal_spent_suffix': 'kcal  Gastos',
   'tracking_activity_card_message':
       'Sincronize com o Health Connect para acompanhar calorias gastas, passos e exercícios no seu dia.',
-  'tracking_action_connect': 'Conectar',
-  'tracking_refresh': 'Sincronizar agora',
+  'tracking_action_connect': 'Configurar',
+  'tracking_refresh': 'Atualizar',
   'tracking_syncing': 'Sincronizando...',
   'tracking_add_activity': 'Apps de rastreamento',
   'tracking_add_activity_button': 'Adicionar uma atividade',
@@ -1856,17 +1891,15 @@ final Map<String, String> ptBRTranslations = {
   'tracking_syncing_health_connect': 'Sincronizando dados do Health Connect...',
   'tracking_health_update_required':
       'Instale ou atualize o Health Connect para sincronizar seus dados.',
-  'tracking_permission_granted': 'Permissões do Health Connect ativadas.',
-  'tracking_permission_partial':
-      'Permissões parciais ativadas. Alguns dados podem não aparecer.',
+  'tracking_permission_granted': 'Health Connect ativo',
+  'tracking_permission_partial': 'Acesso parcial ao Health Connect',
   'tracking_permission_denied':
       'Permissão não concedida. Ative o acesso no Health Connect.',
-  'tracking_permission_needed':
-      'Permita o acesso ao Health Connect para ler passos, exercícios e calorias gastas.',
+  'tracking_permission_needed': 'Ative o acesso ao Health Connect',
   'tracking_no_activity_data':
       'Nenhum dado de atividade encontrado hoje. Confira no Health Connect se seu app está compartilhando dados.',
   'tracking_activity_synced_message':
-      '{steps} passos e {minutes} min de exercícios sincronizados hoje.',
+      'Atividade sincronizada • Passos: {steps} • Minutos de exercício: {minutes}.',
   'tracking_synced_today': 'Sincronizado hoje',
   'tracking_metric_calories': 'kcal',
   'tracking_metric_steps': 'passos',
@@ -1878,11 +1911,9 @@ final Map<String, String> ptBRTranslations = {
   'tracking_permission_exercises': 'Exercícios',
   'popular_tracking_apps': 'Apps e dispositivos',
   'tracking_sources_intro':
-      'Conecte seu app ou relógio ao Health Connect. O Nutro AI detecta automaticamente os dados compartilhados.',
-  'tracking_desc_huawei_health':
-      'Abra o Huawei Saúde. A sincronização direta exige autorização do Huawei Health Kit.',
+      'Instale o app do fabricante e ative o Health Connect nele. O Nutro AI detecta automaticamente os dados compartilhados.',
   'tracking_desc_fitbit_health_connect':
-      'Ative o Health Connect nas conexões do Fitbit ou Google Health.',
+      'No Google Health, abra Conexões e conecte o Health Connect.',
   'tracking_desc_garmin_health_connect':
       'Compartilha dados pelo Health Connect no Android 14 ou superior.',
   'tracking_desc_polar_health_connect':
@@ -1964,7 +1995,7 @@ final Map<String, String> ptBRTranslations = {
   'activate_freeze': 'Proteger minha sequência',
   'activate_freeze_title': 'Proteger sequência?',
   'activate_freeze_description':
-      'A proteção congela sua sequência por 24 horas, mesmo que você não registre nada. Você tem {count} proteção(ões) disponível(is).',
+      'Congele sua sequência por 24 horas, mesmo sem registrar nada. Proteções disponíveis: {count}.',
   'activate': 'Ativar',
   'streak_checkin_action': 'Atualizar sequência',
   'streak_checkin_success': 'Sequência atualizada com sucesso.',
@@ -2006,7 +2037,7 @@ final Map<String, String> ptBRTranslations = {
   'streak_friend_checkin_error': 'Não foi possível atualizar o check-in.',
   'streak_friend_progress_title': 'Progresso em dupla',
   'streak_friend_progress_message':
-      '{friends} amigo(s) e {duos} sequência(s) em dupla ativas.',
+      'Amigos: {friends} • Sequências em dupla ativas: {duos}.',
   'social_open_hub': 'Abrir central social',
   'social_summary_title': 'Resumo social',
   'social_summary_subtitle':
@@ -2123,4 +2154,1080 @@ final Map<String, String> ptBRTranslations = {
   'benchmark_cached_result': 'Resultado carregado do cache.',
   'benchmark_usage_unavailable':
       'Tokens e custo não retornados para esta geração.',
+
+  // Cobertura completa de localização da interface
+  'menu': 'Menu',
+  'start': 'Começar',
+  'no': 'Não',
+  'clear': 'Limpar',
+  'other': 'Outro',
+  'tool': 'Ferramenta',
+  'tool_label': 'Ferramenta',
+  'error_title': 'Erro',
+  'permission_required_title': 'Permissão necessária',
+  'open_settings': 'Abrir Configurações',
+  'allow': 'Permitir',
+  'web_feature_unavailable': 'Este recurso não está disponível na web.',
+  'generic_error_detail': 'Ocorreu um erro: {error}',
+  'unexpected_error_detail': 'Erro inesperado: {error}',
+  'save_error_detail': 'Não foi possível salvar: {error}',
+  'api_error_with_code': 'Erro da API (código {code}).',
+  'session_expired_login_again': 'Sua sessão expirou. Entre novamente.',
+  'insufficient_credits': 'Créditos insuficientes.',
+  'app_logs': 'Logs do app',
+  'no_logs_yet': 'Nenhum log ainda',
+  'previous_month': 'Mês anterior',
+  'next_month': 'Próximo mês',
+  'bmi_value': 'IMC {value}',
+
+  // Login, cadastro e assinatura
+  'login_welcome_description':
+      'Entre para salvar seu progresso e acessar todos os recursos do Nutro AI.',
+  'login_cancelled': 'Login cancelado.',
+  'google_login_failed': 'Não foi possível entrar com o Google.',
+  'login_failed_credentials': 'E-mail ou senha incorretos.',
+  'developer_mode': 'Modo desenvolvedor',
+  'developer_auto_login_prompt': 'Fazer login automático na conta {email}?',
+  'developer_auto_login_success': 'Login automático realizado: {email}',
+  'developer_auto_login_failed': 'Falha no login automático.',
+  'developer_auto_login_error': 'Erro ao fazer login automático.',
+  'subscription_annual_plan_title': 'Plano anual',
+  'subscription_monthly_plan_title': 'Plano mensal',
+  'subscription_weekly_plan_title': 'Plano semanal',
+  'subscription_weekly_card_description':
+      'Acesso premium com renovação semanal.',
+
+  // Câmera, imagens e análise
+  'camera_tips_title': 'Dicas para a foto',
+  'camera_tip_frame_meal': 'Enquadre toda a refeição na foto.',
+  'camera_tip_show_items': 'Deixe todos os alimentos visíveis.',
+  'camera_tip_good_light': 'Use um ambiente bem iluminado.',
+  'camera_capture_tips':
+      'Centralize o alimento, evite sombras e mantenha a imagem nítida.',
+  'camera_initialization_retries_failed':
+      'Não foi possível iniciar a câmera após várias tentativas.',
+  'camera_initialization_error_detail':
+      'Não foi possível iniciar a câmera: {error}',
+  'camera_analysis_prompt': 'Analise esta imagem no modo {mode}.',
+  'image_analysis_with_mode': 'Análise de imagem: {mode}',
+  'image_processing_error_detail':
+      'Não foi possível processar a imagem: {error}',
+  'image_processing_retry_message':
+      'Não foi possível processar a imagem. Tente novamente.',
+  'gallery_permission_denied': 'Permissão de acesso à galeria negada.',
+  'image_saved_gallery': 'Imagem salva na galeria.',
+  'save_to_gallery': 'Salvar na galeria',
+  'select_one_question': 'Selecione apenas uma pergunta.',
+  'photo_library': 'Biblioteca de fotos',
+  'take_photo': 'Tirar uma foto',
+  'open_camera': 'Abrir câmera',
+  'scan_photo': 'Digitalizar foto',
+
+  // Áudio e chat principal
+  'agent_data_access_error':
+      'Desculpe, ocorreu um erro ao acessar seus dados no app. Tente novamente.',
+  'voice_read_permission_error':
+      'Não foi possível ler o texto. Verifique as permissões do aplicativo.',
+  'audio_recording_start_error': 'Erro ao iniciar a gravação de áudio',
+  'no_audio_captured': 'Nenhum áudio foi capturado',
+  'audio_transcription_error': 'Erro ao transcrever o áudio',
+  'microphone_permission_denied': 'Permissão do microfone negada',
+  'microphone_permission_permanently_denied_message':
+      'A permissão do microfone foi negada permanentemente. Por favor, abra as configurações do aplicativo para habilitar o microfone.',
+  'microphone_permission_voice_recognition_message':
+      'Para usar o reconhecimento de voz, você precisa permitir o acesso ao microfone.',
+  'microphone': 'Microfone',
+  'stop_recording': 'Parar gravação',
+  'voice_fallback_name': 'Voz {index}',
+  'chat_login_save_progress': 'Entre para salvar seu progresso',
+  'no_credits_remaining_title': 'Sem créditos restantes!',
+  'meal_added_to_diary_today': 'Adicionado ao diário de hoje',
+  'meal_added_to_diary_yesterday': 'Adicionado ao diário de ontem',
+  'meal_added_to_diary_date': 'Adicionado ao diário de {date}',
+  'suggestion_log_bread_milk': 'Comi 2 pães de forma com 1 copo de leite',
+  'suggestion_log_chocolate_cake': 'Comi um pedaço grande de bolo de chocolate',
+  'suggestion_log_rice_beans_meat': '200g de feijão com 150g de arroz e carne',
+  'suggestion_log_chicken_salad_rice':
+      '1 filé de frango cru 120g, salada e 2 colheres de arroz',
+  'suggestion_healthy_practical_lunch':
+      'Me sugira um almoço saudável e prático',
+  'suggestion_weight_loss_breakfast':
+      'O que posso comer no café da manhã para emagrecer?',
+  'suggestion_gain_weight_food': 'O que comer para ganhar peso sendo magro?',
+  'suggestion_full_day_menu': 'Monte um cardápio completo para o meu dia',
+  'suggestion_weight_loss_trouble':
+      'Não consigo emagrecer, o que posso estar fazendo errado?',
+  'suggestion_gain_muscle': 'Como ganhar massa muscular rapidamente?',
+  'suggestion_control_sweets_cravings':
+      'Como controlar a vontade de comer doces?',
+  'suggestion_carbs_at_night': 'Posso comer carboidrato à noite?',
+
+  // Formatação de mensagens
+  'swipe_to_view_full': 'Deslize para ver completo',
+  'formula_processing_error': 'Erro ao processar fórmula:',
+  'code_label': 'código',
+  'code_copied_to_clipboard': 'Código copiado para a área de transferência',
+  'image_sent_message': 'Imagem enviada: {message}',
+
+  // Ferramentas e prévia HTML
+  'tools_welcome_description':
+      'Escolha uma ferramenta para analisar, criar ou aprimorar seu conteúdo.',
+  'edit_food_coming_soon': 'A edição de alimentos estará disponível em breve.',
+  'nutrition_search': 'Pesquisa nutricional',
+  'hide_webview': 'Ocultar navegador',
+  'show_webview': 'Mostrar navegador',
+  'page_url': 'URL da página',
+  'paste_url_hint': 'Cole a URL aqui...',
+  'load_url': 'Carregar URL',
+  'extracting_data': 'Extraindo dados...',
+  'extract_data': 'Extrair dados',
+  'extracted_data': 'Dados extraídos',
+  'data_copied_clipboard': 'Dados copiados para a área de transferência.',
+  'copy_json': 'Copiar JSON',
+  'nutritional_values': 'Valores nutricionais',
+  'data_extraction_error': 'Não foi possível extrair os dados.',
+  'html_source_code': 'Código-fonte HTML',
+  'html_preview_title': 'Prévia HTML',
+  'view_page': 'Ver página',
+  'view_source_code': 'Ver código-fonte',
+  'html_preview_load_error': 'Não foi possível carregar a prévia HTML.',
+  'html_preview_error_hint':
+      'Verifique o conteúdo e tente abrir a prévia novamente.',
+  'preparing_html_preview': 'Preparando prévia HTML...',
+  'html_preview_alternative': 'Prévia alternativa',
+  'copy_html': 'Copiar HTML',
+  'html_browser_preview_title': 'Abrir prévia no navegador',
+  'html_browser_preview_description':
+      'Veja o resultado renderizado em uma nova janela.',
+  'open_new_window': 'Abrir nova janela',
+  'copy_html_code': 'Copiar código HTML',
+  'html_copied_clipboard': 'HTML copiado para a área de transferência.',
+  'unified_search_hint': 'Buscar em todo o app...',
+  'type_to_search': 'Digite para pesquisar',
+  'free_chats': 'Conversas livres',
+
+  // Busca e edição de alimentos
+  'unknown_food': 'Alimento desconhecido',
+  'frequent': 'Frequentes',
+  'database_results': 'Resultados do banco de dados',
+  'searching_database': 'Buscando no banco de dados...',
+  'web_results': 'Resultados da web',
+  'searching_web': 'Buscando na web...',
+  'no_frequent_foods': 'Nenhum alimento frequente ainda.',
+  'food_added_to_meal': '{food} foi adicionado a {meal}.',
+  'select_portion': 'Selecione a porção',
+  'view_details': 'Ver detalhes',
+  'food_source_favorite': 'Favorito',
+  'food_source_custom': 'Personalizado',
+  'food_source_recent': 'Recente',
+  'food_source_catalog': 'Catálogo',
+  'food_source_ai': 'IA',
+  'internet': 'Internet',
+  'users': 'Usuários',
+  'per_amount': 'por {amount}',
+  'edit_food_name_portion': 'Editar nome e porção',
+  'food_option_your_favorite': 'Seu favorito',
+  'manually_edited': 'Editado manualmente',
+  'food_option_ai_estimate': 'Estimativa da IA',
+  'edit_manually': 'Editar manualmente',
+  'enter_macros_manually': 'Informar macros manualmente',
+  'web_suggestions': 'Sugestões da web',
+  'show_less': 'Mostrar menos',
+  'show_more_count': 'Mostrar mais {count}',
+  'food_sources_empty_hint': 'Nenhuma alternativa encontrada para {food}.',
+  'edit_macros_manually': 'Editar macros manualmente',
+
+  // Conteúdo de exemplo das ferramentas
+  'example_food_egg': 'Ovo',
+  'example_food_couscous': 'Cuscuz',
+  'example_food_milk': 'Leite',
+  'example_portion_one_large': '1 grande',
+  'example_portion_large': 'Grande (50g)',
+  'example_portion_medium': 'Médio (40g)',
+  'example_portion_small': 'Pequeno (30g)',
+  'example_portion_100g': '100g',
+  'example_portion_glass': 'Copo (200ml)',
+  'example_portion_half_glass': 'Meio copo (100ml)',
+  'example_portion_cup': 'Xícara (250ml)',
+  'example_portion_tablespoon': 'Colher de sopa (50ml)',
+
+  // Notificações e geração em segundo plano
+  'notification_channel_reminders_name': 'Lembretes',
+  'notification_channel_reminders_description':
+      'Lembretes de refeições, metas e acompanhamento nutricional.',
+  'notification_channel_updates_description':
+      'Atualizações e novidades do Nutro AI.',
+  'background_generation_channel_name': 'Geração em segundo plano',
+  'background_generation_channel_description':
+      'Acompanha a geração de dietas e prévias de shape.',
+  'diet_generation_preparing_notification': 'Preparando sua dieta...',
+  'diet_generation_running_notification': 'Gerando sua dieta...',
+  'diet_generation_complete_title': 'Dieta pronta',
+  'diet_generation_complete_body':
+      'Sua dieta foi gerada. Toque para visualizar.',
+  'diet_generation_failed_title': 'Falha ao gerar dieta',
+  'generation_failed_open_app_body':
+      'Abra o app para conferir os detalhes e tentar novamente.',
+  'diet_generation_cancelled': 'Geração da dieta cancelada.',
+  'diet_generation_empty_response':
+      'A geração terminou sem retornar uma dieta.',
+  'profile_shape_generation_running_notification':
+      'Gerando sua prévia de shape...',
+  'profile_shape_generation_complete_title': 'Prévia de shape pronta',
+  'profile_shape_generation_complete_body':
+      'Sua prévia foi gerada. Toque para visualizar.',
+  'profile_shape_generation_failed_title': 'Falha ao gerar a prévia de shape',
+  'profile_shape_generation_failed':
+      'Não foi possível gerar a prévia de shape.',
+  'profile_shape_generation_cancelled': 'Geração da prévia de shape cancelada.',
+
+  // Ferramentas legadas
+  'academic_tone_description':
+      'Transforme o texto em uma linguagem acadêmica formal',
+  'ai_assistant': 'Assistente de IA',
+  'ai_chat': 'Chat com IA',
+  'choose_file': 'Escolher arquivo',
+  'code_history_title': 'Código: {action}',
+  'code_input_hint': 'Digite ou cole seu código aqui...',
+  'code_processing_error':
+      'Não foi possível processar o código. Tente novamente.',
+  'continue_conversation': 'Continuar conversa',
+  'copy_result': 'Copiar resultado',
+  'detailed_summary_description': 'Resumo aprofundado com divisão por seções',
+  'document_extracted_text_placeholder': 'Texto extraído de {file}',
+  'document_pick_error': 'Não foi possível selecionar o documento.',
+  'document_summary_error':
+      'Não foi possível resumir o documento. Tente novamente.',
+  'document_summary_file_title': 'Resumo do documento: {file}',
+  'document_supported_formats': 'Formatos compatíveis: TXT, PDF, DOC e DOCX',
+  'document_text': 'Texto do documento',
+  'document_text_hint': 'Digite o texto para resumir ou envie um documento...',
+  'enhance_text': 'Aprimorar texto',
+  'enhanced_result': 'Resultado aprimorado',
+  'enhancement_type': 'Tipo de aprimoramento',
+  'enter_code_to_process': 'Digite algum código para processar.',
+  'enter_text_or_upload_document':
+      'Digite um texto ou envie um documento para resumir.',
+  'enter_text_to_enhance': 'Digite algum texto para aprimorar.',
+  'enter_text_to_enhance_hint': 'Digite aqui o texto que deseja aprimorar...',
+  'expand_description': 'Adicione mais detalhes e explicações',
+  'file_analysis_insufficient_credits':
+      'Você não tem créditos suficientes. A análise de arquivo custa 4 créditos.',
+  'fill_document_summarize_hint':
+      'Preencha o documento e clique em "Resumir" para ver os resultados aqui',
+  'long_approximately_500_words': 'Longo (aprox. 500 palavras)',
+  'medium_approximately_250_words': 'Médio (aprox. 250 palavras)',
+  'medium_summary_description': 'Visão geral completa com os pontos principais',
+  'new_code': 'Novo código',
+  'open_code_editor': 'Abrir editor de código',
+  'open_scanner': 'Abrir scanner',
+  'open_summarizer': 'Abrir resumidor',
+  'open_text_enhancer': 'Abrir aprimorador de texto',
+  'open_tool': 'Abrir ferramenta',
+  'open_youtube': 'Abrir YouTube',
+  'original_length': 'Tamanho original',
+  'paraphrase_description': 'Reescreva o texto mantendo o significado original',
+  'paste_from_clipboard': 'Colar da área de transferência',
+  'select_image_get_solution':
+      'Selecione uma imagem e toque em "Obter solução".',
+  'short_approximately_100_words': 'Curto (aprox. 100 palavras)',
+  'short_summary_description': 'Resumo conciso em 1 ou 2 parágrafos',
+  'simplify_description': 'Torne o texto mais fácil de entender',
+  'summarize_document': 'Resumir documento',
+  'text_enhancement_error':
+      'Não foi possível aprimorar o texto. Tente novamente.',
+  'text_enhancement_history_title': 'Aprimoramento de texto: {action}',
+  'text_extracted_success': 'Texto extraído com sucesso',
+  'text_pasted_from_clipboard': 'Texto colado da área de transferência',
+  'text_truncated_character_limit':
+      'O texto foi reduzido por exceder o limite de caracteres.',
+  'tool_interaction_no_input': 'Interação com ferramenta',
+  'unknown_label': 'Desconhecido',
+  'upload_document': 'Enviar documento',
+  'video_analysis': 'Análise de vídeo',
+  'your_text': 'Seu texto',
+
+  // Social, amigos e desafios
+  'social': 'Social',
+  'social_title': 'Social',
+  'social_menu': 'Menu',
+  'social_community': 'Comunidade',
+  'social_activity': 'Atividade',
+  'social_add_friends': 'Adicionar amigos',
+  'social_friend_requests': 'Pedidos de amizade',
+  'social_manage_friends': 'Gerenciar amigos',
+  'social_create': 'Criar',
+  'social_create_challenge': 'Criar desafio',
+  'social_new_challenge': 'Novo desafio',
+  'social_challenge_name': 'Nome do desafio',
+  'social_challenge_name_hint': 'Ex: 7 dias registrando',
+  'social_challenge_code': 'Código do desafio',
+  'social_challenge_code_hint': 'Ex: ABC12345',
+  'social_challenge_type': 'Tipo',
+  'social_optional_description': 'Descrição (opcional)',
+  'social_private': 'Privado',
+  'social_public': 'Públicos',
+  'social_join_challenge': 'Participar',
+  'social_join_with_code': 'Entrar com código',
+  'social_join_challenge_success': 'Entrou no desafio!',
+  'social_invalid_code': 'Código inválido',
+  'social_challenges_subtitle': 'Crie desafios e compare o progresso.',
+  'social_my_challenges': 'Meus desafios',
+  'social_my_challenges_subtitle': 'Criados ou em andamento',
+  'social_no_active_challenges': 'Nenhum desafio ativo',
+  'social_no_active_challenges_message':
+      'Crie um desafio ou entre em um com um código de amigo.',
+  'social_no_public_challenges':
+      'Nenhum desafio público disponível no momento.',
+  'social_recent_updates': 'Atualizações recentes',
+  'social_empty_feed_title': 'Adicione amigos para começar',
+  'social_empty_feed_message':
+      'Quando seus amigos registrarem refeições ou baterem metas, você vai ver aqui.',
+  'social_feed_load_error': 'Não foi possível carregar. Puxe para atualizar.',
+  'social_feed_app_activity': 'Atividade no app',
+  'social_feed_logged_meals': 'Registrou as refeições do dia',
+  'social_feed_hit_calorie_goal': 'Atingiu o objetivo calórico!',
+  'social_feed_hit_protein': 'Bateu a meta de proteína!',
+  'social_feed_shared_shape_preview': 'Compartilhou uma prévia do shape',
+  'social_feed_joined_challenge': 'Entrou no desafio "{name}"',
+  'social_feed_calorie_progress': '{current} de {goal} kcal',
+  'social_feed_protein_progress': '{current}g de {goal}g',
+  'social_feed_streak_singular': 'Alcançou {count} dia de sequência!',
+  'social_feed_streak_plural': 'Alcançou {count} dias de sequência!',
+  'social_feed_duo_streak_singular':
+      'Sequência em duo de {count} dia com {name}!',
+  'social_feed_duo_streak_plural':
+      'Sequência em duo de {count} dias com {name}!',
+  'social_day_summary': 'Resumo do dia',
+  'social_meal_summary': 'Resumo da refeição',
+  'social_nutrition_log': 'Registro nutricional',
+  'social_visual_progress': 'Evolução visual',
+  'social_duo_activity': 'Atividade em dupla',
+  'social_goal_reached': 'meta batida',
+  'social_within_goal': 'dentro da meta',
+  'social_stat_consumed': 'consumidas',
+  'social_stat_of_grams': 'de {value}g',
+  'social_stat_of_value': 'de {value}',
+  'social_no_photo_in_record': 'Sem foto adicionada neste registro.',
+  'social_more_options': 'Mais opções',
+  'social_hide_post': 'Ocultar publicação',
+  'social_delete_post': 'Excluir publicação',
+  'social_delete_post_title': 'Excluir publicação?',
+  'social_delete_post_message': 'Essa publicação será removida do feed.',
+  'social_delete_post_error': 'Não foi possível excluir a publicação.',
+  'social_post_deleted': 'Publicação excluída',
+  'social_post_hidden': 'Publicação ocultada',
+  'social_filter_challenges': 'Filtrar desafios',
+  'social_friend_fallback': 'amigo',
+  'social_challenge_fallback': 'desafio',
+  'social_friend_removed': 'Amizade com {name} removida.',
+  'social_remove_friend_error': 'Não foi possível remover a amizade.',
+  'social_unfriend': 'Deixar de ser amigo',
+  'social_unfriend_title': 'Deixar de ser amigo?',
+  'social_unfriend_message':
+      'Você deixará de ver publicações de {name} no feed.',
+  'social_private_details': 'Detalhes visíveis só para {name}',
+  'social_sign_in_title': 'Entre para acessar a Comunidade',
+  'social_sign_in_message':
+      'Faça login para ver seus desafios, acompanhar amigos e manter suas sequências.',
+  'social_streak_updated': 'Sequência atualizada',
+  'social_point_singular': 'ponto',
+  'social_point_plural': 'pontos',
+  'social_point_count_singular': '{count} ponto',
+  'social_point_count_plural': '{count} pontos',
+  'social_day_singular': 'dia',
+  'social_day_plural': 'dias',
+  'social_day_count_singular': '{count} dia',
+  'social_day_count_plural': '{count} dias',
+  'challenge_title': 'Desafio',
+  'challenge_leaderboard': 'Classificações',
+  'challenge_all_rankings': 'Todas as classificações',
+  'challenge_rank': '{rank}º',
+  'challenge_participant': 'Participante',
+  'challenge_no_participants': 'Nenhum participante ainda',
+  'challenge_not_found': 'Desafio não encontrado',
+  'challenge_invite': 'Convidar',
+  'challenge_leave': 'Sair',
+  'challenge_leave_title': 'Sair do desafio',
+  'challenge_leave_message':
+      'Tem certeza que deseja sair deste desafio? Seu progresso será perdido.',
+  'challenge_leave_success': 'Você saiu do desafio.',
+  'challenge_started_on': 'Iniciado {date}',
+  'challenge_ends_on': 'Acaba {date}',
+  'challenge_group_stats': 'Estatísticas do grupo',
+  'challenge_current_leader': 'Líder atual',
+  'challenge_total_points': 'Pontos totais',
+  'challenge_my_points': 'meus pontos',
+  'challenge_active_days': 'dias ativos',
+  'challenge_active_day_count_singular': '{count} dia ativo',
+  'challenge_active_day_count_plural': '{count} dias ativos',
+  'challenge_combined_active_days': 'Dias ativos somados',
+  'challenge_average_points_per_day': 'Média de pontos por dia',
+  'challenge_code_copied': 'Código "{code}" copiado.',
+  'challenge_type_calorie_deficit': 'Déficit calórico',
+  'challenge_type_custom': 'Personalizado',
+  'challenge_type_fiber': 'Meta de fibra',
+  'challenge_type_logging': 'Registrar refeições',
+  'challenge_type_protein': 'Meta de proteína',
+  'friends_empty_title': 'Nenhum amigo ainda',
+  'friends_empty_message':
+      'Use a busca acima para encontrar usuários e montar sua rede.',
+  'friends_load_error_title': 'Não foi possível carregar seus amigos',
+  'friends_load_error_message':
+      'Verifique sua conexão e tente novamente para buscar sua rede social.',
+  'friends_search_action': 'Buscar amigos',
+  'friends_search_hint': 'Buscar usuários...',
+  'friends_search_results': 'Resultados da busca',
+  'friends_optional_message': 'Mensagem opcional...',
+  'friends_ping': 'Cutucar',
+  'friends_ping_title': 'Cutucar {name}',
+  'friends_ping_sent': 'Ping enviado!',
+  'friends_ping_error': 'Não foi possível enviar o ping.',
+  'friends_sent_at': 'Enviado {time}',
+  'friends_request_sent': 'Pedido enviado!',
+  'friends_request_cancelled': 'Pedido cancelado',
+  'friends_request_accepted': 'Pedido aceito! {name} agora é seu amigo.',
+  'friends_request_rejected': 'Pedido rejeitado',
+  'friends_accept_request_error': 'Não foi possível aceitar o pedido.',
+  'friends_reject_request_error': 'Não foi possível rejeitar o pedido.',
+  'friends_remove_title': 'Remover amigo',
+  'friends_remove_message': 'Remover {name} da sua lista de amigos?',
+  'friends_status_friend': 'Amigo',
+  'friends_received_request_singular': '{count} pedido de amizade',
+  'friends_received_request_plural': '{count} pedidos de amizade',
+  'friends_sent_request_singular': '{count} pedido enviado',
+  'friends_sent_request_plural': '{count} pedidos enviados',
+  'relative_now': 'agora',
+  'relative_minutes_ago': '{count}min atrás',
+  'relative_hours_ago': '{count}h atrás',
+  'relative_days_ago': '{count} dias atrás',
+  'short_date_with_year': '{day}/{month}/{year}',
+  'short_date_without_year': '{day}/{month}',
+
+  // Respostas locais do agente nutricional
+  'agent_command_unsupported': 'Comando do app não suportado.',
+  'agent_credit_action_complete':
+      'Consegui concluir a ação no app, mas não consegui completar a resposta do chat porque seus créditos acabaram.',
+  'agent_credit_daily_result':
+      'Consultei seu status de hoje: você ainda pode consumir {calories} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras.\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.',
+  'agent_credit_diet_preview': '\n\nPrimeiras refeições: {meals}.',
+  'agent_credit_diet_result':
+      'Seu novo plano de dieta foi gerado com sucesso. Número de refeições: {meal_count}. Ele fornece cerca de {calories} kcal no dia ({protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras). Você já pode ver a dieta na aba Minha Dieta.{preview}\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.',
+  'agent_credit_macro_result':
+      'Seus alvos nutricionais atuais são {calories} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras.\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.',
+  'agent_credit_setup_complete':
+      'Suas informações iniciais já estão completas no app.\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.',
+  'agent_credit_setup_missing':
+      'Atualizei suas informações iniciais. Ainda faltam: {fields}.\n\nNão consegui completar a resposta do chat porque seus créditos acabaram.',
+  'agent_daily_calorie_assessment_high': 'acima da meta',
+  'agent_daily_calorie_assessment_low': 'bem abaixo da meta',
+  'agent_daily_calorie_assessment_near': 'perto da meta',
+  'agent_daily_consumed_macro':
+      '{date}, você consumiu {consumed}g de {macro}, de uma meta de {goal}g. {remaining_phrase}',
+  'agent_daily_consumed_summary':
+      '{date}, você consumiu {calories_consumed} kcal de {calories_goal} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras. Ainda restam {calories_remaining} kcal.',
+  'agent_daily_evaluation':
+      '{date}{meal_phrase}: você consumiu {calories_consumed} kcal de {calories_goal} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras. Foi um dia {calorie_assessment}, e {protein_assessment}. {conclusion}',
+  'agent_daily_evaluation_incomplete':
+      'Pelo registro, parece uma alimentação incompleta.',
+  'agent_daily_evaluation_keep_targets':
+      'No geral, o ponto principal é manter proteína e calorias dentro da meta.',
+  'agent_daily_foods_list': '{date}, você registrou:\n{foods}',
+  'agent_daily_foods_none': 'Não encontrei alimentos registrados {date}.',
+  'agent_daily_macro_exceeded':
+      'Você já passou {amount}{unit} da meta de {macro}.',
+  'agent_daily_macro_remaining':
+      'Ainda faltam {amount}{unit} de {macro} para bater a meta.',
+  'agent_daily_meal_count_plural': ' com {count} refeições registradas',
+  'agent_daily_meal_count_singular': ' com {count} refeição registrada',
+  'agent_daily_no_records':
+      'Não encontrei nenhum registro alimentar {date}. Se você registrou refeições nesse dia, pode ser que elas ainda não tenham sido sincronizadas.',
+  'agent_daily_protein_assessment_good': 'a proteína ficou boa',
+  'agent_daily_protein_assessment_low': 'a proteína ficou baixa',
+  'agent_daily_remaining_past':
+      '{date}, você ainda podia consumir {calories} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras.',
+  'agent_daily_remaining_today':
+      '{date}, você ainda pode consumir {calories} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras.',
+  'agent_daily_snack_light':
+      'Uma opção de lanche leve: iogurte natural ou uma fruta com um pouco de whey, em torno de 150–220 kcal. Hoje você ainda tem {calories_remaining} kcal disponíveis.',
+  'agent_daily_snack_regular':
+      'Uma boa opção de lanche: sanduíche de frango com pão integral e iogurte natural. Fica em torno de 500 kcal, com cerca de 35g de proteína, 55g de carboidratos e 12g de gorduras, dentro das {calories_remaining} kcal que você ainda tem hoje.',
+  'agent_date_on': 'Em {date}',
+  'agent_diet_generated':
+      'Dieta gerada. Número de refeições personalizadas: {meal_count}. O plano fornece cerca de {calories} kcal no dia ({protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras). Você pode ver e ajustar tudo em Minha Dieta.',
+  'agent_goal_lean_mass_gain': 'ganhar massa aos poucos',
+  'agent_goal_maintenance': 'manutenção',
+  'agent_goal_slow_weight_loss': 'perder peso devagar',
+  'agent_goal_weight_gain': 'ganhar peso',
+  'agent_goal_weight_loss': 'perder peso',
+  'agent_macro_access_failed':
+      'Não consegui acessar suas metas agora. Tente novamente em instantes.',
+  'agent_macro_advice_current':
+      'Esses macros podem funcionar. Hoje suas metas estão em {calories} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras. Se quiser mudar algum valor, me diga o alvo exato.',
+  'agent_macro_login_required':
+      'Faça login para eu acessar e atualizar suas metas de calorias e macros.',
+  'agent_macro_targets_recalculated':
+      'Pronto, recalculei suas metas com uma recomendação padrão para o seu objetivo: {calories} kcal, {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras. Se quiser outro alvo, é só me dizer.',
+  'agent_macro_targets_recalculated_per_kg':
+      'Pronto, recalculei suas metas com uma recomendação padrão para o seu objetivo: {calories} kcal, {protein}g de proteína ({protein_per_kg}g/kg), {carbs}g de carboidratos e {fat}g de gorduras. Se quiser outro alvo, é só me dizer.',
+  'agent_macro_targets_status':
+      'Suas metas atuais são {calories} kcal: {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras. Me diga se quer reduzir ou aumentar calorias, ou mudar algum macro.',
+  'agent_macro_targets_updated':
+      'Pronto, atualizei suas metas para {calories} kcal: {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras.',
+  'agent_protein_advice_increase':
+      'Pode ser interessante subir um pouco. Sua meta atual está em {current}, e para {goal} uma faixa simples costuma ficar perto de {minimum} a {maximum} g/kg. Para manter {calories} kcal, eu ajustaria carboidratos ou gorduras junto. Se quiser aplicar, diga algo como "coloque {suggested}g de proteína".',
+  'agent_protein_advice_keep':
+      'Não precisa subir por padrão. Sua meta atual está em {current}, que {qualifier} para {goal}. Mais proteína só faz sentido se ajudar na saciedade ou combinar melhor com sua preferência; mantendo {calories} kcal, seria necessário retirar um pouco de carboidratos ou gorduras. Se quiser testar, me diga a nova meta, por exemplo "coloque 185g de proteína".',
+  'agent_protein_qualifier_above':
+      'já está acima da faixa que eu usaria como padrão',
+  'agent_protein_qualifier_good': 'já está dentro de uma faixa boa',
+
+  'reward_ad_show_error': 'Não foi possível exibir o anúncio.',
+
+  // Progresso, relatórios e conquistas
+  'progress_analytics_title': 'Progresso e análises',
+  'progress_tab_charts': 'Gráficos',
+  'progress_tab_reports': 'Relatórios',
+  'progress_tab_overview': 'Visão geral',
+  'progress_tab_progress': 'Progresso',
+  'progress_tab_competencies': 'Competências',
+  'progress_achievements': 'Conquistas',
+  'progress_period': 'Período',
+  'progress_last_week': 'Última semana',
+  'progress_last_month': 'Último mês',
+  'progress_last_three_months': 'Últimos 3 meses',
+  'progress_this_year': 'Este ano',
+  'progress_select_period': 'Selecionar período',
+  'progress_refresh': 'Atualizar',
+  'progress_total_score_evolution': 'Evolução da pontuação total',
+  'progress_temporal_evolution': 'Evolução temporal',
+  'progress_score_evolution': 'Evolução da pontuação',
+  'progress_competency_performance': 'Desempenho por competência',
+  'progress_by_competency': 'Progresso por competência',
+  'progress_competency_analysis': 'Análise por competência',
+  'progress_competency_performance_report':
+      'Relatório de desempenho por competência',
+  'progress_performance_report': 'Relatório de desempenho',
+  'progress_total_essays': 'Total de redações',
+  'progress_overall_average': 'Média geral',
+  'progress_average_score': 'Pontuação média',
+  'progress_best_score': 'Melhor nota',
+  'progress_average': 'Média',
+  'progress_improvement': 'Melhoria',
+  'progress_total': 'Total',
+  'progress_minimum_short': 'Mín.',
+  'progress_maximum_short': 'Máx.',
+  'progress_total_score': 'Pontuação total',
+  'progress_points_value': '{count} pontos',
+  'progress_data_points_one': '{count} ponto',
+  'progress_data_points_other': '{count} pontos',
+  'progress_essay_count_one': '{count} redação',
+  'progress_essay_count_other': '{count} redações',
+  'progress_essays': 'Redações',
+  'progress_essays_per_day_value': '{value} redações/dia',
+  'progress_points_per_day_value': '{value} pontos/dia',
+  'progress_summary_last_30_days': 'Resumo do progresso (últimos 30 dias)',
+  'progress_strongest_competency': 'Competência mais forte: {competency}',
+  'progress_competency_to_improve': 'Competência para melhorar: {competency}',
+  'progress_competency_overview': 'Visão geral das competências',
+  'progress_competency_radar': 'Radar de competências',
+  'progress_competency_number': 'Competência {number}',
+  'progress_competency_short': 'C{number}',
+  'progress_competency_1_description':
+      'Domínio da modalidade escrita formal da língua portuguesa',
+  'progress_competency_2_description':
+      'Compreender a proposta de redação e aplicar conceitos',
+  'progress_competency_3_description':
+      'Selecionar, relacionar, organizar e interpretar informações',
+  'progress_competency_4_description':
+      'Demonstrar conhecimento dos mecanismos linguísticos',
+  'progress_competency_5_description':
+      'Elaborar proposta de intervenção para o problema abordado',
+  'progress_insufficient_radar_data': 'Dados insuficientes para exibir o radar',
+  'progress_compare_users': 'Comparação com outros usuários',
+  'progress_your_average': 'Sua média',
+  'progress_peer_average': 'Média geral',
+  'progress_percentile': 'Percentil',
+  'progress_ranking': 'Classificação: {ranking}',
+  'progress_above_average_message': 'Você está acima da média! Continue assim!',
+  'progress_keep_practicing_position_message':
+      'Continue praticando para melhorar sua posição!',
+  'progress_load_error_title': 'Erro ao carregar dados',
+  'progress_load_error': 'Não foi possível carregar os dados de progresso.',
+  'progress_no_data_available': 'Nenhum dado disponível',
+  'progress_no_progress_data': 'Nenhum dado de progresso disponível',
+  'progress_no_competency_data': 'Nenhum dado de competência disponível',
+  'progress_no_analysis_available': 'Nenhuma análise disponível',
+  'progress_complete_essays_hint':
+      'Complete algumas redações para ver seu progresso',
+  'progress_new_achievement': 'Nova conquista!',
+  'progress_view_all': 'Ver todas',
+  'progress_no_achievements_yet': 'Nenhuma conquista ainda',
+  'progress_no_achievements_available': 'Nenhuma conquista disponível',
+  'progress_keep_writing_to_unlock': 'Continue escrevendo para desbloquear!',
+  'progress_complete_essays_to_unlock':
+      'Complete redações para desbloquear conquistas!',
+  'progress_achievement_unlocked': 'Conquista desbloqueada!',
+  'progress_unlocked_on': 'Desbloqueado em {date}',
+  'progress_achievement_category_label': 'Categoria: {category}',
+  'progress_achievements_by_category': 'Conquistas por categoria',
+  'progress_recent_achievements': 'Conquistas recentes',
+  'progress_all_achievements': 'Todas as conquistas',
+  'progress_achievement_progress': 'Progresso de conquistas',
+  'progress_achievements_unlocked':
+      '{unlocked} de {total} conquistas desbloqueadas',
+  'progress_achievements_unlocked_with_percentage':
+      '{unlocked} de {total} conquistas desbloqueadas ({percentage}%)',
+  'progress_achievement_category_milestone': 'Marco',
+  'progress_achievement_category_consistency': 'Consistência',
+  'progress_achievement_category_improvement': 'Melhoria',
+  'progress_achievement_category_excellence': 'Excelência',
+  'progress_achievement_category_dedication': 'Dedicação',
+  'progress_achievement_category_competency': 'Competência',
+  'progress_writing_activity': 'Atividade de escrita',
+  'progress_writing_frequency': 'Frequência de escrita',
+  'progress_this_week_count': 'Esta semana: {count}',
+  'progress_this_month_count': 'Este mês: {count}',
+  'progress_activity_tooltip_one': '{date}: {count} redação',
+  'progress_activity_tooltip_other': '{date}: {count} redações',
+  'progress_less': 'Menos',
+  'progress_more': 'Mais',
+  'progress_consistency': 'Consistência',
+  'progress_consistency_percentage': 'Consistência: {percentage}%',
+  'progress_performance_metrics': 'Métricas de desempenho',
+  'progress_improvement_rate': 'Taxa de melhoria',
+  'progress_quick_insights': 'Insights rápidos',
+  'progress_temporal_chart_placeholder':
+      'O gráfico de progresso temporal será exibido aqui',
+  'progress_performance_excellent': 'Excelente desempenho',
+  'progress_performance_very_good': 'Desempenho muito bom',
+  'progress_performance_good': 'Bom desempenho',
+  'progress_performance_regular': 'Desempenho regular',
+  'progress_performance_needs_improvement': 'Precisa melhorar',
+  'progress_level_excellent': 'Excelente',
+  'progress_level_very_good': 'Muito bom',
+  'progress_level_good': 'Bom',
+  'progress_level_regular': 'Regular',
+  'progress_level_sufficient': 'Suficiente',
+  'progress_level_insufficient': 'Insuficiente',
+  'progress_level_needs_improvement': 'Precisa melhorar',
+  'progress_trend': 'Tendência',
+  'progress_trend_improving': 'Melhorando ({value})',
+  'progress_trend_declining': 'Declinando ({value})',
+  'progress_trend_stable': 'Estável',
+  'progress_recommendations': 'Recomendações',
+  'progress_recommendation_competency_1':
+      'Foque em revisar gramática, ortografia e pontuação para melhorar a Competência 1.',
+  'progress_recommendation_competency_2':
+      'Pratique a interpretação de temas e o desenvolvimento de argumentos para a Competência 2.',
+  'progress_recommendation_competency_3':
+      'Trabalhe na organização de ideias e na estruturação de parágrafos para a Competência 3.',
+  'progress_recommendation_competency_4':
+      'Estude conectivos e coesão textual para aprimorar a Competência 4.',
+  'progress_recommendation_competency_5':
+      'Pratique a elaboração de propostas de intervenção detalhadas para a Competência 5.',
+  'progress_recommendation_review_fundamentals':
+      'Considere revisar os fundamentos da redação do ENEM e praticar com mais regularidade.',
+  'progress_recommendation_vary_topics':
+      'Varie os temas de redação para desenvolver diferentes habilidades argumentativas.',
+  'progress_recommendation_keep_practicing':
+      'Continue praticando! Quanto mais redações você escrever, melhor será seu desempenho.',
+  'progress_recommendation_improve_fundamentals':
+      'Foque em melhorar os fundamentos desta competência.',
+  'progress_recommendation_practice_consistently':
+      'Pratique mais para manter a regularidade.',
+  'progress_recommendation_review_basics':
+      'Revise os conceitos básicos desta competência.',
+  'progress_recommendation_generic':
+      'Revise esta competência e continue praticando.',
+  'progress_insight_improving':
+      'Você está melhorando! Aumento médio da pontuação: {points}.',
+  'progress_insight_consistent':
+      'Seu desempenho é muito consistente! Continue assim.',
+  'progress_insight_write_regularly':
+      'Tente escrever com mais regularidade para melhorar seus resultados.',
+  'progress_share_report': 'Compartilhar relatório',
+  'progress_sharing_coming_soon':
+      'A função de compartilhamento está em desenvolvimento.',
+  'progress_achievement_first_essay_title': 'Primeira redação',
+  'progress_achievement_first_essay_description':
+      'Parabéns por escrever sua primeira redação!',
+  'progress_achievement_essay_5_title': 'Primeiros passos',
+  'progress_achievement_essay_5_description': 'Escreveu 5 redações!',
+  'progress_achievement_essay_10_title': 'Escritor dedicado',
+  'progress_achievement_essay_10_description': 'Escreveu 10 redações!',
+  'progress_achievement_essay_25_title': 'Escritor experiente',
+  'progress_achievement_essay_25_description': 'Escreveu 25 redações!',
+  'progress_achievement_essay_50_title': 'Mestre da escrita',
+  'progress_achievement_essay_50_description': 'Escreveu 50 redações!',
+  'progress_achievement_essay_100_title': 'Centurião',
+  'progress_achievement_essay_100_description': 'Escreveu 100 redações!',
+  'progress_achievement_score_600_title': 'Boa pontuação',
+  'progress_achievement_score_600_description': 'Alcançou 600+ pontos!',
+  'progress_achievement_score_700_title': 'Muito bom',
+  'progress_achievement_score_700_description': 'Alcançou 700+ pontos!',
+  'progress_achievement_score_800_title': 'Excelente',
+  'progress_achievement_score_800_description': 'Alcançou 800+ pontos!',
+  'progress_achievement_score_900_title': 'Quase perfeito',
+  'progress_achievement_score_900_description': 'Alcançou 900+ pontos!',
+  'progress_achievement_score_1000_title': 'Redação perfeita',
+  'progress_achievement_score_1000_description':
+      'Pontuação máxima de 1000 pontos!',
+  'progress_achievement_daily_streak_3_title': 'Escritor diário',
+  'progress_achievement_daily_streak_3_description':
+      'Escreveu por 3 dias consecutivos!',
+  'progress_achievement_daily_streak_7_title': 'Semana perfeita',
+  'progress_achievement_daily_streak_7_description':
+      'Escreveu por 7 dias consecutivos!',
+  'progress_achievement_monthly_champion_title': 'Campeão mensal',
+  'progress_achievement_monthly_champion_description':
+      'Escreveu 10+ redações neste mês!',
+  'progress_achievement_improvement_100_title': 'Em evolução',
+  'progress_achievement_improvement_100_description': 'Melhorou 100+ pontos!',
+  'progress_achievement_improvement_200_title': 'Grande evolução',
+  'progress_achievement_improvement_200_description': 'Melhorou 200+ pontos!',
+  'progress_achievement_competency_1_master_title': 'Mestre da norma culta',
+  'progress_achievement_competency_1_master_description':
+      'Alcançou pontuação máxima na Competência 1!',
+  'progress_achievement_competency_2_master_title': 'Mestre da compreensão',
+  'progress_achievement_competency_2_master_description':
+      'Alcançou pontuação máxima na Competência 2!',
+  'progress_achievement_competency_3_master_title': 'Mestre da argumentação',
+  'progress_achievement_competency_3_master_description':
+      'Alcançou pontuação máxima na Competência 3!',
+  'progress_achievement_competency_4_master_title': 'Mestre da coesão',
+  'progress_achievement_competency_4_master_description':
+      'Alcançou pontuação máxima na Competência 4!',
+  'progress_achievement_competency_5_master_title': 'Mestre da proposta',
+  'progress_achievement_competency_5_master_description':
+      'Alcançou pontuação máxima na Competência 5!',
+  'progress_achievement_all_competencies_master_title': 'Mestre completo',
+  'progress_achievement_all_competencies_master_description':
+      'Alcançou pontuação máxima em todas as competências!',
+  'progress_achievement_night_owl_title': 'Coruja da madrugada',
+  'progress_achievement_night_owl_description':
+      'Escreveu uma redação após as 22h!',
+  'progress_achievement_early_bird_title': 'Madrugador',
+  'progress_achievement_early_bird_description':
+      'Escreveu uma redação antes das 6h!',
+  'progress_achievement_speed_writer_title': 'Escritor veloz',
+  'progress_achievement_speed_writer_description':
+      'Escreveu 3 redações em um dia!',
+  'progress_achievement_perfectionist_title': 'Perfeccionista',
+  'progress_achievement_perfectionist_description':
+      'Alcançou uma pontuação acima de 950 pontos!',
+  'progress_achievement_dedication_50_title': 'Dedicação total',
+  'progress_achievement_dedication_50_description':
+      'Escreveu mais de 50 redações!',
+
+  // Redações: interface, editor, comparação e temas
+  'essay_history_title': 'Histórico de redações',
+  'essay_history_subtitle': 'Acompanhe suas redações e seu progresso',
+  'essay_total_count': 'Total de redações',
+  'essay_average_score': 'Média de pontuação',
+  'essay_points_gain': '+{count} pontos',
+  'essay_last_month_progress': 'Evolução no último mês',
+  'essay_table_title': 'Título',
+  'essay_table_info': 'Informações',
+  'essay_table_type': 'Tipo',
+  'essay_table_date': 'Data',
+  'essay_table_status': 'Status',
+  'essay_table_score': 'Pontuação',
+  'essay_score_points_short': '{score} pts',
+  'essay_new_title': 'Nova redação',
+  'essay_edit_title': 'Editar redação',
+  'essay_correction_view_coming_soon':
+      'A visualização da correção estará disponível em breve.',
+  'essay_under_review_message':
+      'Esta redação está em análise e será corrigida em breve.',
+  'essay_status_corrected': 'Corrigida',
+  'essay_status_under_review': 'Em análise',
+  'essay_status_draft': 'Rascunho',
+  'essay_status_archived': 'Arquivada',
+  'essay_type_label': 'Tipo de redação',
+  'essay_type_vestibular': 'Vestibular',
+  'essay_type_public_exam': 'Concurso',
+  'essay_type_other': 'Outro',
+  'essay_type_free': 'Livre',
+  'essay_save_error': 'Não foi possível salvar a redação. Tente novamente.',
+  'essay_submit_error': 'Não foi possível enviar a redação. Tente novamente.',
+  'essay_submitted_successfully': 'Redação enviada para correção com sucesso!',
+  'essay_send_action': 'Enviar',
+  'essay_write_or_copy_hint':
+      'Escreva sua redação ou copie de um documento existente.',
+  'essay_enem_format_description':
+      'Dissertação argumentativa no formato exigido pelo ENEM',
+  'essay_title_label': 'Título',
+  'essay_title_hint': 'Adicione um título à sua redação',
+  'essay_title_required': 'Informe um título',
+  'essay_text_label': 'Texto',
+  'essay_text_hint': 'Digite aqui sua redação...',
+  'essay_text_required': 'Escreva sua redação',
+  'essay_word_count_one': '{count} palavra',
+  'essay_word_count_other': '{count} palavras',
+  'essay_tips_title': 'Dicas:',
+  'essay_enem_lines_tip': 'Redações do ENEM devem ter entre 7 e 30 linhas.',
+  'essay_structure_tip':
+      'Divida seu texto em introdução, desenvolvimento e conclusão.',
+  'essay_cancel_action': 'Cancelar',
+  'essay_save_draft_action': 'Salvar rascunho',
+  'essay_comparison_title': 'Comparação com sugestões',
+  'essay_suggestion_count_one': '{count} sugestão',
+  'essay_suggestion_count_other': '{count} sugestões',
+  'essay_original_text': 'Texto original',
+  'essay_with_suggestions': 'Com sugestões',
+  'essay_suggestions_applied': 'Com sugestões aplicadas',
+  'essay_suggestions_list': 'Lista de sugestões',
+  'essay_original_label': 'Original:',
+  'essay_suggested_label': 'Sugerido:',
+  'essay_explanation_label': 'Explicação:',
+  'essay_suggestion_type_grammar': 'GRAMÁTICA',
+  'essay_suggestion_type_style': 'ESTILO',
+  'essay_suggestion_type_structure': 'ESTRUTURA',
+  'essay_suggestion_type_content': 'CONTEÚDO',
+  'essay_suggestion_type_general': 'GERAL',
+  'essay_priority_critical': 'CRÍTICA',
+  'essay_priority_high': 'ALTA',
+  'essay_priority_medium': 'MÉDIA',
+  'essay_priority_low': 'BAIXA',
+  'essay_detailed_analysis': 'Análise detalhada',
+  'essay_specific_comments': 'Comentários específicos',
+  'essay_improvement_tips': 'Dicas de melhoria',
+  'essay_format_bold': 'Negrito',
+  'essay_format_italic': 'Itálico',
+  'essay_format_list': 'Lista',
+  'essay_format_quote': 'Citação',
+  'essay_unsaved_status': 'Não salvo',
+  'essay_saved_status': 'Salvo',
+  'essay_editor_title_hint': 'Título da redação...',
+  'essay_editor_text_hint': 'Escreva sua redação aqui...',
+  'essay_template_name': 'Template: {name}',
+  'essay_recommended_word_range': 'Palavras recomendadas: {min}–{max}',
+  'essay_word_label_one': 'palavra',
+  'essay_word_label_other': 'palavras',
+  'essay_character_label_one': 'caractere',
+  'essay_character_label_other': 'caracteres',
+  'essay_paragraph_label_one': 'parágrafo',
+  'essay_paragraph_label_other': 'parágrafos',
+  'essay_save_action': 'Salvar',
+  'essay_submit_for_correction_action': 'Enviar para correção',
+  'essay_template_label': 'Template',
+  'essay_free_format': 'Formato livre',
+  'essay_free_format_description': 'Escreva sem seguir um template específico',
+  'essay_estimated_time': 'Tempo estimado',
+  'essay_minute_count_one': '{count} minuto',
+  'essay_minute_count_other': '{count} minutos',
+  'essay_words_label': 'Palavras',
+  'essay_word_range': '{min}–{max}',
+  'essay_suggested_structure': 'Estrutura sugerida:',
+  'essay_guidelines_title': 'Diretrizes:',
+  'essay_themes_load_error': 'Não foi possível carregar os temas.',
+  'essay_try_again_action': 'Tentar novamente',
+  'essay_theme_search_hint': 'Buscar temas...',
+  'essay_themes_all_tab': 'Todos',
+  'essay_themes_categories_tab': 'Categorias',
+  'essay_themes_trending_tab': 'Em alta',
+  'essay_no_theme_found': 'Nenhum tema encontrado',
+  'essay_no_themes_available': 'Nenhum tema disponível',
+  'essay_no_theme_in_category': 'Nenhum tema nesta categoria',
+  'essay_no_trending_themes': 'Nenhum tema em alta',
+  'essay_trending_badge': 'Em alta',
+  'essay_theme_usage_one': '{count} uso',
+  'essay_theme_usage_other': '{count} usos',
+  'essay_difficulty_easy': 'Fácil',
+  'essay_difficulty_medium': 'Médio',
+  'essay_difficulty_hard': 'Difícil',
+  'essay_category_current_affairs': 'Atualidades',
+  'essay_category_environment': 'Meio ambiente',
+  'essay_category_technology': 'Tecnologia',
+  'essay_category_society': 'Sociedade',
+  'essay_category_education': 'Educação',
+  'essay_category_health': 'Saúde',
+  'essay_category_politics': 'Política',
+  'essay_category_economy': 'Economia',
+  'essay_category_culture': 'Cultura',
+  'essay_category_human_rights': 'Direitos humanos',
+  'essay_competence_1': 'Competência 1',
+  'essay_competence_2': 'Competência 2',
+  'essay_competence_3': 'Competência 3',
+  'essay_competence_4': 'Competência 4',
+  'essay_competence_5': 'Competência 5',
+  'essay_template_enem_name': 'ENEM — Dissertativo-argumentativo',
+  'essay_template_enem_description':
+      'Modelo oficial de redação do ENEM com foco em dissertação argumentativa',
+  'essay_template_enem_structure': '''1. INTRODUÇÃO (1 parágrafo — 4 a 5 linhas)
+   • Contextualização do tema
+   • Apresentação da tese (seu posicionamento)
+
+2. DESENVOLVIMENTO (2 parágrafos — 6 a 8 linhas cada)
+   • 1º parágrafo: primeiro argumento + fundamentação + exemplo
+   • 2º parágrafo: segundo argumento + fundamentação + exemplo
+
+3. CONCLUSÃO (1 parágrafo — 4 a 6 linhas)
+   • Retomada da tese
+   • Proposta de intervenção detalhada (agente + ação + meio + finalidade + detalhamento)''',
+  'essay_template_vestibular_name': 'Vestibular — Dissertativo',
+  'essay_template_vestibular_description':
+      'Modelo para redações dissertativas de vestibulares em geral',
+  'essay_template_vestibular_structure': '''1. INTRODUÇÃO
+   • Apresentação do tema
+   • Contextualização
+   • Tese clara e objetiva
+
+2. DESENVOLVIMENTO (2 ou 3 parágrafos)
+   • Argumentos bem fundamentados
+   • Exemplos e evidências
+   • Progressão lógica das ideias
+
+3. CONCLUSÃO
+   • Síntese dos argumentos principais
+   • Reafirmação da tese
+   • Considerações finais ou propostas''',
+  'essay_template_public_exam_name': 'Concurso — Dissertativo',
+  'essay_template_public_exam_description':
+      'Modelo para redações de concursos públicos',
+  'essay_template_public_exam_structure': '''1. INTRODUÇÃO
+   • Definição ou contextualização do tema
+   • Apresentação da problemática
+   • Tese ou posicionamento
+
+2. DESENVOLVIMENTO
+   • Análise crítica do problema
+   • Argumentos técnicos e jurídicos (quando aplicável)
+   • Exemplos práticos e dados
+
+3. CONCLUSÃO
+   • Síntese da análise
+   • Propostas de solução
+   • Considerações finais''',
+  'essay_guideline_respect_human_rights':
+      'Respeitar os direitos humanos em toda a argumentação',
+  'essay_guideline_standard_language':
+      'Usar a norma culta da língua portuguesa',
+  'essay_guideline_coherence_cohesion': 'Manter coerência e coesão textual',
+  'essay_guideline_sociocultural_repertoire':
+      'Apresentar repertório sociocultural produtivo',
+  'essay_guideline_complete_intervention':
+      'Elaborar uma proposta de intervenção completa e detalhada',
+  'essay_guideline_do_not_copy_sources':
+      'Não copiar trechos dos textos motivadores',
+  'essay_guideline_impersonal_tone':
+      'Manter a impessoalidade (evitar a 1ª pessoa)',
+  'essay_guideline_clarity_objectivity': 'Manter clareza e objetividade',
+  'essay_guideline_formal_language': 'Usar linguagem formal e adequada',
+  'essay_guideline_consistent_arguments':
+      'Apresentar argumentos consistentes e bem fundamentados',
+  'essay_guideline_theme_knowledge': 'Demonstrar conhecimento sobre o tema',
+  'essay_guideline_avoid_generalizations':
+      'Evitar generalizações e senso comum',
+  'essay_guideline_section_consistency':
+      'Manter coerência entre introdução, desenvolvimento e conclusão',
+  'essay_guideline_technical_language': 'Usar linguagem técnica e precisa',
+  'essay_guideline_area_knowledge':
+      'Demonstrar conhecimento específico da área',
+  'essay_guideline_current_data': 'Apresentar dados e informações atualizados',
+  'essay_guideline_objective_impartial': 'Manter objetividade e imparcialidade',
+  'essay_guideline_logical_structure': 'Seguir uma estrutura lógica e clara',
+  'essay_guideline_avoid_unsupported_opinions':
+      'Evitar opiniões pessoais sem fundamentação',
+  'essay_criterion_enem_language': 'Competência 1 — Norma culta',
+  'essay_criterion_enem_theme': 'Competência 2 — Compreensão do tema',
+  'essay_criterion_enem_argumentation': 'Competência 3 — Argumentação',
+  'essay_criterion_enem_cohesion': 'Competência 4 — Coesão',
+  'essay_criterion_enem_intervention':
+      'Competência 5 — Proposta de intervenção',
+  'essay_criterion_structure_organization': 'Estrutura e organização',
+  'essay_criterion_content_argumentation': 'Conteúdo e argumentação',
+  'essay_criterion_language_style': 'Linguagem e estilo',
+  'essay_criterion_creativity_originality': 'Criatividade e originalidade',
+  'essay_criterion_technical_knowledge': 'Conhecimento técnico',
+  'essay_criterion_language_accuracy': 'Linguagem e correção',
+  'essay_criterion_critical_analysis': 'Análise crítica',
+  'essay_theme_social_media_title':
+      'O impacto das redes sociais na formação da opinião pública',
+  'essay_theme_social_media_description':
+      'Analise como as redes sociais influenciam a formação de opiniões e o debate público na sociedade contemporânea.',
+  'essay_theme_digital_education_title':
+      'Desafios da educação digital no Brasil',
+  'essay_theme_digital_education_description':
+      'Discuta os principais desafios para a implementação e a democratização da educação digital no país.',
+  'essay_theme_urban_sustainability_title':
+      'Sustentabilidade urbana e qualidade de vida',
+  'essay_theme_urban_sustainability_description':
+      'Analise a relação entre práticas sustentáveis nas cidades e a melhoria da qualidade de vida dos cidadãos.',
+  'essay_theme_empathy_title':
+      'A importância da empatia na construção de uma sociedade mais justa',
+  'essay_theme_empathy_description':
+      'Discuta como o desenvolvimento da empatia pode contribuir para reduzir desigualdades e promover a justiça social.',
+  'essay_theme_youth_mental_health_title':
+      'Saúde mental dos jovens na era digital',
+  'essay_theme_youth_mental_health_description':
+      'Analise os impactos da tecnologia e das redes sociais na saúde mental dos jovens brasileiros.',
+  'essay_theme_education_transformation_title':
+      'A importância da educação na transformação social',
+  'essay_theme_education_transformation_description':
+      'Discuta como a educação pode ser um instrumento de transformação e desenvolvimento social.',
+  'essay_keyword_social_media': 'redes sociais',
+  'essay_keyword_public_opinion': 'opinião pública',
+  'essay_keyword_democracy': 'democracia',
+  'essay_keyword_fake_news': 'desinformação',
+  'essay_keyword_polarization': 'polarização',
+  'essay_keyword_digital_education': 'educação digital',
+  'essay_keyword_technology': 'tecnologia',
+  'essay_keyword_digital_inclusion': 'inclusão digital',
+  'essay_keyword_remote_learning': 'ensino remoto',
+  'essay_keyword_sustainability': 'sustentabilidade',
+  'essay_keyword_cities': 'cidades',
+  'essay_keyword_quality_of_life': 'qualidade de vida',
+  'essay_keyword_urban_environment': 'meio ambiente urbano',
+  'essay_keyword_empathy': 'empatia',
+  'essay_keyword_social_justice': 'justiça social',
+  'essay_keyword_inequality': 'desigualdade',
+  'essay_keyword_solidarity': 'solidariedade',
+  'essay_keyword_mental_health': 'saúde mental',
+  'essay_keyword_youth': 'jovens',
+  'essay_keyword_anxiety': 'ansiedade',
+  'essay_keyword_depression': 'depressão',
+  'essay_keyword_education': 'educação',
+  'essay_keyword_social_transformation': 'transformação social',
+  'essay_keyword_development': 'desenvolvimento',
+  'essay_reference_social_dilemma_title': 'O dilema das redes',
+  'essay_reference_social_dilemma_summary':
+      'Documentário que explora os impactos das redes sociais na sociedade',
+  'essay_reference_digital_education_title': 'Educação na era digital',
+  'essay_reference_digital_education_summary':
+      'Análise sobre os desafios da educação digital no Brasil',
+  'essay_reference_sustainable_cities_title': 'Cidades sustentáveis',
+  'essay_reference_sustainable_cities_summary':
+      'Relatório sobre práticas sustentáveis em centros urbanos',
+  'essay_reference_empathy_age_title': 'A era da empatia',
+  'essay_reference_empathy_age_summary':
+      'Obra sobre a importância da empatia na sociedade moderna',
+  'essay_reference_adolescent_mental_health_title':
+      'Saúde mental na adolescência',
+  'essay_reference_adolescent_mental_health_summary':
+      'Pesquisa sobre a saúde mental de adolescentes no Brasil',
+  'essay_reference_type_documentary': 'documentário',
+  'essay_reference_type_article': 'artigo',
+  'essay_reference_type_report': 'relatório',
+  'essay_reference_type_book': 'livro',
+  'essay_reference_type_study': 'estudo',
+  'essay_sample_education_challenges_title':
+      'Os desafios da educação no Brasil',
+  'essay_sample_education_challenges_text':
+      'Texto da redação sobre os desafios da educação no Brasil...',
+  'essay_sample_misinformation_title':
+      'Consequências da desinformação na era digital',
+  'essay_sample_misinformation_text':
+      'Texto da redação sobre as consequências da desinformação...',
+  'essay_sample_sustainability_title': 'Sustentabilidade e consumo consciente',
+  'essay_sample_sustainability_text':
+      'Texto da redação sobre sustentabilidade e consumo consciente...',
+  'essay_sample_technology_education_title':
+      'O papel da tecnologia na educação',
+  'essay_sample_technology_education_text':
+      'Texto da redação sobre o papel da tecnologia na educação...',
+  'essay_sample_social_inequality_title': 'Desigualdade social no Brasil',
+  'essay_sample_social_inequality_text':
+      'Texto da redação sobre desigualdade social no Brasil...',
 };

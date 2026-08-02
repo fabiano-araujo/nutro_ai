@@ -23,7 +23,6 @@
         android:maxSdkVersion="28" />
     <!-- Permissões de leitura do Health Connect para rastreamento de atividades -->
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
-    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     
@@ -112,7 +111,6 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
-        <package android:name="com.huawei.health" />
         <package android:name="com.fitbit.FitbitMobile" />
         <package android:name="com.garmin.android.apps.connectmobile" />
         <package android:name="fi.polar.polarflow" />
@@ -129,10 +127,10 @@
             <action android:name="androidx.health.ACTION_HEALTH_CONNECT_SETTINGS" />
         </intent>
         <intent>
-            <action android:name="android.health.connect.action.MANAGE_HEALTH_PERMISSIONS" />
+            <action android:name="android.health.connect.action.HEALTH_HOME_SETTINGS" />
         </intent>
         <intent>
-            <action android:name="android.settings.HEALTH_CONNECT_SETTINGS" />
+            <action android:name="android.health.connect.action.MANAGE_HEALTH_PERMISSIONS" />
         </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

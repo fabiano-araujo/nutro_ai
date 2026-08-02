@@ -75,7 +75,7 @@
                                 android:layout_marginStart="8dp"
                                 android:background="#F2F2F2"
                                 android:padding="2dp"
-                                android:text="Ad"
+                                android:text="@string/ad_attribution"
                                 android:textColor="#666666"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -129,4 +129,4 @@
             </LinearLayout>
         </LinearLayout>
     </com.google.android.gms.ads.nativead.NativeAdView>
-</LinearLayout> 
+</LinearLayout>

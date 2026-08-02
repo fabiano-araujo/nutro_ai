@@ -23,20 +23,11 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
   final Set<String> _appsBeingOpened = {};
   bool _isOpeningHealthConnect = false;
   bool _isLoadingApps = true;
-  bool _refreshWhenResumed = false;
+  int? _androidSdkInt;
 
   static const List<_TrackingAppInfo> _trackingApps = [
     _TrackingAppInfo(
-      name: 'Huawei Saúde',
-      packageName: 'com.huawei.health',
-      icon: Icons.favorite_rounded,
-      color: Color(0xFFE53955),
-      descriptionKey: 'tracking_desc_huawei_health',
-      supportsHealthConnect: false,
-      installUrl: 'https://consumer.huawei.com/br/mobileservices/health/',
-    ),
-    _TrackingAppInfo(
-      name: 'Fitbit',
+      name: 'Google Health (Fitbit)',
       packageName: 'com.fitbit.FitbitMobile',
       icon: Icons.grid_view_rounded,
       color: Color(0xFF00A9B5),
@@ -48,6 +39,7 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
       icon: Icons.watch_rounded,
       color: Color(0xFF1778B8),
       descriptionKey: 'tracking_desc_garmin_health_connect',
+      minAndroidSdk: 34,
     ),
     _TrackingAppInfo(
       name: 'Polar Flow',
@@ -80,16 +72,17 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
     if (state != AppLifecycleState.resumed || !mounted) return;
 
     unawaited(_loadInstalledApps());
-    if (!_refreshWhenResumed) return;
-
-    _refreshWhenResumed = false;
     unawaited(_refreshHealthData());
   }
 
   Future<void> _loadInstalledApps() async {
     final provider = context.read<ActivityTrackingProvider>();
+    final androidSdkInt = await provider.getAndroidSdkInt();
+    final supportedApps = _trackingApps.where(
+      (app) => _isSupportedOnAndroid(app, androidSdkInt),
+    );
     final entries = await Future.wait(
-      _trackingApps.map((app) async {
+      supportedApps.map((app) async {
         final installed =
             await provider.isTrackingAppInstalled(app.packageName);
         return MapEntry(app.packageName, installed);
@@ -101,15 +94,19 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
       _installedApps
         ..clear()
         ..addEntries(entries);
+      _androidSdkInt = androidSdkInt;
       _isLoadingApps = false;
     });
   }
 
-  Future<void> _refreshHealthData({bool showFeedback = false}) async {
+  Future<void> _refreshHealthData({
+    bool showFeedback = false,
+    bool force = true,
+  }) async {
     final provider = context.read<ActivityTrackingProvider>();
-    if (provider.isLoading || provider.isRequestingPermissions) return;
+    if (provider.isRequestingPermissions) return;
 
-    await provider.loadForDate(DateTime.now(), force: true);
+    await provider.loadForDate(DateTime.now(), force: force);
     if (!mounted || !showFeedback) return;
 
     _showMessage(
@@ -149,7 +146,6 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
 
     setState(() {
       _isOpeningHealthConnect = true;
-      _refreshWhenResumed = true;
     });
 
     try {
@@ -165,16 +161,13 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
           );
           break;
         case TrackingAppLaunchResult.unsupported:
-          _refreshWhenResumed = false;
           _showMessage(context.tr.translate('tracking_not_available'));
           break;
         case TrackingAppLaunchResult.failed:
-          _refreshWhenResumed = false;
           _showMessage(_syncErrorMessage());
           break;
       }
     } catch (_) {
-      _refreshWhenResumed = false;
       if (mounted) _showMessage(_syncErrorMessage());
     } finally {
       if (mounted) {
@@ -209,51 +202,60 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
     _TrackingAppInfo app,
     ActivityTrackingProvider provider,
   ) async {
-    if (_appsBeingOpened.contains(app.packageName)) return;
+    if (_appsBeingOpened.isNotEmpty ||
+        provider.isLoading ||
+        provider.isRequestingPermissions) {
+      return;
+    }
 
-    final installed = _installedApps[app.packageName] ?? false;
-    if (installed && app.supportsHealthConnect && !provider.hasAnyPermission) {
-      final status = await provider.requestPermissionsAndLoad(DateTime.now());
-      if (!mounted || !status.hasAnyPermission) {
-        if (mounted) {
+    setState(() => _appsBeingOpened.add(app.packageName));
+
+    try {
+      final installed = _installedApps[app.packageName] ?? false;
+      if (installed && !provider.hasAnyPermission) {
+        final status = await provider.requestPermissionsAndLoad(DateTime.now());
+        if (!mounted) return;
+        if (!status.hasAnyPermission) {
           _showMessage(
             context.tr.translate('tracking_permission_needed'),
           );
+          return;
         }
-        return;
+      }
+
+      if (!mounted) return;
+
+      final result = await provider.openTrackingApp(app.packageName);
+      if (!mounted) return;
+
+      setState(() {
+        if (result == TrackingAppLaunchResult.openedStore) {
+          _installedApps[app.packageName] = false;
+        }
+      });
+
+      final key = switch (result) {
+        TrackingAppLaunchResult.openedApp => 'tracking_app_opened',
+        TrackingAppLaunchResult.openedStore => 'tracking_app_store_opened',
+        TrackingAppLaunchResult.unsupported => 'tracking_not_available',
+        TrackingAppLaunchResult.failed => 'tracking_app_open_error',
+      };
+      _showMessage(
+        context.tr.translate(key).replaceAll('{app}', app.name),
+      );
+    } catch (_) {
+      if (mounted) {
+        _showMessage(
+          context.tr
+              .translate('tracking_app_open_error')
+              .replaceAll('{app}', app.name),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _appsBeingOpened.remove(app.packageName));
       }
     }
-
-    setState(() {
-      _appsBeingOpened.add(app.packageName);
-      _refreshWhenResumed = true;
-    });
-
-    final result = !installed && app.installUrl != null
-        ? await provider.openTrackingAppOfficialStore(app.installUrl!)
-        : await provider.openTrackingApp(app.packageName);
-    if (!mounted) return;
-
-    setState(() {
-      _appsBeingOpened.remove(app.packageName);
-      if (result == TrackingAppLaunchResult.openedStore) {
-        _installedApps[app.packageName] = false;
-      }
-      if (result == TrackingAppLaunchResult.failed ||
-          result == TrackingAppLaunchResult.unsupported) {
-        _refreshWhenResumed = false;
-      }
-    });
-
-    final key = switch (result) {
-      TrackingAppLaunchResult.openedApp => 'tracking_app_opened',
-      TrackingAppLaunchResult.openedStore => 'tracking_app_store_opened',
-      TrackingAppLaunchResult.unsupported => 'tracking_not_available',
-      TrackingAppLaunchResult.failed => 'tracking_app_open_error',
-    };
-    _showMessage(
-      context.tr.translate(key).replaceAll('{app}', app.name),
-    );
   }
 
   void _showMessage(String message) {
@@ -314,12 +316,14 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
                           trackingProvider,
                         ),
                       ],
-                      const SizedBox(height: 22),
-                      _buildTrackingAppsSection(
-                        theme,
-                        isDarkMode,
-                        trackingProvider,
-                      ),
+                      if (!trackingProvider.isHealthConnectUnsupported) ...[
+                        const SizedBox(height: 22),
+                        _buildTrackingAppsSection(
+                          theme,
+                          isDarkMode,
+                          trackingProvider,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -337,8 +341,6 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
     ActivityTrackingProvider provider,
   ) {
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final mutedTextColor =
-        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
     return Container(
@@ -369,30 +371,17 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
               ),
               const SizedBox(width: 13),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr.translate('tracking_health_connect_name'),
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      context.tr.translate('tracking_activity_card_message'),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: mutedTextColor,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  context.tr.translate('tracking_health_connect_name'),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 13),
           _buildStatusBanner(theme, isDarkMode, provider),
           if (!provider.isHealthConnectUnsupported) ...[
             const SizedBox(height: 16),
@@ -418,20 +407,18 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
                 ),
               ),
             ),
-            if (provider.hasAnyPermission) ...[
-              const SizedBox(height: 6),
-              Center(
-                child: TextButton.icon(
-                  onPressed: _isOpeningHealthConnect
-                      ? null
-                      : () => _openHealthConnect(provider),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                  label: Text(
-                    context.tr.translate('tracking_open_health_connect'),
-                  ),
+            const SizedBox(height: 6),
+            Center(
+              child: TextButton.icon(
+                onPressed: _isOpeningHealthConnect
+                    ? null
+                    : () => _openHealthConnect(provider),
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(
+                  context.tr.translate('tracking_open_health_connect'),
                 ),
               ),
-            ],
+            ),
           ],
         ],
       ),
@@ -579,15 +566,7 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
                 ),
             ],
           ),
-          const SizedBox(height: 7),
-          Text(
-            _healthSummaryMessage(provider),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: mutedTextColor,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 13),
           LayoutBuilder(
             builder: (context, constraints) {
               const spacing = 8.0;
@@ -600,6 +579,7 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
                 runSpacing: spacing,
                 children: [
                   _buildMetric(
+                    metricKey: const ValueKey('tracking-metric-calories'),
                     width: width,
                     icon: Icons.local_fire_department_rounded,
                     label: context.tr
@@ -615,6 +595,7 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
                     isDarkMode: isDarkMode,
                   ),
                   _buildMetric(
+                    metricKey: const ValueKey('tracking-metric-steps'),
                     width: width,
                     icon: Icons.directions_walk_rounded,
                     label: context.tr.translate('tracking_permission_steps'),
@@ -627,6 +608,7 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
                     isDarkMode: isDarkMode,
                   ),
                   _buildMetric(
+                    metricKey: const ValueKey('tracking-metric-exercises'),
                     width: width,
                     icon: Icons.fitness_center_rounded,
                     label:
@@ -650,6 +632,7 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
   }
 
   Widget _buildMetric({
+    required Key metricKey,
     required double width,
     required IconData icon,
     required String label,
@@ -661,10 +644,11 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
         isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
 
     return Semantics(
+      key: metricKey,
       label: '$label: $value',
       child: Container(
         width: width,
-        constraints: const BoxConstraints(minHeight: 96),
+        height: 112,
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
           color: color.withValues(alpha: isDarkMode ? 0.14 : 0.08),
@@ -675,22 +659,35 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(height: 9),
-            Text(
-              value,
-              style: TextStyle(
-                color: foregroundColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+            SizedBox(
+              width: double.infinity,
+              height: 24,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: foregroundColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: foregroundColor.withValues(alpha: 0.72),
-                fontSize: 12,
-                height: 1.2,
-                fontWeight: FontWeight.w600,
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: foregroundColor.withValues(alpha: 0.72),
+                  fontSize: 12,
+                  height: 1.2,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -705,8 +702,6 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
     ActivityTrackingProvider provider,
   ) {
     final textColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final mutedTextColor =
-        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,28 +713,29 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          context.tr.translate('tracking_sources_intro'),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: mutedTextColor,
-            height: 1.35,
-          ),
-        ),
         const SizedBox(height: 12),
-        ..._trackingApps.map(
-          (app) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _buildTrackingAppTile(
-              app,
-              theme,
-              isDarkMode,
-              provider,
+        ..._trackingApps
+            .where(
+              (app) => _isSupportedOnAndroid(app, _androidSdkInt),
+            )
+            .map(
+              (app) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildTrackingAppTile(
+                  app,
+                  theme,
+                  isDarkMode,
+                  provider,
+                ),
+              ),
             ),
-          ),
-        ),
       ],
     );
+  }
+
+  bool _isSupportedOnAndroid(_TrackingAppInfo app, int? sdkInt) {
+    final minAndroidSdk = app.minAndroidSdk;
+    return minAndroidSdk == null || (sdkInt != null && sdkInt >= minAndroidSdk);
   }
 
   Widget _buildTrackingAppTile(
@@ -774,7 +770,7 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
         ? 'tracking_syncing'
         : !installed
             ? 'tracking_action_install'
-            : detected || !app.supportsHealthConnect
+            : detected
                 ? 'tracking_action_open'
                 : 'tracking_action_connect';
 
@@ -787,7 +783,10 @@ class _ActivityTrackingAppsScreenState extends State<ActivityTrackingAppsScreen>
         borderRadius: BorderRadius.circular(17),
         child: InkWell(
           borderRadius: BorderRadius.circular(17),
-          onTap: _isLoadingApps || isOpening
+          onTap: _isLoadingApps ||
+                  _appsBeingOpened.isNotEmpty ||
+                  provider.isLoading ||
+                  provider.isRequestingPermissions
               ? null
               : () => _openTrackingApp(app, provider),
           child: Container(
@@ -988,8 +987,7 @@ class _TrackingAppInfo {
   final IconData icon;
   final Color color;
   final String descriptionKey;
-  final bool supportsHealthConnect;
-  final String? installUrl;
+  final int? minAndroidSdk;
 
   const _TrackingAppInfo({
     required this.name,
@@ -997,7 +995,6 @@ class _TrackingAppInfo {
     required this.icon,
     required this.color,
     required this.descriptionKey,
-    this.supportsHealthConnect = true,
-    this.installUrl,
+    this.minAndroidSdk,
   });
 }

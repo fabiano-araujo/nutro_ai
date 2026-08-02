@@ -201,7 +201,11 @@ class _StreakScreenState extends State<StreakScreen> {
       context.read<DailyMealsProvider>(),
     );
     final message = context.tr
-        .translate('streak_share_message')
+        .translate(
+          count == 1
+              ? 'streak_share_message_one'
+              : 'streak_share_message_other',
+        )
         .replaceAll('{count}', count.toString());
     await Share.share(message);
   }
@@ -545,7 +549,11 @@ class _PersonalHeroCard extends StatelessWidget {
                   mainStreak == 0
                       ? context.tr.translate('streak_hero_start_hint')
                       : context.tr
-                          .translate('streak_hero_record')
+                          .translate(
+                            bestStreak == 1
+                                ? 'streak_hero_record_one'
+                                : 'streak_hero_record_other',
+                          )
                           .replaceAll('{count}', bestStreak.toString()),
                   style: TextStyle(
                     fontSize: 13,
@@ -592,7 +600,11 @@ class _FreezeStatusCard extends StatelessWidget {
     final hasFreeze = freezes > 0;
     final title = hasFreeze
         ? context.tr
-            .translate('streak_freeze_available_title')
+            .translate(
+              freezes == 1
+                  ? 'streak_freeze_available_title_one'
+                  : 'streak_freeze_available_title_other',
+            )
             .replaceAll('{count}', freezes.toString())
         : context.tr.translate('streak_freeze_none_title');
     final message = hasFreeze
@@ -1468,8 +1480,11 @@ class _DuoStreakTile extends StatelessWidget {
                   children: [
                     _SmallPill(
                       icon: Icons.local_fire_department_rounded,
-                      label:
-                          '$currentStreak ${context.tr.translate('challenge_days_completed')}',
+                      label: '$currentStreak ${context.tr.translate(
+                        currentStreak == 1
+                            ? 'challenge_days_completed_one'
+                            : 'challenge_days_completed_other',
+                      )}',
                       color: streakColor,
                     ),
                     _SmallPill(

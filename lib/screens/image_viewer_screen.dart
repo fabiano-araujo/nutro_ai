@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
+import '../i18n/app_localizations_extension.dart';
 
 class ImageViewerScreen extends StatelessWidget {
   final Uint8List imageBytes;
@@ -16,8 +17,9 @@ class ImageViewerScreen extends StatelessWidget {
         if (!granted) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Permissão negada para salvar na galeria'),
+              SnackBar(
+                content:
+                    Text(context.tr.translate('gallery_permission_denied')),
                 backgroundColor: Colors.red,
               ),
             );
@@ -33,27 +35,29 @@ class ImageViewerScreen extends StatelessWidget {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Imagem salva na galeria'),
+          SnackBar(
+            content: Text(context.tr.translate('image_saved_gallery')),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
         );
       }
     } on GalException catch (e) {
+      debugPrint('Erro ao salvar imagem na galeria: ${e.type.message}');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao salvar: ${e.type.message}'),
+            content: Text(context.tr.translate('image_save_error')),
             backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
+      debugPrint('Erro inesperado ao salvar imagem: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro: $e'),
+            content: Text(context.tr.translate('image_save_error')),
             backgroundColor: Colors.red,
           ),
         );
@@ -73,7 +77,7 @@ class ImageViewerScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.download, color: Colors.white, size: 26),
-            tooltip: 'Salvar na galeria',
+            tooltip: context.tr.translate('save_to_gallery'),
             onPressed: () => _download(context),
           ),
           const SizedBox(width: 4),

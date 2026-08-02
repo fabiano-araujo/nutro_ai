@@ -1,13 +1,30 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:ui' show Locale;
+
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-import '../services/ai_service.dart'; // Importando o AIService
+
+import '../i18n/app_localizations.dart';
+import '../services/ai_service.dart';
 
 class YouTubeService {
   // Cliente YouTube Explode
   static final YoutubeExplode _yt = YoutubeExplode();
   static final AIService _aiService = AIService(); // Instância do AIService
+
+  static AppLocalizations _localizations(String languageCode) {
+    final normalized = languageCode.trim().replaceAll('-', '_');
+    final parts = normalized.split('_');
+    final language = parts.first.toLowerCase();
+    final country = parts.length > 1 ? parts[1].toUpperCase() : null;
+    final locale = AppLocalizations.supportedLocales.firstWhere(
+      (candidate) =>
+          candidate.languageCode == language &&
+          (country == null || candidate.countryCode == country),
+      orElse: () => const Locale('pt', 'BR'),
+    );
+    return AppLocalizations(locale);
+  }
 
   // Função para extrair o ID do vídeo de uma URL do YouTube
   static String extractVideoId(String url) {
@@ -29,11 +46,21 @@ class YouTubeService {
   }
 
   // Função para obter a transcrição do vídeo usando YouTube Explode
-  static Future<String> getTranscription(String videoId) async {
+  static Future<String> getTranscription(
+    String videoId, {
+    required String languageCode,
+  }) async {
     try {
       // Verifica se a transcrição está em cache
       final prefs = await SharedPreferences.getInstance();
-      final cachedTranscript = prefs.getString('transcript_$videoId');
+      final normalizedLanguage = languageCode
+          .trim()
+          .replaceAll('_', '-')
+          .split('-')
+          .first
+          .toLowerCase();
+      final cacheKey = 'transcript_${videoId}_$normalizedLanguage';
+      final cachedTranscript = prefs.getString(cacheKey);
 
       if (cachedTranscript != null) {
         return cachedTranscript;
@@ -42,33 +69,25 @@ class YouTubeService {
       // Obtém a lista de legendas disponíveis
       final trackList = await _yt.videos.closedCaptions.getManifest(videoId);
 
-      // Se não houver legendas disponíveis, retorne a transcrição simulada
+      // Não inventa conteúdo quando o vídeo não fornece legendas.
       if (trackList.tracks.isEmpty) {
-        final sampleTranscription = await _getSampleTranscription(videoId);
-        await prefs.setString('transcript_$videoId', sampleTranscription);
-        return sampleTranscription;
+        return '';
       }
 
-      // Prefere legendas em português ou inglês, se disponíveis
+      // Prefere o idioma atual, depois inglês e por fim a primeira faixa.
       ClosedCaptionTrackInfo track;
-
-      // Tenta encontrar legendas em português
-      var ptTracks = trackList.tracks
-          .where((track) => track.language.code.toLowerCase().startsWith('pt'));
-
-      // Se não encontrar português, tenta inglês
-      if (ptTracks.isEmpty) {
-        var enTracks = trackList.tracks.where(
+      final preferredTracks = trackList.tracks.where((track) =>
+          track.language.code.toLowerCase().startsWith(normalizedLanguage));
+      if (preferredTracks.isEmpty) {
+        final enTracks = trackList.tracks.where(
             (track) => track.language.code.toLowerCase().startsWith('en'));
-
-        // Se não encontrar inglês, usa a primeira disponível
         if (enTracks.isEmpty) {
           track = trackList.tracks.first;
         } else {
           track = enTracks.first;
         }
       } else {
-        track = ptTracks.first;
+        track = preferredTracks.first;
       }
 
       // Obtém as legendas
@@ -84,37 +103,45 @@ class YouTubeService {
       final transcript = transcriptBuilder.toString();
 
       // Armazena a transcrição em cache
-      await prefs.setString('transcript_$videoId', transcript);
+      await prefs.setString(cacheKey, transcript);
 
       return transcript;
     } catch (e) {
       print('Erro ao obter transcrição do YouTube: $e');
-      // Em caso de erro, retorna a transcrição simulada
-      return _getSampleTranscription(videoId);
+      return '';
     }
   }
 
   // Método completo para obter informações do vídeo e transcrição (sem chamar a IA)
-  static Future<Map<String, dynamic>> getVideoInfo(String url) async {
+  static Future<Map<String, dynamic>> getVideoInfo(
+    String url, {
+    required String languageCode,
+  }) async {
     try {
       // Extrai o ID do vídeo da URL
       final videoId = extractVideoId(url);
       if (videoId.isEmpty) {
         return {
           'success': false,
-          'error': 'URL de vídeo inválida',
+          'error': 'invalid_video_url',
         };
       }
 
       // Obtém informações básicas do vídeo
-      final videoInfo = await _getBasicVideoInfo(videoId);
+      final videoInfo = await _getBasicVideoInfo(
+        videoId,
+        languageCode: languageCode,
+      );
 
       // Obtém a transcrição do vídeo
-      final transcript = await getTranscription(videoId);
+      final transcript = await getTranscription(
+        videoId,
+        languageCode: languageCode,
+      );
       if (transcript.isEmpty) {
         return {
           'success': false,
-          'error': 'Não foi possível obter a transcrição do vídeo',
+          'error': 'transcript_unavailable',
           'videoInfo': videoInfo,
         };
       }
@@ -128,13 +155,16 @@ class YouTubeService {
     } catch (e) {
       return {
         'success': false,
-        'error': 'Erro ao processar o vídeo: ${e.toString()}',
+        'error': 'video_processing_failed',
       };
     }
   }
 
   // Renomeado o método original de getVideoInfo para _getBasicVideoInfo
-  static Future<Map<String, dynamic>> _getBasicVideoInfo(String videoId) async {
+  static Future<Map<String, dynamic>> _getBasicVideoInfo(
+    String videoId, {
+    required String languageCode,
+  }) async {
     try {
       // Usa o YouTube Explode para obter informações reais do vídeo
       final video = await _yt.videos.get(videoId);
@@ -143,17 +173,19 @@ class YouTubeService {
         'title': video.title,
         'channel': video.author,
         'duration': _formatDuration(video.duration),
-        'views': _formatViews(video.engagement.viewCount),
+        'views': _formatViews(video.engagement.viewCount, languageCode),
         'thumbnail': video.thumbnails.highResUrl,
       };
     } catch (e) {
       print('Erro ao obter informações do vídeo: $e');
-      // Retornar informações simuladas em caso de erro
+      final l10n = _localizations(languageCode);
       return {
-        'title': 'Vídeo do YouTube $videoId',
-        'channel': 'Canal do Criador',
-        'duration': '10:30',
-        'views': '123.456 visualizações',
+        'title': l10n
+            .translate('youtube_video_fallback_title')
+            .replaceAll('{id}', videoId),
+        'channel': l10n.translate('youtube_creator_channel'),
+        'duration': '--:--',
+        'views': '',
         'thumbnail': 'https://i.ytimg.com/vi/$videoId/maxresdefault.jpg',
       };
     }
@@ -175,93 +207,46 @@ class YouTubeService {
   }
 
   // Formata o número de visualizações para exibição
-  static String _formatViews(int views) {
-    if (views < 1000) {
-      return '$views visualizações';
-    } else if (views < 1000000) {
-      return '${(views / 1000).toStringAsFixed(1)}K visualizações';
-    } else {
-      return '${(views / 1000000).toStringAsFixed(1)}M visualizações';
-    }
-  }
-
-  // Método que simula uma transcrição para fins de demonstração (usado como fallback)
-  static Future<String> _getSampleTranscription(String videoId) async {
-    // Simulação de um pequeno atraso de rede
-    await Future.delayed(Duration(seconds: 1));
-
-    // Textos de exemplo para diferentes vídeos para simular a funcionalidade
-    final Map<String, String> sampleTexts = {
-      'default': '''
-Este vídeo explora as mudanças climáticas e seus impactos globais. As temperaturas estão aumentando em todo o mundo devido às emissões de carbono e outros gases de efeito estufa. Cientistas alertam que precisamos tomar medidas urgentes para reduzir as emissões e limitar o aquecimento global a 1,5 graus Celsius.
-
-O derretimento das geleiras e o aumento do nível do mar são consequências visíveis das mudanças climáticas. Muitas espécies estão em risco de extinção devido à perda de habitat. Eventos climáticos extremos como furacões, incêndios florestais e secas estão se tornando mais frequentes e intensos.
-
-Os países estão trabalhando juntos através de acordos internacionais como o Acordo de Paris para combater as mudanças climáticas. Indivíduos também podem contribuir fazendo escolhas sustentáveis em seu dia a dia, como reduzir o consumo de energia, optar por transporte público ou veículos elétricos e adotar uma dieta com menor pegada de carbono.
-
-Empresas e governos estão investindo em energia renovável e tecnologias limpas para reduzir as emissões. A transição para uma economia de baixo carbono representa desafios, mas também oportunidades para inovação e crescimento sustentável.
-
-Educação e conscientização sobre as mudanças climáticas são fundamentais para mobilizar a ação global. Todos têm um papel a desempenhar na proteção do nosso planeta para as gerações futuras.
-''',
-      'tech': '''
-Neste vídeo, discutimos os avanços recentes em inteligência artificial e suas aplicações. A IA generativa está revolucionando vários campos, desde criação de conteúdo até diagnósticos médicos. Modelos de linguagem grande como GPT-4 podem gerar texto, código e imagens com qualidade impressionante.
-
-O aprendizado de máquina continua a melhorar em áreas como visão computacional, processamento de linguagem natural e reconhecimento de padrões. Estas tecnologias estão sendo integradas em produtos e serviços que usamos diariamente, muitas vezes sem percebermos.
-
-O desenvolvimento da IA levanta questões importantes sobre ética, privacidade e segurança. Pesquisadores e empresas estão trabalhando para garantir que os sistemas de IA sejam transparentes, justos e alinhados com valores humanos.
-
-Também discutimos como a IA está transformando indústrias como saúde, finanças, transporte e educação. Embora haja preocupações sobre o impacto no mercado de trabalho, a IA também está criando novas oportunidades e profissões.
-
-Os desafios da IA incluem viés algorítmico, uso responsável de dados e a necessidade de regulamentação apropriada. A colaboração entre empresas, governos e academia será essencial para maximizar os benefícios da IA enquanto minimizamos seus riscos.
-''',
-      'education': '''
-Este vídeo apresenta métodos eficazes de estudo e aprendizado. A técnica de estudo espaçado envolve revisar o material em intervalos crescentes para melhorar a retenção de longo prazo. Pesquisas mostram que distribuir as sessões de estudo ao longo do tempo é mais eficaz do que estudar tudo de uma vez.
-
-A prática de recuperação, que consiste em testar a si mesmo sobre o material aprendido, fortalece a memória mais do que simplesmente reler o conteúdo. Flashcards e questionários são ferramentas eficazes para implementar esta técnica.
-
-Explicar conceitos em suas próprias palavras, conhecida como técnica Feynman, ajuda a identificar lacunas no seu entendimento e consolidar o aprendizado. Ensinar o que você aprendeu para outra pessoa ou para si mesmo é uma excelente maneira de verificar seu domínio do assunto.
-
-O contexto de aprendizado também é importante. Variar os ambientes de estudo pode melhorar a retenção, pois seu cérebro associa a informação a diferentes estímulos. Além disso, alternar entre diferentes assuntos em uma sessão de estudo pode ser mais eficaz do que focar em um único tópico.
-
-O sono adequado é crucial para a consolidação da memória. Durante o sono profundo, o cérebro processa e organiza as informações adquiridas durante o dia. Portanto, uma boa noite de sono após estudar é tão importante quanto o estudo em si.
-''',
-    };
-
-    // Determinando qual texto de exemplo usar
-    String transcription = '';
-    if (videoId == 'tech123') {
-      transcription = sampleTexts['tech'] ?? sampleTexts['default']!;
-    } else if (videoId == 'edu456') {
-      transcription = sampleTexts['education'] ?? sampleTexts['default']!;
-    } else {
-      transcription = sampleTexts['default']!;
-    }
-
-    return transcription;
+  static String _formatViews(int views, String languageCode) {
+    final l10n = _localizations(languageCode);
+    final locale = l10n.locale.toLanguageTag();
+    final count = NumberFormat.compact(locale: locale).format(views);
+    return l10n
+        .translate(views == 1 ? 'youtube_views_one' : 'youtube_views_other')
+        .replaceAll('{count}', count);
   }
 
   // Método para obter um resumo de um vídeo
-  static Future<Map<String, dynamic>> getVideoSummary(String url) async {
+  static Future<Map<String, dynamic>> getVideoSummary(
+    String url, {
+    required String languageCode,
+  }) async {
     try {
       // Extrai o ID do vídeo da URL
       final videoId = extractVideoId(url);
       if (videoId.isEmpty) {
         return {
           'success': false,
-          'error': 'URL de vídeo inválida',
+          'error': 'invalid_video_url',
         };
       }
 
       // Obtém informações do vídeo
-      final videoInfo = await _getBasicVideoInfo(videoId);
+      final videoInfo = await _getBasicVideoInfo(
+        videoId,
+        languageCode: languageCode,
+      );
       final videoTitle = videoInfo['title'] as String;
 
       // Obtém a transcrição do vídeo
-      final transcript = await getTranscription(videoId);
+      final transcript = await getTranscription(
+        videoId,
+        languageCode: languageCode,
+      );
       if (transcript.isEmpty) {
         return {
           'success': false,
-          'error': 'Não foi possível obter a transcrição do vídeo',
+          'error': 'transcript_unavailable',
           'videoInfo': videoInfo,
         };
       }
@@ -270,6 +255,7 @@ O sono adequado é crucial para a consolidação da memória. Durante o sono pro
       final summary = await _aiService.summarizeYouTubeTranscript(
         transcript,
         videoTitle: videoTitle,
+        languageCode: languageCode,
       );
 
       // Verifica se ocorreu algum erro
@@ -297,7 +283,7 @@ O sono adequado é crucial para a consolidação da memória. Durante o sono pro
       print('Erro ao obter resumo do vídeo: $e');
       return {
         'success': false,
-        'error': 'Ocorreu um erro ao processar o vídeo: $e',
+        'error': 'video_processing_failed',
       };
     }
   }

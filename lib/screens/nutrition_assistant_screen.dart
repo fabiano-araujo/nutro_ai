@@ -562,12 +562,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         date.day == yesterday.day;
 
     if (isToday) {
-      return 'Adicionado ao diário de hoje';
+      return context.tr.translate('meal_added_to_diary_today');
     }
     if (isYesterday) {
-      return 'Adicionado ao diário de ontem';
+      return context.tr.translate('meal_added_to_diary_yesterday');
     }
-    return 'Adicionado ao diário de ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+    final formattedDate = DateFormat.MMMd(
+      Localizations.localeOf(context).toLanguageTag(),
+    ).format(date);
+    return context.tr
+        .translate('meal_added_to_diary_date')
+        .replaceAll('{date}', formattedDate);
   }
 
   void _maybeShowMealAddedToast(DailyMealsProvider mealsProvider) {
@@ -651,26 +656,26 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       switch (actionType) {
         case 'registrar_refeicao':
           _suggestions = [
-            'Comi 2 pães de forma com 1 copo de leite',
-            'Comi um pedaço grande de bolo de chocolate',
-            '200g de feijão com 150g de arroz e carne',
-            '1 filé de frango cru 120g, salada e 2 colheres de arroz',
+            context.tr.translate('suggestion_log_bread_milk'),
+            context.tr.translate('suggestion_log_chocolate_cake'),
+            context.tr.translate('suggestion_log_rice_beans_meat'),
+            context.tr.translate('suggestion_log_chicken_salad_rice'),
           ];
           break;
         case 'sugestoes_refeicoes':
           _suggestions = [
-            'Me sugira um almoço saudável e prático',
-            'O que posso comer no café da manhã para emagrecer?',
-            'O que comer para ganhar peso sendo magro?',
-            'Monte um cardápio completo para o meu dia',
+            context.tr.translate('suggestion_healthy_practical_lunch'),
+            context.tr.translate('suggestion_weight_loss_breakfast'),
+            context.tr.translate('suggestion_gain_weight_food'),
+            context.tr.translate('suggestion_full_day_menu'),
           ];
           break;
         case 'perguntar_nutricao':
           _suggestions = [
-            'Não consigo emagrecer, o que posso estar fazendo errado?',
-            'Como ganhar massa muscular rapidamente?',
-            'Como controlar a vontade de comer doces?',
-            'Posso comer carboidrato à noite?',
+            context.tr.translate('suggestion_weight_loss_trouble'),
+            context.tr.translate('suggestion_gain_muscle'),
+            context.tr.translate('suggestion_control_sweets_cravings'),
+            context.tr.translate('suggestion_carbs_at_night'),
           ];
           break;
         default:
@@ -1616,7 +1621,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                               itemCount: voicesToShow.length,
                               itemBuilder: (context, index) {
                                 var voice = voicesToShow[index];
-                                var voiceName = voice['name'] ?? 'Voz $index';
+                                var voiceName = voice['name'] ??
+                                    appLocalizations
+                                        .translate('voice_fallback_name')
+                                        .replaceAll('{index}', '$index');
                                 var isSelected = currentVoice == voiceName;
 
                                 return ListTile(
@@ -1777,26 +1785,23 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     );
   }
 
-  String _translateOrFallback(String key, String fallback) {
-    final translated = AppLocalizations.of(context).translate(key);
-    return translated == key ? fallback : translated;
-  }
+  String _translate(String key) => AppLocalizations.of(context).translate(key);
 
   String _formatMessageOptionsTimestamp(DateTime timestamp) {
-    final localeName = Localizations.localeOf(context).toString();
+    final localeName = Localizations.localeOf(context).toLanguageTag();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final messageDay = DateTime(timestamp.year, timestamp.month, timestamp.day);
-    final time = DateFormat.Hm(localeName).format(timestamp);
+    final time = DateFormat.jm(localeName).format(timestamp);
 
     if (messageDay == today) {
-      return '${_translateOrFallback('today', 'Hoje')}, $time';
+      return '${_translate('today')}, $time';
     }
     if (messageDay == yesterday) {
-      return '${_translateOrFallback('yesterday', 'Ontem')}, $time';
+      return '${_translate('yesterday')}, $time';
     }
-    return DateFormat('dd/MM/yyyy, HH:mm', localeName).format(timestamp);
+    return DateFormat.yMd(localeName).add_jm().format(timestamp);
   }
 
   // Método para mostrar o menu de opções ao fazer long press.
@@ -1926,7 +1931,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     final actions = <Widget>[
       _buildMessageOptionButton(
         icon: Icons.content_copy_rounded,
-        label: _translateOrFallback('copy', 'Copiar'),
+        label: _translate('copy'),
         textColor: primaryText,
         iconColor: accentColor,
         iconBackgroundColor: accentColor.withValues(alpha: 0.12),
@@ -1934,7 +1939,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       ),
       _buildMessageOptionButton(
         icon: Icons.notes_rounded,
-        label: _translateOrFallback('select_text', 'Selecionar texto'),
+        label: _translate('select_text'),
         textColor: primaryText,
         iconColor: accentColor,
         iconBackgroundColor: accentColor.withValues(alpha: 0.12),
@@ -1944,7 +1949,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       if (isUser)
         _buildMessageOptionButton(
           icon: Icons.edit_outlined,
-          label: _translateOrFallback('edit_message', 'Editar mensagem'),
+          label: _translate('edit_message'),
           textColor: primaryText,
           iconColor: accentColor,
           iconBackgroundColor: accentColor.withValues(alpha: 0.12),
@@ -1956,7 +1961,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           icon: isSpeaking
               ? Icons.stop_circle_outlined
               : Icons.volume_up_outlined,
-          label: _translateOrFallback('speak_aloud', 'Ler em voz alta'),
+          label: _translate('speak_aloud'),
           textColor: primaryText,
           iconColor: accentColor,
           iconBackgroundColor: accentColor.withValues(alpha: 0.12),
@@ -1965,10 +1970,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         ),
         _buildMessageOptionButton(
           icon: Icons.refresh_rounded,
-          label: _translateOrFallback(
-            'regenerate_response',
-            'Gerar resposta novamente',
-          ),
+          label: _translate('regenerate_response'),
           textColor: primaryText,
           iconColor: accentColor,
           iconBackgroundColor: accentColor.withValues(alpha: 0.12),
@@ -1982,7 +1984,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
       ),
       _buildMessageOptionButton(
         icon: Icons.delete_outline_rounded,
-        label: _translateOrFallback('delete_message', 'Excluir mensagem'),
+        label: _translate('delete_message'),
         textColor: dangerColor,
         iconColor: dangerColor,
         iconBackgroundColor: dangerColor.withValues(alpha: 0.12),
@@ -2143,10 +2145,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           print('Erro ao iniciar leitura de voz: $e');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(_translateOrFallback(
-                'voice_unavailable',
-                'Função de leitura não disponível no momento.',
-              )),
+              content: Text(_translate('voice_unavailable')),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 3),
             ),
@@ -2172,10 +2171,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     if (_chatController.isLoading) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_translateOrFallback(
-            'wait_response_before_delete',
-            'Aguarde a resposta terminar antes de excluir.',
-          )),
+          content: Text(_translate('wait_response_before_delete')),
         ),
       );
       return;
@@ -2223,10 +2219,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  _translateOrFallback(
-                    'delete_message_title',
-                    'Excluir mensagem?',
-                  ),
+                  _translate('delete_message_title'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: primaryText,
@@ -2235,10 +2228,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _translateOrFallback(
-                    'delete_message_confirmation',
-                    'Esta mensagem e a resposta relacionada serão excluídas. Essa ação não pode ser desfeita.',
-                  ),
+                  _translate('delete_message_confirmation'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: secondaryText,
@@ -2264,7 +2254,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                           ),
                         ),
                         child: Text(
-                          _translateOrFallback('cancel', 'Cancelar'),
+                          _translate('cancel'),
                         ),
                       ),
                     ),
@@ -2281,7 +2271,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                           ),
                         ),
                         child: Text(
-                          _translateOrFallback('delete', 'Excluir'),
+                          _translate('delete'),
                         ),
                       ),
                     ),
@@ -2306,10 +2296,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     if (_chatController.isLoading) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_translateOrFallback(
-            'wait_response_before_edit',
-            'Aguarde a resposta terminar antes de editar.',
-          )),
+          content: Text(_translate('wait_response_before_edit')),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -2330,7 +2317,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         return AlertDialog(
           backgroundColor: Theme.of(dialogContext).scaffoldBackgroundColor,
           title: Text(
-            _translateOrFallback('edit_message', 'Editar mensagem'),
+            _translate('edit_message'),
             style: TextStyle(
               color: Theme.of(dialogContext).textTheme.bodyLarge?.color,
             ),
@@ -2344,10 +2331,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             maxLines: 8,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
-              hintText: _translateOrFallback(
-                'edit_your_message',
-                'Edite sua mensagem',
-              ),
+              hintText: _translate('edit_your_message'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -2359,15 +2343,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(_translateOrFallback('cancel', 'Cancelar')),
+              child: Text(_translate('cancel')),
             ),
             FilledButton(
               onPressed: () =>
                   Navigator.of(dialogContext).pop(editController.text),
-              child: Text(_translateOrFallback(
-                'save_and_resend',
-                'Salvar e reenviar',
-              )),
+              child: Text(_translate('save_and_resend')),
             ),
           ],
         );
@@ -2384,10 +2365,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     if (trimmed.isEmpty && !canSubmitEmptyEdit) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_translateOrFallback(
-            'message_required_before_resend',
-            'Digite uma mensagem antes de reenviar.',
-          )),
+          content: Text(_translate('message_required_before_resend')),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -2408,10 +2386,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     } else if (!_chatController.isLoading) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_translateOrFallback(
-            'message_edit_failed',
-            'Não foi possível editar a mensagem agora.',
-          )),
+          content: Text(_translate('message_edit_failed')),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -2425,11 +2400,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         builder: (context) {
           return AlertDialog(
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            title: Text(
-                _translateOrFallback(
-                  'select_text_title',
-                  'Selecionar Texto',
-                ),
+            title: Text(_translate('select_text_title'),
                 style: TextStyle(
                     color: Theme.of(context).textTheme.bodyLarge?.color)),
             content: Container(
@@ -2452,14 +2423,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             ),
             actions: [
               TextButton(
-                child: Text(_translateOrFallback('close', 'Fechar'),
+                child: Text(_translate('close'),
                     style: TextStyle(color: Theme.of(context).primaryColor)),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
               ),
               TextButton(
-                child: Text(_translateOrFallback('copy_all', 'Copiar Tudo'),
+                child: Text(_translate('copy_all'),
                     style: TextStyle(color: Theme.of(context).primaryColor)),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: message));
@@ -3014,7 +2985,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                 final List<Widget> chips = [
                                                   _buildActionChip(
                                                     icon: Icons.restaurant_menu,
-                                                    label: 'Anotar comida',
+                                                    label: context.tr.translate(
+                                                        'ai_tutor_log_meal'),
                                                     isDarkMode: isDarkMode,
                                                     onTap: () {
                                                       _showSuggestionsForAction(
@@ -3023,7 +2995,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                   ),
                                                   _buildActionChip(
                                                     icon: Icons.camera_alt,
-                                                    label: 'Tirar foto',
+                                                    label: context.tr.translate(
+                                                        'profile_shape_take_photo'),
                                                     isDarkMode: isDarkMode,
                                                     onTap: () {
                                                       Navigator.push(
@@ -3039,7 +3012,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                     _buildActionChip(
                                                       icon: Icons
                                                           .lightbulb_outline,
-                                                      label: 'Ideias de comida',
+                                                      label: context.tr.translate(
+                                                          'ai_tutor_meal_suggestions'),
                                                       isDarkMode: isDarkMode,
                                                       onTap: () {
                                                         _showSuggestionsForAction(
@@ -3049,7 +3023,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                   if (hasGoals)
                                                     _buildActionChip(
                                                       icon: Icons.help_outline,
-                                                      label: 'Tirar dúvida',
+                                                      label: context.tr.translate(
+                                                          'ai_tutor_ask_nutrition'),
                                                       isDarkMode: isDarkMode,
                                                       onTap: () {
                                                         _showSuggestionsForAction(
@@ -3059,7 +3034,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                   if (!hasGoals)
                                                     _buildActionChip(
                                                       icon: Icons.flag_outlined,
-                                                      label: 'Definir metas',
+                                                      label: context.tr.translate(
+                                                          'ai_tutor_set_nutrition_goal'),
                                                       isDarkMode: isDarkMode,
                                                       onTap: () {
                                                         Navigator.push(
@@ -3072,37 +3048,12 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                       },
                                                     ),
                                                 ];
-                                                final List<Widget> rows = [];
-                                                for (int i = 0;
-                                                    i < chips.length;
-                                                    i += 2) {
-                                                  final rowChips = <Widget>[
-                                                    chips[i],
-                                                    if (i + 1 <
-                                                        chips.length) ...[
-                                                      SizedBox(width: 8),
-                                                      chips[i + 1],
-                                                    ],
-                                                  ];
-                                                  if (rows.isNotEmpty) {
-                                                    rows.add(
-                                                        SizedBox(height: 8));
-                                                  }
-                                                  rows.add(Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    children: rowChips,
-                                                  ));
-                                                }
-                                                return Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: rows,
+                                                return Wrap(
+                                                  alignment:
+                                                      WrapAlignment.center,
+                                                  spacing: 8,
+                                                  runSpacing: 8,
+                                                  children: chips,
                                                 );
                                               },
                                             ),
@@ -3226,7 +3177,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          'Entre para salvar seu progresso',
+                                          context.tr.translate(
+                                              'chat_login_save_progress'),
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: isDarkMode
@@ -3242,8 +3194,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8),
                                         ),
-                                        child: const Text('Entrar',
-                                            style: TextStyle(fontSize: 13)),
+                                        child: Text(
+                                          context.tr.translate('login'),
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
                                       ),
                                       IconButton(
                                         icon: Icon(Icons.close,
@@ -3478,7 +3432,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                                 ? Colors.white70
                                                                 : AppTheme
                                                                     .textSecondaryColor),
-                                                        title: Text('Galeria',
+                                                        title: Text(
+                                                            context.tr
+                                                                .translate(
+                                                                    'gallery'),
                                                             style: TextStyle(
                                                                 color: isDarkMode
                                                                     ? Colors
@@ -3500,7 +3457,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                                 ? Colors.white70
                                                                 : AppTheme
                                                                     .textSecondaryColor),
-                                                        title: Text('Câmera',
+                                                        title: Text(
+                                                            context.tr
+                                                                .translate(
+                                                                    'camera'),
                                                             style: TextStyle(
                                                                 color: isDarkMode
                                                                     ? Colors
@@ -3527,7 +3487,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                                 : AppTheme
                                                                     .textSecondaryColor),
                                                         title: Text(
-                                                            'Recentes e favoritos',
+                                                            '${context.tr.translate('recent')} · ${context.tr.translate('favorites')}',
                                                             style: TextStyle(
                                                                 color: isDarkMode
                                                                     ? Colors
@@ -3570,7 +3530,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                               );
                                             },
                                       splashRadius: 20,
-                                      tooltip: 'Adicionar',
+                                      tooltip: context.tr.translate('add'),
                                     ),
 
                                     // Campo de texto / visualizador de áudio
@@ -3690,8 +3650,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                       },
                                       splashRadius: 20,
                                       tooltip: isListening
-                                          ? 'Parar gravação'
-                                          : 'Microfone',
+                                          ? context.tr
+                                              .translate('stop_recording')
+                                          : context.tr.translate('microphone'),
                                     ),
 
                                     // Botão de enviar/parar (aparece quando há texto, imagem ou está gerando)
@@ -4667,7 +4628,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }
 
   Widget _buildToolCard(bool isDarkMode) {
-    final toolName = _toolData?['toolName'] ?? 'Ferramenta';
+    final toolName =
+        _toolData?['toolName'] ?? context.tr.translate('tool_label');
     final toolTab = _toolData?['toolTab'] ?? '';
     final userInput = _toolData?['userInput'] ?? '';
     final thumbnailUrl = _toolData?['thumbnailUrl'] as String?;
@@ -4877,10 +4839,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           // Parâmetros avançados como tags
           if (advancedParams != null &&
               advancedParams.isNotEmpty &&
-              toolName != 'YouTube Summary') ...[
+              _toolData?['sourceType'] != 'youtube') ...[
             SizedBox(height: 12),
             Text(
-              'Parâmetros:',
+              context.tr.translate('advanced_parameters'),
               style: TextStyle(
                 color:
                     isDarkMode ? Colors.white70 : AppTheme.textSecondaryColor,
@@ -4928,41 +4890,17 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   String _getTimeBasedGreeting(BuildContext context) {
     final hour = DateTime.now().hour;
     if (hour >= 5 && hour < 10) {
-      return AppLocalizations.of(context).translate('greeting_breakfast') ??
-          'Bom dia! Já tomou café?';
+      return AppLocalizations.of(context).translate('greeting_breakfast');
     } else if (hour >= 10 && hour < 12) {
-      return AppLocalizations.of(context).translate('greeting_morning_snack') ??
-          'Hora do lanche da manhã?';
+      return AppLocalizations.of(context).translate('greeting_morning_snack');
     } else if (hour >= 12 && hour < 14) {
-      return AppLocalizations.of(context).translate('greeting_lunch') ??
-          'Hora do almoço!';
+      return AppLocalizations.of(context).translate('greeting_lunch');
     } else if (hour >= 14 && hour < 18) {
-      return AppLocalizations.of(context).translate('greeting_afternoon') ??
-          'Boa tarde! Como posso ajudar?';
+      return AppLocalizations.of(context).translate('greeting_afternoon');
     } else if (hour >= 18 && hour < 21) {
-      return AppLocalizations.of(context).translate('greeting_dinner') ??
-          'Hora do jantar!';
+      return AppLocalizations.of(context).translate('greeting_dinner');
     } else {
-      return AppLocalizations.of(context).translate('greeting_night') ??
-          'Boa noite!';
-    }
-  }
-
-  // Retorna o placeholder do input baseado no horário
-  String _getTimeBasedPlaceholder(BuildContext context) {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 10) {
-      return 'Ex: Pão com ovo e café';
-    } else if (hour >= 10 && hour < 12) {
-      return 'Ex: Fruta ou iogurte';
-    } else if (hour >= 12 && hour < 14) {
-      return 'Ex: Arroz, feijão e frango';
-    } else if (hour >= 14 && hour < 18) {
-      return 'Ex: Lanche da tarde';
-    } else if (hour >= 18 && hour < 21) {
-      return 'Ex: Salada com proteína';
-    } else {
-      return 'O que você comeu?';
+      return AppLocalizations.of(context).translate('greeting_night');
     }
   }
 
@@ -4988,33 +4926,38 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     } else if (isYesterday) {
       label = context.tr.translate('yesterday');
     } else {
-      label =
-          '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}';
+      label = DateFormat.MMMd(
+        Localizations.localeOf(context).toLanguageTag(),
+      ).format(selectedDate);
     }
     final titleWidget = widget.isFreeChat
         ? Builder(builder: (ctx) {
             final currentChatId = _currentFreeChatId;
-            final title = currentChatId == null
-                ? null
-                : ctx.select<FreeChatProvider, String?>(
-                    (provider) =>
-                        provider.getConversation(currentChatId)?.title,
-                  );
+            final chatHeader = currentChatId == null
+                ? (title: null as String?, hasMessages: false)
+                : ctx.select<FreeChatProvider,
+                    ({bool hasMessages, String? title})>((provider) {
+                    final conversation =
+                        provider.getConversation(currentChatId);
+                    return (
+                      title: conversation?.title,
+                      hasMessages: conversation?.messages.isNotEmpty ?? false,
+                    );
+                  });
+            final title = chatHeader.title;
             return Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Conversa livre',
+                  context.tr.translate('free_chat'),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: isDarkMode ? Colors.white : Colors.black87,
                   ),
                 ),
-                if (title != null &&
-                    title.isNotEmpty &&
-                    title != 'Nova conversa')
+                if (title != null && title.isNotEmpty && chatHeader.hasMessages)
                   Text(
                     title,
                     maxLines: 1,
@@ -5072,7 +5015,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                         widget.isFreeChat ? Icons.arrow_back : Icons.menu,
                         color: isDarkMode ? Colors.white : Colors.black87),
                     onPressed: widget.onOpenDrawer,
-                    tooltip: widget.isFreeChat ? 'Voltar' : 'Menu',
+                    tooltip: widget.isFreeChat
+                        ? context.tr.translate('back')
+                        : MaterialLocalizations.of(context)
+                            .openAppDrawerTooltip,
                   )
                 else
                   const SizedBox(width: 12),
@@ -5087,7 +5033,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                         icon: Icon(Icons.search,
                             color: isDarkMode ? Colors.white : Colors.black87),
                         onPressed: onSearchTap,
-                        tooltip: 'Pesquisar alimentos',
+                        tooltip: context.tr.translate('search_food'),
                       )
                     else
                       const SizedBox(width: 8),

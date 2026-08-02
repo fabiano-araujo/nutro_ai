@@ -11,7 +11,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../i18n/app_localizations.dart';
 import '../util/app_constants.dart';
+import '../utils/diet_stream_meal_parser.dart';
 import 'app_integrity_service.dart';
 
 class DietGenerationBackgroundTask {
@@ -144,7 +146,7 @@ class DietGenerationBackgroundTask {
         dateKey: dateKey,
         userId: userId,
         languageCode: json['languageCode']?.toString() ?? 'pt_BR',
-        modelId: json['modelId']?.toString() ?? 'google/gemini-3-flash-preview',
+        modelId: json['modelId']?.toString() ?? AppConstants.DEFAULT_AI_MODEL,
         targetNutrition: targetNutrition,
         mealTypes: mealTypes,
         responseText: json['responseText']?.toString(),
@@ -167,21 +169,22 @@ class DietGenerationBackgroundService {
   static const String activeTaskKey = 'active_diet_generation_job';
   static const String _startMethod = 'startDietGeneration';
   static const String _stopMethod = 'stopDietGeneration';
+  static const String _progressMethod = 'dietGenerationProgress';
   static const String _completedMethod = 'dietGenerationCompleted';
   static const String _failedMethod = 'dietGenerationFailed';
   static const String notificationChannelId = 'nutro_ai_diet_generation';
-  static const String notificationChannelName = 'Geracao de dieta';
-  static const String notificationChannelDescription =
-      'Servico em primeiro plano para gerar dietas longas.';
   static const int foregroundNotificationId = 9051;
   static const int completionNotificationId = 9052;
 
   static bool _configured = false;
+  static final StreamController<Map<String, dynamic>?> _progressController =
+      StreamController<Map<String, dynamic>?>.broadcast();
 
   static Future<void> initialize() async {
     if (kIsWeb || _configured) return;
 
-    await _createNotificationChannel();
+    final l10n = await _loadStoredLocalizations();
+    await _createNotificationChannel(l10n);
 
     final service = FlutterBackgroundService();
     await service.configure(
@@ -192,7 +195,8 @@ class DietGenerationBackgroundService {
         isForegroundMode: true,
         notificationChannelId: notificationChannelId,
         initialNotificationTitle: 'Nutro AI',
-        initialNotificationContent: 'Preparando geracao de dieta...',
+        initialNotificationContent:
+            l10n.translate('diet_generation_preparing_notification'),
         foregroundServiceNotificationId: foregroundNotificationId,
         foregroundServiceTypes: const [AndroidForegroundType.dataSync],
       ),
@@ -202,6 +206,7 @@ class DietGenerationBackgroundService {
         onBackground: dietGenerationBackgroundServiceOnIosBackground,
       ),
     );
+    service.on(_progressMethod).listen(_progressController.add);
     _configured = true;
   }
 
@@ -248,6 +253,10 @@ class DietGenerationBackgroundService {
 
   static Stream<Map<String, dynamic>?> onCompleted() {
     return FlutterBackgroundService().on(_completedMethod);
+  }
+
+  static Stream<Map<String, dynamic>?> onProgress() {
+    return _progressController.stream;
   }
 
   static Stream<Map<String, dynamic>?> onFailed() {
@@ -306,16 +315,19 @@ class DietGenerationBackgroundService {
     await prefs.remove(activeTaskKey);
   }
 
-  static Future<void> _createNotificationChannel() async {
+  static Future<void> _createNotificationChannel(
+    AppLocalizations l10n,
+  ) async {
     final notifications = FlutterLocalNotificationsPlugin();
     await notifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(
-          const AndroidNotificationChannel(
+          AndroidNotificationChannel(
             notificationChannelId,
-            notificationChannelName,
-            description: notificationChannelDescription,
+            l10n.translate('background_generation_channel_name'),
+            description:
+                l10n.translate('background_generation_channel_description'),
             importance: Importance.high,
           ),
         );
@@ -645,7 +657,8 @@ void dietGenerationBackgroundServiceOnStart(ServiceInstance service) async {
         await DietGenerationBackgroundService.saveActiveTask(
           currentTask.copyWith(
             status: DietGenerationBackgroundTask.statusCancelled,
-            error: 'Geração de dieta cancelada',
+            error: _localizationsForLanguageCode(currentTask.languageCode)
+                .translate('diet_generation_cancelled'),
             completedAt: DateTime.now(),
           ),
         );
@@ -666,7 +679,8 @@ void dietGenerationBackgroundServiceOnStart(ServiceInstance service) async {
         await ProfileShapeGenerationBackgroundService.saveActiveTask(
           currentTask.copyWith(
             status: ProfileShapeGenerationBackgroundTask.statusCancelled,
-            error: 'Geração de shape cancelada',
+            error: _localizationsForLanguageCode(currentTask.languageCode)
+                .translate('profile_shape_generation_cancelled'),
             completedAt: DateTime.now(),
           ),
         );
@@ -688,8 +702,10 @@ Future<void> _runDietGenerationTask({
   required DietGenerationBackgroundTask task,
   required bool Function() isCancelled,
 }) async {
+  final l10n = _localizationsForLanguageCode(task.languageCode);
   final runningTask = task.copyWith(
     status: DietGenerationBackgroundTask.statusRunning,
+    responseText: '',
     updatedAt: DateTime.now(),
   );
   await DietGenerationBackgroundService.saveActiveTask(runningTask);
@@ -698,7 +714,7 @@ Future<void> _runDietGenerationTask({
     await service.setAsForegroundService();
     await service.setForegroundNotificationInfo(
       title: 'Nutro AI',
-      content: 'Gerando sua dieta em segundo plano...',
+      content: l10n.translate('diet_generation_running_notification'),
     );
   }
 
@@ -707,6 +723,31 @@ Future<void> _runDietGenerationTask({
       client: client,
       task: runningTask,
       isCancelled: isCancelled,
+      onProgress: (partialResponseText, completedMeals) async {
+        if (isCancelled()) return;
+        final activeTask =
+            await DietGenerationBackgroundService.readActiveTask();
+        if (activeTask == null ||
+            activeTask.taskId != runningTask.taskId ||
+            activeTask.isTerminal) {
+          return;
+        }
+
+        final progressTask = runningTask.copyWith(
+          responseText: partialResponseText,
+          updatedAt: DateTime.now(),
+        );
+        await DietGenerationBackgroundService.saveActiveTask(progressTask);
+        service.invoke(
+          DietGenerationBackgroundService._progressMethod,
+          {
+            'taskId': progressTask.taskId,
+            'responseText': partialResponseText,
+            'completedMeals': completedMeals,
+            'updatedAt': progressTask.updatedAt.toIso8601String(),
+          },
+        );
+      },
     );
     final completedTask = runningTask.copyWith(
       status: DietGenerationBackgroundTask.statusCompleted,
@@ -718,8 +759,9 @@ Future<void> _runDietGenerationTask({
 
     await _showDietGenerationNotification(
       notifications: notifications,
-      title: 'Sua dieta ficou pronta',
-      body: 'Toque para ver seu plano alimentar.',
+      l10n: l10n,
+      title: l10n.translate('diet_generation_complete_title'),
+      body: l10n.translate('diet_generation_complete_body'),
       payload: {
         'type': 'diet_generation_completed',
         'screen': '/diet',
@@ -741,8 +783,9 @@ Future<void> _runDietGenerationTask({
     if (!isCancelled()) {
       await _showDietGenerationNotification(
         notifications: notifications,
-        title: 'Nao foi possivel gerar sua dieta',
-        body: 'Abra o app para tentar novamente.',
+        l10n: l10n,
+        title: l10n.translate('diet_generation_failed_title'),
+        body: l10n.translate('generation_failed_open_app_body'),
         payload: {
           'type': 'diet_generation_failed',
           'screen': '/diet',
@@ -761,6 +804,7 @@ Future<void> _runProfileShapeGenerationTask({
   required ProfileShapeGenerationBackgroundTask task,
   required bool Function() isCancelled,
 }) async {
+  final l10n = _localizationsForLanguageCode(task.languageCode);
   final runningTask = task.copyWith(
     status: ProfileShapeGenerationBackgroundTask.statusRunning,
     updatedAt: DateTime.now(),
@@ -771,7 +815,7 @@ Future<void> _runProfileShapeGenerationTask({
     await service.setAsForegroundService();
     await service.setForegroundNotificationInfo(
       title: 'Nutro AI',
-      content: 'Gerando seu shape em segundo plano...',
+      content: l10n.translate('profile_shape_generation_running_notification'),
     );
   }
 
@@ -792,8 +836,9 @@ Future<void> _runProfileShapeGenerationTask({
     await _showDietGenerationNotification(
       notifications: notifications,
       id: ProfileShapeGenerationBackgroundService.completionNotificationId,
-      title: 'Seu shape ficou pronto',
-      body: 'Toque para ver sua prévia gerada.',
+      l10n: l10n,
+      title: l10n.translate('profile_shape_generation_complete_title'),
+      body: l10n.translate('profile_shape_generation_complete_body'),
       payload: {
         'type': 'profile_shape_generation_completed',
         'screen': '/profile-shape',
@@ -819,8 +864,9 @@ Future<void> _runProfileShapeGenerationTask({
       await _showDietGenerationNotification(
         notifications: notifications,
         id: ProfileShapeGenerationBackgroundService.completionNotificationId,
-        title: 'Nao foi possivel gerar seu shape',
-        body: 'Abra o app para tentar novamente.',
+        l10n: l10n,
+        title: l10n.translate('profile_shape_generation_failed_title'),
+        body: l10n.translate('generation_failed_open_app_body'),
         payload: {
           'type': 'profile_shape_generation_failed',
           'screen': '/profile-shape',
@@ -836,7 +882,9 @@ Future<String> _requestDietGeneration({
   required http.Client client,
   required DietGenerationBackgroundTask task,
   required bool Function() isCancelled,
+  Future<void> Function(String responseText, int completedMeals)? onProgress,
 }) async {
+  final l10n = _localizationsForLanguageCode(task.languageCode);
   final request = http.Request(
     'POST',
     Uri.parse('${AppConstants.API_BASE_URL}/ai/generate-text'),
@@ -867,20 +915,23 @@ Future<String> _requestDietGeneration({
         const Duration(minutes: 15),
       );
   if (response.statusCode != 200) {
-    final body = await response.stream.bytesToString();
+    await response.stream.drain<void>();
     throw Exception(
-      'Erro na API: ${response.statusCode}${body.isEmpty ? '' : ' - $body'}',
+      l10n
+          .translate('api_error_with_code')
+          .replaceAll('{code}', response.statusCode.toString()),
     );
   }
 
   final responseBuffer = StringBuffer();
   var lineBuffer = '';
+  var publishedMealsCount = 0;
 
   await for (final chunk in response.stream.transform(utf8.decoder).timeout(
         const Duration(minutes: 15),
       )) {
     if (isCancelled()) {
-      throw Exception('Geração de dieta cancelada');
+      throw Exception(l10n.translate('diet_generation_cancelled'));
     }
 
     lineBuffer += chunk;
@@ -898,6 +949,20 @@ Future<String> _requestDietGeneration({
       final decoded = jsonDecode(jsonLine);
       if (decoded is Map && decoded['text'] != null) {
         responseBuffer.write(decoded['text']);
+        final partialResponseText = responseBuffer.toString();
+        final completedMeals = DietStreamMealParser.extractCompleteMeals(
+          partialResponseText,
+        ).length;
+        if (completedMeals > publishedMealsCount) {
+          publishedMealsCount = completedMeals;
+          try {
+            await onProgress?.call(partialResponseText, completedMeals);
+          } catch (e) {
+            // Progress is best-effort. A persistence/event failure must not
+            // abort a diet request that can still finish successfully.
+            print('⚠️ Falha ao publicar progresso da dieta: $e');
+          }
+        }
       } else if (decoded is Map && decoded['error'] != null) {
         throw Exception(decoded['error'].toString());
       }
@@ -906,7 +971,7 @@ Future<String> _requestDietGeneration({
 
   final responseText = responseBuffer.toString();
   if (responseText.trim().isEmpty) {
-    throw Exception('A API finalizou sem retornar a dieta');
+    throw Exception(l10n.translate('diet_generation_empty_response'));
   }
   return responseText;
 }
@@ -916,14 +981,15 @@ Future<Map<String, dynamic>> _requestProfileShapeGeneration({
   required ProfileShapeGenerationBackgroundTask task,
   required bool Function() isCancelled,
 }) async {
+  final l10n = _localizationsForLanguageCode(task.languageCode);
   if (isCancelled()) {
-    throw Exception('Geração de shape cancelada');
+    throw Exception(l10n.translate('profile_shape_generation_cancelled'));
   }
 
   const secureStorage = FlutterSecureStorage();
   final token = await secureStorage.read(key: 'auth_token');
   if (token == null || token.isEmpty) {
-    throw Exception('Sessão expirada. Faça login novamente.');
+    throw Exception(l10n.translate('session_expired_login_again'));
   }
 
   final headers = <String, String>{
@@ -944,7 +1010,7 @@ Future<Map<String, dynamic>> _requestProfileShapeGeneration({
       .timeout(const Duration(minutes: 5));
 
   if (isCancelled()) {
-    throw Exception('Geração de shape cancelada');
+    throw Exception(l10n.translate('profile_shape_generation_cancelled'));
   }
 
   final decoded = response.body.isEmpty
@@ -956,11 +1022,7 @@ Future<Map<String, dynamic>> _requestProfileShapeGeneration({
       response.statusCode >= 300 ||
       decoded['success'] != true ||
       data is! Map) {
-    throw Exception(
-      decoded['message'] ??
-          decoded['error'] ??
-          'Falha ao gerar prévia no shape',
-    );
+    throw Exception(l10n.translate('profile_shape_generation_failed'));
   }
 
   return Map<String, dynamic>.from(data);
@@ -969,6 +1031,7 @@ Future<Map<String, dynamic>> _requestProfileShapeGeneration({
 Future<void> _initializeDietGenerationNotifications(
   FlutterLocalNotificationsPlugin notifications,
 ) async {
+  final l10n = await _loadStoredLocalizations();
   const initializationSettings = InitializationSettings(
     android: AndroidInitializationSettings('ic_notification'),
     iOS: DarwinInitializationSettings(
@@ -988,11 +1051,11 @@ Future<void> _initializeDietGenerationNotifications(
       .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(
-        const AndroidNotificationChannel(
+        AndroidNotificationChannel(
           DietGenerationBackgroundService.notificationChannelId,
-          DietGenerationBackgroundService.notificationChannelName,
+          l10n.translate('background_generation_channel_name'),
           description:
-              DietGenerationBackgroundService.notificationChannelDescription,
+              l10n.translate('background_generation_channel_description'),
           importance: Importance.high,
         ),
       );
@@ -1001,6 +1064,7 @@ Future<void> _initializeDietGenerationNotifications(
 Future<void> _showDietGenerationNotification({
   required FlutterLocalNotificationsPlugin notifications,
   int id = DietGenerationBackgroundService.completionNotificationId,
+  required AppLocalizations l10n,
   required String title,
   required String body,
   required Map<String, dynamic> payload,
@@ -1009,23 +1073,23 @@ Future<void> _showDietGenerationNotification({
     id: id,
     title: title,
     body: body,
-    notificationDetails: const NotificationDetails(
+    notificationDetails: NotificationDetails(
       android: AndroidNotificationDetails(
         DietGenerationBackgroundService.notificationChannelId,
-        DietGenerationBackgroundService.notificationChannelName,
+        l10n.translate('background_generation_channel_name'),
         channelDescription:
-            DietGenerationBackgroundService.notificationChannelDescription,
+            l10n.translate('background_generation_channel_description'),
         icon: 'ic_notification',
         importance: Importance.high,
         priority: Priority.high,
         category: AndroidNotificationCategory.status,
       ),
-      iOS: DarwinNotificationDetails(
+      iOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
       ),
-      macOS: DarwinNotificationDetails(
+      macOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
@@ -1033,4 +1097,26 @@ Future<void> _showDietGenerationNotification({
     ),
     payload: jsonEncode(payload),
   );
+}
+
+Future<AppLocalizations> _loadStoredLocalizations() async {
+  final prefs = await SharedPreferences.getInstance();
+  final languageCode = prefs.getString('languageCode') ?? 'pt';
+  final countryCode = prefs.getString('countryCode') ?? 'BR';
+  return _localizationsForLanguageCode('${languageCode}_$countryCode');
+}
+
+AppLocalizations _localizationsForLanguageCode(String rawCode) {
+  final normalized = rawCode.trim().replaceAll('-', '_');
+  final parts = normalized.split('_');
+  final language = parts.first.toLowerCase();
+  final country = parts.length > 1 ? parts[1].toUpperCase() : null;
+
+  for (final locale in AppLocalizations.supportedLocales) {
+    if (locale.languageCode == language &&
+        (country == null || locale.countryCode == country)) {
+      return AppLocalizations(locale);
+    }
+  }
+  return AppLocalizations(const Locale('pt', 'BR'));
 }

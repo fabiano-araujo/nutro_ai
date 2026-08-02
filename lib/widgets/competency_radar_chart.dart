@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../i18n/app_localizations.dart';
 
 class CompetencyRadarChart extends StatefulWidget {
   final Map<String, int> competencyScores;
@@ -50,6 +51,10 @@ class _CompetencyRadarChartState extends State<CompetencyRadarChart>
 
   @override
   Widget build(BuildContext context) {
+    final localizedScores = widget.competencyScores.map(
+      (name, score) => MapEntry(_localizedRadarLabel(context, name), score),
+    );
+
     return Container(
       width: widget.size,
       height: widget.size,
@@ -59,20 +64,22 @@ class _CompetencyRadarChartState extends State<CompetencyRadarChart>
               builder: (context, child) {
                 return CustomPaint(
                   painter: RadarChartPainter(
-                    competencyScores: widget.competencyScores,
+                    competencyScores: localizedScores,
                     animationValue: _animation.value,
                     primaryColor: widget.primaryColor,
                     backgroundColor: widget.backgroundColor,
+                    textDirection: Directionality.of(context),
                   ),
                 );
               },
             )
           : CustomPaint(
               painter: RadarChartPainter(
-                competencyScores: widget.competencyScores,
+                competencyScores: localizedScores,
                 animationValue: 1.0,
                 primaryColor: widget.primaryColor,
                 backgroundColor: widget.backgroundColor,
+                textDirection: Directionality.of(context),
               ),
             ),
     );
@@ -84,12 +91,14 @@ class RadarChartPainter extends CustomPainter {
   final double animationValue;
   final Color primaryColor;
   final Color backgroundColor;
+  final TextDirection textDirection;
 
   RadarChartPainter({
     required this.competencyScores,
     required this.animationValue,
     required this.primaryColor,
     required this.backgroundColor,
+    required this.textDirection,
   });
 
   @override
@@ -141,11 +150,11 @@ class RadarChartPainter extends CustomPainter {
     }
   }
 
-  void _drawLabels(Canvas canvas, Offset center, double radius, 
+  void _drawLabels(Canvas canvas, Offset center, double radius,
       List<String> competencies, Size size) {
     final textPainter = TextPainter(
       textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
+      textDirection: textDirection,
     );
 
     for (int i = 0; i < competencies.length; i++) {
@@ -156,14 +165,8 @@ class RadarChartPainter extends CustomPainter {
         center.dy + labelRadius * math.sin(angle),
       );
 
-      // Simplify competency names for display
-      String displayName = competencies[i];
-      if (displayName.startsWith('Competência ')) {
-        displayName = 'C${displayName.split(' ')[1]}';
-      }
-
       textPainter.text = TextSpan(
-        text: displayName,
+        text: competencies[i],
         style: TextStyle(
           color: Colors.grey[600],
           fontSize: 12,
@@ -194,12 +197,12 @@ class RadarChartPainter extends CustomPainter {
       ..strokeWidth = 2;
 
     final path = Path();
-    
+
     for (int i = 0; i < scores.length; i++) {
       final angle = (2 * math.pi * i / scores.length) - math.pi / 2;
       final normalizedScore = (scores[i] / maxScore).clamp(0.0, 1.0);
       final pointRadius = radius * normalizedScore * animationValue;
-      
+
       final point = Offset(
         center.dx + pointRadius * math.cos(angle),
         center.dy + pointRadius * math.sin(angle),
@@ -232,7 +235,7 @@ class RadarChartPainter extends CustomPainter {
       final angle = (2 * math.pi * i / scores.length) - math.pi / 2;
       final normalizedScore = (scores[i] / maxScore).clamp(0.0, 1.0);
       final pointRadius = radius * normalizedScore * animationValue;
-      
+
       final point = Offset(
         center.dx + pointRadius * math.cos(angle),
         center.dy + pointRadius * math.sin(angle),
@@ -243,9 +246,10 @@ class RadarChartPainter extends CustomPainter {
     }
   }
 
-  void _drawPolygon(Canvas canvas, Offset center, double radius, int sides, Paint paint) {
+  void _drawPolygon(
+      Canvas canvas, Offset center, double radius, int sides, Paint paint) {
     final path = Path();
-    
+
     for (int i = 0; i < sides; i++) {
       final angle = (2 * math.pi * i / sides) - math.pi / 2;
       final point = Offset(
@@ -268,4 +272,12 @@ class RadarChartPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
   }
+}
+
+String _localizedRadarLabel(BuildContext context, String value) {
+  final match = RegExp(r'([1-5])').firstMatch(value);
+  if (match == null) return value;
+  return AppLocalizations.of(context)
+      .translate('progress_competency_short')
+      .replaceAll('{number}', match.group(1)!);
 }

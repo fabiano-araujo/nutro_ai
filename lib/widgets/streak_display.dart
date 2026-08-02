@@ -272,9 +272,12 @@ class StreakDetailCard extends StatelessWidget {
                           mainStreak == 0
                               ? context.tr.translate('streak_hero_start_hint')
                               : context.tr
-                                  .translate('streak_hero_record')
-                                  .replaceAll(
-                                      '{count}', bestStreak.toString()),
+                                  .translate(
+                                    bestStreak == 1
+                                        ? 'streak_hero_record_one'
+                                        : 'streak_hero_record_other',
+                                  )
+                                  .replaceAll('{count}', bestStreak.toString()),
                           style: TextStyle(
                             fontSize: 12,
                             color: isDarkMode
@@ -311,8 +314,7 @@ class StreakDetailCard extends StatelessWidget {
                             );
                           },
                     icon: const Icon(Icons.check_circle_outline_rounded),
-                    label:
-                        Text(context.tr.translate('streak_checkin_action')),
+                    label: Text(context.tr.translate('streak_checkin_action')),
                   ),
                 ),
               ],
@@ -322,8 +324,7 @@ class StreakDetailCard extends StatelessWidget {
                 emoji: '💪',
                 label: context.tr.translate('streak_secondary_protein'),
                 count: streakProvider.proteinStreak,
-                suffix:
-                    context.tr.translate('streak_secondary_days_suffix'),
+                suffix: context.tr.translate('streak_secondary_days_suffix'),
                 isDarkMode: isDarkMode,
               ),
               const SizedBox(height: 8),
@@ -331,8 +332,7 @@ class StreakDetailCard extends StatelessWidget {
                 emoji: '🎯',
                 label: context.tr.translate('streak_secondary_goal'),
                 count: streakProvider.goalStreak,
-                suffix:
-                    context.tr.translate('streak_secondary_days_suffix'),
+                suffix: context.tr.translate('streak_secondary_days_suffix'),
                 isDarkMode: isDarkMode,
               ),
               if (streakProvider.isStreakInDanger) ...[
@@ -373,18 +373,23 @@ class StreakDetailCard extends StatelessWidget {
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (dialogContext) => AlertDialog(
-                          title: Text(context.tr.translate('activate_freeze_title')),
+                          title: Text(
+                              context.tr.translate('activate_freeze_title')),
                           content: Text(
-                            context.tr.translate('activate_freeze_description')
-                                .replaceAll('{count}', streakProvider.freezesAvailable.toString()),
+                            context.tr
+                                .translate('activate_freeze_description')
+                                .replaceAll('{count}',
+                                    streakProvider.freezesAvailable.toString()),
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.pop(dialogContext, false),
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
                               child: Text(context.tr.translate('cancel')),
                             ),
                             ElevatedButton(
-                              onPressed: () => Navigator.pop(dialogContext, true),
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, true),
                               child: Text(context.tr.translate('activate')),
                             ),
                           ],
@@ -399,7 +404,11 @@ class StreakDetailCard extends StatelessWidget {
                     label: Text(context.tr.translate('activate_freeze')),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.primary,
-                      side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
+                      side: BorderSide(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.5)),
                     ),
                   ),
                 ),
@@ -429,8 +438,7 @@ class _SecondaryStreakRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary =
-        isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
+    final textPrimary = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
     final textSecondary =
         isDarkMode ? Colors.white54 : AppTheme.textSecondaryColor;
 

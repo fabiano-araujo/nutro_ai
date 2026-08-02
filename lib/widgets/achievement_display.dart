@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations.dart';
 import '../models/achievement.dart';
 
 /// Widget that displays user achievements and badges
@@ -27,36 +28,36 @@ class AchievementDisplay extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Conquistas',
+                  _translate(context, 'progress_achievements'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 if (onViewAll != null)
                   TextButton(
                     onPressed: onViewAll,
-                    child: const Text('Ver todas'),
+                    child: Text(_translate(context, 'progress_view_all')),
                   ),
               ],
             ),
             const SizedBox(height: 16),
             if (achievements.isEmpty)
-              const Center(
+              Center(
                 child: Column(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.emoji_events_outlined,
                       size: 48,
                       color: Colors.grey,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'Nenhuma conquista ainda',
-                      style: TextStyle(color: Colors.grey),
+                      _translate(context, 'progress_no_achievements_yet'),
+                      style: const TextStyle(color: Colors.grey),
                     ),
                     Text(
-                      'Continue escrevendo para desbloquear!',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      _translate(context, 'progress_keep_writing_to_unlock'),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
                 ),
@@ -70,9 +71,8 @@ class AchievementDisplay extends StatelessWidget {
   }
 
   Widget _buildAchievementGrid(BuildContext context) {
-    final displayAchievements = showProgress 
-        ? achievements 
-        : achievements.take(6).toList();
+    final displayAchievements =
+        showProgress ? achievements : achievements.take(6).toList();
 
     return GridView.builder(
       shrinkWrap: true,
@@ -96,12 +96,12 @@ class AchievementDisplay extends StatelessWidget {
       onTap: () => _showAchievementDetails(context, achievement),
       child: Container(
         decoration: BoxDecoration(
-          color: achievement.isCompleted 
+          color: achievement.isCompleted
               ? Theme.of(context).primaryColor.withOpacity(0.1)
               : Colors.grey.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: achievement.isCompleted 
+            color: achievement.isCompleted
                 ? Theme.of(context).primaryColor
                 : Colors.grey,
             width: 2,
@@ -113,13 +113,13 @@ class AchievementDisplay extends StatelessWidget {
             _buildAchievementIcon(achievement),
             const SizedBox(height: 4),
             Text(
-              achievement.title,
+              _localizedAchievementTitle(context, achievement),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: achievement.isCompleted 
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: achievement.isCompleted
+                        ? Theme.of(context).primaryColor
+                        : Colors.grey,
+                  ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -138,7 +138,7 @@ class AchievementDisplay extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: achievement.isCompleted 
+        color: achievement.isCompleted
             ? _getCategoryColor(achievement.category)
             : Colors.grey.withOpacity(0.3),
       ),
@@ -178,7 +178,7 @@ class AchievementDisplay extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  achievement.title,
+                  _localizedAchievementTitle(context, achievement),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -188,17 +188,17 @@ class AchievementDisplay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(achievement.description),
+              Text(_localizedAchievementDescription(context, achievement)),
               const SizedBox(height: 12),
-              _buildAchievementInfo(achievement),
+              _buildAchievementInfo(context, achievement),
               if (!achievement.isCompleted && showProgress)
-                _buildProgressDetails(achievement),
+                _buildProgressDetails(context, achievement),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fechar'),
+              child: Text(_translate(context, 'close')),
             ),
           ],
         );
@@ -206,7 +206,7 @@ class AchievementDisplay extends StatelessWidget {
     );
   }
 
-  Widget _buildAchievementInfo(Achievement achievement) {
+  Widget _buildAchievementInfo(BuildContext context, Achievement achievement) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -219,7 +219,11 @@ class AchievementDisplay extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              'Categoria: ${achievement.category.displayName}',
+              _translateWith(
+                context,
+                'progress_achievement_category_label',
+                {'category': _localizedCategory(context, achievement.category)},
+              ),
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,
@@ -238,7 +242,14 @@ class AchievementDisplay extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                'Desbloqueado em: ${_formatDate(achievement.unlockedAt)}',
+                _translateWith(
+                  context,
+                  'progress_unlocked_on',
+                  {
+                    'date': MaterialLocalizations.of(context)
+                        .formatFullDate(achievement.unlockedAt),
+                  },
+                ),
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 12,
@@ -250,7 +261,7 @@ class AchievementDisplay extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressDetails(Achievement achievement) {
+  Widget _buildProgressDetails(BuildContext context, Achievement achievement) {
     if (achievement.requiredValue == null || achievement.currentValue == null) {
       return Container();
     }
@@ -262,7 +273,7 @@ class AchievementDisplay extends StatelessWidget {
         const Divider(),
         const SizedBox(height: 8),
         Text(
-          'Progresso',
+          _translate(context, 'progress_tab_progress'),
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.grey[700],
@@ -321,10 +332,6 @@ class AchievementDisplay extends StatelessWidget {
         return Icons.school;
     }
   }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
 }
 
 /// Widget for displaying a single achievement badge
@@ -350,13 +357,14 @@ class AchievementBadge extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: achievement.isCompleted 
+            color: achievement.isCompleted
                 ? _getCategoryColor(achievement.category)
                 : Colors.grey.withOpacity(0.3),
             boxShadow: achievement.isCompleted
                 ? [
                     BoxShadow(
-                      color: _getCategoryColor(achievement.category).withOpacity(0.3),
+                      color: _getCategoryColor(achievement.category)
+                          .withOpacity(0.3),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -372,13 +380,13 @@ class AchievementBadge extends StatelessWidget {
         if (showTitle) ...[
           const SizedBox(height: 8),
           Text(
-            achievement.title,
+            _localizedAchievementTitle(context, achievement),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: achievement.isCompleted 
-                  ? Theme.of(context).primaryColor
-                  : Colors.grey,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: achievement.isCompleted
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
+                ),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -421,4 +429,94 @@ class AchievementBadge extends StatelessWidget {
         return Icons.school;
     }
   }
+}
+
+const Map<String, String> _achievementKeyById = {
+  'first_essay': 'first_essay',
+  'essay_5': 'essay_5',
+  'essay_10': 'essay_10',
+  'essay_25': 'essay_25',
+  'essay_50': 'essay_50',
+  'essay_100': 'essay_100',
+  'score_600': 'score_600',
+  'score_600_plus': 'score_600',
+  'score_700': 'score_700',
+  'score_800': 'score_800',
+  'score_800_plus': 'score_800',
+  'score_900': 'score_900',
+  'score_900_plus': 'score_900',
+  'score_1000': 'score_1000',
+  'perfect_score': 'score_1000',
+  'daily_streak_3': 'daily_streak_3',
+  'daily_writer': 'daily_streak_3',
+  'daily_streak_7': 'daily_streak_7',
+  'weekly_streak': 'daily_streak_7',
+  'consistency_week': 'daily_streak_7',
+  'monthly_champion': 'monthly_champion',
+  'improvement_100': 'improvement_100',
+  'improver': 'improvement_100',
+  'improvement_200': 'improvement_200',
+  'big_improver': 'improvement_200',
+  'competency_1_master': 'competency_1_master',
+  'competency_2_master': 'competency_2_master',
+  'competency_3_master': 'competency_3_master',
+  'competency_4_master': 'competency_4_master',
+  'competency_5_master': 'competency_5_master',
+  'all_competencies_master': 'all_competencies_master',
+  'night_owl': 'night_owl',
+  'early_bird': 'early_bird',
+  'speed_writer': 'speed_writer',
+  'perfectionist': 'perfectionist',
+  'dedication_50': 'dedication_50',
+};
+
+String _localizedAchievementTitle(
+  BuildContext context,
+  Achievement achievement,
+) {
+  final key = _achievementKeyById[achievement.id];
+  return key == null
+      ? achievement.title
+      : _translate(context, 'progress_achievement_${key}_title');
+}
+
+String _localizedAchievementDescription(
+  BuildContext context,
+  Achievement achievement,
+) {
+  final key = _achievementKeyById[achievement.id];
+  return key == null
+      ? achievement.description
+      : _translate(context, 'progress_achievement_${key}_description');
+}
+
+String _localizedCategory(
+  BuildContext context,
+  AchievementCategory category,
+) {
+  final key = switch (category) {
+    AchievementCategory.milestone => 'milestone',
+    AchievementCategory.consistency => 'consistency',
+    AchievementCategory.improvement => 'improvement',
+    AchievementCategory.excellence => 'excellence',
+    AchievementCategory.dedication => 'dedication',
+    AchievementCategory.competency => 'competency',
+  };
+  return _translate(context, 'progress_achievement_category_$key');
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
+}
+
+String _translateWith(
+  BuildContext context,
+  String key,
+  Map<String, String> values,
+) {
+  var text = _translate(context, key);
+  values.forEach((placeholder, value) {
+    text = text.replaceAll('{$placeholder}', value);
+  });
+  return text;
 }

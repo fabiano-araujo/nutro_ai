@@ -28,7 +28,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _tr(context, 'diet_type', 'Tipo de Dieta'),
+          context.tr.translate('diet_type'),
           style: AppTheme.headingLarge.copyWith(
             color: textColor,
             fontSize: 20,
@@ -54,7 +54,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                _tr(context, 'choose_diet_type', 'Escolha o Tipo de Dieta'),
+                context.tr.translate('choose_diet_type'),
                 style: theme.textTheme.headlineSmall?.copyWith(
                   color: textColor,
                   fontWeight: FontWeight.bold,
@@ -62,11 +62,7 @@ class DietTypeSelectionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                _tr(
-                  context,
-                  'choose_diet_type_description',
-                  'Escolha o tipo de dieta que melhor se adapta aos seus objetivos',
-                ),
+                context.tr.translate('choose_diet_type_description'),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: textColor.withValues(alpha: 0.7),
                 ),
@@ -97,10 +93,8 @@ class DietTypeSelectionScreen extends StatelessWidget {
                         messenger.showSnackBar(
                           SnackBar(
                             content: Text(
-                              _tr(
-                                context,
+                              context.tr.translate(
                                 'changes_saved_successfully',
-                                'Mudanças salvas com sucesso!',
                               ),
                             ),
                             backgroundColor: accentColor,
@@ -128,11 +122,6 @@ class DietTypeSelectionScreen extends StatelessWidget {
       context: context,
       provider: provider,
     );
-  }
-
-  String _tr(BuildContext context, String key, String fallback) {
-    final translated = context.tr.translate(key);
-    return translated == key ? fallback : translated;
   }
 
   Color _surfaceColor(bool isDarkMode) =>

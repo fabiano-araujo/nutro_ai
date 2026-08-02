@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations.dart';
 import '../models/essay_progress.dart';
 import '../models/progress_summary.dart';
 
@@ -25,10 +26,10 @@ class CompetencyPerformanceReport extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Relatório de Desempenho por Competência',
+              _translate(context, 'progress_competency_performance_report'),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             _buildOverallStats(context),
@@ -50,7 +51,7 @@ class CompetencyPerformanceReport extends StatelessWidget {
         Expanded(
           child: _buildStatCard(
             context,
-            'Média Geral',
+            _translate(context, 'progress_overall_average'),
             summary.averageScore.toStringAsFixed(1),
             Icons.analytics,
             Colors.blue,
@@ -60,7 +61,7 @@ class CompetencyPerformanceReport extends StatelessWidget {
         Expanded(
           child: _buildStatCard(
             context,
-            'Melhor Nota',
+            _translate(context, 'progress_best_score'),
             summary.bestScore.toString(),
             Icons.star,
             Colors.amber,
@@ -70,8 +71,10 @@ class CompetencyPerformanceReport extends StatelessWidget {
         Expanded(
           child: _buildStatCard(
             context,
-            'Tendência',
-            summary.isImproving ? '+${summary.improvementTrend.toStringAsFixed(1)}' : summary.improvementTrend.toStringAsFixed(1),
+            _translate(context, 'progress_trend'),
+            summary.isImproving
+                ? '+${summary.improvementTrend.toStringAsFixed(1)}'
+                : summary.improvementTrend.toStringAsFixed(1),
             summary.isImproving ? Icons.trending_up : Icons.trending_down,
             summary.isImproving ? Colors.green : Colors.red,
           ),
@@ -80,7 +83,8 @@ class CompetencyPerformanceReport extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(BuildContext context, String title, String value,
+      IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -95,15 +99,15 @@ class CompetencyPerformanceReport extends StatelessWidget {
           Text(
             value,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
           ),
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
-            ),
+                  color: Colors.grey[600],
+                ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -113,24 +117,45 @@ class CompetencyPerformanceReport extends StatelessWidget {
 
   Widget _buildCompetencyBreakdown(BuildContext context) {
     final competencies = [
-      CompetencyInfo('Competência 1', 'Domínio da modalidade escrita formal da língua portuguesa', 'competencia1'),
-      CompetencyInfo('Competência 2', 'Compreender a proposta de redação e aplicar conceitos', 'competencia2'),
-      CompetencyInfo('Competência 3', 'Selecionar, relacionar, organizar e interpretar informações', 'competencia3'),
-      CompetencyInfo('Competência 4', 'Demonstrar conhecimento dos mecanismos linguísticos', 'competencia4'),
-      CompetencyInfo('Competência 5', 'Elaborar proposta de intervenção para o problema abordado', 'competencia5'),
+      CompetencyInfo(
+        _translateWith(context, 'progress_competency_number', {'number': '1'}),
+        _translate(context, 'progress_competency_1_description'),
+        'competencia1',
+      ),
+      CompetencyInfo(
+        _translateWith(context, 'progress_competency_number', {'number': '2'}),
+        _translate(context, 'progress_competency_2_description'),
+        'competencia2',
+      ),
+      CompetencyInfo(
+        _translateWith(context, 'progress_competency_number', {'number': '3'}),
+        _translate(context, 'progress_competency_3_description'),
+        'competencia3',
+      ),
+      CompetencyInfo(
+        _translateWith(context, 'progress_competency_number', {'number': '4'}),
+        _translate(context, 'progress_competency_4_description'),
+        'competencia4',
+      ),
+      CompetencyInfo(
+        _translateWith(context, 'progress_competency_number', {'number': '5'}),
+        _translate(context, 'progress_competency_5_description'),
+        'competencia5',
+      ),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Desempenho por Competência',
+          _translate(context, 'progress_competency_performance'),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 12),
-        ...competencies.map((competency) => _buildCompetencyItem(context, competency)),
+        ...competencies
+            .map((competency) => _buildCompetencyItem(context, competency)),
       ],
     );
   }
@@ -161,18 +186,19 @@ class CompetencyPerformanceReport extends StatelessWidget {
                   child: Text(
                     competency.title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: _getLevelColor(level).withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    level,
+                    _performanceLevelLabel(context, level),
                     style: TextStyle(
                       color: _getLevelColor(level),
                       fontSize: 12,
@@ -186,8 +212,8 @@ class CompetencyPerformanceReport extends StatelessWidget {
             Text(
               competency.description,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
+                    color: Colors.grey[600],
+                  ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -196,15 +222,16 @@ class CompetencyPerformanceReport extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: percentage / 100,
                     backgroundColor: Colors.grey.withOpacity(0.3),
-                    valueColor: AlwaysStoppedAnimation<Color>(_getLevelColor(level)),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(_getLevelColor(level)),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   '${score.toStringAsFixed(1)}/200',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ],
             ),
@@ -240,20 +267,40 @@ class CompetencyPerformanceReport extends StatelessWidget {
     return Row(
       children: [
         Icon(
-          trend > 0 ? Icons.trending_up : trend < 0 ? Icons.trending_down : Icons.trending_flat,
+          trend > 0
+              ? Icons.trending_up
+              : trend < 0
+                  ? Icons.trending_down
+                  : Icons.trending_flat,
           size: 16,
-          color: trend > 0 ? Colors.green : trend < 0 ? Colors.red : Colors.grey,
+          color: trend > 0
+              ? Colors.green
+              : trend < 0
+                  ? Colors.red
+                  : Colors.grey,
         ),
         const SizedBox(width: 4),
         Text(
-          trend > 0 
-              ? 'Melhorando (+${trend.toStringAsFixed(1)})'
-              : trend < 0 
-                  ? 'Declinando (${trend.toStringAsFixed(1)})'
-                  : 'Estável',
+          trend > 0
+              ? _translateWith(
+                  context,
+                  'progress_trend_improving',
+                  {'value': '+${trend.toStringAsFixed(1)}'},
+                )
+              : trend < 0
+                  ? _translateWith(
+                      context,
+                      'progress_trend_declining',
+                      {'value': trend.toStringAsFixed(1)},
+                    )
+                  : _translate(context, 'progress_trend_stable'),
           style: TextStyle(
             fontSize: 12,
-            color: trend > 0 ? Colors.green : trend < 0 ? Colors.red : Colors.grey,
+            color: trend > 0
+                ? Colors.green
+                : trend < 0
+                    ? Colors.red
+                    : Colors.grey,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -262,8 +309,8 @@ class CompetencyPerformanceReport extends StatelessWidget {
   }
 
   Widget _buildRecommendations(BuildContext context) {
-    final recommendations = _generateRecommendations();
-    
+    final recommendations = _generateRecommendations(context);
+
     if (recommendations.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -274,13 +321,14 @@ class CompetencyPerformanceReport extends StatelessWidget {
         const Divider(),
         const SizedBox(height: 16),
         Text(
-          'Recomendações',
+          _translate(context, 'progress_recommendations'),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 12),
-        ...recommendations.map((recommendation) => _buildRecommendationItem(context, recommendation)),
+        ...recommendations.map((recommendation) =>
+            _buildRecommendationItem(context, recommendation)),
       ],
     );
   }
@@ -312,71 +360,85 @@ class CompetencyPerformanceReport extends StatelessWidget {
     );
   }
 
-  String _getPerformanceLevel(double percentage) {
-    if (percentage >= 90) return 'Excelente';
-    if (percentage >= 80) return 'Muito Bom';
-    if (percentage >= 70) return 'Bom';
-    if (percentage >= 60) return 'Regular';
-    if (percentage >= 50) return 'Suficiente';
-    return 'Insuficiente';
+  _PerformanceLevel _getPerformanceLevel(double percentage) {
+    if (percentage >= 90) return _PerformanceLevel.excellent;
+    if (percentage >= 80) return _PerformanceLevel.veryGood;
+    if (percentage >= 70) return _PerformanceLevel.good;
+    if (percentage >= 60) return _PerformanceLevel.regular;
+    if (percentage >= 50) return _PerformanceLevel.sufficient;
+    return _PerformanceLevel.insufficient;
   }
 
-  Color _getLevelColor(String level) {
+  Color _getLevelColor(_PerformanceLevel level) {
     switch (level) {
-      case 'Excelente':
+      case _PerformanceLevel.excellent:
         return Colors.green;
-      case 'Muito Bom':
+      case _PerformanceLevel.veryGood:
         return Colors.lightGreen;
-      case 'Bom':
+      case _PerformanceLevel.good:
         return Colors.blue;
-      case 'Regular':
+      case _PerformanceLevel.regular:
         return Colors.orange;
-      case 'Suficiente':
+      case _PerformanceLevel.sufficient:
         return Colors.amber;
-      case 'Insuficiente':
+      case _PerformanceLevel.insufficient:
         return Colors.red;
-      default:
-        return Colors.grey;
     }
   }
 
-  List<String> _generateRecommendations() {
+  List<String> _generateRecommendations(BuildContext context) {
     final recommendations = <String>[];
-    
+
     // Find weakest competency
     final weakest = summary.weakestCompetency;
     if (weakest != null) {
       final competencyNumber = _getCompetencyNumber(weakest);
       switch (competencyNumber) {
         case 1:
-          recommendations.add('Foque em revisar gramática, ortografia e pontuação para melhorar a Competência 1.');
+          recommendations.add(
+            _translate(context, 'progress_recommendation_competency_1'),
+          );
           break;
         case 2:
-          recommendations.add('Pratique a interpretação de temas e desenvolvimento de argumentos para a Competência 2.');
+          recommendations.add(
+            _translate(context, 'progress_recommendation_competency_2'),
+          );
           break;
         case 3:
-          recommendations.add('Trabalhe na organização de ideias e estruturação de parágrafos para a Competência 3.');
+          recommendations.add(
+            _translate(context, 'progress_recommendation_competency_3'),
+          );
           break;
         case 4:
-          recommendations.add('Estude conectivos e coesão textual para aprimorar a Competência 4.');
+          recommendations.add(
+            _translate(context, 'progress_recommendation_competency_4'),
+          );
           break;
         case 5:
-          recommendations.add('Pratique a elaboração de propostas de intervenção detalhadas para a Competência 5.');
+          recommendations.add(
+            _translate(context, 'progress_recommendation_competency_5'),
+          );
           break;
       }
     }
 
     // General recommendations based on overall performance
     if (summary.averageScore < 600) {
-      recommendations.add('Considere revisar os fundamentos da redação ENEM e praticar mais regularmente.');
+      recommendations.add(
+        _translate(context, 'progress_recommendation_review_fundamentals'),
+      );
     }
 
     if (!summary.isImproving && summary.totalEssays > 5) {
-      recommendations.add('Varie os temas de redação para desenvolver diferentes habilidades argumentativas.');
+      recommendations.add(
+        _translate(context, 'progress_recommendation_vary_topics'),
+      );
     }
 
     if (summary.totalEssays < 10) {
-      recommendations.add('Continue praticando! Quanto mais redações você escrever, melhor será seu desempenho.');
+      recommendations.add(
+        _translate(context, 'progress_recommendation_keep_practicing'),
+      );
     }
 
     return recommendations;
@@ -407,4 +469,44 @@ class CompetencyInfo {
   final String key;
 
   CompetencyInfo(this.title, this.description, this.key);
+}
+
+enum _PerformanceLevel {
+  excellent,
+  veryGood,
+  good,
+  regular,
+  sufficient,
+  insufficient,
+}
+
+String _performanceLevelLabel(
+  BuildContext context,
+  _PerformanceLevel level,
+) {
+  final key = switch (level) {
+    _PerformanceLevel.excellent => 'excellent',
+    _PerformanceLevel.veryGood => 'very_good',
+    _PerformanceLevel.good => 'good',
+    _PerformanceLevel.regular => 'regular',
+    _PerformanceLevel.sufficient => 'sufficient',
+    _PerformanceLevel.insufficient => 'insufficient',
+  };
+  return _translate(context, 'progress_level_$key');
+}
+
+String _translate(BuildContext context, String key) {
+  return AppLocalizations.of(context).translate(key);
+}
+
+String _translateWith(
+  BuildContext context,
+  String key,
+  Map<String, String> values,
+) {
+  var text = _translate(context, key);
+  values.forEach((placeholder, value) {
+    text = text.replaceAll('{$placeholder}', value);
+  });
+  return text;
 }

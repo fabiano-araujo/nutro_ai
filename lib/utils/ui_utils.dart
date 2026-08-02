@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../i18n/app_localizations.dart';
+
 // Classe utilitária para funções relacionadas à UI
 class UIUtils {
   // Exibir diálogo de erro genérico
@@ -8,12 +10,12 @@ class UIUtils {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Erro'),
+        title: Text(AppLocalizations.of(context).translate('error_title')),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
+            child: Text(AppLocalizations.of(context).translate('ok')),
           ),
         ],
       ),
@@ -26,16 +28,22 @@ class UIUtils {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Permissão necessária'),
+        title: Text(
+          AppLocalizations.of(context).translate('permission_required_title'),
+        ),
         content: Text(
           permanentlyDenied
-              ? 'A permissão do microfone foi negada permanentemente. Por favor, abra as configurações do aplicativo para habilitar o microfone.'
-              : 'Para usar o reconhecimento de voz, você precisa permitir o acesso ao microfone.',
+              ? AppLocalizations.of(context).translate(
+                  'microphone_permission_permanently_denied_message',
+                )
+              : AppLocalizations.of(context).translate(
+                  'microphone_permission_voice_recognition_message',
+                ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: Text(AppLocalizations.of(context).translate('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -46,7 +54,11 @@ class UIUtils {
                 Permission.microphone.request();
               }
             },
-            child: Text(permanentlyDenied ? 'Abrir Configurações' : 'Permitir'),
+            child: Text(
+              AppLocalizations.of(context).translate(
+                permanentlyDenied ? 'open_settings' : 'allow',
+              ),
+            ),
           ),
         ],
       ),

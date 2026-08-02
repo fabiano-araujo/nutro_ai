@@ -22,6 +22,7 @@ import '../utils/food_edit_helper.dart';
 import '../utils/ui_utils.dart';
 import '../widgets/food_icon.dart';
 import '../utils/food_emoji_resolver.dart';
+import '../utils/meal_type_localization.dart';
 
 class MealCard extends StatefulWidget {
   final Meal meal;
@@ -757,7 +758,7 @@ class _MealCardState extends State<MealCard> {
     return provider.mealTypes.map((config) {
       return MealTypeOption(
         type: _getMealTypeFromId(config.id),
-        name: config.name,
+        name: localizedMealTypeName(context.tr, config),
         emoji: config.emoji,
       );
     }).toList();
@@ -781,6 +782,17 @@ class _MealCardState extends State<MealCard> {
   }
 
   String getMealTypeName(MealType type) {
+    try {
+      final provider = Provider.of<MealTypesProvider>(context, listen: false);
+      for (final mealType in provider.mealTypes) {
+        if (_getMealTypeFromId(mealType.id) == type) {
+          return localizedMealTypeName(context.tr, mealType);
+        }
+      }
+    } catch (_) {
+      // Keep localized enum fallbacks for isolated widgets without a provider.
+    }
+
     switch (type) {
       case MealType.breakfast:
         return context.tr.translate('breakfast');
@@ -799,7 +811,7 @@ class _MealCardState extends State<MealCard> {
   Widget _buildCompactMacro({
     required IconData icon,
     required String value,
-    required String unit,
+    String? unit,
     required Color color,
     required bool isDarkMode,
   }) {
@@ -833,16 +845,18 @@ class _MealCardState extends State<MealCard> {
                     height: 1,
                   ),
                 ),
-                const SizedBox(width: 3),
-                Text(
-                  unit,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                    height: 1,
+                if (unit != null && unit.isNotEmpty) ...[
+                  const SizedBox(width: 3),
+                  Text(
+                    unit,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      height: 1,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -1202,7 +1216,7 @@ class _MealCardState extends State<MealCard> {
                                   padding:
                                       const EdgeInsets.symmetric(horizontal: 8),
                                   child: Text(
-                                    'Ver detalhes',
+                                    context.tr.translate('view_details'),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: isDarkMode
@@ -1302,9 +1316,13 @@ class _MealCardState extends State<MealCard> {
                                     Expanded(
                                       child: _buildCompactMacro(
                                         icon: MacroTheme.proteinIcon,
-                                        value: _currentMeal.totalProtein
-                                            .toStringAsFixed(1),
-                                        unit: 'g prot',
+                                        value: context.tr
+                                            .translate('protein_grams_short')
+                                            .replaceAll(
+                                              '{value}',
+                                              _currentMeal.totalProtein
+                                                  .toStringAsFixed(1),
+                                            ),
                                         color: MacroTheme.proteinColor,
                                         isDarkMode: isDarkMode,
                                       ),
@@ -1313,9 +1331,13 @@ class _MealCardState extends State<MealCard> {
                                     Expanded(
                                       child: _buildCompactMacro(
                                         icon: MacroTheme.carbsIcon,
-                                        value: _currentMeal.totalCarbs
-                                            .toStringAsFixed(1),
-                                        unit: 'g carb',
+                                        value: context.tr
+                                            .translate('carbs_grams_short')
+                                            .replaceAll(
+                                              '{value}',
+                                              _currentMeal.totalCarbs
+                                                  .toStringAsFixed(1),
+                                            ),
                                         color: MacroTheme.carbsColor,
                                         isDarkMode: isDarkMode,
                                       ),
@@ -1324,9 +1346,13 @@ class _MealCardState extends State<MealCard> {
                                     Expanded(
                                       child: _buildCompactMacro(
                                         icon: MacroTheme.fatIcon,
-                                        value: _currentMeal.totalFat
-                                            .toStringAsFixed(1),
-                                        unit: 'g gord',
+                                        value: context.tr
+                                            .translate('fat_grams_short')
+                                            .replaceAll(
+                                              '{value}',
+                                              _currentMeal.totalFat
+                                                  .toStringAsFixed(1),
+                                            ),
                                         color: MacroTheme.fatColor,
                                         isDarkMode: isDarkMode,
                                       ),
@@ -2211,31 +2237,31 @@ class _FoodItemState extends State<_FoodItem> {
         return (
           icon: Icons.star_rounded,
           color: const Color(0xFFFFB300),
-          label: 'Favorito',
+          label: context.tr.translate('food_source_favorite'),
         );
       case FoodSource.manual:
         return (
           icon: Icons.tune_rounded,
           color: primary,
-          label: 'Personalizado',
+          label: context.tr.translate('food_source_custom'),
         );
       case FoodSource.recent:
         return (
           icon: Icons.history_rounded,
           color: primary,
-          label: 'Recente',
+          label: context.tr.translate('food_source_recent'),
         );
       case FoodSource.catalog:
         return (
           icon: Icons.storage_rounded,
           color: const Color(0xFF2563EB),
-          label: 'Fonte',
+          label: context.tr.translate('food_source_catalog'),
         );
       case FoodSource.ai:
         return (
           icon: Icons.auto_awesome_rounded,
           color: const Color(0xFF14B8A6),
-          label: 'IA',
+          label: context.tr.translate('food_source_ai'),
         );
     }
   }
@@ -2660,11 +2686,11 @@ class _FoodItemState extends State<_FoodItem> {
     switch (value?.toString()) {
       case 'fatsecret':
       case 'open_food_facts':
-        return 'Internet';
+        return context.tr.translate('internet');
       case 'user':
-        return 'Usuários';
+        return context.tr.translate('users');
       default:
-        return 'Internet';
+        return context.tr.translate('internet');
     }
   }
 
@@ -2715,7 +2741,9 @@ class _FoodItemState extends State<_FoodItem> {
   String _macroServingFooter(Map<String, dynamic> data) {
     final base = _parseNumeric(data['baseAmount']);
     final unit = _readText(data['baseUnit']) ?? 'g';
-    return 'por ${_formatServingAmount(base, unit)}';
+    return context.tr
+        .translate('per_amount')
+        .replaceAll('{amount}', _formatServingAmount(base, unit));
   }
 
   String? _aiServingFooter(Food food, Nutrient? aiNutrient) {
@@ -2729,7 +2757,10 @@ class _FoodItemState extends State<_FoodItem> {
     final unit = _normalizeUnit(nutrient.servingUnit);
     if (unit.isEmpty) return null;
 
-    return 'por ${_formatServingAmount(nutrient.servingSize, unit)}';
+    return context.tr.translate('per_amount').replaceAll(
+          '{amount}',
+          _formatServingAmount(nutrient.servingSize, unit),
+        );
   }
 
   String _sourceMacroSubtitle(
@@ -2941,7 +2972,8 @@ class _FoodItemState extends State<_FoodItem> {
                               ),
                             ),
                             Tooltip(
-                              message: 'Editar nome e porção',
+                              message: context.tr
+                                  .translate('edit_food_name_portion'),
                               child: Material(
                                 color: Colors.transparent,
                                 shape: const CircleBorder(),
@@ -2981,7 +3013,8 @@ class _FoodItemState extends State<_FoodItem> {
                             return _SourceOption(
                               icon: Icons.star_rounded,
                               iconColor: const Color(0xFFFFB300),
-                              title: 'Seu favorito',
+                              title: context.tr
+                                  .translate('food_option_your_favorite'),
                               subtitle: _sourceMacroSubtitle(
                                 _macroValuesFromMap(favoriteData),
                                 suffix: _macroServingFooter(favoriteData),
@@ -3003,13 +3036,13 @@ class _FoodItemState extends State<_FoodItem> {
                           _SourceOption(
                             icon: Icons.tune_rounded,
                             iconColor: primary,
-                            title: 'Personalizado',
+                            title: context.tr.translate('food_source_custom'),
                             subtitle: _sourceMacroSubtitle(
                               _currentFoodMacros(food: effectiveFood),
-                              suffix: 'editado manualmente',
+                              suffix: context.tr.translate('manually_edited'),
                             ),
                             macros: _currentFoodMacros(food: effectiveFood),
-                            footer: 'editado manualmente',
+                            footer: context.tr.translate('manually_edited'),
                             selected: true,
                             isDarkMode: isDark,
                             onTap: () => Navigator.pop(
@@ -3027,7 +3060,7 @@ class _FoodItemState extends State<_FoodItem> {
                             return _SourceOption(
                               icon: Icons.history_rounded,
                               iconColor: primary,
-                              title: 'Recente',
+                              title: context.tr.translate('food_source_recent'),
                               subtitle: _sourceMacroSubtitle(
                                 _macroValuesFromMap(recentData),
                                 suffix: _macroServingFooter(recentData),
@@ -3077,7 +3110,8 @@ class _FoodItemState extends State<_FoodItem> {
                           return _SourceOption(
                             icon: Icons.auto_awesome_rounded,
                             iconColor: const Color(0xFF14B8A6),
-                            title: 'Estimativa da IA',
+                            title:
+                                context.tr.translate('food_option_ai_estimate'),
                             subtitle: _sourceMacroSubtitle(
                               aiMacros,
                               suffix: aiFooter,
@@ -3102,8 +3136,9 @@ class _FoodItemState extends State<_FoodItem> {
                           _SourceOption(
                             icon: Icons.tune_rounded,
                             iconColor: primary,
-                            title: 'Editar manualmente',
-                            subtitle: 'Digite os macros manualmente',
+                            title: context.tr.translate('edit_manually'),
+                            subtitle:
+                                context.tr.translate('enter_macros_manually'),
                             macros: null,
                             footer: null,
                             selected: false,
@@ -3123,7 +3158,7 @@ class _FoodItemState extends State<_FoodItem> {
                           Row(
                             children: [
                               Text(
-                                'Sugestões da Internet',
+                                context.tr.translate('web_suggestions'),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
@@ -3177,8 +3212,13 @@ class _FoodItemState extends State<_FoodItem> {
                               _SourceMoreButton(
                                 isDarkMode: isDark,
                                 label: showAllCatalogSuggestions
-                                    ? 'Ver menos'
-                                    : 'Ver mais ($hiddenCatalogCount)',
+                                    ? context.tr.translate('show_less')
+                                    : context.tr
+                                        .translate('show_more_count')
+                                        .replaceAll(
+                                          '{count}',
+                                          hiddenCatalogCount.toString(),
+                                        ),
                                 icon: showAllCatalogSuggestions
                                     ? Icons.expand_less_rounded
                                     : Icons.expand_more_rounded,
@@ -3203,7 +3243,9 @@ class _FoodItemState extends State<_FoodItem> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              'Voce ainda nao tem versoes salvas ou outras sugestoes para ${effectiveFood.name}. Edite o alimento para salvar como favorito.',
+                              context.tr
+                                  .translate('food_sources_empty_hint')
+                                  .replaceAll('{food}', effectiveFood.name),
                               style: TextStyle(
                                   fontSize: 12,
                                   color: secondary.withValues(alpha: 0.8)),
@@ -3667,7 +3709,7 @@ class _SourceMacroLine extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _SourceMacroTextToken(
-                label: 'P',
+                label: context.tr.translate('protein_short'),
                 value: values.protein.toStringAsFixed(1),
                 color: MacroTheme.proteinColor,
                 textColor: textColor,
@@ -3676,7 +3718,7 @@ class _SourceMacroLine extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               _SourceMacroTextToken(
-                label: 'C',
+                label: context.tr.translate('carbs_short'),
                 value: values.carbs.toStringAsFixed(1),
                 color: MacroTheme.carbsColor,
                 textColor: textColor,
@@ -3685,7 +3727,7 @@ class _SourceMacroLine extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               _SourceMacroTextToken(
-                label: 'G',
+                label: context.tr.translate('fat_short'),
                 value: values.fat.toStringAsFixed(1),
                 color: MacroTheme.fatColor,
                 textColor: textColor,
@@ -3795,8 +3837,9 @@ class _SourceMacroTextToken extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 18,
+          constraints: const BoxConstraints(minWidth: 18),
           height: 18,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color.withValues(alpha: isDarkMode ? 0.17 : 0.1),
@@ -4382,7 +4425,7 @@ class _ManualMacroEditorSheetState extends State<_ManualMacroEditorSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Edite os macros manualmente',
+                context.tr.translate('edit_macros_manually'),
                 style: TextStyle(
                   fontSize: 12,
                   color: secondary.withValues(alpha: 0.85),

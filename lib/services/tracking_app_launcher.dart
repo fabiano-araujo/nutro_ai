@@ -16,6 +16,16 @@ class TrackingAppLauncher {
   static bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
+  Future<int?> getAndroidSdkInt() async {
+    if (!_isAndroid) return null;
+
+    try {
+      return await _channel.invokeMethod<int>('getAndroidSdkInt');
+    } on PlatformException {
+      return null;
+    }
+  }
+
   Future<bool> isAppInstalled(String packageName) async {
     if (!_isAndroid) return false;
 
@@ -41,25 +51,6 @@ class TrackingAppLauncher {
       return _parseResult(result);
     } on PlatformException {
       return _openPlayStoreWeb(packageName);
-    }
-  }
-
-  Future<TrackingAppLaunchResult> openOfficialStore(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || !uri.hasScheme) {
-      return TrackingAppLaunchResult.failed;
-    }
-
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      return launched
-          ? TrackingAppLaunchResult.openedStore
-          : TrackingAppLaunchResult.failed;
-    } on PlatformException {
-      return TrackingAppLaunchResult.failed;
     }
   }
 
@@ -222,7 +213,8 @@ class HealthConnectStatus {
   }
 
   bool get needsProviderUpdate => sdkStatus == 'provider_update_required';
-  bool get isUnsupported => sdkStatus == 'unsupported';
+  bool get isUnsupported =>
+      sdkStatus == 'unsupported' || sdkStatus == 'unavailable';
 
   static List<String> _stringList(dynamic value) {
     if (value is List) {
@@ -242,9 +234,7 @@ class ActivityTrackingSummary {
   final DateTime end;
   final DateTime syncedAt;
   final double? activeCalories;
-  final double? totalCalories;
   final int? steps;
-  final int exerciseCount;
   final int exerciseMinutes;
   final List<String> dataOrigins;
   final String? errorMessage;
@@ -259,9 +249,7 @@ class ActivityTrackingSummary {
     required this.end,
     required this.syncedAt,
     required this.activeCalories,
-    required this.totalCalories,
     required this.steps,
-    required this.exerciseCount,
     required this.exerciseMinutes,
     required this.dataOrigins,
     this.errorMessage,
@@ -293,9 +281,7 @@ class ActivityTrackingSummary {
           ? DateTime.fromMillisecondsSinceEpoch(syncedAtMillis)
           : now,
       activeCalories: _doubleValue(map['activeCalories']),
-      totalCalories: _doubleValue(map['totalCalories']),
       steps: _intValue(map['steps']),
-      exerciseCount: _intValue(map['exerciseCount']) ?? 0,
       exerciseMinutes: _intValue(map['exerciseMinutes']) ?? 0,
       dataOrigins: HealthConnectStatus._stringList(map['dataOrigins']),
       errorMessage: map['errorMessage']?.toString(),
@@ -316,9 +302,7 @@ class ActivityTrackingSummary {
       end: end,
       syncedAt: DateTime.now(),
       activeCalories: null,
-      totalCalories: null,
       steps: null,
-      exerciseCount: 0,
       exerciseMinutes: 0,
       dataOrigins: const [],
     );
@@ -339,9 +323,7 @@ class ActivityTrackingSummary {
       end: end,
       syncedAt: DateTime.now(),
       activeCalories: null,
-      totalCalories: null,
       steps: null,
-      exerciseCount: 0,
       exerciseMinutes: 0,
       dataOrigins: const [],
       errorMessage: errorMessage,
@@ -349,15 +331,11 @@ class ActivityTrackingSummary {
   }
 
   int get activeCaloriesRounded => (activeCalories ?? 0).round();
-  int get totalCaloriesRounded => (totalCalories ?? 0).round();
   bool get hasActivityData =>
-      activeCaloriesRounded > 0 ||
-      totalCaloriesRounded > 0 ||
-      (steps ?? 0) > 0 ||
-      exerciseMinutes > 0 ||
-      exerciseCount > 0;
+      activeCaloriesRounded > 0 || (steps ?? 0) > 0 || exerciseMinutes > 0;
   bool get needsProviderUpdate => sdkStatus == 'provider_update_required';
-  bool get isUnsupported => sdkStatus == 'unsupported';
+  bool get isUnsupported =>
+      sdkStatus == 'unsupported' || sdkStatus == 'unavailable';
   bool get isUnavailable =>
       sdkStatus == 'unavailable' ||
       sdkStatus == 'unsupported' ||

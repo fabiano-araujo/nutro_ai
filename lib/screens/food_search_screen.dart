@@ -1539,7 +1539,9 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
     return Food(
       id: foodData?['id'],
-      name: data['translation'] ?? foodData?['name'] ?? 'Unknown',
+      name: data['translation'] ??
+          foodData?['name'] ??
+          context.tr.translate('unknown_food'),
       brand: foodData?['brand'],
       photo: foodData?['photo'],
       idFatsecret: foodData?['id_fatsecret'],
@@ -1562,7 +1564,9 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           regionCode: regionCode,
           languageCode: languageCode,
           idFood: foodData?['id'] ?? 0,
-          translation: data['translation'] ?? foodData?['name'] ?? 'Unknown',
+          translation: data['translation'] ??
+              foodData?['name'] ??
+              context.tr.translate('unknown_food'),
           portions: portions
               .map((p) => Portion(
                     idFoodRegion: 0,
@@ -1649,7 +1653,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         0.0;
 
     return Food(
-      name: data['nome'] ?? 'Unknown',
+      name: data['nome'] ?? context.tr.translate('unknown_food'),
       brand: data['marca'],
       emoji: '🍽️',
       nutrients: [
@@ -1668,7 +1672,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           regionCode: 'BR',
           languageCode: 'pt',
           idFood: 0,
-          translation: data['nome'] ?? 'Unknown',
+          translation: data['nome'] ?? context.tr.translate('unknown_food'),
           portions: [],
         ),
       ],
@@ -1708,7 +1712,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       dividerColor: isDarkMode ? Color(0xFF48484A) : Color(0xFFD1D1D6),
       dividerHeight: 1,
       tabs: [
-        Tab(text: 'Frequentes'),
+        Tab(text: context.tr.translate('frequent')),
         Tab(text: context.tr.translate('recent')),
         Tab(text: context.tr.translate('favorites')),
       ],
@@ -1764,7 +1768,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                                         Text(option.emoji,
                                             style: TextStyle(fontSize: 20)),
                                         SizedBox(width: 8),
-                                        Text(option.name,
+                                        Text(_mealTypeLabel(mealType),
                                             style: TextStyle(fontSize: 20)),
                                       ],
                                     ),
@@ -2085,7 +2089,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         // API Results section
         if (hasApiResults) ...[
           _buildSectionHeader(
-            'Resultados do banco de dados',
+            context.tr.translate('database_results'),
             Icons.storage,
             isDarkMode,
             textColor,
@@ -2117,7 +2121,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                   ),
                   SizedBox(width: 12),
                   Text(
-                    'Buscando no banco de dados...',
+                    context.tr.translate('searching_database'),
                     style: TextStyle(color: secondaryTextColor, fontSize: 14),
                   ),
                 ],
@@ -2128,7 +2132,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         // Web Results section (only on mobile)
         if (!kIsWeb && hasWebResults) ...[
           _buildSectionHeader(
-            'Resultados da Internet',
+            context.tr.translate('web_results'),
             Icons.public,
             isDarkMode,
             textColor,
@@ -2161,7 +2165,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                   ),
                   SizedBox(width: 12),
                   Text(
-                    'Buscando na internet...',
+                    context.tr.translate('searching_web'),
                     style: TextStyle(color: secondaryTextColor, fontSize: 14),
                   ),
                 ],
@@ -2277,7 +2281,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     final food = _convertToFood(item);
     return _FoodListItem(
       emoji: '🍽️',
-      name: item['nome'] ?? 'Unknown',
+      name: item['nome'] ?? context.tr.translate('unknown_food'),
       subtitle: _buildSubtitle(item),
       isDarkMode: isDarkMode,
       textColor: textColor,
@@ -2419,7 +2423,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 size: 64, color: secondaryTextColor.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
             Text(
-              'Nenhum alimento frequente',
+              context.tr.translate('no_frequent_foods'),
               style: TextStyle(color: secondaryTextColor, fontSize: 16),
             ),
           ],
@@ -2508,12 +2512,13 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     historyProvider.incrementFrequency(food);
 
     // Get meal name
-    final option = DailyMealsProvider.getMealTypeOption(mealType);
-
     // Show success message
     UIUtils.showPrimarySnackBar(
       context,
-      '${food.name} adicionado ao ${option.name}',
+      context.tr
+          .translate('food_added_to_meal')
+          .replaceAll('{food}', food.name)
+          .replaceAll('{meal}', _mealTypeLabel(mealType)),
     );
 
     // Conta + tenta mostrar intersticial após N refeições (sem await — fire-and-forget)
@@ -2544,7 +2549,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Selecione a refeição',
+                context.tr.translate('select_meal_type'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -2557,7 +2562,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 return ListTile(
                   leading: Text(option.emoji, style: TextStyle(fontSize: 24)),
                   title: Text(
-                    option.name,
+                    _mealTypeLabel(mealType),
                     style: TextStyle(color: textColor),
                   ),
                   onTap: () {
@@ -2571,6 +2576,21 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         );
       },
     );
+  }
+
+  String _mealTypeLabel(MealType mealType) {
+    switch (mealType) {
+      case MealType.breakfast:
+        return context.tr.translate('breakfast');
+      case MealType.lunch:
+        return context.tr.translate('lunch');
+      case MealType.dinner:
+        return context.tr.translate('dinner');
+      case MealType.snack:
+        return context.tr.translate('snack');
+      case MealType.freeMeal:
+        return context.tr.translate('free_meal');
+    }
   }
 }
 
