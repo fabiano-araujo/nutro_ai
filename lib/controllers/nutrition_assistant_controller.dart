@@ -50,6 +50,7 @@ class NutritionAssistantController with ChangeNotifier {
 
   // Estado da conversa
   String? _currentConversationId;
+  String? _cacheConversationSeed;
   int? _currentlySpeakingMessageIndex;
 
   // Data selecionada atual para as mensagens (formato yyyy-MM-dd)
@@ -108,6 +109,15 @@ class NutritionAssistantController with ChangeNotifier {
   bool get isRecording => _isRecording;
   bool get hasSelectedImage => _hasSelectedImage;
   Uint8List? get selectedImageBytes => _selectedImageBytes;
+
+  String get _openRouterSessionId {
+    final seed = _cacheConversationSeed ??
+        '${storageScope}_${toolType}_${_formatDateKey(_selectedDate)}';
+    final normalized =
+        seed.trim().replaceAll(RegExp(r'[^A-Za-z0-9._:-]+'), '_');
+    final sessionId = 'nutro_$normalized';
+    return sessionId.length <= 256 ? sessionId : sessionId.substring(0, 256);
+  }
 
   String _defaultMessageId(bool isUser, DateTime timestamp) {
     return '${isUser ? 'usr' : 'msg'}-${timestamp.microsecondsSinceEpoch}';
@@ -445,6 +455,29 @@ class NutritionAssistantController with ChangeNotifier {
     return '';
   }
 
+  /// Histórico concluído em mensagens com papéis reais. O backend acrescenta
+  /// o prompt atual como a próxima mensagem user, preservando o prefixo da
+  /// conversa para o prompt cache do OpenRouter.
+  List<Map<String, String>> _buildOpenRouterConversationMessages({
+    required int beforeIndex,
+  }) {
+    final messages = <Map<String, String>>[];
+    final end = beforeIndex.clamp(0, _messages.length);
+
+    for (var index = 0; index < end; index++) {
+      final message = _messages[index];
+      final text = _messageText(message).trim();
+      if (text.isEmpty) continue;
+
+      messages.add({
+        'role': message['isUser'] == true ? 'user' : 'assistant',
+        'content': text,
+      });
+    }
+
+    return messages;
+  }
+
   String _messagePreview(String text) {
     final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (normalized.length <= 80) return normalized;
@@ -590,6 +623,12 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     List<Map<String, dynamic>>? initialMessages,
     DateTime? initialDate,
   }) {
+    final normalizedConversationId = conversationId?.trim();
+    if (normalizedConversationId != null &&
+        normalizedConversationId.isNotEmpty) {
+      _cacheConversationSeed = normalizedConversationId;
+    }
+
     // Inicializar a data selecionada
     if (initialDate != null) {
       _selectedDate =
@@ -1219,6 +1258,21 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         context: context,
         basePrompt: basePrompt,
       );
+      final modelPromptSections = <String>[];
+      if (toolScopedInstructions.isNotEmpty) {
+        modelPromptSections.add(toolScopedInstructions);
+      }
+      if (pendingAction != null) {
+        modelPromptSections.add([
+          'Current pending app action awaiting user confirmation:',
+          pendingAction.toPromptBlock(),
+        ].join('\n'));
+      }
+      modelPromptSections.add('User request:\n$message');
+      final modelBasePrompt = modelPromptSections.join('\n\n');
+      final modelPrompt = modelBasePrompt == basePrompt
+          ? prompt
+          : prompt.replaceFirst(basePrompt, modelBasePrompt);
 
       // Obter o controlador de idioma
       final languageController =
@@ -1296,15 +1350,21 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       }
 
       // Obter o stream da IA
-      final stream = _aiService.getAnswerStream(prompt,
-          subject: 'education',
-          languageCode: languageCode,
-          quality: quality, // Usar a qualidade determinada pelo toolType
-          userId: userId, // Passando o ID do usuário logado
-          agentType: agentType, // Usando o agent determinado pelo toolType
-          provider: provider, // Usando o provider Hyperbolic
-          mealTypes: mealTypesForAI // Tipos de refeição do usuário
-          );
+      final stream = _aiService.getAnswerStream(
+        prompt,
+        subject: 'education',
+        languageCode: languageCode,
+        quality: quality, // Usar a qualidade determinada pelo toolType
+        userId: userId, // Passando o ID do usuário logado
+        agentType: agentType, // Usando o agent determinado pelo toolType
+        provider: provider, // Usando o provider Hyperbolic
+        mealTypes: mealTypesForAI, // Tipos de refeição do usuário
+        sessionId: _openRouterSessionId,
+        conversationMessages: _buildOpenRouterConversationMessages(
+          beforeIndex: _streamingMessageIndex! - 1,
+        ),
+        modelPrompt: modelPrompt,
+      );
 
       // Usar o Helper para lidar com o stream
       String? toolDataForHistory;
@@ -1725,6 +1785,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         context: context,
         conversationContext: conversationContext,
       );
+      final followUpModelPrompt =
+          AppAgentService.removeConversationHistoryForModel(followUpPrompt);
       AppAgentService.logAgentDebug('follow_up_prompt_start', {
         'executionResults':
             executionResults.map((result) => result.toJson()).toList(),
@@ -1741,6 +1803,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         agentType: agentType,
         provider: provider,
         mealTypes: mealTypesForAI,
+        sessionId: _openRouterSessionId,
+        conversationMessages: _buildOpenRouterConversationMessages(
+          beforeIndex: _streamingMessageIndex!,
+        ),
+        modelPrompt: followUpModelPrompt,
       );
 
       _aiStreamSubscription = AIInteractionHelper.handleAIStream(
@@ -2492,7 +2559,11 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         final stream = _aiService.getAnswerStream(prompt,
             languageCode: languageCode,
             quality: quality,
-            mealTypes: mealTypesForAI);
+            mealTypes: mealTypesForAI,
+            sessionId: _openRouterSessionId,
+            conversationMessages: _buildOpenRouterConversationMessages(
+              beforeIndex: _streamingMessageIndex!,
+            ));
 
         // Usar o helper para lidar com o stream
         String? toolDataForHistory;

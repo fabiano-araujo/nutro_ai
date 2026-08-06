@@ -5311,6 +5311,30 @@ $basePrompt
     return overflow.substring(firstBreak + 1).trimLeft();
   }
 
+  /// Remove o bloco textual de histórico quando o histórico já foi enviado
+  /// ao provider como mensagens user/assistant. Isso evita pagar duas vezes
+  /// os mesmos tokens e deixa o prefixo incremental do prompt cache intacto.
+  static String removeConversationHistoryForModel(String prompt) {
+    const historyMarker =
+        'Current chat history, oldest to newest (accessible conversation context):';
+    const userRequestMarker = '\nUser request:';
+    final historyStart = prompt.indexOf(historyMarker);
+    if (historyStart == -1) {
+      return prompt;
+    }
+
+    final userRequestStart = prompt.indexOf(
+      userRequestMarker,
+      historyStart + historyMarker.length,
+    );
+    if (userRequestStart == -1) {
+      return prompt;
+    }
+
+    return '${prompt.substring(0, historyStart)}'
+        '${prompt.substring(userRequestStart)}';
+  }
+
   static String _sanitizeConversationBlock(String block) {
     final separatorIndex = block.indexOf(':');
     if (separatorIndex == -1) {

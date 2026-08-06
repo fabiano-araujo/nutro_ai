@@ -64,6 +64,7 @@ This file guides coding agents working in this repository.
 11. Authenticated app bootstrap/sync uses a single app-state contract:
    - `GET /user/app-state` returns user profile/subscription, credits, server goal setup, macro targets, diet-generation preferences, and free-chat conversations.
    - `PUT /user/app-state` syncs pending nutrition goals and/or free-chat conversations saved locally while offline.
+12. OpenRouter chat prompt caching depends on a stable `sessionId` per logical chat. The Flutter chat may send `conversationMessages` (completed `user`/`assistant` turns) plus a `modelPrompt` containing only the current dynamic context/request; the backend forwards these as `messages` and `session_id` to OpenRouter.
 
 ## 4) Main Commands
 

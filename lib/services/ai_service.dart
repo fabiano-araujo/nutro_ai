@@ -134,7 +134,8 @@ class AIService {
       String provider = '',
       List<Map<String, String>>? mealTypes,
       String? sessionId,
-      List<Map<String, String>>? conversationMessages}) async* {
+      List<Map<String, String>>? conversationMessages,
+      String? modelPrompt}) async* {
     print(
         '🔴🔴🔴 AIService.getAnswerStream CHAMADO - agentType=$agentType, provider=$provider');
     print('\n🚀 Iniciando nova solicitação de resposta');
@@ -181,6 +182,8 @@ class AIService {
           'sessionId': sessionId.trim(),
         if (conversationMessages != null && conversationMessages.isNotEmpty)
           'conversationMessages': conversationMessages,
+        if (modelPrompt != null && modelPrompt.trim().isNotEmpty)
+          'modelPrompt': modelPrompt,
       };
 
       // Adicionar provider se especificado
