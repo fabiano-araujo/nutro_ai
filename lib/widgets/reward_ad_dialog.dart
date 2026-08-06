@@ -4,6 +4,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/ad_manager.dart';
 import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
 import '../providers/credit_provider.dart';
 import 'package:nutro_ai/i18n/app_localizations_extension.dart';
 
@@ -189,6 +190,13 @@ class RewardAdDialog {
             ? authService.token
             : null;
     final maxRetryAttempt = 3;
+
+    // Diet generation/substitution gates do not grant credits. If the user
+    // is Premium, complete the gate immediately without showing any ad UI.
+    if (!grantCredits && _isPremiumUser(context)) {
+      onRewardEarned?.call();
+      return;
+    }
 
     if (kIsWeb) {
       await _grantRewardedCreditsForWeb(context, creditProvider, token,
@@ -379,6 +387,23 @@ class RewardAdDialog {
         );
       }
     }
+  }
+
+  static bool _isPremiumUser(BuildContext context) {
+    final purchaseService = context.read<PurchaseService>();
+    final authService = context.read<AuthService>();
+    final subscription = authService.currentUser?.subscription;
+    final purchasePlan = purchaseService.subscriptionType.trim().toLowerCase();
+    final userPlan = subscription?.planType.trim().toLowerCase();
+    final hasFutureSubscription =
+        subscription?.expirationDate?.isAfter(DateTime.now()) ?? false;
+
+    return AdManager.isPremium ||
+        purchaseService.isPremium ||
+        (subscription?.isPremium ?? false) ||
+        (purchasePlan.isNotEmpty && purchasePlan != 'free') ||
+        (userPlan != null && userPlan != 'free') ||
+        hasFutureSubscription;
   }
 
   static Future<void> _grantRewardedCreditsForWeb(

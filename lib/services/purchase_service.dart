@@ -72,14 +72,7 @@ class PurchaseService with ChangeNotifier {
       _lastSyncedUserId = null;
       _lastSyncedToken = null;
       _subscriptionStatusSynchronized = true;
-      unawaited(
-        _applySubscriptionStatus(
-          isPremium: false,
-          planType: 'free',
-          expirationDate: null,
-          remainingDays: null,
-        ),
-      );
+      _applyUnauthenticatedSnapshot();
       return;
     }
 
@@ -91,14 +84,7 @@ class PurchaseService with ChangeNotifier {
             !_matchesSubscriptionSnapshot(authSubscription);
 
     if (shouldApplySnapshot) {
-      unawaited(
-        _applySubscriptionStatus(
-          isPremium: authSubscription.isPremium,
-          planType: authSubscription.planType,
-          expirationDate: authSubscription.expirationDate,
-          remainingDays: authSubscription.remainingDays,
-        ),
-      );
+      _applyAuthenticatedSnapshot(authSubscription);
     }
 
     final shouldRefreshFromServer = userChanged ||
@@ -111,6 +97,40 @@ class PurchaseService with ChangeNotifier {
       _subscriptionStatusSynchronized = false;
       unawaited(refreshSubscriptionStatusFromServer());
     }
+  }
+
+  void _applyUnauthenticatedSnapshot() {
+    final statusChanged = _isPremium ||
+        _subscriptionType != 'free' ||
+        _subscriptionExpiryDate != null;
+    _isPremium = false;
+    _subscriptionType = 'free';
+    _subscriptionExpiryDate = null;
+
+    if (!statusChanged) return;
+
+    AdManager.setPremiumStatus(false);
+    unawaited(_saveSubscriptionStatus(false, 'free', null));
+    notifyListeners();
+  }
+
+  void _applyAuthenticatedSnapshot(Subscription subscription) {
+    final isPremium = subscription.isPremium;
+    final planType = isPremium ? subscription.planType : 'free';
+    final expirationDate = isPremium ? subscription.expirationDate : null;
+    final statusChanged = _isPremium != isPremium ||
+        _subscriptionType != planType ||
+        !_sameDate(_subscriptionExpiryDate, expirationDate);
+
+    _isPremium = isPremium;
+    _subscriptionType = planType;
+    _subscriptionExpiryDate = expirationDate;
+
+    if (!statusChanged) return;
+
+    AdManager.setPremiumStatus(isPremium);
+    unawaited(_saveSubscriptionStatus(isPremium, planType, expirationDate));
+    notifyListeners();
   }
 
   Future<void> _loadSavedPurchaseStatus() async {

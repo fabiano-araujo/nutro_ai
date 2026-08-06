@@ -911,6 +911,127 @@ class _MealCardState extends State<MealCard> {
     );
   }
 
+  /// Emoji configurado para o tipo de refeição atual (com fallback por enum).
+  String _getMealTypeEmoji() {
+    try {
+      final provider = Provider.of<MealTypesProvider>(context, listen: false);
+      for (final config in provider.mealTypes) {
+        if (_getMealTypeFromId(config.id) == _currentMeal.type) {
+          return config.emoji;
+        }
+      }
+    } catch (_) {
+      // Sem provider disponível: usa fallback por enum.
+    }
+    switch (_currentMeal.type) {
+      case MealType.breakfast:
+        return '🍳';
+      case MealType.lunch:
+        return '🍽️';
+      case MealType.snack:
+        return '🍎';
+      case MealType.dinner:
+        return '🍝';
+      case MealType.freeMeal:
+        return '🍽️';
+    }
+  }
+
+  /// Badge arredondado com o emoji do tipo de refeição — identidade visual
+  /// imediata do card, tanto recolhido quanto expandido.
+  Widget _buildMealTypeBadge({
+    required bool isDarkMode,
+    double size = 42,
+  }) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: primary.withValues(alpha: isDarkMode ? 0.18 : 0.12),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Text(
+        _getMealTypeEmoji(),
+        style: TextStyle(fontSize: size * 0.52, height: 1),
+      ),
+    );
+  }
+
+  /// Resumo compacto dos macros para o card recolhido:
+  /// bolinha colorida + valor, um para cada macro.
+  Widget _buildMiniMacro({
+    required double value,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '${value.toStringAsFixed(0)} g',
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: color,
+            height: 1,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Barra segmentada mostrando a proporção calórica de cada macro
+  /// (proteína ×4, carboidrato ×4, gordura ×9). Visual e intuitivo.
+  Widget _buildMacroDistributionBar({required bool isDarkMode}) {
+    final proteinKcal = _currentMeal.totalProtein * 4;
+    final carbsKcal = _currentMeal.totalCarbs * 4;
+    final fatKcal = _currentMeal.totalFat * 9;
+    final total = proteinKcal + carbsKcal + fatKcal;
+
+    final trackColor = (isDarkMode ? Colors.white : Colors.black)
+        .withValues(alpha: isDarkMode ? 0.10 : 0.06);
+
+    if (total <= 0) {
+      return Container(
+        height: 5,
+        decoration: BoxDecoration(
+          color: trackColor,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      );
+    }
+
+    Widget segment(double kcal, Color color) {
+      if (kcal <= 0) return const SizedBox.shrink();
+      return Flexible(
+        flex: (kcal / total * 1000).round().clamp(1, 1000),
+        child: Container(height: 5, color: color),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: Container(
+        color: trackColor,
+        child: Row(
+          children: [
+            segment(proteinKcal, MacroTheme.proteinColor),
+            segment(carbsKcal, MacroTheme.carbsColor),
+            segment(fatKcal, MacroTheme.fatColor),
+          ],
+        ),
+      ),
+    );
+  }
+
   Color _skeletonBaseColor(bool isDarkMode) =>
       isDarkMode ? Colors.grey[800]! : Colors.grey[300]!;
 
