@@ -1852,8 +1852,8 @@ class _MainNavigationState extends State<MainNavigation>
 
   Widget _buildNavigationBar(bool isDarkMode) {
     return NavigationBar(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: _onItemTapped,
+      selectedIndex: _selectedIndex == 4 ? 3 : _selectedIndex,
+      onDestinationSelected: (index) => _onItemTapped(index < 3 ? index : 4),
       backgroundColor: isDarkMode
           ? AppTheme.darkBackgroundColor
           : Theme.of(context).scaffoldBackgroundColor,
@@ -1874,11 +1874,6 @@ class _MainNavigationState extends State<MainNavigation>
           icon: Icon(Icons.ramen_dining_outlined),
           selectedIcon: Icon(Icons.ramen_dining),
           label: context.tr.translate('my_diet'),
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.group_outlined),
-          selectedIcon: Icon(Icons.group),
-          label: context.tr.translate('social'),
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline),
@@ -2191,7 +2186,7 @@ class _MainNavigationState extends State<MainNavigation>
     );
   }
 
-  /// Itens de navegação (Início, Diário, Minha Dieta, Social, Perfil) exibidos no
+  /// Itens de navegação (Início, Diário, Minha Dieta e Perfil) exibidos no
   /// rodapé do painel lateral quando o layout é de tela larga.
   Widget _buildSidePanelNavItems(bool isDarkMode) {
     final items = <_SidePanelNavItem>[
@@ -2211,11 +2206,6 @@ class _MainNavigationState extends State<MainNavigation>
         label: context.tr.translate('my_diet'),
       ),
       _SidePanelNavItem(
-        icon: Icons.group_outlined,
-        activeIcon: Icons.group,
-        label: context.tr.translate('social'),
-      ),
-      _SidePanelNavItem(
         icon: Icons.person_outline,
         activeIcon: Icons.person,
         label: context.tr.translate('profile'),
@@ -2228,7 +2218,10 @@ class _MainNavigationState extends State<MainNavigation>
         mainAxisSize: MainAxisSize.min,
         children: List.generate(items.length, (i) {
           final item = items[i];
-          final selected = _selectedIndex == i;
+          // O índice 3 do IndexedStack é a aba Social, que fica oculta na
+          // navegação principal; o quarto item visível aponta para o índice 4.
+          final tabIndex = i < 3 ? i : 4;
+          final selected = _selectedIndex == tabIndex;
           final selectedBg = isDarkMode
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.06);
@@ -2239,7 +2232,7 @@ class _MainNavigationState extends State<MainNavigation>
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: InkWell(
-              onTap: () => _onItemTapped(i),
+              onTap: () => _onItemTapped(tabIndex),
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 padding:

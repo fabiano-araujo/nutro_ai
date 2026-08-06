@@ -168,8 +168,8 @@ final Map<String, String> ptBRTranslations = {
   'profile_shape_source_title': 'Escolha a foto',
   'profile_shape_original_label': 'Foto original',
   'profile_shape_result_label': 'Prévia gerada',
-  'profile_shape_previous_result_show': 'Ver última geração',
-  'profile_shape_previous_result_hide': 'Ocultar última geração',
+  'profile_shape_previous_result_show': 'Ver todas as gerações',
+  'profile_shape_previous_result_hide': 'Ocultar gerações',
   'profile_shape_generate': 'Gerar meu shape',
   'profile_shape_generating': 'Gerando...',
   'profile_shape_apply_profile': 'Usar como foto de perfil',
@@ -403,6 +403,8 @@ final Map<String, String> ptBRTranslations = {
   'chat_action_view_my_diet_ui': 'Ver em Minha Dieta',
   'chat_diet_personalization_question':
       'Posso gerar uma dieta padrão agora. Se quiser personalizar, diga em uma frase: vegetariana ou vegana, intolerâncias ou alergias, condições de saúde, alimentos que prefere ou evita e rotina. Quer adicionar algo ou posso gerar o padrão?',
+  'agent_diet_already_exists_confirmation':
+      'Você já tem uma dieta gerada. Quer que eu gere uma nova dieta para substituí-la?',
   'chat_action_continue_macros_chat': 'Ajustar metas e macros com IA',
   'chat_setup_reminder_prefix': 'Vamos terminar de configurar suas informações',
   'chat_setup_reminder_with_fields':
@@ -2652,9 +2654,11 @@ final Map<String, String> ptBRTranslations = {
       'Uma opção de lanche leve: iogurte natural ou uma fruta com um pouco de whey, em torno de 150–220 kcal. Hoje você ainda tem {calories_remaining} kcal disponíveis.',
   'agent_daily_snack_regular':
       'Uma boa opção de lanche: sanduíche de frango com pão integral e iogurte natural. Fica em torno de 500 kcal, com cerca de 35g de proteína, 55g de carboidratos e 12g de gorduras, dentro das {calories_remaining} kcal que você ainda tem hoje.',
+  'agent_food_suggestion_fallback':
+      'Posso sugerir uma refeição ou lanche com base nas suas metas. Qual refeição você quer fazer?',
   'agent_date_on': 'Em {date}',
   'agent_diet_generated':
-      'Dieta gerada. Número de refeições personalizadas: {meal_count}. O plano fornece cerca de {calories} kcal no dia ({protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras). Você pode ver e ajustar tudo em Minha Dieta.',
+      'Prontinho! Montei sua dieta com {meal_count} refeições, chegando a cerca de {calories} kcal por dia — {protein}g de proteína, {carbs}g de carboidratos e {fat}g de gorduras. Já deixei tudo em Minha Dieta para você conferir e ajustar se quiser.',
   'agent_goal_lean_mass_gain': 'ganhar massa aos poucos',
   'agent_goal_maintenance': 'manutenção',
   'agent_goal_slow_weight_loss': 'perder peso devagar',

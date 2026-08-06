@@ -57,6 +57,75 @@ Para configurar seus objetivos, preciso validar os dados.
     });
   });
 
+  test('keeps the view-my-diet CTA on natural diet follow-ups', () {
+    const naturalReply = 'Pronto! Sua dieta ficou pronta para você conferir.';
+    final enriched = AppAgentService.ensureViewMyDietUiHint(naturalReply);
+
+    expect(
+      AppAgentUiHint.tryParse(enriched)?.actions,
+      contains(AppAgentUiHint.actionViewMyDietUi),
+    );
+    expect(AppAgentUiHint.removeHintBlock(enriched), naturalReply);
+  });
+
+  test('keeps local text heuristics out of canonical command execution', () {
+    const foodQuestion = 'O que eu posso comer hj?';
+
+    expect(AppAgentService.isDietGenerationRequest(foodQuestion), isFalse);
+    final batch = AppAgentCommand.tryParseBatch(
+      '{"app_command":{"name":"get_daily_nutrition_status","arguments":{}}}',
+    );
+    expect(
+        batch?.commands.single.name, AppAgentService.getDailyNutritionStatus);
+  });
+
+  test('requires language-independent confirmation before replacing a diet',
+      () {
+    const generationCommand = AppAgentCommand(
+      name: AppAgentService.generateNewDietPlan,
+      arguments: <String, dynamic>{},
+      rawJson: '{}',
+    );
+    const confirmedGenerationCommand = AppAgentCommand(
+      name: AppAgentService.generateNewDietPlan,
+      arguments: <String, dynamic>{'replaceExistingDietConfirmed': true},
+      rawJson: '{}',
+    );
+
+    expect(
+      AppAgentService.shouldRequireDietReplacementConfirmation(
+        command: generationCommand,
+        hasExistingDiet: true,
+      ),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldRequireDietReplacementConfirmation(
+        command: confirmedGenerationCommand,
+        hasExistingDiet: true,
+      ),
+      isFalse,
+    );
+    expect(
+      AppAgentService.shouldRequireDietReplacementConfirmation(
+        command: generationCommand,
+        hasExistingDiet: false,
+      ),
+      isFalse,
+    );
+  });
+
+  test('preserves the diet replacement confirmation flag from AI JSON', () {
+    final batch = AppAgentCommand.tryParseBatch(
+      '{"app_command":{"name":"generate_new_diet_plan","arguments":{"replaceExistingDietConfirmed":true}}}',
+    );
+
+    expect(
+      batch?.commands.single.arguments['replaceExistingDietConfirmed'],
+      isTrue,
+    );
+  });
+
   test('parses skipPreferenceStep for optional diet generation review', () {
     const response = '''
 {"app_commands":[

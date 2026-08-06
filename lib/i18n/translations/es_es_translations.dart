@@ -165,8 +165,8 @@ final Map<String, String> esESTranslations = {
   'profile_shape_source_title': 'Elige la foto',
   'profile_shape_original_label': 'Foto original',
   'profile_shape_result_label': 'Vista generada',
-  'profile_shape_previous_result_show': 'Ver última generación',
-  'profile_shape_previous_result_hide': 'Ocultar última generación',
+  'profile_shape_previous_result_show': 'Ver todas las generaciones',
+  'profile_shape_previous_result_hide': 'Ocultar generaciones',
   'profile_shape_generate': 'Generar mi forma',
   'profile_shape_generating': 'Generando...',
   'profile_shape_apply_profile': 'Usar como foto de perfil',
@@ -397,6 +397,8 @@ final Map<String, String> esESTranslations = {
   'chat_action_view_my_diet_ui': 'Ver en Mi Dieta',
   'chat_diet_personalization_question':
       'Puedo generar una dieta estándar ahora. Si quieres personalizarla, dime en una frase si eres vegetariano o vegano, tus intolerancias o alergias, condiciones de salud, alimentos que prefieres o evitas y tu rutina. ¿Quieres añadir algo o genero la estándar?',
+  'agent_diet_already_exists_confirmation':
+      'Ya tienes una dieta generada. ¿Quieres que genere una nueva para sustituirla?',
   'chat_action_continue_macros_chat': 'Ajustar metas y macros con IA',
   'chat_goal_setup_chat_prompt':
       'Quiero configurar mis objetivos nutricionales por el chat. Usa los comandos de la aplicación cuando sea necesario, haz una pregunta cada vez y empieza por mi edad, altura, peso y género.',
@@ -2555,9 +2557,11 @@ final Map<String, String> esESTranslations = {
       'Una opción de snack ligero: yogur natural o fruta con un poco de proteína de suero, unas 150–220 kcal. Hoy todavía tienes {calories_remaining} kcal disponibles.',
   'agent_daily_snack_regular':
       'Una buena opción de snack: bocadillo de pollo con pan integral y yogur natural. Son unas 500 kcal, con unos 35g de proteínas, 55g de hidratos de carbono y 12g de grasas, dentro de las {calories_remaining} kcal que aún tienes a día de hoy.',
+  'agent_food_suggestion_fallback':
+      'Puedo sugerirte una comida o un tentempié según tus objetivos. ¿Qué comida vas a hacer?',
   'agent_date_on': 'En {date}',
   'agent_diet_generated':
-      'Dieta generada. Número de comidas personalizadas: {meal_count}. El plan aporta unas {calories} kcal al día ({protein}g de proteínas, {carbs}g de carbohidratos y {fat}g de grasas). Puedes verlo y ajustarlo todo en Mi dieta.',
+      '¡Listo! Preparé tu dieta con {meal_count} comidas, con unas {calories} kcal al día — {protein}g de proteínas, {carbs}g de carbohidratos y {fat}g de grasas. Ya está en Mi dieta para que la revises y la ajustes si quieres.',
   'agent_goal_lean_mass_gain': 'ganar masa poco a poco',
   'agent_goal_maintenance': 'mantenimiento',
   'agent_goal_slow_weight_loss': 'perder peso lentamente',

@@ -167,8 +167,8 @@ final Map<String, String> frFRTranslations = {
   'profile_shape_source_title': "Choisir la photo",
   'profile_shape_original_label': "Photo originale",
   'profile_shape_result_label': "Aperçu généré",
-  'profile_shape_previous_result_show': "Voir la dernière génération",
-  'profile_shape_previous_result_hide': "Masquer la dernière génération",
+  'profile_shape_previous_result_show': "Voir toutes les générations",
+  'profile_shape_previous_result_hide': "Masquer les générations",
   'profile_shape_generate': "Générer mon aperçu",
   'profile_shape_generating': "Génération...",
   'profile_shape_apply_profile': "Utiliser comme photo de profil",
@@ -393,6 +393,8 @@ final Map<String, String> frFRTranslations = {
   'chat_action_view_my_diet_ui': "Voir dans Mon Régime",
   'chat_diet_personalization_question':
       "Je peux générer un régime standard maintenant. Pour le personnaliser, indiquez en une phrase vos préférences végétariennes ou véganes, intolérances, allergies, problèmes de santé, aliments préférés ou à éviter, ainsi que votre routine. Voulez-vous ajouter quelque chose ou générer le régime standard ?",
+  'agent_diet_already_exists_confirmation':
+      "Vous avez déjà un régime généré. Voulez-vous que j'en génère un nouveau pour le remplacer ?",
   'chat_action_continue_macros_chat':
       "Ajuster les objectifs et les macros avec l'IA",
   'chat_setup_reminder_prefix':
@@ -2505,9 +2507,11 @@ final Map<String, String> frFRTranslations = {
       "Une option de collation légère : yaourt nature ou fruit avec un peu de lactosérum, environ 150-220 kcal. Aujourd’hui, il vous reste encore {calories_remaining} kcal disponibles.",
   'agent_daily_snack_regular':
       "Une bonne option de collation : un sandwich au poulet avec du pain complet et du yaourt nature. C'est environ 500 kcal, avec environ 35 g de protéines, 55 g de glucides et 12 g de graisses, dans les {calories_remaining} kcal dont vous disposez encore aujourd'hui.",
+  'agent_food_suggestion_fallback':
+      "Je peux vous suggérer un repas ou une collation selon vos objectifs. Quel repas allez-vous prendre ?",
   'agent_date_on': "Le {date}",
   'agent_diet_generated':
-      "Régime généré. Nombre de repas personnalisés : {meal_count}. Le régime apporte environ {calories} kcal par jour ({protein}g de protéines, {carbs}g de glucides et {fat}g de lipides). Vous pouvez tout voir et tout ajuster dans Mon régime.",
+      "C’est prêt ! Je vous ai préparé un régime avec {meal_count} repas, pour environ {calories} kcal par jour — {protein}g de protéines, {carbs}g de glucides et {fat}g de lipides. Vous le trouverez dans Mon régime pour le consulter et l’ajuster si besoin.",
   'agent_goal_lean_mass_gain': "prendre de la masse petit à petit",
   'agent_goal_maintenance': "maintien",
   'agent_goal_slow_weight_loss': "perdre du poids lentement",

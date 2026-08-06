@@ -169,8 +169,8 @@ final Map<String, String> enUSTranslations = {
   'profile_shape_source_title': 'Choose photo source',
   'profile_shape_original_label': 'Original photo',
   'profile_shape_result_label': 'Generated preview',
-  'profile_shape_previous_result_show': 'View last generation',
-  'profile_shape_previous_result_hide': 'Hide last generation',
+  'profile_shape_previous_result_show': 'View all generations',
+  'profile_shape_previous_result_hide': 'Hide generations',
   'profile_shape_generate': 'Generate my preview',
   'profile_shape_generating': 'Generating...',
   'profile_shape_apply_profile': 'Use as profile photo',
@@ -397,6 +397,8 @@ final Map<String, String> enUSTranslations = {
   'chat_action_view_my_diet_ui': 'View in My Diet',
   'chat_diet_personalization_question':
       'I can generate a standard diet now. If you want it more personalized, tell me in one sentence: vegetarian or vegan, intolerances or allergies, health conditions, foods you prefer or avoid, and routine. Do you want to add anything, or should I generate the standard diet?',
+  'agent_diet_already_exists_confirmation':
+      'You already have a generated diet. Would you like me to generate a new diet to replace it?',
   'chat_action_continue_macros_chat': 'Adjust goals and macros with AI',
   'chat_setup_reminder_prefix': 'Let’s finish setting up your information',
   'chat_setup_reminder_with_fields':
@@ -2530,9 +2532,11 @@ final Map<String, String> enUSTranslations = {
       'A light snack option: natural yogurt or fruit with a little whey, around 150–220 kcal. Today you still have {calories_remaining} kcal available.',
   'agent_daily_snack_regular':
       'A good snack option is a chicken sandwich on whole-wheat bread with plain yogurt. It has around 500 kcal, 35g of protein, 55g of carbohydrates, and 12g of fat, within the {calories_remaining} kcal you still have today.',
+  'agent_food_suggestion_fallback':
+      'I can suggest a meal or snack based on your targets. Which meal are you having?',
   'agent_date_on': 'On {date}',
   'agent_diet_generated':
-      'Diet generated. Number of personalized meals: {meal_count}. The plan provides around {calories} kcal per day ({protein}g of protein, {carbs}g of carbohydrates, and {fat}g of fat). You can view and adjust everything under My Diet.',
+      'All set! I put together your diet with {meal_count} meals, totaling around {calories} kcal per day — {protein}g of protein, {carbs}g of carbohydrates, and {fat}g of fat. It is ready for you to review and adjust under My Diet.',
   'agent_goal_lean_mass_gain': 'gain lean mass gradually',
   'agent_goal_maintenance': 'maintenance',
   'agent_goal_slow_weight_loss': 'lose weight slowly',

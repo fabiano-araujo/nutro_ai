@@ -616,8 +616,19 @@ class AppAgentCommand {
         final mealsPerDay = AppAgentService._readRequestedMealsPerDay(
           normalized,
         );
+        final replaceExistingDietConfirmed = AppAgentService._tryParseBool(
+          AppAgentService._readFirstValue(
+            normalized,
+            const [
+              'replaceExistingDietConfirmed',
+              'replace_existing_diet_confirmed',
+            ],
+          ),
+        );
         return {
           if (mealsPerDay != null) 'mealsPerDay': mealsPerDay,
+          if (replaceExistingDietConfirmed == true)
+            'replaceExistingDietConfirmed': true,
         };
 
       default:
@@ -2192,6 +2203,24 @@ class AppAgentService {
     }
   }
 
+  /// Keeps the native "view my diet" CTA attached when the server's
+  /// natural-language follow-up does not repeat its hidden UI hint.
+  static String ensureViewMyDietUiHint(String responseContent) {
+    if (responseContent.trim().isEmpty) {
+      return responseContent;
+    }
+
+    final parsedHint = AppAgentUiHint.tryParse(responseContent);
+    if (parsedHint?.actions.contains(AppAgentUiHint.actionViewMyDietUi) ==
+        true) {
+      return responseContent;
+    }
+
+    const hint =
+        '[APP_UI_HINT_BEGIN]{"actions":["view_my_diet_ui"]}[APP_UI_HINT_END]';
+    return '${responseContent.trim()}\n\n$hint';
+  }
+
   static String _buildDailyNutritionStatusFallbackMessage({
     required BuildContext context,
     required AppAgentExecutionResult result,
@@ -2381,6 +2410,13 @@ class AppAgentService {
   }
 
   static bool _looksLikeSnackSuggestionRequest(String normalizedText) {
+    final asksWhatCanEat = RegExp(
+      r'\b(o que|oque|que)\b.*\b(posso|poderia)\s+comer\b',
+    ).hasMatch(normalizedText);
+    if (asksWhatCanEat) {
+      return true;
+    }
+
     final hasSuggestion = _containsAnyTerm(normalizedText, const [
       'sugestao',
       'sugestoes',
@@ -2654,16 +2690,13 @@ class AppAgentService {
     final totalProtein = _tryParseDouble(result.payload['totalProtein']) ?? 0;
     final totalCarbs = _tryParseDouble(result.payload['totalCarbs']) ?? 0;
     final totalFat = _tryParseDouble(result.payload['totalFat']) ?? 0;
-    const hint =
-        '\n\n[APP_UI_HINT_BEGIN]{"actions":["view_my_diet_ui"]}[APP_UI_HINT_END]';
-
-    return '${_translate(context, 'agent_diet_generated', {
-          'meal_count': mealCount,
-          'calories': totalCalories,
-          'protein': _formatOneDecimal(totalProtein),
-          'carbs': _formatOneDecimal(totalCarbs),
-          'fat': _formatOneDecimal(totalFat),
-        })}$hint';
+    return ensureViewMyDietUiHint(_translate(context, 'agent_diet_generated', {
+      'meal_count': mealCount,
+      'calories': totalCalories,
+      'protein': _formatOneDecimal(totalProtein),
+      'carbs': _formatOneDecimal(totalCarbs),
+      'fat': _formatOneDecimal(totalFat),
+    }));
   }
 
   static bool isMacroTargetAdviceQuestion(String userMessage) {
@@ -2850,20 +2883,9 @@ class AppAgentService {
 
   static bool shouldAskDietPersonalizationBeforeGeneration(
     AppAgentCommand command,
-    String originalUserMessage,
     BuildContext context,
   ) {
-    if (command.name != generateNewDietPlan ||
-        !isDietGenerationRequest(originalUserMessage) ||
-        isDietDefaultApproval(originalUserMessage)) {
-      return false;
-    }
-
-    if (buildDietPreferenceUpdateFromUserMessage(
-          originalUserMessage,
-          rawJson: command.rawJson,
-        ) !=
-        null) {
+    if (command.name != generateNewDietPlan) {
       return false;
     }
 
@@ -3269,6 +3291,34 @@ class AppAgentService {
       'create',
       'build',
     ]);
+  }
+
+  static bool shouldRequireDietReplacementConfirmation({
+    required AppAgentCommand command,
+    required bool hasExistingDiet,
+  }) {
+    return command.name == generateNewDietPlan &&
+        hasExistingDiet &&
+        command.arguments['replaceExistingDietConfirmed'] != true;
+  }
+
+  static String buildDietReplacementConfirmation({
+    required BuildContext context,
+    required AppAgentCommand command,
+  }) {
+    final pendingAction = AppAgentPendingAction(
+      command: AppAgentCommand(
+        name: command.name,
+        arguments: <String, dynamic>{
+          ...command.arguments,
+          'replaceExistingDietConfirmed': true,
+        },
+        rawJson: command.rawJson,
+      ),
+      rawBlock: '',
+    );
+    return '${_translate(context, 'agent_diet_already_exists_confirmation')}\n\n'
+        '${pendingAction.toPromptBlock()}';
   }
 
   static bool shouldTreatAsMacroRecalculationApproval(
@@ -4230,14 +4280,18 @@ class AppAgentService {
             : _translate(context, 'agent_credit_diet_preview', {
                 'meals': preview,
               });
-        return _translate(context, 'agent_credit_diet_result', {
-          'meal_count': mealCount,
-          'calories': totalCalories,
-          'protein': _formatOneDecimal(totalProtein),
-          'carbs': _formatOneDecimal(totalCarbs),
-          'fat': _formatOneDecimal(totalFat),
-          'preview': previewLine,
-        });
+        return ensureViewMyDietUiHint(_translate(
+          context,
+          'agent_credit_diet_result',
+          {
+            'meal_count': mealCount,
+            'calories': totalCalories,
+            'protein': _formatOneDecimal(totalProtein),
+            'carbs': _formatOneDecimal(totalCarbs),
+            'fat': _formatOneDecimal(totalFat),
+            'preview': previewLine,
+          },
+        ));
       case getDailyNutritionStatus:
         final caloriesRemaining =
             _tryParseInt(lastResult.payload['caloriesRemaining']) ?? 0;
@@ -4491,7 +4545,7 @@ class AppAgentService {
 
     final explicitDateContext = _extractDailyStatusDate(normalizedText) != null;
     final asksAmount = RegExp(
-      r'\b(quanto|quantas|qto|qtas|cuanto|cuantas|combien|wie viel|wie viele|wieviel|quante|posso comer|ainda posso|how much|how many|still eat)\b',
+      r'\b(quanto|quantas|qto|qtas|cuanto|cuantas|combien|wie viel|wie viele|wieviel|quante|posso comer|poderia comer|ainda posso|how much|how many|can i eat|could i eat|still eat)\b',
     ).hasMatch(normalizedText);
     final dayContext = RegExp(
           r'\b(hoje|hj|ontem|anteontem|today|yesterday|hoy|ayer|aujourd hui|aujourdhui|hier|heute|gestern|oggi|ieri|agora|ainda|resta|restam|sobrou|sobram|falta|faltam|quedan|queda|reste|restait|ubrig|rimane|rimaste|remaining|left)\b',
@@ -4510,14 +4564,16 @@ class AppAgentService {
       r'\b(lanche|snack|refeicao|comida|alimento|comer|meal|food)\b',
     ).hasMatch(normalizedText);
     final remainingBudgetContext = RegExp(
-          r'\b(posso comer|ainda posso|ja posso|que eu posso|que posso|resta|restam|sobrou|sobram|falta|faltam|remaining|left|available)\b',
+          r'\b(posso comer|poderia comer|ainda posso|ja posso|que eu posso|que posso|que eu poderia|que poderia|resta|restam|sobrou|sobram|falta|faltam|remaining|left|available)\b',
         ).hasMatch(normalizedText) ||
         RegExp(
           r'\b(com|dentro)\s+(as|das|minhas|os|dos|meus)?\s*(calorias|kcal|macros)\b',
         ).hasMatch(normalizedText);
 
     return !targetEditContext &&
-        ((asksAmount && dayContext && nutritionContext) ||
+        ((asksAmount &&
+                nutritionContext &&
+                (dayContext || remainingBudgetContext)) ||
             _looksLikeDailyEvaluationRequest(normalizedText) ||
             (suggestionContext &&
                 mealSuggestionContext &&
@@ -4728,27 +4784,6 @@ class AppAgentService {
     }
   }
 
-  static bool _shouldUseSemanticActionGateway(String basePrompt) {
-    if (basePrompt.contains('Conversation mode: free nutrition chat.')) {
-      return false;
-    }
-
-    final userText = _extractPromptUserRequest(basePrompt);
-    final normalized = _normalizeRoutingText(userText);
-    if (normalized.isEmpty ||
-        _isGreetingOnly(normalized) ||
-        _isLowContextStandaloneMessage(_normalizeLooseText(userText))) {
-      return false;
-    }
-
-    if (_looksLikeProfileDeclaration(normalized) ||
-        _isStandaloneFoodLoggingText(normalized)) {
-      return false;
-    }
-
-    return true;
-  }
-
   static Future<String> buildFollowUpPrompt({
     required String originalUserMessage,
     required List<AppAgentExecutionResult> executionResults,
@@ -4802,14 +4837,16 @@ Reply in App reply language.
     required String basePrompt,
   }) async {
     final appReplyLanguage = _promptLanguageTag(context);
-    var promptIntent = _resolvePromptIntentFromBasePrompt(basePrompt);
+    final inferredPromptIntent = _resolvePromptIntentFromBasePrompt(basePrompt);
+    final promptIntent = basePrompt.contains('[APP_COMMAND_RESULTS_BEGIN]') ||
+            basePrompt.contains('[APP_COMMAND_RESULT_BEGIN]')
+        ? _PromptIntent.commandResults
+        : basePrompt.contains('[APP_PENDING_ACTION_BEGIN]')
+            ? _PromptIntent.pendingAction
+            : inferredPromptIntent == _PromptIntent.foodLogging
+                ? _PromptIntent.foodLogging
+                : _PromptIntent.accountScoped;
     final authService = Provider.of<AuthService>(context, listen: false);
-    if (promptIntent == _PromptIntent.simpleChat &&
-        authService.isAuthenticated &&
-        authService.token != null &&
-        _shouldUseSemanticActionGateway(basePrompt)) {
-      promptIntent = _PromptIntent.accountScoped;
-    }
     final intentLine = 'Prompt intent: ${_promptIntentTag(promptIntent)}.';
 
     if (!_shouldAttachAppState(promptIntent)) {
@@ -4897,11 +4934,16 @@ $basePrompt
           },
         });
       case _PromptIntent.dailyStatus:
-      case _PromptIntent.accountScoped:
       case _PromptIntent.pendingAction:
       case _PromptIntent.commandResults:
         return _pruneNullEntries({
           'auth': auth,
+        });
+      case _PromptIntent.accountScoped:
+        return _pruneNullEntries({
+          'auth': auth,
+          'goalSetup': goalSetup,
+          'dietGenerationPreferences': dietPreferences,
         });
       case _PromptIntent.profileSetup:
       case _PromptIntent.macroGoals:

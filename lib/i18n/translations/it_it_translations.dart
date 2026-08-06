@@ -165,8 +165,8 @@ final Map<String, String> itITTranslations = {
   'profile_shape_source_title': 'Scegli la foto',
   'profile_shape_original_label': 'Foto originale',
   'profile_shape_result_label': 'Anteprima generata',
-  'profile_shape_previous_result_show': 'Mostra ultima generazione',
-  'profile_shape_previous_result_hide': 'Nascondi ultima generazione',
+  'profile_shape_previous_result_show': 'Mostra tutte le generazioni',
+  'profile_shape_previous_result_hide': 'Nascondi generazioni',
   'profile_shape_generate': 'Genera la mia anteprima',
   'profile_shape_generating': 'Generazione...',
   'profile_shape_apply_profile': 'Usa come foto profilo',
@@ -385,6 +385,8 @@ final Map<String, String> itITTranslations = {
   'chat_action_view_my_diet_ui': 'Vedi in La Mia Dieta',
   'chat_diet_personalization_question':
       'Posso generare una dieta standard ora. Se vuoi personalizzarla, dimmi in una frase: vegetariana o vegana, intolleranze o allergie, condizioni di salute, cibi che preferisci o eviti e routine. Vuoi aggiungere qualcosa o genero quella standard?',
+  'agent_diet_already_exists_confirmation':
+      'Hai già una dieta generata. Vuoi che ne generi una nuova per sostituirla?',
   'chat_action_continue_macros_chat': 'Regola obiettivi e macro con IA',
   'chat_setup_reminder_prefix':
       'Completiamo la configurazione delle tue informazioni',
@@ -2468,9 +2470,11 @@ final Map<String, String> itITTranslations = {
       'Un\'opzione per uno spuntino leggero: yogurt naturale o un frutto con un po\' di whey, intorno a 150–220 kcal. Oggi hai ancora {calories_remaining} kcal disponibili.',
   'agent_daily_snack_regular':
       'Una buona opzione per uno spuntino: panino al pollo con pane integrale e yogurt naturale. Contiene circa 500 kcal, con circa 35 g di proteine, 55 g di carboidrati e 12 g di grassi, entro le {calories_remaining} kcal che ti restano oggi.',
+  'agent_food_suggestion_fallback':
+      'Posso suggerirti un pasto o uno spuntino in base ai tuoi obiettivi. Quale pasto devi fare?',
   'agent_date_on': 'Il {date}',
   'agent_diet_generated':
-      'Dieta generata. Numero di pasti personalizzati: {meal_count}. Il piano fornisce circa {calories} kcal al giorno ({protein} g di proteine, {carbs} g di carboidrati e {fat} g di grassi). Puoi vedere e modificare tutto in La Mia Dieta.',
+      'Fatto! Ho preparato la tua dieta con {meal_count} pasti, per circa {calories} kcal al giorno — {protein} g di proteine, {carbs} g di carboidrati e {fat} g di grassi. La trovi in La Mia Dieta, pronta da controllare e modificare se vuoi.',
   'agent_goal_lean_mass_gain': 'aumentare gradualmente la massa muscolare',
   'agent_goal_maintenance': 'mantenimento',
   'agent_goal_slow_weight_loss': 'perdere peso lentamente',

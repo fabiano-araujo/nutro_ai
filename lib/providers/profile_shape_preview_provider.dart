@@ -7,6 +7,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/diet_generation_background_service.dart';
 
+class ProfileShapePreviewHistoryEntry {
+  final String imageUrl;
+  final String? sourceImageBase64;
+  final DateTime createdAt;
+
+  const ProfileShapePreviewHistoryEntry({
+    required this.imageUrl,
+    required this.createdAt,
+    this.sourceImageBase64,
+  });
+
+  factory ProfileShapePreviewHistoryEntry.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return ProfileShapePreviewHistoryEntry(
+      imageUrl: json['imageUrl']?.toString() ?? '',
+      sourceImageBase64: json['sourceImageBase64']?.toString(),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'imageUrl': imageUrl,
+        'sourceImageBase64': sourceImageBase64,
+        'createdAt': createdAt.toIso8601String(),
+      };
+}
+
 class ProfileShapePreviewProvider extends ChangeNotifier {
   static const Duration _jobPollInterval = Duration(seconds: 3);
   static const Duration _jobWaitTimeout = Duration(minutes: 8);
@@ -15,6 +44,8 @@ class ProfileShapePreviewProvider extends ChangeNotifier {
   bool _isGenerating = false;
   bool _isPolling = false;
   String? _generatedImageUrl;
+  List<ProfileShapePreviewHistoryEntry> _generationHistory = const [];
+  int? _loadedHistoryUserId;
   String? _error;
   Map<String, dynamic>? _pendingCredits;
   late final Future<void> _loadFuture;
@@ -27,12 +58,28 @@ class ProfileShapePreviewProvider extends ChangeNotifier {
   bool get hasActiveProfileShapeGenerationJob => _activeJob != null;
   String? get activeProfileShapeGenerationJobId => _activeJob?.taskId;
   String? get generatedImageUrl => _generatedImageUrl;
+  List<ProfileShapePreviewHistoryEntry> get generationHistory =>
+      List.unmodifiable(_generationHistory);
   String? get error => _error;
 
   Future<void> ensureLoaded() => _loadFuture;
 
   static String storageKey(int userId) =>
       'profile_shape_preview_url_user_$userId';
+
+  static String sourceImageStorageKey(int userId) =>
+      'profile_shape_source_image_user_$userId';
+
+  static String historyStorageKey(int userId) =>
+      'profile_shape_preview_history_user_$userId';
+
+  Future<void> loadHistory(int userId) async {
+    if (_loadedHistoryUserId == userId) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await _loadHistoryFromPreferences(userId, prefs);
+    notifyListeners();
+  }
 
   Map<String, dynamic>? takePendingCredits() {
     final credits = _pendingCredits;
@@ -141,6 +188,8 @@ class ProfileShapePreviewProvider extends ChangeNotifier {
     _isGenerating = false;
     _error = null;
     _generatedImageUrl = null;
+    _generationHistory = const [];
+    _loadedHistoryUserId = null;
     _pendingCredits = null;
     await ProfileShapeGenerationBackgroundService.stopActiveGeneration();
     notifyListeners();
@@ -309,9 +358,99 @@ class ProfileShapePreviewProvider extends ChangeNotifier {
     if (userId != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(storageKey(userId), imageUrl);
+      await _loadHistoryFromPreferences(userId, prefs);
+      await _appendHistoryEntry(
+        userId: userId,
+        imageUrl: imageUrl,
+        sourceImageBase64: prefs.getString(sourceImageStorageKey(userId)),
+        prefs: prefs,
+      );
     }
 
     notifyListeners();
+  }
+
+  Future<void> _loadHistoryFromPreferences(
+    int userId,
+    SharedPreferences prefs,
+  ) async {
+    if (_loadedHistoryUserId == userId) return;
+
+    final entries = <ProfileShapePreviewHistoryEntry>[];
+    final rawHistory = prefs.getString(historyStorageKey(userId));
+    if (rawHistory != null && rawHistory.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawHistory);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is! Map) continue;
+            final entry = ProfileShapePreviewHistoryEntry.fromJson(
+              Map<String, dynamic>.from(item),
+            );
+            if (entry.imageUrl.trim().isNotEmpty) {
+              entries.add(entry);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Erro ao carregar histórico de shape: $e');
+      }
+    }
+
+    final legacyUrl = prefs.getString(storageKey(userId));
+    if (legacyUrl != null &&
+        legacyUrl.trim().isNotEmpty &&
+        !entries.any((entry) => entry.imageUrl == legacyUrl)) {
+      entries.add(
+        ProfileShapePreviewHistoryEntry(
+          imageUrl: legacyUrl,
+          sourceImageBase64: prefs.getString(sourceImageStorageKey(userId)),
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+
+    entries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _generationHistory = entries;
+    _loadedHistoryUserId = userId;
+    _generatedImageUrl = entries.isEmpty ? null : entries.first.imageUrl;
+
+    if (legacyUrl != null && entries.isNotEmpty) {
+      await _persistHistory(userId, prefs);
+    }
+  }
+
+  Future<void> _appendHistoryEntry({
+    required int userId,
+    required String imageUrl,
+    required String? sourceImageBase64,
+    required SharedPreferences prefs,
+  }) async {
+    final entries = List<ProfileShapePreviewHistoryEntry>.from(
+      _generationHistory,
+    )..removeWhere((entry) => entry.imageUrl == imageUrl);
+    entries.insert(
+      0,
+      ProfileShapePreviewHistoryEntry(
+        imageUrl: imageUrl,
+        sourceImageBase64: sourceImageBase64,
+        createdAt: DateTime.now(),
+      ),
+    );
+    _generationHistory = entries;
+    await _persistHistory(userId, prefs);
+  }
+
+  Future<void> _persistHistory(
+    int userId,
+    SharedPreferences prefs,
+  ) {
+    return prefs.setString(
+      historyStorageKey(userId),
+      jsonEncode(
+        _generationHistory.map((entry) => entry.toJson()).toList(),
+      ),
+    );
   }
 
   Future<void> _clearActiveJob([String? jobId]) async {

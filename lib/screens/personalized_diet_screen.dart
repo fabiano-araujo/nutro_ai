@@ -16,6 +16,7 @@ import '../models/food_model.dart';
 import '../models/Nutrient.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
 import '../screens/food_page.dart';
 import '../screens/nutrition_goals_wizard_screen.dart';
 import '../screens/login_screen.dart';
@@ -542,9 +543,11 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     required bool rewardedAdWatched,
     required VoidCallback onRewardEarned,
   }) async {
-    if (rewardedAdWatched ||
-        dietProvider.isPremium ||
-        dietProvider.hasActiveDietGenerationJob) {
+    if (rewardedAdWatched || dietProvider.hasActiveDietGenerationJob) {
+      return true;
+    }
+
+    if (await _resolvePremiumForDietActions(dietProvider)) {
       return true;
     }
 
@@ -558,6 +561,27 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       grantCredits: false,
     );
     return false;
+  }
+
+  /// A assinatura pode ser atualizada primeiro no serviço de compras ou no
+  /// usuário autenticado, enquanto o provider da dieta ainda está carregando
+  /// o status do servidor. Todos esses estados devem liberar a dieta Premium.
+  bool _isPremiumForDietActions(DietPlanProvider dietProvider) {
+    final purchaseService = context.read<PurchaseService>();
+    final authService = context.read<AuthService>();
+    return dietProvider.isPremium ||
+        purchaseService.isPremium ||
+        (authService.currentUser?.subscription.isPremium ?? false);
+  }
+
+  Future<bool> _resolvePremiumForDietActions(
+    DietPlanProvider dietProvider,
+  ) async {
+    final purchaseService = context.read<PurchaseService>();
+    if (!_isPremiumForDietActions(dietProvider)) {
+      await purchaseService.refreshSubscriptionStatusFromServer();
+    }
+    return _isPremiumForDietActions(dietProvider);
   }
 
   void _handleDietActionError({
@@ -710,7 +734,8 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
 
     // Check if trying to generate daily diet without premium
     // Weekly diet is free, daily diet is paid
-    if (dietProvider.dietMode == DietMode.daily && !dietProvider.isPremium) {
+    if (dietProvider.dietMode == DietMode.daily &&
+        !await _resolvePremiumForDietActions(dietProvider)) {
       _showPremiumRequiredDialog();
       return;
     }

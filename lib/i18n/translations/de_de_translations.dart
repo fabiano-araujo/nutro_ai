@@ -133,8 +133,8 @@ final Map<String, String> deDETranslations = {
   'profile_shape_source_title': 'Foto auswählen',
   'profile_shape_original_label': 'Originalfoto',
   'profile_shape_result_label': 'Generierte Vorschau',
-  'profile_shape_previous_result_show': 'Letzte Generierung anzeigen',
-  'profile_shape_previous_result_hide': 'Letzte Generierung ausblenden',
+  'profile_shape_previous_result_show': 'Alle Generierungen anzeigen',
+  'profile_shape_previous_result_hide': 'Generierungen ausblenden',
   'profile_shape_generate': 'Meine Vorschau generieren',
   'profile_shape_generating': 'Wird generiert...',
   'profile_shape_apply_profile': 'Als Profilfoto verwenden',
@@ -369,6 +369,8 @@ final Map<String, String> deDETranslations = {
   'chat_action_view_my_diet_ui': 'In Meine Diät ansehen',
   'chat_diet_personalization_question':
       'Ich kann jetzt einen Standard-Ernährungsplan erstellen. Wenn du ihn personalisieren möchtest, nenne mir in einem Satz: vegetarisch oder vegan, Unverträglichkeiten oder Allergien, gesundheitliche Themen, bevorzugte oder gemiedene Lebensmittel und deine Routine. Möchtest du etwas ergänzen oder soll ich den Standardplan erstellen?',
+  'agent_diet_already_exists_confirmation':
+      'Du hast bereits einen Ernährungsplan. Soll ich einen neuen erstellen und den bisherigen ersetzen?',
   'chat_action_continue_macros_chat': 'Ziele und Makros mit KI anpassen',
   'chat_goal_setup_chat_prompt':
       'Ich möchte meine Ernährungsziele im Chat einrichten. Nutze bei Bedarf die App-Befehle, stelle jeweils nur eine Frage und beginne mit Alter, Größe, Gewicht und Geschlecht.',
@@ -2578,9 +2580,11 @@ final Map<String, String> deDETranslations = {
       'Eine leichte Snackoption: Naturjoghurt oder Obst mit etwas Molkenprotein, etwa 150–220 kcal. Heute hast du noch {calories_remaining} kcal zur Verfügung.',
   'agent_daily_snack_regular':
       'Eine gute Snackoption: Hähnchensandwich mit Vollkornbrot und Naturjoghurt. Das sind etwa 500 kcal mit rund 35 g Protein, 55 g Kohlenhydraten und 12 g Fett – innerhalb der {calories_remaining} kcal, die dir heute noch bleiben.',
+  'agent_food_suggestion_fallback':
+      'Ich kann dir passend zu deinen Zielen eine Mahlzeit oder einen Snack vorschlagen. Welche Mahlzeit steht an?',
   'agent_date_on': 'Am {date}',
   'agent_diet_generated':
-      'Ernährungsplan erstellt. Anzahl der personalisierten Mahlzeiten: {meal_count}. Der Plan liefert etwa {calories} kcal pro Tag ({protein} g Protein, {carbs} g Kohlenhydrate und {fat} g Fett). Du kannst alles unter „Meine Diät“ ansehen und anpassen.',
+      'Fertig! Ich habe dir einen Ernährungsplan mit {meal_count} Mahlzeiten zusammengestellt, insgesamt etwa {calories} kcal pro Tag — {protein} g Protein, {carbs} g Kohlenhydrate und {fat} g Fett. Unter „Meine Diät“ kannst du ihn ansehen und bei Bedarf anpassen.',
   'agent_goal_lean_mass_gain': 'langsamer Aufbau fettfreier Masse',
   'agent_goal_maintenance': 'Gewicht halten',
   'agent_goal_slow_weight_loss': 'langsam abnehmen',

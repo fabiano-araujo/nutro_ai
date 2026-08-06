@@ -38,13 +38,13 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
   final ImagePicker _imagePicker = ImagePicker();
 
   Uint8List? _sourceImageBytes;
-  String? _generatedImageUrl;
   bool _isPicking = false;
   bool _isGenerating = false;
   bool _isApplying = false;
   bool _isPostingToSocial = false;
   bool _showInfoChip = false;
   bool _isGeneratedResultExpanded = false;
+  List<ProfileShapePreviewHistoryEntry> _generationHistory = const [];
   ProfileShapePreviewProvider? _shapeProvider;
 
   @override
@@ -80,45 +80,61 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
       unawaited(context.read<CreditProvider>().applyServerCredits(credits));
     }
 
-    final nextImageUrl = provider.generatedImageUrl ?? _generatedImageUrl;
     final nextIsGenerating = provider.isGenerating;
-    if (nextImageUrl != null && _sourceImageBytes == null) {
+    final nextHistory = provider.generationHistory;
+    if (nextHistory.isNotEmpty && _sourceImageBytes == null) {
       unawaited(_loadStoredSourceImage());
     }
 
-    if (_generatedImageUrl == nextImageUrl &&
-        _isGenerating == nextIsGenerating) {
+    if (_isGenerating == nextIsGenerating &&
+        _hasSameHistory(_generationHistory, nextHistory)) {
       return;
     }
 
     setState(() {
-      _generatedImageUrl = nextImageUrl;
       _isGenerating = nextIsGenerating;
+      _generationHistory = nextHistory;
     });
+  }
+
+  bool _hasSameHistory(
+    List<ProfileShapePreviewHistoryEntry> current,
+    List<ProfileShapePreviewHistoryEntry> next,
+  ) {
+    if (identical(current, next)) return true;
+    if (current.length != next.length) return false;
+    for (var index = 0; index < current.length; index++) {
+      if (current[index].imageUrl != next[index].imageUrl ||
+          current[index].sourceImageBase64 != next[index].sourceImageBase64) {
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<void> _loadLastGeneratedPreview() async {
     final userId = context.read<AuthService>().currentUser?.id;
     if (userId == null) return;
 
+    final shapeProvider = context.read<ProfileShapePreviewProvider>();
+    await shapeProvider.loadHistory(userId);
     final prefs = await SharedPreferences.getInstance();
-    final providerUrl =
-        context.read<ProfileShapePreviewProvider>().generatedImageUrl;
-    final lastUrl = providerUrl ??
-        prefs.getString(ProfileShapePreviewProvider.storageKey(userId));
+    final history = shapeProvider.generationHistory;
     final sourceBytes = _decodeStoredSourceImage(
-      prefs.getString(_sourceImageStorageKey(userId)),
-    );
+          prefs.getString(
+            ProfileShapePreviewProvider.sourceImageStorageKey(userId),
+          ),
+        ) ??
+        (history.isEmpty
+            ? null
+            : _decodeStoredSourceImage(history.first.sourceImageBase64));
     if (!mounted) return;
 
-    final hasGeneratedUrl = lastUrl != null && lastUrl.trim().isNotEmpty;
-    if (!hasGeneratedUrl && sourceBytes == null) return;
+    if (history.isEmpty && sourceBytes == null) return;
 
     setState(() {
-      if (hasGeneratedUrl) {
-        _generatedImageUrl = lastUrl;
-      }
       _sourceImageBytes ??= sourceBytes;
+      _generationHistory = history;
     });
   }
 
@@ -128,7 +144,9 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     final sourceBytes = _decodeStoredSourceImage(
-      prefs.getString(_sourceImageStorageKey(userId)),
+      prefs.getString(
+        ProfileShapePreviewProvider.sourceImageStorageKey(userId),
+      ),
     );
     if (!mounted || sourceBytes == null || _sourceImageBytes != null) return;
 
@@ -158,7 +176,6 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
 
       setState(() {
         _sourceImageBytes = bytes;
-        _generatedImageUrl = null;
         _isGeneratedResultExpanded = false;
       });
       await _persistSourceImage(bytes, clearGeneratedPreview: true);
@@ -220,7 +237,6 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
 
       setState(() {
         _sourceImageBytes = imageBytes;
-        _generatedImageUrl = imageUrl;
         _isGeneratedResultExpanded = true;
       });
       _showSnackBar(context.tr.translate('profile_shape_generate_success'));
@@ -251,12 +267,11 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     }
   }
 
-  Future<void> _applyAsProfilePhoto() async {
-    final imageUrl = _generatedImageUrl;
+  Future<void> _applyAsProfilePhoto(String imageUrl) async {
     final authService = context.read<AuthService>();
     final token = authService.token;
 
-    if (imageUrl == null || token == null || token.isEmpty) return;
+    if (token == null || token.isEmpty) return;
 
     setState(() {
       _isApplying = true;
@@ -283,10 +298,13 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     }
   }
 
-  Future<void> _showSocialShareOptions() async {
-    if (_isPostingToSocial || _generatedImageUrl == null) return;
+  Future<void> _showSocialShareOptions(
+    ProfileShapePreviewHistoryEntry entry,
+  ) async {
+    if (_isPostingToSocial) return;
 
-    final canPostComparison = _sourceImageBytes != null;
+    final sourceImageBytes = _decodeStoredSourceImage(entry.sourceImageBase64);
+    final canPostComparison = sourceImageBytes != null;
     final mode = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -385,23 +403,29 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     );
 
     if (!mounted || mode == null) return;
-    await _postToSocial(mode);
+    await _postToSocial(
+      mode,
+      imageUrl: entry.imageUrl,
+      sourceImageBytes: sourceImageBytes,
+    );
   }
 
-  Future<void> _postToSocial(String mode) async {
-    final imageUrl = _generatedImageUrl;
+  Future<void> _postToSocial(
+    String mode, {
+    required String imageUrl,
+    required Uint8List? sourceImageBytes,
+  }) async {
     final token = context.read<AuthService>().token;
-    if (imageUrl == null || token == null || token.isEmpty) return;
+    if (token == null || token.isEmpty) return;
 
     setState(() {
       _isPostingToSocial = true;
     });
 
     try {
-      final beforeImageBase64 =
-          mode == 'comparison' && _sourceImageBytes != null
-              ? 'data:image/jpeg;base64,${base64Encode(_sourceImageBytes!)}'
-              : null;
+      final beforeImageBase64 = mode == 'comparison' && sourceImageBytes != null
+          ? 'data:image/jpeg;base64,${base64Encode(sourceImageBytes)}'
+          : null;
 
       final ok = await context.read<FeedProvider>().publishProfileShapePreview(
             afterImageUrl: imageUrl,
@@ -478,9 +502,6 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     );
   }
 
-  static String _sourceImageStorageKey(int userId) =>
-      'profile_shape_source_image_user_$userId';
-
   Future<void> _persistSourceImage(
     Uint8List bytes, {
     bool clearGeneratedPreview = false,
@@ -495,7 +516,9 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
-          _sourceImageStorageKey(userId), base64Encode(bytes));
+        ProfileShapePreviewProvider.sourceImageStorageKey(userId),
+        base64Encode(bytes),
+      );
       if (clearGeneratedPreview) {
         await prefs.remove(ProfileShapePreviewProvider.storageKey(userId));
         await shapeProvider?.clearGeneratedPreview(userId: userId);
@@ -613,6 +636,28 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     await _pickImage(source);
   }
 
+  Future<void> _openImageViewer({
+    required String title,
+    Uint8List? imageBytes,
+    String? imageUrl,
+  }) {
+    final resolvedUrl = imageUrl?.trim();
+    final heroTag = imageBytes != null
+        ? 'profile-shape-before-$resolvedUrl'
+        : 'profile-shape-after-$resolvedUrl';
+
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => _ProfileShapeImageViewer(
+          title: title,
+          imageBytes: imageBytes,
+          imageUrl: resolvedUrl,
+          heroTag: heroTag,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -697,29 +742,33 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
               isDarkMode,
             ),
           ],
-          if (_generatedImageUrl != null && !_isGenerating) ...[
+          if (_generationHistory.isNotEmpty) ...[
             const SizedBox(height: 18),
             _buildGeneratedResultToggle(
               theme,
               primary,
               cardColor,
               isDarkMode,
+              _generationHistory.length,
             ),
             if (_isGeneratedResultExpanded) ...[
               const SizedBox(height: 12),
-              _buildGeneratedResultCard(
-                theme,
-                colorScheme,
-                primary,
-                cardColor,
-                isDarkMode,
-              ),
+              for (var index = 0;
+                  index < _generationHistory.length;
+                  index++) ...[
+                _buildGeneratedResultCard(
+                  theme,
+                  colorScheme,
+                  primary,
+                  cardColor,
+                  isDarkMode,
+                  _generationHistory[index],
+                ),
+                if (index != _generationHistory.length - 1)
+                  const SizedBox(height: 12),
+              ],
             ],
           ],
-          const SizedBox(height: 18),
-          _buildFeatureStrip(theme, primary, cardColor, isDarkMode),
-          const SizedBox(height: 18),
-          _buildSecureFooter(theme, isDarkMode),
         ],
       ),
     );
@@ -931,123 +980,6 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
           fontWeight: FontWeight.w900,
           letterSpacing: 0,
         ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureStrip(
-    ThemeData theme,
-    Color primary,
-    Color cardColor,
-    bool isDarkMode,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-      decoration: _cardDecoration(
-        cardColor: cardColor,
-        isDarkMode: isDarkMode,
-        radius: 22,
-        blur: 18,
-      ),
-      child: Column(
-        children: [
-          _buildFeatureItem(
-            theme,
-            primary,
-            Icons.shield_outlined,
-            context.tr.translate('profile_shape_privacy_title'),
-            context.tr.translate('profile_shape_privacy_body'),
-            isDarkMode,
-          ),
-          _buildFeatureDivider(isDarkMode),
-          _buildFeatureItem(
-            theme,
-            primary,
-            Icons.schedule_rounded,
-            context.tr.translate('profile_shape_detail_title'),
-            context.tr.translate('profile_shape_detail_body'),
-            isDarkMode,
-          ),
-          _buildFeatureDivider(isDarkMode),
-          _buildFeatureItem(
-            theme,
-            primary,
-            Icons.trending_up_rounded,
-            context.tr.translate('profile_shape_science_title'),
-            context.tr.translate('profile_shape_science_body'),
-            isDarkMode,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem(
-    ThemeData theme,
-    Color primary,
-    IconData icon,
-    String title,
-    String body,
-    bool isDarkMode,
-  ) {
-    final titleColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
-    final bodyColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.62)
-        : AppTheme.textSecondaryColor;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: primary.withValues(alpha: isDarkMode ? 0.14 : 0.09),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: primary, size: 21),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: titleColor,
-                  fontWeight: FontWeight.w900,
-                  height: 1.15,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                body,
-                maxLines: 2,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: bodyColor,
-                  fontSize: 11,
-                  height: 1.18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFeatureDivider(bool isDarkMode) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Divider(
-        height: 1,
-        thickness: 1,
-        color: isDarkMode
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.black.withValues(alpha: 0.06),
       ),
     );
   }
@@ -1276,16 +1208,25 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: SizedBox(
-              width: 86,
-              height: 106,
-              child: ColoredBox(
-                color: colorScheme.surfaceContainerHighest,
-                child: Image.memory(
-                  _sourceImageBytes!,
-                  fit: BoxFit.cover,
+          GestureDetector(
+            onTap: () => _openImageViewer(
+              title: context.tr.translate('profile_shape_original_label'),
+              imageBytes: _sourceImageBytes!,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: 86,
+                height: 106,
+                child: ColoredBox(
+                  color: colorScheme.surfaceContainerHighest,
+                  child: Hero(
+                    tag: 'profile-shape-before-null',
+                    child: Image.memory(
+                      _sourceImageBytes!,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1470,6 +1411,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     Color primary,
     Color cardColor,
     bool isDarkMode,
+    ProfileShapePreviewHistoryEntry entry,
   ) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1509,11 +1451,14 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildGeneratedComparison(colorScheme, primary, isDarkMode),
+          _buildGeneratedComparison(
+            colorScheme,
+            primary,
+            isDarkMode,
+            entry,
+          ),
           const SizedBox(height: 12),
-          _buildApplyButton(primary),
-          const SizedBox(height: 10),
-          _buildSocialShareButton(primary),
+          _buildApplyButton(primary, entry.imageUrl),
         ],
       ),
     );
@@ -1524,6 +1469,7 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     Color primary,
     Color cardColor,
     bool isDarkMode,
+    int historyCount,
   ) {
     final titleColor = isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
 
@@ -1577,6 +1523,22 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
                   ),
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: isDarkMode ? 0.16 : 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$historyCount',
+                  style: TextStyle(
+                    color: primary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               AnimatedRotation(
                 turns: _isGeneratedResultExpanded ? 0.5 : 0,
                 duration: const Duration(milliseconds: 180),
@@ -1596,11 +1558,16 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     ColorScheme colorScheme,
     Color primary,
     bool isDarkMode,
+    ProfileShapePreviewHistoryEntry entry,
   ) {
-    final sourceImageBytes = _sourceImageBytes;
+    final sourceImageBytes = _decodeStoredSourceImage(entry.sourceImageBase64);
 
     if (sourceImageBytes == null) {
-      return _buildGeneratedOnlyImage(colorScheme, primary);
+      return _buildGeneratedOnlyImage(
+        colorScheme,
+        primary,
+        entry.imageUrl,
+      );
     }
 
     return ClipRRect(
@@ -1615,11 +1582,19 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
                 child: _buildComparisonPanel(
                   label: context.tr.translate('profile_shape_before'),
                   labelColor: Colors.black.withValues(alpha: 0.72),
-                  child: Image.memory(
-                    sourceImageBytes,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
+                  onTap: () => _openImageViewer(
+                    title: context.tr.translate('profile_shape_before'),
+                    imageBytes: sourceImageBytes,
+                    imageUrl: entry.imageUrl,
+                  ),
+                  child: Hero(
+                    tag: 'profile-shape-before-${entry.imageUrl}',
+                    child: Image.memory(
+                      sourceImageBytes,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
                   ),
                 ),
               ),
@@ -1631,19 +1606,26 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
                 child: _buildComparisonPanel(
                   label: context.tr.translate('profile_shape_after'),
                   labelColor: primary,
-                  child: CachedNetworkImage(
-                    imageUrl: _generatedImageUrl!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    placeholder: (context, url) => Center(
-                      child: CircularProgressIndicator(color: primary),
-                    ),
-                    errorWidget: (context, url, error) => Center(
-                      child: Icon(
-                        Icons.broken_image_rounded,
-                        size: 42,
-                        color: colorScheme.onSurfaceVariant,
+                  onTap: () => _openImageViewer(
+                    title: context.tr.translate('profile_shape_after'),
+                    imageUrl: entry.imageUrl,
+                  ),
+                  child: Hero(
+                    tag: 'profile-shape-after-${entry.imageUrl}',
+                    child: CachedNetworkImage(
+                      imageUrl: entry.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      placeholder: (context, url) => Center(
+                        child: CircularProgressIndicator(color: primary),
+                      ),
+                      errorWidget: (context, url, error) => Center(
+                        child: Icon(
+                          Icons.broken_image_rounded,
+                          size: 42,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
@@ -1656,25 +1638,38 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     );
   }
 
-  Widget _buildGeneratedOnlyImage(ColorScheme colorScheme, Color primary) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: AspectRatio(
-        aspectRatio: 3 / 4,
-        child: ColoredBox(
-          color: colorScheme.surfaceContainerHighest,
-          child: CachedNetworkImage(
-            imageUrl: _generatedImageUrl!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            placeholder: (context, url) => Center(
-              child: CircularProgressIndicator(color: primary),
-            ),
-            errorWidget: (context, url, error) => Center(
-              child: Icon(
-                Icons.broken_image_rounded,
-                size: 42,
-                color: colorScheme.onSurfaceVariant,
+  Widget _buildGeneratedOnlyImage(
+    ColorScheme colorScheme,
+    Color primary,
+    String imageUrl,
+  ) {
+    return GestureDetector(
+      onTap: () => _openImageViewer(
+        title: context.tr.translate('profile_shape_after'),
+        imageUrl: imageUrl,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: AspectRatio(
+          aspectRatio: 3 / 4,
+          child: ColoredBox(
+            color: colorScheme.surfaceContainerHighest,
+            child: Hero(
+              tag: 'profile-shape-after-$imageUrl',
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                placeholder: (context, url) => Center(
+                  child: CircularProgressIndicator(color: primary),
+                ),
+                errorWidget: (context, url, error) => Center(
+                  child: Icon(
+                    Icons.broken_image_rounded,
+                    size: 42,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1686,27 +1681,32 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
   Widget _buildComparisonPanel({
     required String label,
     required Color labelColor,
+    required VoidCallback onTap,
     required Widget child,
   }) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        child,
-        Positioned(
-          left: 10,
-          bottom: 10,
-          child: _buildHeroBadge(label, labelColor, Colors.white),
-        ),
-      ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          child,
+          Positioned(
+            left: 10,
+            bottom: 10,
+            child: _buildHeroBadge(label, labelColor, Colors.white),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildApplyButton(Color primary) {
+  Widget _buildApplyButton(Color primary, String imageUrl) {
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: FilledButton.icon(
-        onPressed: _isApplying ? null : _applyAsProfilePhoto,
+        onPressed: _isApplying ? null : () => _applyAsProfilePhoto(imageUrl),
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
@@ -1737,12 +1737,16 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
     );
   }
 
-  Widget _buildSocialShareButton(Color primary) {
+  Widget _buildSocialShareButton(
+    Color primary,
+    ProfileShapePreviewHistoryEntry entry,
+  ) {
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: OutlinedButton.icon(
-        onPressed: _isPostingToSocial ? null : _showSocialShareOptions,
+        onPressed:
+            _isPostingToSocial ? null : () => _showSocialShareOptions(entry),
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
           side: BorderSide(color: primary, width: 1.5),
@@ -1770,34 +1774,6 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildSecureFooter(ThemeData theme, bool isDarkMode) {
-    final textColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.58)
-        : AppTheme.textSecondaryColor;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.lock_outline_rounded,
-          size: 15,
-          color: textColor,
-        ),
-        const SizedBox(width: 7),
-        Flexible(
-          child: Text(
-            context.tr.translate('profile_shape_secure_footer'),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1833,6 +1809,101 @@ class _ProfileShapePreviewScreenState extends State<ProfileShapePreviewScreen> {
           offset: const Offset(0, 10),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileShapeImageViewer extends StatefulWidget {
+  final String title;
+  final Uint8List? imageBytes;
+  final String? imageUrl;
+  final String heroTag;
+
+  const _ProfileShapeImageViewer({
+    required this.title,
+    required this.heroTag,
+    this.imageBytes,
+    this.imageUrl,
+  });
+
+  @override
+  State<_ProfileShapeImageViewer> createState() =>
+      _ProfileShapeImageViewerState();
+}
+
+class _ProfileShapeImageViewerState extends State<_ProfileShapeImageViewer> {
+  final TransformationController _transformationController =
+      TransformationController();
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _toggleZoom() {
+    final currentScale = _transformationController.value.getMaxScaleOnAxis();
+    _transformationController.value = currentScale > 1.05
+        ? Matrix4.identity()
+        : Matrix4.diagonal3Values(2.5, 2.5, 1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = widget.imageBytes != null
+        ? Image.memory(
+            widget.imageBytes!,
+            fit: BoxFit.contain,
+          )
+        : CachedNetworkImage(
+            imageUrl: widget.imageUrl!,
+            fit: BoxFit.contain,
+            placeholder: (context, url) => const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+            errorWidget: (context, url, error) => const Center(
+              child: Icon(
+                Icons.broken_image_rounded,
+                size: 56,
+                color: Colors.white70,
+              ),
+            ),
+          );
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        title: Text(widget.title),
+        actions: [
+          IconButton(
+            onPressed: () {
+              _transformationController.value = Matrix4.identity();
+            },
+            icon: const Icon(Icons.center_focus_strong_rounded),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onDoubleTap: _toggleZoom,
+          child: Center(
+            child: InteractiveViewer(
+              transformationController: _transformationController,
+              minScale: 1,
+              maxScale: 6,
+              boundaryMargin: const EdgeInsets.all(80),
+              child: Hero(
+                tag: widget.heroTag,
+                child: image,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

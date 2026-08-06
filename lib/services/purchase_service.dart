@@ -39,12 +39,14 @@ class PurchaseService with ChangeNotifier {
   AuthService? _authService;
   int? _lastSyncedUserId;
   String? _lastSyncedToken;
-  bool _isSyncingServerStatus = false;
+  Future<void>? _subscriptionStatusSyncFuture;
+  bool _subscriptionStatusSynchronized = false;
   Timer? _purchaseLaunchWatchdog;
 
   bool get isLoading => _isLoading || _isPurchaseInProgress;
   bool get isPurchaseInProgress => _isPurchaseInProgress;
   bool get isPremium => _isPremium;
+  bool get isSubscriptionStatusSynchronized => _subscriptionStatusSynchronized;
   List<ProductDetails> get products => _products;
   String get subscriptionType => _subscriptionType;
   DateTime? get subscriptionExpiryDate => _subscriptionExpiryDate;
@@ -69,6 +71,7 @@ class PurchaseService with ChangeNotifier {
         currentToken == null) {
       _lastSyncedUserId = null;
       _lastSyncedToken = null;
+      _subscriptionStatusSynchronized = true;
       unawaited(
         _applySubscriptionStatus(
           isPremium: false,
@@ -105,6 +108,7 @@ class PurchaseService with ChangeNotifier {
     if (shouldRefreshFromServer) {
       _lastSyncedUserId = currentUserId;
       _lastSyncedToken = currentToken;
+      _subscriptionStatusSynchronized = false;
       unawaited(refreshSubscriptionStatusFromServer());
     }
   }
@@ -120,6 +124,14 @@ class PurchaseService with ChangeNotifier {
       if (expiryDateMillis != null) {
         savedExpirationDate =
             DateTime.fromMillisecondsSinceEpoch(expiryDateMillis);
+      }
+
+      // Depois que uma sessão já foi vinculada, o status salvo pode ser de
+      // outra conta ou estar desatualizado. Nesse caso, deixe o snapshot da
+      // sessão e a sincronização com o servidor definirem o estado atual.
+      if (_authService?.isAuthenticated == true) {
+        notifyListeners();
+        return;
       }
 
       if (savedExpirationDate != null &&
@@ -353,20 +365,39 @@ class PurchaseService with ChangeNotifier {
     }
   }
 
-  Future<void> refreshSubscriptionStatusFromServer() async {
+  Future<void> refreshSubscriptionStatusFromServer() {
+    final inFlight = _subscriptionStatusSyncFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
     final authService = _authService;
     final currentUser = authService?.currentUser;
     final token = authService?.token;
 
-    if (_isSyncingServerStatus ||
-        authService == null ||
-        currentUser == null ||
-        token == null) {
-      return;
+    if (authService == null || currentUser == null || token == null) {
+      _subscriptionStatusSynchronized = true;
+      return Future<void>.value();
     }
 
-    _isSyncingServerStatus = true;
+    final future = _refreshSubscriptionStatusFromServer(
+      currentUser: currentUser,
+      token: token,
+    );
+    late final Future<void> completedFuture;
+    completedFuture = future.whenComplete(() {
+      if (identical(_subscriptionStatusSyncFuture, completedFuture)) {
+        _subscriptionStatusSyncFuture = null;
+      }
+    });
+    _subscriptionStatusSyncFuture = completedFuture;
+    return completedFuture;
+  }
 
+  Future<void> _refreshSubscriptionStatusFromServer({
+    required User currentUser,
+    required String token,
+  }) async {
     try {
       final data = await ApiService.getSubscriptionConfig(
         token: token,
@@ -377,7 +408,7 @@ class PurchaseService with ChangeNotifier {
     } catch (e) {
       debugPrint('Erro ao sincronizar assinatura com o servidor: $e');
     } finally {
-      _isSyncingServerStatus = false;
+      _subscriptionStatusSynchronized = true;
     }
   }
 

@@ -132,7 +132,9 @@ class AIService {
       String userId = '',
       String agentType = 'nutrition',
       String provider = '',
-      List<Map<String, String>>? mealTypes}) async* {
+      List<Map<String, String>>? mealTypes,
+      String? sessionId,
+      List<Map<String, String>>? conversationMessages}) async* {
     print(
         '🔴🔴🔴 AIService.getAnswerStream CHAMADO - agentType=$agentType, provider=$provider');
     print('\n🚀 Iniciando nova solicitação de resposta');
@@ -175,6 +177,10 @@ class AIService {
         'agentType': agentType, // Tipo de agent a ser usado
         'language':
             languageCode, // Backend uses this for dynamic language injection
+        if (sessionId != null && sessionId.trim().isNotEmpty)
+          'sessionId': sessionId.trim(),
+        if (conversationMessages != null && conversationMessages.isNotEmpty)
+          'conversationMessages': conversationMessages,
       };
 
       // Adicionar provider se especificado
@@ -259,6 +265,17 @@ class AIService {
                     if (chunkCount % 20 == 0) {
                       print('📦 Chunks recebidos: $chunkCount');
                     }
+                  } else if (jsonData.containsKey('usage') &&
+                      jsonData['usage'] is Map) {
+                    final usage = Map<String, dynamic>.from(
+                      jsonData['usage'] as Map,
+                    );
+                    final promptDetails = usage['prompt_tokens_details'];
+                    final cacheDetails = promptDetails is Map
+                        ? Map<String, dynamic>.from(promptDetails)
+                        : const <String, dynamic>{};
+                    print(
+                        '📊 OpenRouter cache: cached_tokens=${cacheDetails['cached_tokens'] ?? 0}, cache_write_tokens=${cacheDetails['cache_write_tokens'] ?? 0}, prompt_tokens=${usage['prompt_tokens'] ?? 'n/a'}');
                   } else if (jsonData.containsKey('done') &&
                       jsonData['done'] == true) {
                     // Evento de conclusão

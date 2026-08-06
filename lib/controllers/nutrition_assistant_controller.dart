@@ -1161,24 +1161,6 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         pendingAction = AppAgentPendingAction.findLatestInTrailingAssistantTurn(
           messageHistory,
         );
-        if (pendingAction == null &&
-            AppAgentPendingAction.isLikelyApproval(message)) {
-          pendingAction =
-              AppAgentPendingAction.findLatestUnresolvedInConversation(
-            messageHistory,
-          );
-        }
-        if (pendingAction != null &&
-            AppAgentPendingAction.isLikelyApproval(message)) {
-          final handled = await _executePendingActionApproval(
-            pendingAction: pendingAction,
-            originalUserMessage: message,
-            context: context,
-          );
-          if (handled) {
-            return;
-          }
-        }
         final shouldIncludeContext =
             _shouldIncludeConversationContextForPrompt(message, messageHistory);
         final tokenLimit = toolType == 'free_chat' ? 8000 : 6000;
@@ -1403,58 +1385,6 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
     }
   }
 
-  Future<bool> _executePendingActionApproval({
-    required AppAgentPendingAction pendingAction,
-    required String originalUserMessage,
-    required BuildContext context,
-  }) async {
-    final notifier = _messageNotifier;
-    if (notifier == null) {
-      return false;
-    }
-
-    final command =
-        pendingAction.toExecutionCommand(rawJson: pendingAction.rawBlock);
-    AppAgentService.logAgentDebug('pending_action_approval_local_execution', {
-      'userMessage': originalUserMessage,
-      'commandName': command.name,
-      'arguments': command.arguments,
-    });
-    notifier.updateMessage(
-      pendingAction.rawBlock,
-      displayContent: AppAgentService.buildLoadingMessage(
-        context,
-        command.name,
-      ),
-    );
-    notifyListeners();
-
-    final executionResult = await AppAgentService.executeCommand(
-      command,
-      context,
-    );
-    final executionResults = [executionResult];
-    final directMessage = AppAgentService.buildCommandResultFallbackMessage(
-          context: context,
-          executionResults: executionResults,
-          originalUserMessage: originalUserMessage,
-        ) ??
-        AppAgentService.buildMacroGoalsCommandResultMessage(
-          context: context,
-          executionResults: executionResults,
-        ) ??
-        AppAgentService.buildDietGeneratedCommandResultMessage(
-          context: context,
-          executionResults: executionResults,
-        ) ??
-        AppLocalizations.of(context)
-            .translate('agent_command_invalid_response');
-
-    _finalizeInterceptedMessage(notifier, directMessage);
-    unawaited(_saveMessagesForCurrentDate(syncNow: true));
-    return true;
-  }
-
   bool _shouldIncludeConversationContextForPrompt(
     String userMessage,
     List<Map<String, dynamic>> messageHistory,
@@ -1540,6 +1470,46 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       responseContent,
       autoRegisterFoods: _shouldAutoRegisterFoods,
     ).trim();
+    final dietProvider = Provider.of<DietPlanProvider>(context, listen: false);
+    await dietProvider.ensureLoaded();
+    final pendingAction = AppAgentPendingAction.tryParse(conversationContext);
+    final generatedDietWasSuccessfulThisTurn = priorExecutionResults?.any(
+          (result) =>
+              result.success &&
+              result.commandName == AppAgentService.generateNewDietPlan,
+        ) ??
+        false;
+    AppAgentCommand? generationCommand;
+    for (final command in commandBatch?.commands ?? const <AppAgentCommand>[]) {
+      if (command.name == AppAgentService.generateNewDietPlan) {
+        generationCommand = command;
+        break;
+      }
+    }
+    final replacementSafetyCommand = generationCommand != null &&
+            pendingAction?.command.name ==
+                AppAgentService.generateNewDietPlan &&
+            pendingAction?.command.arguments['replaceExistingDietConfirmed'] ==
+                true
+        ? pendingAction!.command
+        : generationCommand;
+    if (!generatedDietWasSuccessfulThisTurn &&
+        replacementSafetyCommand != null &&
+        AppAgentService.shouldRequireDietReplacementConfirmation(
+          command: replacementSafetyCommand,
+          hasExistingDiet: dietProvider.hasAnyDietPlan,
+        )) {
+      _finalizeInterceptedMessage(
+        notifier,
+        AppAgentService.buildDietReplacementConfirmation(
+          context: context,
+          command: generationCommand!,
+        ),
+      );
+      _saveMessagesForCurrentDate();
+      return true;
+    }
+
     AppAgentService.logAgentDebug('intercept_final_response', {
       'toolType': toolType,
       'agentType': agentType,
@@ -1559,234 +1529,6 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
       'userMessage': originalUserMessage,
     });
     if (commandBatch == null || commandBatch.commands.isEmpty) {
-      final pendingAction = AppAgentPendingAction.tryParse(responseContent);
-      if (pendingAction != null &&
-          pendingAction.shouldExecuteImmediately(
-            userMessage: originalUserMessage,
-            visibleAssistantText: initialVisibleContent,
-          )) {
-        AppAgentService.logAgentDebug(
-          'pending_action_immediate_execution',
-          {
-            'userMessage': originalUserMessage,
-            'visiblePreview': AppAgentService.debugPreview(
-              initialVisibleContent,
-            ),
-            'commandName': pendingAction.command.name,
-            'arguments': pendingAction.command.arguments,
-          },
-        );
-        final handled = await _executePendingActionApproval(
-          pendingAction: pendingAction,
-          originalUserMessage: originalUserMessage,
-          context: context,
-        );
-        if (handled) {
-          return true;
-        }
-      }
-
-      final fallbackMacroStatusCommand =
-          AppAgentService.buildMacroTargetsStatusCommandFromUserMessage(
-        originalUserMessage,
-        rawJson: responseContent,
-        conversationContext: conversationContext,
-      );
-      if (fallbackMacroStatusCommand != null) {
-        AppAgentService.logAgentDebug('fallback_macro_status_from_message', {
-          'userMessage': originalUserMessage,
-          'arguments': fallbackMacroStatusCommand.arguments,
-          'conversationContext':
-              AppAgentService.debugPreview(conversationContext),
-        });
-        final executionResult = await AppAgentService.executeCommand(
-          fallbackMacroStatusCommand,
-          context,
-        );
-        final directMessage =
-            AppAgentService.buildMacroGoalsCommandResultMessage(
-          context: context,
-          executionResults: [executionResult],
-        );
-        if (directMessage != null) {
-          _finalizeInterceptedMessage(notifier, directMessage);
-          _saveMessagesForCurrentDate();
-          return true;
-        }
-      }
-
-      final fallbackDailyStatusCommand =
-          AppAgentService.buildDailyNutritionStatusCommandFromUserMessage(
-        originalUserMessage,
-        rawJson: responseContent,
-      );
-      if (fallbackDailyStatusCommand != null) {
-        AppAgentService.logAgentDebug('fallback_daily_status_from_message', {
-          'userMessage': originalUserMessage,
-          'arguments': fallbackDailyStatusCommand.arguments,
-        });
-        final executionResult = await AppAgentService.executeCommand(
-          fallbackDailyStatusCommand,
-          context,
-        );
-        final directMessage = AppAgentService.buildCommandResultFallbackMessage(
-          context: context,
-          executionResults: [executionResult],
-          originalUserMessage: originalUserMessage,
-        );
-        if (directMessage != null) {
-          _finalizeInterceptedMessage(notifier, directMessage);
-          _saveMessagesForCurrentDate();
-          return true;
-        }
-      }
-
-      final fallbackMacroTargetsCommand =
-          AppAgentService.buildMacroTargetsCommandFromUserMessage(
-        originalUserMessage,
-        rawJson: responseContent,
-      );
-      if (fallbackMacroTargetsCommand != null) {
-        AppAgentService.logAgentDebug('fallback_macro_targets_from_message', {
-          'userMessage': originalUserMessage,
-          'arguments': fallbackMacroTargetsCommand.arguments,
-        });
-        final executionResult = await AppAgentService.executeCommand(
-          fallbackMacroTargetsCommand,
-          context,
-        );
-        final directMessage =
-            AppAgentService.buildMacroGoalsCommandResultMessage(
-          context: context,
-          executionResults: [executionResult],
-        );
-        if (directMessage != null) {
-          _finalizeInterceptedMessage(notifier, directMessage);
-          _saveMessagesForCurrentDate();
-          return true;
-        }
-      }
-
-      final contextualMacroTargetsCommand =
-          AppAgentService.buildMacroTargetsCommandFromContextualMessage(
-        originalUserMessage,
-        conversationContext,
-        rawJson: responseContent,
-      );
-      if (contextualMacroTargetsCommand != null) {
-        AppAgentService.logAgentDebug('fallback_macro_targets_from_context', {
-          'userMessage': originalUserMessage,
-          'arguments': contextualMacroTargetsCommand.arguments,
-          'conversationContext':
-              AppAgentService.debugPreview(conversationContext),
-        });
-        final executionResult = await AppAgentService.executeCommand(
-          contextualMacroTargetsCommand,
-          context,
-        );
-        final directMessage =
-            AppAgentService.buildMacroGoalsCommandResultMessage(
-          context: context,
-          executionResults: [executionResult],
-        );
-        if (directMessage != null) {
-          _finalizeInterceptedMessage(notifier, directMessage);
-          _saveMessagesForCurrentDate();
-          return true;
-        }
-      }
-
-      final fallbackRecalculationCommand =
-          AppAgentService.buildMacroRecalculationCommandFromContext(
-        originalUserMessage,
-        conversationContext,
-        rawJson: responseContent,
-      );
-      if (fallbackRecalculationCommand != null) {
-        AppAgentService.logAgentDebug('fallback_macro_recalc_from_context', {
-          'userMessage': originalUserMessage,
-          'conversationContext':
-              AppAgentService.debugPreview(conversationContext),
-        });
-        final executionResult = await AppAgentService.executeCommand(
-          fallbackRecalculationCommand,
-          context,
-        );
-        final directMessage =
-            AppAgentService.buildMacroGoalsCommandResultMessage(
-          context: context,
-          executionResults: [executionResult],
-        );
-        if (directMessage != null) {
-          _finalizeInterceptedMessage(notifier, directMessage);
-          _saveMessagesForCurrentDate();
-          return true;
-        }
-      }
-
-      if (AppAgentCommand.containsCommandCandidate(responseContent) &&
-          AppAgentService.isDietGenerationRequest(originalUserMessage)) {
-        final executionResults = <AppAgentExecutionResult>[];
-        final inferredPreferencesCommand =
-            AppAgentService.buildDietPreferenceUpdateFromUserMessage(
-          originalUserMessage,
-          rawJson: responseContent,
-        );
-
-        var requestedMealsPerDay =
-            inferredPreferencesCommand?.arguments['mealsPerDay'];
-        if (inferredPreferencesCommand != null) {
-          final inferredResult = await AppAgentService.executeCommand(
-            inferredPreferencesCommand,
-            context,
-          );
-          executionResults.add(inferredResult);
-        }
-
-        final generateCommand = AppAgentCommand(
-          name: AppAgentService.generateNewDietPlan,
-          arguments: <String, dynamic>{
-            if (requestedMealsPerDay != null)
-              'mealsPerDay': requestedMealsPerDay,
-          },
-          rawJson: responseContent,
-        );
-
-        if (AppAgentService.shouldAskDietPersonalizationBeforeGeneration(
-          generateCommand,
-          originalUserMessage,
-          context,
-        )) {
-          _finalizeInterceptedMessage(
-            notifier,
-            AppAgentService.buildDietPersonalizationQuestion(context),
-          );
-          _saveMessagesForCurrentDate();
-          return true;
-        }
-
-        final generateResult = await AppAgentService.executeCommand(
-          generateCommand,
-          context,
-        );
-        executionResults.add(generateResult);
-
-        final dietGeneratedMessage =
-            AppAgentService.buildDietGeneratedCommandResultMessage(
-          context: context,
-          executionResults: executionResults,
-        );
-        _finalizeInterceptedMessage(
-          notifier,
-          dietGeneratedMessage ??
-              AppLocalizations.of(context).translate(
-                'agent_command_invalid_response',
-              ),
-        );
-        _saveMessagesForCurrentDate();
-        return true;
-      }
-
       final fallbackMessage = priorExecutionResults == null
           ? null
           : AppAgentService.buildCreditExhaustedFallbackMessage(
@@ -1799,6 +1541,19 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           'messagePreview': AppAgentService.debugPreview(fallbackMessage),
         });
         _finalizeInterceptedMessage(notifier, fallbackMessage);
+        return true;
+      }
+
+      final generatedDietWasSuccessful = priorExecutionResults?.any(
+            (result) =>
+                result.success &&
+                result.commandName == AppAgentService.generateNewDietPlan,
+          ) ??
+          false;
+      if (generatedDietWasSuccessful && responseContent.trim().isNotEmpty) {
+        final responseWithDietAction =
+            AppAgentService.ensureViewMyDietUiHint(responseContent);
+        _finalizeInterceptedMessage(notifier, responseWithDietAction);
         return true;
       }
 
@@ -1852,21 +1607,7 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
     _agenticCommandExecutions++;
 
-    final pendingAction = AppAgentPendingAction.tryParse(conversationContext);
-    final shouldUseMacroRecalculationFromContext =
-        AppAgentService.shouldTreatAsMacroRecalculationApproval(
-      originalUserMessage,
-      conversationContext,
-    );
-    final firstCommandName = commandBatch.commands.isNotEmpty &&
-            shouldUseMacroRecalculationFromContext &&
-            AppAgentService.shouldRedirectDietCommandToMacroRecalculation(
-              commandBatch.commands.first,
-              originalUserMessage,
-              conversationContext,
-            )
-        ? AppAgentService.recalculateNutritionGoals
-        : commandBatch.commands.first.name;
+    final firstCommandName = commandBatch.commands.first.name;
     final loadingMessage = commandBatch.commands.length == 1
         ? AppAgentService.buildLoadingMessage(
             context,
@@ -1879,41 +1620,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
 
     try {
       final executionResults = <AppAgentExecutionResult>[];
-      var appliedInferredDietPreferences = false;
-      var redirectedDietCommandToMacroRecalculation = false;
-      final batchAlreadyGeneratesDiet = commandBatch.commands.any(
-        (command) => command.name == AppAgentService.generateNewDietPlan,
-      );
       for (final rawCommand in commandBatch.commands) {
-        var command = AppAgentService.normalizeDietPreferenceApprovalCommand(
-          rawCommand,
-          originalUserMessage,
-        );
-
-        final inferredPreferencesCommand =
-            AppAgentService.buildDietPreferenceUpdateFromUserMessage(
-          originalUserMessage,
-          rawJson: command.rawJson,
-        );
-        if (command.name == AppAgentService.updateDietGenerationPreferences &&
-            inferredPreferencesCommand != null &&
-            command.arguments.isNotEmpty) {
-          command = AppAgentCommand(
-            name: command.name,
-            arguments: <String, dynamic>{
-              ...inferredPreferencesCommand.arguments,
-              ...command.arguments,
-            },
-            rawJson: command.rawJson,
-          );
-        }
-        final inferredPreferencesFromMessage =
-            command.name == AppAgentService.updateDietGenerationPreferences &&
-                command.arguments.isEmpty &&
-                inferredPreferencesCommand != null;
-        if (inferredPreferencesFromMessage) {
-          command = inferredPreferencesCommand;
-        }
+        var command = rawCommand;
 
         final isApprovedPendingAction =
             pendingAction?.matchesCommand(command) == true;
@@ -1921,38 +1629,8 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           command = pendingAction!.toExecutionCommand(rawJson: command.rawJson);
         }
 
-        if (shouldUseMacroRecalculationFromContext &&
-            AppAgentService.shouldRedirectDietCommandToMacroRecalculation(
-              command,
-              originalUserMessage,
-              conversationContext,
-            )) {
-          if (redirectedDietCommandToMacroRecalculation) {
-            continue;
-          }
-          command = AppAgentCommand(
-            name: AppAgentService.recalculateNutritionGoals,
-            arguments: const {},
-            rawJson: command.rawJson,
-          );
-          redirectedDietCommandToMacroRecalculation = true;
-        }
-
-        if (AppAgentService.shouldAskDietPersonalizationQuestion(
-          command,
-          originalUserMessage,
-        )) {
-          _finalizeInterceptedMessage(
-            notifier,
-            AppAgentService.buildDietPersonalizationQuestion(context),
-          );
-          _saveMessagesForCurrentDate();
-          return true;
-        }
-
         if (AppAgentService.shouldAskDietPersonalizationBeforeGeneration(
           command,
-          originalUserMessage,
           context,
         )) {
           _finalizeInterceptedMessage(
@@ -1961,17 +1639,6 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
           );
           _saveMessagesForCurrentDate();
           return true;
-        }
-
-        if (command.name == AppAgentService.generateNewDietPlan &&
-            inferredPreferencesCommand != null &&
-            !appliedInferredDietPreferences) {
-          final inferredResult = await AppAgentService.executeCommand(
-            inferredPreferencesCommand,
-            context,
-          );
-          executionResults.add(inferredResult);
-          appliedInferredDietPreferences = true;
         }
 
         if (AppAgentService.shouldBlockAmbiguousGoalMutation(
@@ -1996,29 +1663,6 @@ Do not enter diet-preference or meal-plan flow unless the latest user request ex
         final executionResult =
             await AppAgentService.executeCommand(command, context);
         executionResults.add(executionResult);
-        if (command.name == AppAgentService.updateDietGenerationPreferences &&
-            executionResult.success) {
-          appliedInferredDietPreferences = true;
-        }
-
-        if (inferredPreferencesFromMessage &&
-            executionResult.success &&
-            !batchAlreadyGeneratesDiet &&
-            AppAgentService.isDietGenerationRequest(originalUserMessage)) {
-          final mealsPerDay = command.arguments['mealsPerDay'];
-          final generateArguments = <String, dynamic>{
-            if (mealsPerDay != null) 'mealsPerDay': mealsPerDay,
-          };
-          final generateResult = await AppAgentService.executeCommand(
-            AppAgentCommand(
-              name: AppAgentService.generateNewDietPlan,
-              arguments: generateArguments,
-              rawJson: command.rawJson,
-            ),
-            context,
-          );
-          executionResults.add(generateResult);
-        }
       }
 
       if (executionResults.isEmpty) {

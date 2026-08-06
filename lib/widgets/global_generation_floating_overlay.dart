@@ -49,7 +49,7 @@ class _FloatingGenerationCards extends StatefulWidget {
 
 class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
   static const _leftMargin = 16.0;
-  static const _rightMargin = 4.0;
+  static const _rightMargin = 24.0;
   static const _topMargin = 12.0;
   static const _phoneHomeInitialBottom = 154.0;
   static const _phoneTabInitialBottom = 92.0;
