@@ -1,9 +1,12 @@
 package br.com.snapdark.apps.nutreai
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
@@ -27,11 +30,15 @@ import kotlinx.coroutines.withContext
 class MainActivity : FlutterActivity() {
     private val trackingAppsChannel = "br.com.snapdark.apps.nutro_ia/tracking_apps"
     private val rateAppChannel = "br.com.snapdark.apps.nutro_ia/rate_app"
+    private val streakWidgetChannelName = "br.com.snapdark.apps.nutro_ia/streak_widget"
     private val healthPermissionRequestCode = 8317
     private val healthPermissionContract =
         PermissionController.createRequestPermissionResultContract()
     private val healthScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var pendingHealthPermissionResult: MethodChannel.Result? = null
+    private var streakWidgetChannel: MethodChannel? = null
+    private var pendingOpenStreak = false
+    private var openStreakDispatchGeneration = 0L
 
     private val healthPermissions: Set<String> by lazy {
         setOf(
@@ -39,6 +46,13 @@ class MainActivity : FlutterActivity() {
             HealthPermission.getReadPermission(StepsRecord::class),
             HealthPermission.getReadPermission(ExerciseSessionRecord::class)
         )
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        pendingOpenStreak =
+            savedInstanceState?.getBoolean(pendingOpenStreakStateKey, false) == true ||
+                isOpenStreakIntent(intent)
+        super.onCreate(savedInstanceState)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -112,6 +126,107 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        streakWidgetChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            streakWidgetChannelName
+        ).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "updateWidget" -> {
+                        val calories = call.argument<Number>("calories")?.toInt()
+                        val calorieGoal = call.argument<Number>("calorieGoal")?.toInt()
+                        val streak = call.argument<Number>("streak")?.toInt()
+                        val date = call.argument<String>("date")?.trim()
+
+                        if (calories == null || calorieGoal == null ||
+                            streak == null || date.isNullOrEmpty()
+                        ) {
+                            result.error(
+                                "invalid_widget_snapshot",
+                                "calories, calorieGoal, streak and date are required",
+                                null
+                            )
+                        } else {
+                            NutritionStreakWidgetProvider.persistSnapshotAndUpdate(
+                                applicationContext,
+                                calories = calories.coerceAtLeast(0),
+                                calorieGoal = calorieGoal.coerceAtLeast(0),
+                                streak = streak.coerceAtLeast(0),
+                                date = date
+                            )
+                            result.success(true)
+                        }
+                    }
+                    "isPinSupported" -> {
+                        result.success(
+                            AppWidgetManager.getInstance(this)
+                                .isRequestPinAppWidgetSupported
+                        )
+                    }
+                    "isWidgetAdded" -> {
+                        result.success(
+                            NutritionStreakWidgetProvider.isWidgetAdded(this)
+                        )
+                    }
+                    "requestPin" -> {
+                        val appWidgetManager = AppWidgetManager.getInstance(this)
+                        if (NutritionStreakWidgetProvider.isWidgetAdded(this)) {
+                            result.success("already_added")
+                        } else if (!appWidgetManager.isRequestPinAppWidgetSupported) {
+                            result.success("unsupported")
+                        } else {
+                            try {
+                                val provider = ComponentName(
+                                    this,
+                                    NutritionStreakWidgetProvider::class.java
+                                )
+                                val requested =
+                                    appWidgetManager.requestPinAppWidget(
+                                        provider,
+                                        null,
+                                        null
+                                    )
+                                result.success(if (requested) "requested" else "failed")
+                            } catch (error: IllegalStateException) {
+                                result.error(
+                                    "widget_pin_unavailable",
+                                    error.message ?: "Widget pin request requires a foreground activity",
+                                    null
+                                )
+                            }
+                        }
+                    }
+                    "consumeOpenStreak" -> {
+                        val shouldOpen = pendingOpenStreak || isOpenStreakIntent(intent)
+                        pendingOpenStreak = false
+                        openStreakDispatchGeneration++
+                        clearOpenStreakIntent()
+                        result.success(shouldOpen)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
+
+        dispatchPendingOpenStreak()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (isOpenStreakIntent(intent)) {
+            pendingOpenStreak = true
+            dispatchPendingOpenStreak()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(
+            pendingOpenStreakStateKey,
+            pendingOpenStreak || isOpenStreakIntent(intent)
+        )
+        super.onSaveInstanceState(outState)
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
@@ -119,7 +234,43 @@ class MainActivity : FlutterActivity() {
 
         // Desregistrar a fábrica quando não for mais necessária
         GoogleMobileAdsPlugin.unregisterNativeAdFactory(flutterEngine, "customNativeAd")
+        streakWidgetChannel?.setMethodCallHandler(null)
+        streakWidgetChannel = null
+        openStreakDispatchGeneration++
         healthScope.cancel()
+    }
+
+    private fun dispatchPendingOpenStreak() {
+        if (!pendingOpenStreak) return
+        val channel = streakWidgetChannel ?: return
+        val dispatchGeneration = ++openStreakDispatchGeneration
+
+        channel.invokeMethod("openStreak", null, object : MethodChannel.Result {
+            override fun success(result: Any?) {
+                if (dispatchGeneration != openStreakDispatchGeneration) return
+                pendingOpenStreak = false
+                clearOpenStreakIntent()
+            }
+
+            override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                // Keep the request pending so Dart can recover it with consumeOpenStreak.
+            }
+
+            override fun notImplemented() {
+                // Dart may still be starting during a cold launch. Keep it pending.
+            }
+        })
+    }
+
+    private fun isOpenStreakIntent(candidate: Intent?): Boolean {
+        return candidate?.action == NutritionStreakWidgetProvider.ACTION_OPEN_STREAK
+    }
+
+    private fun clearOpenStreakIntent() {
+        if (isOpenStreakIntent(intent)) {
+            intent?.action = null
+            intent?.removeExtra(AppWidgetManager.EXTRA_APPWIDGET_ID)
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -509,5 +660,9 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private companion object {
+        const val pendingOpenStreakStateKey = "pending_open_streak"
     }
 }

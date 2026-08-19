@@ -517,6 +517,7 @@ class DietRebalancer {
           protein: _round1(food.protein * s),
           carbs: _round1(food.carbs * s),
           fat: _round1(food.fat * s),
+          fiber: _round1(food.fiber * s),
         );
       }).toList();
 
@@ -534,35 +535,39 @@ class DietRebalancer {
 
   static DailyNutrition _sumFoodsAsDailyNutrition(List<PlannedFood> foods) {
     var kcal = 0;
-    var p = 0.0, c = 0.0, f = 0.0;
+    var p = 0.0, c = 0.0, f = 0.0, fiber = 0.0;
     for (final food in foods) {
       kcal += food.calories;
       p += food.protein;
       c += food.carbs;
       f += food.fat;
+      fiber += food.fiber;
     }
     return DailyNutrition(
       calories: kcal,
       protein: _round1(p),
       carbs: _round1(c),
       fat: _round1(f),
+      fiber: _round1(fiber),
     );
   }
 
   static DailyNutrition _sumMealsAsDailyNutrition(List<PlannedMeal> meals) {
     var kcal = 0;
-    var p = 0.0, c = 0.0, f = 0.0;
+    var p = 0.0, c = 0.0, f = 0.0, fiber = 0.0;
     for (final meal in meals) {
       kcal += meal.mealTotals.calories;
       p += meal.mealTotals.protein;
       c += meal.mealTotals.carbs;
       f += meal.mealTotals.fat;
+      fiber += meal.mealTotals.fiber;
     }
     return DailyNutrition(
       calories: kcal,
       protein: _round1(p),
       carbs: _round1(c),
       fat: _round1(f),
+      fiber: _round1(fiber),
     );
   }
 

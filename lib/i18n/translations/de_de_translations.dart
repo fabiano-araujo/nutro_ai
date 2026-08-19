@@ -33,6 +33,29 @@ final Map<String, String> deDETranslations = {
   'email': 'E-Mail',
   'password': 'Passwort',
   'forgot_password': 'Passwort vergessen?',
+  'forgot_password_title': 'Passwort zurücksetzen',
+  'forgot_password_subtitle':
+      'Geben Sie die E-Mail Ihres Kontos ein. Falls sie existiert, senden wir einen Wiederherstellungscode.',
+  'forgot_password_send_code': 'Code senden',
+  'forgot_password_code_title': 'Code eingeben',
+  'forgot_password_code_subtitle':
+      'Wir haben einen 4-stelligen Code an Ihre E-Mail gesendet. Er ist 6 Stunden gültig.',
+  'forgot_password_code_label': 'Code',
+  'forgot_password_code_invalid': 'Geben Sie den 4-stelligen Code ein',
+  'forgot_password_verify_code': 'Code prüfen',
+  'forgot_password_new_title': 'Neues Passwort',
+  'forgot_password_new_subtitle':
+      'Wählen Sie ein neues Passwort für Ihr Konto.',
+  'forgot_password_save': 'Passwort speichern',
+  'forgot_password_send_error':
+      'Die E-Mail konnte gerade nicht gesendet werden. Versuchen Sie es erneut.',
+  'forgot_password_invalid_code': 'Ungültiger oder abgelaufener Code.',
+  'forgot_password_reset_error':
+      'Das Passwort konnte nicht zurückgesetzt werden. Versuchen Sie es erneut.',
+  'forgot_password_success':
+      'Passwort aktualisiert. Melden Sie sich mit dem neuen Passwort an.',
+  'login_google_account_required':
+      'Dieses Konto verwendet Google. Nutzen Sie die Google-Anmeldung.',
   'login_button': 'Anmelden',
   'no_account': 'Noch kein Konto?',
   'sign_up': 'Registrieren',
@@ -51,6 +74,13 @@ final Map<String, String> deDETranslations = {
   'sign_out': 'Abmelden',
   'logout': 'Abmelden',
   'logout_confirmation': 'Sind Sie sicher, dass Sie sich abmelden möchten?',
+  'delete_account': 'Konto löschen',
+  'delete_account_subtitle': 'Konto und alle zugehörigen Daten löschen',
+  'delete_account_confirmation_title': 'Konto löschen?',
+  'delete_account_confirmation_message':
+      'Diese Aktion ist dauerhaft und löscht Ihr Konto, Daten, Chats, Mahlzeiten und Pläne. Fortfahren?',
+  'delete_account_confirm': 'Dauerhaft löschen',
+  'delete_account_error': 'Das Konto konnte jetzt nicht gelöscht werden.',
   'logout_pending_sync_title': 'Vor dem Abmelden synchronisieren',
   'logout_pending_sync_message':
       'Einige Änderungen auf diesem Gerät wurden noch nicht in Ihrem Konto gespeichert. Stellen Sie eine Internetverbindung her und synchronisieren Sie jetzt, damit nichts verloren geht.',
@@ -1153,6 +1183,47 @@ final Map<String, String> deDETranslations = {
   'social_view_challenges': 'Challenges ansehen',
   'social_public_challenges': 'Öffentliche Challenges',
   'streak_in_danger_short': 'Gefährdet',
+  'streak_celebration_day_one': 'Tag in Folge!',
+  'streak_celebration_days_other': 'Tage in Folge!',
+  'streak_celebration_message':
+      'Morgen kannst du {next} Tage in Folge erreichen!',
+  'streak_celebration_continue': 'Weiter',
+  'streak_celebration_freeze_title': 'Du hast deinen Schutz zurück',
+  'streak_celebration_freeze_body': 'Er hilft dir, wenn du einen Tag verpasst.',
+  'streak_intro_challenge_title': 'Schaffst du 3 Tage?',
+  'streak_intro_challenge_body':
+      'Wer 3 Tage in Folge Lebensmittel einträgt, erreicht seine Ziele mit größerer Wahrscheinlichkeit.',
+  'streak_intro_challenge_cta': 'Ich schaffe das',
+  'streak_intro_widget_title': 'Hast du Sorge, deinen Streak zu verlieren?',
+  'streak_intro_widget_body':
+      'Unser Widget zeigt dir die heutigen Kalorien und deinen Streak auf einen Blick. Möchtest du es zum Startbildschirm hinzufügen?',
+  'streak_intro_widget_cta': 'Ja, Widget hinzufügen',
+  'streak_intro_not_now': 'Nicht jetzt',
+  'streak_widget_unavailable':
+      'Das Widget konnte auf diesem Gerät nicht hinzugefügt werden.',
+  'streak_widget_card_title': 'Streak-Widget',
+  'streak_widget_card_body':
+      'Sieh die heutigen Kalorien und deinen Streak direkt auf dem Startbildschirm.',
+  'streak_widget_card_added': 'Zum Startbildschirm hinzugefügt',
+  'streak_commit_cta': 'Ich bin dabei',
+  'streak_commit_success': 'Dein Commitment wurde gespeichert. Weiter so!',
+  'streak_widget_day_one': 'Tag',
+  'streak_widget_days_other': 'Tage',
+  'streak_widget_today': 'Heute',
+  'streak_challenge_section': 'Meine Herausforderung',
+  'streak_challenge_next': 'Nächstes Ziel: {target} Tage',
+  'streak_challenge_day_progress': 'Tag {current}/{target}',
+  'streak_overview_section': 'Übersicht',
+  'streak_summary_section': 'Zusammenfassung',
+  'streak_best_registration': 'Längster Streak',
+  'streak_protection_one': '1 Schutz für deinen Streak verfügbar',
+  'streak_protection_other':
+      '{count} Schutzoptionen für deinen Streak verfügbar',
+  'streak_details_title': 'Weitere Details',
+  'streak_hero_started':
+      'Glückwunsch, du hast deinen Streak gestartet! Weiter so!',
+  'streak_hero_continue':
+      'Deine Beständigkeit wächst. Trage weiterhin jeden Tag Lebensmittel ein.',
   'challenge_objective_label': 'Ziel',
   'challenge_days_completed': 'Tage',
   'challenge_today_metric': 'Heute',
@@ -1735,6 +1806,21 @@ final Map<String, String> deDETranslations = {
   'modoTradicional': 'Traditioneller Modus',
   'aiTutorRecomendado': 'Ernährungsassistent (empfohlen)',
   'search_food': 'Lebensmittel suchen',
+  'food_input_actions_title': 'Lebensmittel hinzufügen',
+  'food_input_audio_title': 'Lebensmittel sprechen',
+  'food_input_audio_subtitle': 'Sagen Sie, was Sie gegessen haben',
+  'food_input_camera_subtitle': 'Fotografieren Sie Ihre Mahlzeit',
+  'food_input_gallery_subtitle': 'Wählen Sie ein Foto aus Ihrer Galerie',
+  'food_input_barcode_subtitle': 'Scannen Sie den Code eines Produkts',
+  'food_voice_sheet_title': 'Sagen Sie, was Sie gegessen haben',
+  'food_voice_sheet_subtitle':
+      'Nennen Sie Lebensmittel und Mengen. Tippen Sie danach auf Stopp.',
+  'food_voice_stop_action': 'Stoppen und erkennen',
+  'food_voice_retry_hint': 'Versuchen Sie die Aufnahme erneut.',
+  'ai_food_results': 'Erkannte Lebensmittel',
+  'no_food_detected': 'Es wurde kein Lebensmittel erkannt',
+  'food_input_processing_error':
+      'Die Lebensmittel konnten nicht erkannt werden. Versuchen Sie es erneut.',
   'what_did_you_eat': 'Was hast du gegessen?',
   'recent': 'Kürzlich',
   'favorites': 'Favoriten',

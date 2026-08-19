@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/food_model.dart';
 import '../models/meal_model.dart';
+import '../models/Nutrient.dart';
 import 'meal_card.dart';
 
 /// Exemplo de uso do MealCard widget
@@ -23,32 +24,53 @@ class _MealCardExampleState extends State<MealCardExample> {
       Food(
         name: 'Egg',
         amount: '1 large',
-        calories: 78,
-        protein: 6,
-        carbs: 1,
-        fat: 5,
+        nutrients: [
+          Nutrient(
+            idFood: 0,
+            servingSize: 1,
+            servingUnit: 'large',
+            calories: 78,
+            protein: 6,
+            carbohydrate: 1,
+            fat: 5,
+          ),
+        ],
         emoji: '🥚',
-        imageUrl: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
+        photo: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=200&h=200&fit=crop',
       ),
       Food(
         name: 'Couscous',
         amount: '100g',
-        calories: 376,
-        protein: 13,
-        carbs: 77,
-        fat: 1,
+        nutrients: [
+          Nutrient(
+            idFood: 0,
+            servingSize: 100,
+            servingUnit: 'g',
+            calories: 376,
+            protein: 13,
+            carbohydrate: 77,
+            fat: 1,
+          ),
+        ],
         emoji: '🍚',
-        imageUrl: 'https://images.unsplash.com/photo-1596040033229-a0b0d1f6e2e3?w=200&h=200&fit=crop',
+        photo: 'https://images.unsplash.com/photo-1596040033229-a0b0d1f6e2e3?w=200&h=200&fit=crop',
       ),
       Food(
         name: 'Milk',
         amount: '200ml',
-        calories: 91,
-        protein: 6,
-        carbs: 9,
-        fat: 3,
+        nutrients: [
+          Nutrient(
+            idFood: 0,
+            servingSize: 200,
+            servingUnit: 'ml',
+            calories: 91,
+            protein: 6,
+            carbohydrate: 9,
+            fat: 3,
+          ),
+        ],
         emoji: '🥛',
-        imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop',
+        photo: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop',
       ),
     ];
 

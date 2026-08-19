@@ -12,12 +12,14 @@ class MacroTheme {
   static const Color proteinColor = Color(0xFF7D6BFF);
   static const Color carbsColor = Color(0xFFFFB248);
   static const Color fatColor = Color(0xFFD94F8A);
+  static const Color fiberColor = Color(0xFF43A047);
 
   // ── Icons ─────────────────────────────────────────────────────────────────
   static const IconData caloriesIcon = Icons.local_fire_department_rounded;
   static const IconData proteinIcon = Icons.fitness_center_rounded;
   static const IconData carbsIcon = Icons.grain_rounded;
   static const IconData fatIcon = Icons.opacity_rounded;
+  static const IconData fiberIcon = Icons.eco_rounded;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   static Color colorFor(MacroType type) {
@@ -30,6 +32,8 @@ class MacroTheme {
         return carbsColor;
       case MacroType.fat:
         return fatColor;
+      case MacroType.fiber:
+        return fiberColor;
     }
   }
 
@@ -43,6 +47,8 @@ class MacroTheme {
         return carbsIcon;
       case MacroType.fat:
         return fatIcon;
+      case MacroType.fiber:
+        return fiberIcon;
     }
   }
 
@@ -70,4 +76,4 @@ class MacroTheme {
   }
 }
 
-enum MacroType { calories, protein, carbs, fat }
+enum MacroType { calories, protein, carbs, fat, fiber }

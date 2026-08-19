@@ -7,8 +7,12 @@ import '../providers/daily_meals_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/streak_provider.dart';
 import '../services/meals_sync_service.dart';
+import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/macro_theme.dart';
 import '../utils/streak_helper.dart';
+import '../utils/premium_access.dart';
 import '../i18n/app_localizations_extension.dart';
 import 'daily_meals_screen.dart';
 
@@ -27,6 +31,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
+    final purchaseService = context.watch<PurchaseService?>();
+    final authService = context.watch<AuthService?>();
+    final showFiber = hasPremiumAccess(
+      purchaseService: purchaseService,
+      authService: authService,
+    );
 
     return Scaffold(
       backgroundColor:
@@ -93,6 +103,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 colorScheme,
                 isDarkMode,
                 fallbackGoals,
+                showFiber: showFiber,
               ),
               const SizedBox(height: 24),
 
@@ -380,8 +391,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     ThemeData theme,
     ColorScheme colorScheme,
     bool isDarkMode,
-    MealGoals fallbackGoals,
-  ) {
+    MealGoals fallbackGoals, {
+    required bool showFiber,
+  }) {
     final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
     final days = int.parse(_selectedPeriod);
     final history = mealsProvider.getNutritionHistory(
@@ -492,14 +504,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       theme: theme,
                       colorScheme: colorScheme,
                     ),
-                    _buildInsightTile(
-                      width: tileWidth,
-                      icon: Icons.eco_rounded,
-                      label: context.tr.translate('stats_avg_fiber'),
-                      value: '${avgFiber.round()}g',
-                      theme: theme,
-                      colorScheme: colorScheme,
-                    ),
+                    if (showFiber)
+                      _buildInsightTile(
+                        width: tileWidth,
+                        icon: MacroTheme.fiberIcon,
+                        label: context.tr.translate('stats_avg_fiber'),
+                        value: '${avgFiber.round()}g',
+                        theme: theme,
+                        colorScheme: colorScheme,
+                      ),
                   ],
                 );
               },

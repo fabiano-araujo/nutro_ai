@@ -181,6 +181,48 @@ class MealGoals {
 class MealsSyncService {
   static const String baseUrl = AppConstants.API_BASE_URL;
 
+  /// Monta o contrato enviado ao backend, mantendo todos os nutrientes mesmo
+  /// quando algum deles não está visível na interface do usuário.
+  static Map<String, dynamic> buildSyncDayPayload({
+    required DateTime date,
+    required List<Meal> meals,
+    required int waterGlasses,
+    required MealGoals goals,
+  }) {
+    final mealsJson = meals.map((meal) {
+      return {
+        'type': meal.type.toString().split('.').last,
+        'name': null,
+        'mealTime': meal.dateTime.toIso8601String(),
+        'messageId': meal.messageId,
+        'foods': meal.foods.map((food) {
+          final nutrient = food.primaryNutrient;
+          return {
+            'foodId': food.id,
+            'name': food.name,
+            'emoji': food.emoji,
+            'amount': nutrient?.servingSize ??
+                double.tryParse(food.amount ?? '100') ??
+                100,
+            'unit': nutrient?.servingUnit ?? 'g',
+            'calories': food.calories,
+            'protein': food.protein,
+            'carbs': food.carbs,
+            'fat': food.fat,
+            'fiber': nutrient?.dietaryFiber ?? 0,
+          };
+        }).toList(),
+      };
+    }).toList();
+
+    return {
+      'date': _formatDate(date),
+      'meals': mealsJson,
+      'waterGlasses': waterGlasses,
+      'goals': goals.toJson(),
+    };
+  }
+
   /// Sincronizar refeições de um dia
   static Future<DailySummary?> syncDay({
     required String token,
@@ -194,38 +236,12 @@ class MealsSyncService {
       print('[MealsSyncService] Sincronizando dia: ${_formatDate(date)}');
       print('[MealsSyncService] Refeições: ${meals.length}');
 
-      final mealsJson = meals.map((meal) {
-        return {
-          'type': meal.type.toString().split('.').last,
-          'name': null,
-          'mealTime': meal.dateTime.toIso8601String(),
-          'messageId': meal.messageId,
-          'foods': meal.foods.map((food) {
-            final nutrient = food.primaryNutrient;
-            return {
-              'foodId': food.id,
-              'name': food.name,
-              'emoji': food.emoji,
-              'amount': nutrient?.servingSize ??
-                  double.tryParse(food.amount ?? '100') ??
-                  100,
-              'unit': nutrient?.servingUnit ?? 'g',
-              'calories': food.calories,
-              'protein': food.protein,
-              'carbs': food.carbs,
-              'fat': food.fat,
-              'fiber': nutrient?.dietaryFiber ?? 0,
-            };
-          }).toList(),
-        };
-      }).toList();
-
-      final body = {
-        'date': _formatDate(date),
-        'meals': mealsJson,
-        'waterGlasses': waterGlasses,
-        'goals': goals.toJson(),
-      };
+      final body = buildSyncDayPayload(
+        date: date,
+        meals: meals,
+        waterGlasses: waterGlasses,
+        goals: goals,
+      );
 
       final requestBody = jsonEncode(body);
       final foodCount = meals.fold<int>(

@@ -3,4 +3,14 @@
     <string name="ad_attribution">Anzeige</string>
     <string name="health_permissions_privacy_title">Datenschutzrichtlinie</string>
     <string name="health_permissions_privacy_body">Nutro AI verwendet Health-Connect-Daten ausschließlich, um in der App verbrannte Kalorien, Schritte und Trainingseinheiten für Ihre Ernährungsübersicht anzuzeigen. Diese Daten werden nicht verkauft. Sie können den Zugriff jederzeit in den Health-Connect-Einstellungen erlauben, verweigern oder entfernen.</string>
+    <string name="widget_name">Nutro AI — Streak</string>
+    <string name="widget_description">Heutige Kalorien und täglicher Streak</string>
+    <string name="widget_today">Heute</string>
+    <string name="widget_calories_unit">kcal</string>
+    <string name="widget_goal_format">%1$d von %2$d kcal</string>
+    <string name="widget_tap_to_open">Zum Öffnen tippen</string>
+    <plurals name="widget_streak_days">
+        <item quantity="one">%d Tag</item>
+        <item quantity="other">%d Tage</item>
+    </plurals>
 </resources>

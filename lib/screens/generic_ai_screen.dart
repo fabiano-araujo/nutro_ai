@@ -675,7 +675,7 @@ class _GenericAIScreenState extends State<GenericAIScreen>
 
   Future<FileResult?> _pickAndReadTextFile() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['txt', 'md', 'rtf', 'doc', 'docx', 'pdf'],
       );

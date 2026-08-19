@@ -69,6 +69,29 @@ final Map<String, String> frFRTranslations = {
   'email': "Email",
   'password': "Mot de passe",
   'forgot_password': "Mot de passe oublié?",
+  'forgot_password_title': "Récupérer le mot de passe",
+  'forgot_password_subtitle':
+      "Saisissez l'e-mail de votre compte. S'il existe, nous enverrons un code de récupération.",
+  'forgot_password_send_code': "Envoyer le code",
+  'forgot_password_code_title': "Saisissez le code",
+  'forgot_password_code_subtitle':
+      "Nous avons envoyé un code à 4 chiffres à votre e-mail. Il est valable 6 heures.",
+  'forgot_password_code_label': "Code",
+  'forgot_password_code_invalid': "Saisissez le code à 4 chiffres",
+  'forgot_password_verify_code': "Vérifier le code",
+  'forgot_password_new_title': "Nouveau mot de passe",
+  'forgot_password_new_subtitle':
+      "Choisissez un nouveau mot de passe pour votre compte.",
+  'forgot_password_save': "Enregistrer le mot de passe",
+  'forgot_password_send_error':
+      "Impossible d'envoyer l'e-mail pour le moment. Réessayez.",
+  'forgot_password_invalid_code': "Code invalide ou expiré.",
+  'forgot_password_reset_error':
+      "Impossible de réinitialiser le mot de passe. Réessayez.",
+  'forgot_password_success':
+      "Mot de passe mis à jour. Connectez-vous avec le nouveau mot de passe.",
+  'login_google_account_required':
+      "Ce compte se connecte avec Google. Utilisez la connexion Google.",
   'login_button': "Se connecter",
   'no_account': "Vous n'avez pas de compte?",
   'sign_up': "S'inscrire",
@@ -84,6 +107,14 @@ final Map<String, String> frFRTranslations = {
   'sign_out': "Déconnexion",
   'logout': "Déconnexion",
   'logout_confirmation': "Êtes-vous sûr de vouloir vous déconnecter?",
+  'delete_account': 'Supprimer le compte',
+  'delete_account_subtitle':
+      'Effacer votre compte et toutes les données associées',
+  'delete_account_confirmation_title': 'Supprimer votre compte?',
+  'delete_account_confirmation_message':
+      'Cette action est définitive et effacera votre compte, vos données, conversations, repas et plans. Continuer?',
+  'delete_account_confirm': 'Supprimer définitivement',
+  'delete_account_error': 'Impossible de supprimer le compte maintenant.',
   'logout_pending_sync_title': "Synchroniser avant de se déconnecter",
   'logout_pending_sync_message':
       "Certaines modifications sur cet appareil ne sont pas encore enregistrées dans votre compte. Connectez-vous à internet et synchronisez maintenant pour ne rien perdre.",
@@ -1061,6 +1092,23 @@ final Map<String, String> frFRTranslations = {
   'meal': "Repas",
   'select_meal_type': "Sélectionner le type de repas",
   'search_food': "Rechercher un aliment",
+  'food_input_actions_title': "Ajouter des aliments",
+  'food_input_audio_title': "Dicter les aliments",
+  'food_input_audio_subtitle':
+      "Dites ce que vous avez mangé pour identifier les aliments",
+  'food_input_camera_subtitle':
+      "Photographiez votre repas pour identifier les aliments",
+  'food_input_gallery_subtitle': "Choisissez une photo dans votre galerie",
+  'food_input_barcode_subtitle': "Scannez le code d'un produit emballé",
+  'food_voice_sheet_title': "Dites ce que vous avez mangé",
+  'food_voice_sheet_subtitle':
+      "Dites les aliments et les quantités, puis appuyez sur arrêter.",
+  'food_voice_stop_action': "Arrêter et identifier",
+  'food_voice_retry_hint': "Réessayez d'enregistrer les aliments.",
+  'ai_food_results': "Aliments identifiés",
+  'no_food_detected': "Aucun aliment n'a été identifié",
+  'food_input_processing_error':
+      "Impossible d'identifier les aliments. Veuillez réessayer.",
   'what_did_you_eat': "Qu'avez-vous mangé ?",
   'recent': "Récent",
   'favorites': "Favoris",
@@ -1922,6 +1970,46 @@ final Map<String, String> frFRTranslations = {
   'social_view_challenges': "Voir les défis",
   'social_public_challenges': "Défis publics",
   'streak_in_danger_short': "En danger",
+  'streak_celebration_day_one': "jour d’affilée !",
+  'streak_celebration_days_other': "jours d’affilée !",
+  'streak_celebration_message':
+      "Demain, vous pouvez atteindre {next} jours d’affilée !",
+  'streak_celebration_continue': "Continuer",
+  'streak_celebration_freeze_title': "Vous avez récupéré votre protection",
+  'streak_celebration_freeze_body': "Elle vous aidera si vous manquez un jour.",
+  'streak_intro_challenge_title': "Pouvez-vous atteindre 3 jours ?",
+  'streak_intro_challenge_body':
+      "Les personnes qui enregistrent leurs aliments pendant 3 jours consécutifs ont plus de chances d’atteindre leurs objectifs.",
+  'streak_intro_challenge_cta': "Je peux le faire",
+  'streak_intro_widget_title': "Vous avez peur de perdre votre série ?",
+  'streak_intro_widget_body':
+      "Notre widget garde les calories du jour et votre série toujours visibles. Voulez-vous l’ajouter à l’écran d’accueil ?",
+  'streak_intro_widget_cta': "Oui, ajouter le widget",
+  'streak_intro_not_now': "Pas maintenant",
+  'streak_widget_unavailable':
+      "Impossible d’ajouter le widget sur cet appareil.",
+  'streak_widget_card_title': "Widget de série",
+  'streak_widget_card_body':
+      "Consultez les calories du jour et votre série directement depuis l’écran d’accueil.",
+  'streak_widget_card_added': "Ajouté à l’écran d’accueil",
+  'streak_commit_cta': 'Je suis engagé',
+  'streak_commit_success': 'Engagement enregistré. Continuez ainsi !',
+  'streak_widget_day_one': "jour",
+  'streak_widget_days_other': "jours",
+  'streak_widget_today': "Aujourd’hui",
+  'streak_challenge_section': "Mon défi",
+  'streak_challenge_next': "Prochain objectif : {target} jours",
+  'streak_challenge_day_progress': "Jour {current}/{target}",
+  'streak_overview_section': "Vue d’ensemble",
+  'streak_summary_section': "Résumé",
+  'streak_best_registration': "Plus longue série",
+  'streak_protection_one': "1 protection de série disponible",
+  'streak_protection_other': "{count} protections de série disponibles",
+  'streak_details_title': "Plus de détails",
+  'streak_hero_started':
+      "Félicitations, vous avez commencé votre série ! Continuez ainsi !",
+  'streak_hero_continue':
+      "Votre régularité progresse. Continuez à enregistrer vos aliments chaque jour.",
   'challenge_objective_label': "Objectif",
   'challenge_days_completed': "jours",
   'challenge_today_metric': "Aujourd'hui",

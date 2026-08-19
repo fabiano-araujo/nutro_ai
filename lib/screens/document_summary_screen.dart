@@ -65,7 +65,7 @@ class _DocumentSummaryScreenState extends State<DocumentSummaryScreen> {
 
   Future<void> _pickDocument() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['txt', 'pdf', 'doc', 'docx'],
       );

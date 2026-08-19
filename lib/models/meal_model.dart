@@ -43,6 +43,8 @@ class Meal {
 
   double get totalFat => foods.fold(0.0, (sum, food) => sum + food.fat);
 
+  double get totalFiber => foods.fold(0.0, (sum, food) => sum + food.fiber);
+
   factory Meal.fromJson(Map<String, dynamic> json) {
     return Meal(
       id: json['id'] ?? '',

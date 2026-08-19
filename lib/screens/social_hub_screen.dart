@@ -6,6 +6,8 @@ import '../providers/friends_provider.dart';
 import '../providers/challenges_provider.dart';
 import '../providers/streak_provider.dart';
 import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
+import '../utils/premium_access.dart';
 import '../services/feed_service.dart';
 import '../services/social_service.dart';
 import '../services/challenge_service.dart';
@@ -203,6 +205,11 @@ class _SocialHubScreenState extends State<SocialHubScreen>
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final authService = context.watch<AuthService>();
+    final purchaseService = context.watch<PurchaseService?>();
+    final showFiberChallenges = hasPremiumAccess(
+      purchaseService: purchaseService,
+      authService: authService,
+    );
     final primaryColor = _socialPrimaryColor(isDarkMode);
     final fabForegroundColor = AppTheme.onColor(primaryColor);
     // Tela de login se não autenticado
@@ -242,7 +249,10 @@ class _SocialHubScreenState extends State<SocialHubScreen>
           ? Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: FloatingActionButton.extended(
-                onPressed: () => _showCreateChallengeDialog(context),
+                onPressed: () => _showCreateChallengeDialog(
+                  context,
+                  showFiberChallenges: showFiberChallenges,
+                ),
                 backgroundColor: primaryColor,
                 foregroundColor: fabForegroundColor,
                 elevation: 0,
@@ -318,6 +328,7 @@ class _SocialHubScreenState extends State<SocialHubScreen>
                       ? _SocialTabContent(onRefresh: _refreshData)
                       : _ChallengesContent(
                           showPublic: _showPublicChallenges,
+                          showFiberChallenges: showFiberChallenges,
                           onShowPublicChanged: (showPublic) {
                             setState(() => _showPublicChallenges = showPublic);
                             if (showPublic) {
@@ -336,7 +347,10 @@ class _SocialHubScreenState extends State<SocialHubScreen>
     );
   }
 
-  void _showCreateChallengeDialog(BuildContext context) {
+  void _showCreateChallengeDialog(
+    BuildContext context, {
+    required bool showFiberChallenges,
+  }) {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     String type = 'LOGGING_STREAK';
@@ -398,12 +412,13 @@ class _SocialHubScreenState extends State<SocialHubScreen>
                       context.tr.translate('challenge_type_calorie_deficit'),
                     ),
                   ),
-                  DropdownMenuItem(
-                    value: 'FIBER_TARGET',
-                    child: Text(
-                      context.tr.translate('challenge_type_fiber'),
+                  if (showFiberChallenges)
+                    DropdownMenuItem(
+                      value: 'FIBER_TARGET',
+                      child: Text(
+                        context.tr.translate('challenge_type_fiber'),
+                      ),
                     ),
-                  ),
                 ],
                 onChanged: (v) => type = v ?? 'LOGGING_STREAK',
               ),
@@ -2248,10 +2263,12 @@ class _ReactionsRow extends StatelessWidget {
 // ==================== ABA DESAFIOS ====================
 class _ChallengesContent extends StatefulWidget {
   final bool showPublic;
+  final bool showFiberChallenges;
   final ValueChanged<bool> onShowPublicChanged;
 
   const _ChallengesContent({
     required this.showPublic,
+    required this.showFiberChallenges,
     required this.onShowPublicChanged,
   });
 
@@ -2283,10 +2300,14 @@ class _ChallengesContentState extends State<_ChallengesContent> {
               ),
             ),
             if (widget.showPublic)
-              _PublicChallengesList(provider: provider)
+              _PublicChallengesList(
+                provider: provider,
+                showFiberChallenges: widget.showFiberChallenges,
+              )
             else
               _MyChallengesList(
                 provider: provider,
+                showFiberChallenges: widget.showFiberChallenges,
                 onCodeTap: () => _showJoinCodeDialog(context),
               ),
           ],
@@ -2360,16 +2381,26 @@ class _ChallengesContentState extends State<_ChallengesContent> {
 
 class _MyChallengesList extends StatelessWidget {
   final ChallengesProvider provider;
+  final bool showFiberChallenges;
   final VoidCallback onCodeTap;
 
   const _MyChallengesList({
     required this.provider,
+    required this.showFiberChallenges,
     required this.onCodeTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (provider.myChallenges.isEmpty) {
+    final visibleChallenges = provider.myChallenges
+        .where(
+          (challenge) =>
+              showFiberChallenges ||
+              challenge.type.toUpperCase() != 'FIBER_TARGET',
+        )
+        .toList(growable: false);
+
+    if (visibleChallenges.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
@@ -2385,7 +2416,7 @@ class _MyChallengesList extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       child: Column(
-        children: provider.myChallenges.map((challenge) {
+        children: visibleChallenges.map((challenge) {
           return _ChallengeCard(
             challenge: challenge,
             onTap: () => Navigator.push(
@@ -2404,12 +2435,24 @@ class _MyChallengesList extends StatelessWidget {
 
 class _PublicChallengesList extends StatelessWidget {
   final ChallengesProvider provider;
+  final bool showFiberChallenges;
 
-  const _PublicChallengesList({required this.provider});
+  const _PublicChallengesList({
+    required this.provider,
+    required this.showFiberChallenges,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (provider.publicChallenges.isEmpty) {
+    final visibleChallenges = provider.publicChallenges
+        .where(
+          (challenge) =>
+              showFiberChallenges ||
+              challenge.type.toUpperCase() != 'FIBER_TARGET',
+        )
+        .toList(growable: false);
+
+    if (visibleChallenges.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: _InfoCard(
@@ -2422,7 +2465,7 @@ class _PublicChallengesList extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       child: Column(
-        children: provider.publicChallenges.map((challenge) {
+        children: visibleChallenges.map((challenge) {
           return _ChallengeCard(
             challenge: challenge,
             showJoinButton: true,

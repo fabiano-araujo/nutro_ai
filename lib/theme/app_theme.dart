@@ -223,19 +223,55 @@ class AppTheme {
   // Light Theme
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
+    fontFamily: GoogleFonts.inter().fontFamily,
     brightness: Brightness.light,
     primaryColor: primaryColor,
     scaffoldBackgroundColor: backgroundColor,
     cardColor: cardColor,
     dividerColor: dividerColor,
     textTheme: TextTheme(
+      headlineLarge: GoogleFonts.poppins(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        color: textPrimaryColor,
+      ),
+      headlineMedium: GoogleFonts.poppins(
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
+        color: textPrimaryColor,
+      ),
+      headlineSmall: GoogleFonts.poppins(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: textPrimaryColor,
+      ),
       displayLarge: headingLarge,
       displayMedium: headingMedium,
       displaySmall: headingSmall,
+      titleLarge: GoogleFonts.poppins(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: textPrimaryColor,
+      ),
+      titleMedium: GoogleFonts.poppins(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: textPrimaryColor,
+      ),
+      titleSmall: GoogleFonts.poppins(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: textPrimaryColor,
+      ),
       bodyLarge: bodyLarge,
       bodyMedium: bodyMedium,
       bodySmall: bodySmall,
       labelLarge: buttonText,
+      labelMedium: GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: textSecondaryColor,
+      ),
       labelSmall: captionText,
     ),
     colorScheme: ColorScheme.light(
@@ -336,19 +372,55 @@ class AppTheme {
   // Dark Theme
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
+    fontFamily: GoogleFonts.inter().fontFamily,
     brightness: Brightness.dark,
     primaryColor: primaryColorDarkMode,
     scaffoldBackgroundColor: darkBackgroundColor,
     cardColor: darkCardColor,
     dividerColor: darkBorderColor,
     textTheme: TextTheme(
+      headlineLarge: GoogleFonts.poppins(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      ),
+      headlineMedium: GoogleFonts.poppins(
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      ),
+      headlineSmall: GoogleFonts.poppins(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
       displayLarge: headingLarge.copyWith(color: Colors.white),
       displayMedium: headingMedium.copyWith(color: Colors.white),
       displaySmall: headingSmall.copyWith(color: Colors.white),
+      titleLarge: GoogleFonts.poppins(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
+      titleMedium: GoogleFonts.poppins(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
+      titleSmall: GoogleFonts.poppins(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
       bodyLarge: bodyLarge.copyWith(color: darkTextColor),
       bodyMedium: bodyMedium.copyWith(color: darkTextColor),
       bodySmall: bodySmall.copyWith(color: darkTextColor),
       labelLarge: buttonText.copyWith(color: Colors.black),
+      labelMedium: GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: darkMutedTextColor,
+      ),
       labelSmall: captionText.copyWith(color: darkMutedTextColor),
     ),
     colorScheme: ColorScheme.dark(

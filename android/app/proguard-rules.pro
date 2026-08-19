@@ -1,20 +1,16 @@
-# Keep classes referenced by the ML Kit libraries
--keep class com.google.mlkit.** { *; }
--keep class com.google.android.gms.vision.** { *; }
+# ML Kit, Google Play e os plugins Flutter fornecem regras consumer ProGuard.
+# Evite regras amplas de keep aqui, pois impedem o R8 de remover código não usado.
 
-# Rules for text recognition models - mantendo apenas o modelo básico
--keep class com.google.mlkit.vision.text.** { *; }
-# Comentado modelos de idiomas específicos que não estamos usando mais
-# -keep class com.google.mlkit.vision.text.chinese.** { *; }
-# -keep class com.google.mlkit.vision.text.devanagari.** { *; }
-# -keep class com.google.mlkit.vision.text.japanese.** { *; }
-# -keep class com.google.mlkit.vision.text.korean.** { *; }
-
-# Novas bibliotecas do Play
--keep class com.google.android.play.feature.** { *; }
--keep class com.google.android.play.asset.** { *; }
--keep class com.google.android.play.review.** { *; }
--keep class com.google.android.play.update.** { *; }
+# O Flutter referencia suporte opcional a deferred components mesmo quando o
+# app não os utiliza. O plugin de OCR também referencia modelos de idiomas que
+# não são empacotados; o Nutro usa somente o reconhecedor latino.
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
 
 # Flutter rules
 -keep class io.flutter.app.** { *; }
@@ -43,4 +39,4 @@
 # Manter atributos necessários
 -keepattributes *Annotation*
 -keepattributes Signature
--keepattributes Exceptions 
+-keepattributes Exceptions

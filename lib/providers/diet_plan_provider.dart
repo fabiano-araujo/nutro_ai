@@ -356,6 +356,9 @@ class DietPlanProvider extends ChangeNotifier {
                   fat: (foodData['fat'] is String)
                       ? double.tryParse(foodData['fat']) ?? 0
                       : (foodData['fat'] as num?)?.toDouble() ?? 0,
+                  fiber: (foodData['fiber'] is String)
+                      ? double.tryParse(foodData['fiber']) ?? 0
+                      : (foodData['fiber'] as num?)?.toDouble() ?? 0,
                 );
               }).toList() ??
               [];
@@ -376,6 +379,9 @@ class DietPlanProvider extends ChangeNotifier {
               fat: (mealData['fat'] is String)
                   ? double.tryParse(mealData['fat']) ?? 0
                   : (mealData['fat'] as num?)?.toDouble() ?? 0,
+              fiber: (mealData['fiber'] is String)
+                  ? double.tryParse(mealData['fiber']) ?? 0
+                  : (mealData['fiber'] as num?)?.toDouble() ?? 0,
             ),
           );
         }).toList() ??
@@ -394,6 +400,9 @@ class DietPlanProvider extends ChangeNotifier {
         fat: (data['totalFat'] is String)
             ? double.tryParse(data['totalFat']) ?? 0
             : (data['totalFat'] as num?)?.toDouble() ?? 0,
+        fiber: (data['totalFiber'] is String)
+            ? double.tryParse(data['totalFiber']) ?? 0
+            : (data['totalFiber'] as num?)?.toDouble() ?? 0,
       ),
       generatedForNutrition: _parseGeneratedForNutrition(data),
       meals: meals,
@@ -425,6 +434,7 @@ class DietPlanProvider extends ChangeNotifier {
       protein: readDouble('generatedForProtein'),
       carbs: readDouble('generatedForCarbs'),
       fat: readDouble('generatedForFat'),
+      fiber: readDouble('generatedForFiber'),
     );
   }
 
@@ -446,6 +456,7 @@ class DietPlanProvider extends ChangeNotifier {
         'totalProtein': plan.totalNutrition.protein,
         'totalCarbs': plan.totalNutrition.carbs,
         'totalFat': plan.totalNutrition.fat,
+        'totalFiber': plan.totalNutrition.fiber,
         'generatedForCalories': plan.generatedForNutrition?.calories,
         'generatedForProtein': plan.generatedForNutrition?.protein,
         'generatedForCarbs': plan.generatedForNutrition?.carbs,
@@ -462,6 +473,7 @@ class DietPlanProvider extends ChangeNotifier {
             'protein': meal.mealTotals.protein,
             'carbs': meal.mealTotals.carbs,
             'fat': meal.mealTotals.fat,
+            'fiber': meal.mealTotals.fiber,
             'foods': meal.foods.asMap().entries.map((foodEntry) {
               final foodIndex = foodEntry.key;
               final food = foodEntry.value;
@@ -475,6 +487,7 @@ class DietPlanProvider extends ChangeNotifier {
                 'protein': food.protein,
                 'carbs': food.carbs,
                 'fat': food.fat,
+                'fiber': food.fiber,
               };
             }).toList(),
           };
@@ -1537,11 +1550,12 @@ $preferenceLines
 $replacementNotesLine
 
 Return ONLY compact JSON:
-{"m":[["breakfast","08:00",[["Food",100,"g",300,10,40,8]]]]}
+{"m":[["breakfast","08:00",[["Food",100,"g",300,10,40,8,3]]]]}
 
 Rules:
 - meal = [type, time, foods]
-- food = [name, amount, unit, kcal, protein, carbs, fat]
+- food = [name, amount, unit, kcal, protein, carbs, fat, fiber]
+- Estimate dietary fiber in grams for every food and use 0 only when fiber is truly absent
 - Use realistic portions
 - Adjust portions until the whole day is close to the target; do not overshoot calories by more than 5%
 - Keep a natural calorie distribution across meals; lunch and dinner may be larger, but no single meal should dominate the day unless explicitly requested
@@ -1816,11 +1830,12 @@ Evite repetir estes alimentos: $currentFoods
 $replacementNotesLine
 
 Retorne ONLY:
-{"m":[["${mealToReplace.type}","${mealToReplace.time}",[["Food",100,"g",300,10,40,8]]]]}
+{"m":[["${mealToReplace.type}","${mealToReplace.time}",[["Food",100,"g",300,10,40,8,3]]]]}
 
 Rules:
 - meal = [type, time, foods]
-- food = [name, amount, unit, kcal, protein, carbs, fat]
+- food = [name, amount, unit, kcal, protein, carbs, fat, fiber]
+- Estimate dietary fiber in grams for every food and use 0 only when fiber is truly absent
 - No totals, no name field, no icons, no markdown, no extra text
 ''';
   }
@@ -1914,12 +1929,14 @@ Rules:
     double totalProtein = 0;
     double totalCarbs = 0;
     double totalFat = 0;
+    double totalFiber = 0;
 
     for (final meal in meals) {
       totalCalories += meal.mealTotals.calories;
       totalProtein += meal.mealTotals.protein;
       totalCarbs += meal.mealTotals.carbs;
       totalFat += meal.mealTotals.fat;
+      totalFiber += meal.mealTotals.fiber;
     }
 
     return DailyNutrition(
@@ -1927,6 +1944,7 @@ Rules:
       protein: totalProtein,
       carbs: totalCarbs,
       fat: totalFat,
+      fiber: totalFiber,
     );
   }
 
@@ -1972,6 +1990,7 @@ Rules:
                 protein: _scaleMacro(food.protein, scale),
                 carbs: _scaleMacro(food.carbs, scale),
                 fat: _scaleMacro(food.fat, scale),
+                fiber: _scaleMacro(food.fiber, scale),
               ))
           .toList();
 
@@ -1999,12 +2018,14 @@ Rules:
     var protein = 0.0;
     var carbs = 0.0;
     var fat = 0.0;
+    var fiber = 0.0;
 
     for (final food in foods) {
       calories += food.calories;
       protein += food.protein;
       carbs += food.carbs;
       fat += food.fat;
+      fiber += food.fiber;
     }
 
     return DailyNutrition(
@@ -2012,6 +2033,7 @@ Rules:
       protein: protein,
       carbs: carbs,
       fat: fat,
+      fiber: fiber,
     );
   }
 

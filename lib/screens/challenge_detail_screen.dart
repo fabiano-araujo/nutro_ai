@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 
 import '../i18n/app_localizations_extension.dart';
 import '../providers/challenges_provider.dart';
+import '../services/auth_service.dart';
 import '../services/challenge_service.dart';
+import '../services/purchase_service.dart';
+import '../utils/premium_access.dart';
 import '../services/social_service.dart';
 import '../theme/app_theme.dart';
 
@@ -113,6 +116,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final purchaseService = context.watch<PurchaseService?>();
+    final authService = context.watch<AuthService?>();
+    final showFiberChallenges = hasPremiumAccess(
+      purchaseService: purchaseService,
+      authService: authService,
+    );
 
     return Scaffold(
       backgroundColor: _detailBackgroundColor(isDarkMode),
@@ -125,6 +134,10 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
             final challenge = provider.selectedChallenge;
             if (challenge == null) {
+              return _MissingChallengeState(isDarkMode: isDarkMode);
+            }
+            if (!showFiberChallenges &&
+                challenge.type.toUpperCase() == 'FIBER_TARGET') {
               return _MissingChallengeState(isDarkMode: isDarkMode);
             }
 

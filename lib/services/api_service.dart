@@ -114,12 +114,13 @@ class ApiService {
         print('Resposta autenticação com email (sucesso): $data');
         return data;
       } else {
-        final errorData = jsonDecode(response.body);
+        final errorData = _decodeResponseMap(response);
         print(
           'Resposta autenticação com email (erro ${response.statusCode}): ${response.body}',
         );
         return {
           'success': false,
+          'code': errorData['code'],
           'message': errorData['message'] ?? 'Erro de autenticação',
         };
       }
@@ -169,6 +170,102 @@ class ApiService {
       }
     } catch (e) {
       print('Erro no registro com email: $e');
+      return {
+        'success': false,
+        'message': 'Erro ao conectar: ${e.toString()}',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> requestPasswordReset({
+    required String email,
+    String? lang,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/email/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email.trim(),
+          if (lang != null && lang.isNotEmpty) 'lang': lang,
+        }),
+      );
+
+      return _decodeResponseMap(response);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Erro ao conectar: ${e.toString()}',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> verifyPasswordResetCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-reset-code'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email.trim(),
+          'code': code.trim(),
+        }),
+      );
+
+      final data = _decodeResponseMap(response);
+      if (response.statusCode == 200) {
+        return {
+          ...data,
+          'success': data['success'] ?? true,
+          'valid': data['valid'] ?? true,
+        };
+      }
+
+      return {
+        'success': false,
+        'valid': false,
+        'message': data['message'] ?? 'Código inválido ou expirado',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'valid': false,
+        'message': 'Erro ao conectar: ${e.toString()}',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email.trim(),
+          'code': code.trim(),
+          'newPassword': newPassword,
+        }),
+      );
+
+      final data = _decodeResponseMap(response);
+      if (response.statusCode == 200) {
+        return {
+          ...data,
+          'success': data['success'] ?? true,
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Erro ao redefinir senha',
+      };
+    } catch (e) {
       return {
         'success': false,
         'message': 'Erro ao conectar: ${e.toString()}',
@@ -434,6 +531,26 @@ class ApiService {
     }
 
     return User.fromJson(Map<String, dynamic>.from(data['user'] as Map));
+  }
+
+  static Future<Map<String, dynamic>> deleteOwnAccount(String token) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/user/account'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final responseData = _decodeResponseMap(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return {
+        'success': false,
+        'message': responseData['message'] ??
+            'Não foi possível excluir a conta agora',
+      };
+    }
+    return responseData;
   }
 
   // Criar pagamento de assinatura

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F7F8FA">
+  <meta name="description" content="Nutro AI Privacy Policy: data collected, purposes, sharing practices, and user rights.">
+  <link rel="canonical" href="https://nutro.snapdark.com/privacy.html">
+  <link rel="icon" type="image/png" href="/icons/nutro-rounded-clean.png?v=20260818-rounded-clean">
+  <link rel="shortcut icon" type="image/png" href="/icons/nutro-rounded-clean.png?v=20260818-rounded-clean">
+  <title>Privacy Policy — Nutro AI</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #F7F8FA;
+      --surface: #ffffff;
+      --surface-soft: #F0F5F6;
+      --text: #172033;
+      --muted: #737B8C;
+      --line: #E4EBEF;
+      --brand: #26B5AD;
+      --brand-dark: #168B82;
+      --accent: #0F766E;
+      --shadow: 0 18px 50px rgba(23, 32, 51, .10);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% -4%, rgba(77, 212, 203, .28), transparent 26rem),
+        var(--page);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: 1.72;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: var(--brand); text-underline-offset: .18em; }
+    a:hover { color: var(--brand-dark); }
+    .skip-link {
+      position: fixed;
+      top: .75rem;
+      left: .75rem;
+      z-index: 20;
+      padding: .65rem 1rem;
+      border-radius: .7rem;
+      background: var(--brand-dark);
+      color: #fff;
+      transform: translateY(-180%);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    header {
+      padding: 2rem 1.25rem 4.7rem;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 88% 18%, rgba(77, 212, 203, .40), transparent 19rem),
+        linear-gradient(135deg, #F7F8FA, #EAF8F7 64%, #BDEFEA);
+    }
+    .header-inner, .layout, footer { width: min(1120px, 100%); margin: 0 auto; }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: .72rem;
+      color: var(--text);
+      font-weight: 750;
+      letter-spacing: -.02em;
+      text-decoration: none;
+    }
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: contain;
+    }
+    .eyebrow {
+      margin: 3.7rem 0 .6rem;
+      color: var(--accent);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 820px;
+      margin: 0;
+      font-size: clamp(2.35rem, 7vw, 4.7rem);
+      line-height: 1.02;
+      letter-spacing: -.052em;
+    }
+    .lead {
+      max-width: 760px;
+      margin: 1.25rem 0 0;
+      color: rgba(23, 32, 51, .72);
+      font-size: clamp(1rem, 2vw, 1.18rem);
+    }
+    .updated {
+      display: inline-flex;
+      margin-top: 1.5rem;
+      padding: .42rem .75rem;
+      border: 1px solid rgba(38, 181, 173, .30);
+      border-radius: 999px;
+      color: var(--brand-dark);
+      background: rgba(255,255,255,.60);
+      font-size: .84rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 2.2rem;
+      align-items: start;
+      padding: 0 1.25rem 4rem;
+    }
+    main {
+      margin-top: -2.25rem;
+      padding: clamp(1.4rem, 4vw, 3.2rem);
+      border: 1px solid rgba(228, 235, 239, .90);
+      border-radius: 24px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    aside {
+      position: sticky;
+      top: 1.25rem;
+      margin-top: 1.5rem;
+      padding: 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(10px);
+    }
+    aside strong { display: block; margin-bottom: .65rem; font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; }
+    aside ol { margin: 0; padding-left: 1.25rem; font-size: .88rem; line-height: 1.5; }
+    aside li + li { margin-top: .42rem; }
+    aside a { color: var(--muted); text-decoration: none; }
+    aside a:hover { color: var(--brand); }
+
+    section { scroll-margin-top: 1.5rem; }
+    section + section { margin-top: 3.1rem; padding-top: 2.8rem; border-top: 1px solid var(--line); }
+    h2 { margin: 0 0 1rem; font-size: clamp(1.55rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -.025em; }
+    h3 { margin: 1.6rem 0 .55rem; font-size: 1.08rem; line-height: 1.4; }
+    p { margin: .8rem 0; }
+    ul { padding-left: 1.3rem; }
+    li + li { margin-top: .45rem; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .8rem;
+      margin: 1.7rem 0 2rem;
+    }
+    .summary-card {
+      padding: 1.05rem;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-soft);
+    }
+    .summary-card strong { display: block; margin-bottom: .3rem; font-size: .95rem; }
+    .summary-card span { color: var(--muted); font-size: .86rem; line-height: 1.45; }
+    .notice {
+      margin: 1.5rem 0;
+      padding: 1.05rem 1.15rem;
+      border-left: 4px solid var(--brand);
+      border-radius: 0 12px 12px 0;
+      background: var(--surface-soft);
+    }
+    .contact-card {
+      padding: 1.25rem;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-soft);
+    }
+    .contact-card p { margin: .25rem 0; }
+    code { padding: .12em .35em; border-radius: .35em; background: var(--surface-soft); font-family: ui-monospace, monospace; font-size: .9em; }
+
+    footer {
+      padding: 0 1.25rem 3.5rem;
+      color: var(--muted);
+      font-size: .88rem;
+      text-align: center;
+    }
+
+    @media (max-width: 880px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; order: -1; margin-top: 1.2rem; }
+      aside ol { columns: 2; column-gap: 2rem; }
+      main { margin-top: 0; }
+    }
+    @media (max-width: 620px) {
+      body { font-size: 16px; }
+      header { padding-bottom: 2.5rem; }
+      .eyebrow { margin-top: 2.8rem; }
+      .layout { padding-inline: .75rem; gap: .9rem; }
+      main { padding: 1.25rem; border-radius: 18px; }
+      aside ol { columns: 1; }
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header>
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="Nutro AI — home page">
+        <img src="/icons/nutro-rounded-clean.png?v=20260818-rounded-clean" alt="" width="40" height="40">
+        <span>Nutro AI</span>
+      </a>
+      <p class="eyebrow">Privacy and data protection</p>
+      <h1>Privacy Policy</h1>
+      <p class="lead">This document explains transparently which data Nutro AI processes, why it is necessary, and how you can exercise your rights.</p>
+      <span class="updated">Last updated: August 18, 2026</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main id="content">
+      <section id="overview">
+        <h2>1. Overview</h2>
+        <p>Nutro AI is a nutrition tracking, meal planning, and wellness app that offers artificial intelligence features. This Policy applies to the Nutro AI app, the <a href="https://nutro.snapdark.com">nutro.snapdark.com</a> website, the API, and related services.</p>
+        <div class="summary-grid" aria-label="Policy summary">
+          <div class="summary-card"><strong>You are in control</strong><span>Optional permissions can be denied or revoked in your device settings.</span></div>
+          <div class="summary-card"><strong>We do not sell data</strong><span>Personal or health data is not sold to third parties.</span></div>
+          <div class="summary-card"><strong>Deletion available</strong><span>Your account and associated data can be deleted in the app.</span></div>
+        </div>
+        <div class="notice"><strong>Important:</strong> Nutro AI does not replace a physician, dietitian, or other health professional. AI-generated information and responses may contain errors and should be carefully evaluated.</div>
+      </section>
+
+      <section id="data">
+        <h2>2. Data we may process</h2>
+        <h3>3.1. Account and profile</h3>
+        <p>Name, username, email address, hashed password, Google sign-in identifier, profile picture, language, country or region provided by the device, and data necessary for authentication and session recovery.</p>
+
+        <h3>3.2. Nutrition, body, and wellness</h3>
+        <p>When provided, we process age, height, weight, weight history and target weight, activity level, fitness goal, calorie and macronutrient targets, food preferences and restrictions, favorite or recent foods, logged meals, nutrients, fiber, diet plans, schedules, daily progress, and usage streaks. This data may reveal health information and receives enhanced protection.</p>
+
+        <h3>3.3. Health Connect</h3>
+        <p>With your express authorization, Nutro AI may read from Health Connect only the data corresponding to the permissions you grant: steps, active calories, and exercise sessions or duration. This data is used to display your activity summary and improve nutrition tracking. Nutro AI does not sell this data, use it for advertising, or write data to Health Connect. You can revoke access at any time in Health Connect settings.</p>
+
+        <h3>3.4. User-submitted content and AI features</h3>
+        <p>We may process messages and conversation history, answers to questions, assistant commands, food preferences, photos of food, labels, barcodes, selected documents, audio recordings for transcription, and photos submitted for visual features, such as “Me in shape.” Audio is used to produce a transcript; the transcript may become part of conversation history. Photos generated or published by a user may be stored to provide the requested feature.</p>
+
+        <h3>3.5. Social features</h3>
+        <p>If you use friendships, challenges, reactions, the feed, or progress comparisons, we may process your display name, photo, posts, selected images, reactions, score, progress, and streak. Content is shared only according to the action you take and the options available in the feature. Information published in the feed may be seen by other users.</p>
+
+        <h3>3.6. Subscriptions, credits, and ads</h3>
+        <p>We process subscription type and status, validity dates, purchase identifiers, Google Play purchase validation tokens, and credit balances or grants. The store or payment processor collects financial data; Nutro AI normally receives only the data necessary to validate a purchase. In the free version, Google AdMob may process IP address, advertising or device identifiers, ad interactions, and technical data to display, measure, and protect ads against fraud. Personalization choices can be controlled in Google and device settings.</p>
+
+        <h3>3.7. Technical and security data</h3>
+        <p>IP address, date and time, accessed route, operating system, app version, device model and general settings, language, time zone, technical identifiers, notification token, diagnostics, error logs, usage metrics, and app integrity signals. This data helps us operate the service, prevent fraud, investigate failures, and protect accounts.</p>
+      </section>
+
+      <section id="permissions">
+        <h2>3. Device permissions</h2>
+        <ul>
+          <li><strong>Camera and photos:</strong> read labels and barcodes, analyze food, choose a profile photo, or use image features. Access occurs when you start the feature.</li>
+          <li><strong>Microphone:</strong> record a voice message for transcription in the chat. Recording requires system authorization.</li>
+          <li><strong>Health Connect:</strong> read steps, active calories, and exercises you authorize.</li>
+          <li><strong>Notifications:</strong> send reminders, progress information, social messages, and service notices. Local notifications may also be scheduled on the device.</li>
+          <li><strong>Storage or gallery:</strong> choose files and images or save requested content, depending on the system version.</li>
+          <li><strong>Bluetooth:</strong> may be requested by the system for compatibility with audio features or connected devices; it is not used to track your location.</li>
+        </ul>
+        <p>Refusing a permission may limit only the feature that depends on it. Permissions can be changed in Android, iOS, or Health Connect settings.</p>
+      </section>
+
+      <section id="purposes">
+        <h2>4. How we use data</h2>
+        <ul>
+          <li>create, authenticate, and maintain your account;</li>
+          <li>calculate targets and provide personalized nutrition tracking;</li>
+          <li>record meals, progress, diet plans, preferences, and activities;</li>
+          <li>respond in the chat, analyze images, transcribe audio, and generate AI content;</li>
+          <li>provide friendships, challenges, the feed, reactions, reminders, and notifications;</li>
+          <li>validate subscriptions, manage credits, and deliver premium features;</li>
+          <li>display and measure ads in the free version;</li>
+          <li>detect abuse, fraud, and failures, maintain security, and improve the service;</li>
+          <li>comply with legal and regulatory obligations and exercise rights.</li>
+        </ul>
+      </section>
+
+      <section id="legal-bases">
+        <h2>5. Legal bases</h2>
+        <p>Under Brazil's General Data Protection Law (LGPD), processing may rely on:</p>
+        <ul>
+          <li><strong>performance of the service or contractual procedures</strong>, to deliver the requested features;</li>
+          <li><strong>consent</strong>, especially for optional permissions and processing of sensitive data when applicable;</li>
+          <li><strong>legitimate interest</strong>, subject to a necessity assessment and protection of your rights, for security, support, and service improvement;</li>
+          <li><strong>compliance with a legal or regulatory obligation</strong>;</li>
+          <li><strong>fraud prevention and protection of the data subject</strong> in identification and authentication processes;</li>
+          <li><strong>exercise of rights</strong> in administrative, judicial, or arbitration proceedings.</li>
+        </ul>
+      </section>
+
+      <section id="ai">
+        <h2>6. Artificial intelligence</h2>
+        <p>To generate responses, diets, analyses, transcripts, and images, Nutro AI sends the content necessary for the request to the AI provider, which may include your message, image, or audio and limited nutritional context. We use the OpenRouter platform, which routes the request to the selected model provider. The provider may vary based on availability and feature.</p>
+        <p>OpenRouter states that it does not store prompts and responses by default, unless optional logging features are enabled, and that final providers have their own retention policies. We adopt configurations and providers compatible with the service purpose and limit the data sent to what is necessary. We do not use health content to target ads.</p>
+        <p>AI outputs can be inaccurate, incomplete, or unsuitable. They do not produce decisions with legal effects on you and do not constitute a diagnosis, prescription, or medical advice.</p>
+      </section>
+
+      <section id="sharing">
+        <h2>7. Sharing and service providers</h2>
+        <p>We do not sell personal data. We may share it, to the extent necessary, with:</p>
+        <ul>
+          <li><strong>Google:</strong> sign-in, Google Play, AdMob, Firebase Cloud Messaging, Firebase App Check/Play Integrity, and Health Connect;</li>
+          <li><strong>OpenRouter and AI model providers:</strong> processing artificial intelligence requests;</li>
+          <li><strong>Cloudflare:</strong> DNS, traffic protection, content delivery, and storage of certain images;</li>
+          <li><strong>hosting, database, and infrastructure providers:</strong> service operation, security, and recovery backups;</li>
+          <li><strong>stores and payment processors:</strong> purchase processing and validation;</li>
+          <li><strong>public authorities or third parties:</strong> when required by law, a valid order, protection of rights, or fraud prevention.</li>
+        </ul>
+        <p>When you publish or share content through social features, the data you choose is also made available to the specified users or to the app community, depending on the feature.</p>
+      </section>
+
+      <section id="international-transfers">
+        <h2>8. International transfers</h2>
+        <p>Some technology operators and providers may process data outside Brazil. In these cases, we seek to use providers subject to data protection obligations and adopt measures compatible with the LGPD, including contractual clauses, access controls, and mechanisms recognized by competent authorities.</p>
+      </section>
+
+      <section id="retention">
+        <h2>9. Storage and retention</h2>
+        <p>We retain data for as long as necessary to provide the service and while your account is active. Periods may vary according to the data category, security needs, dispute resolution, and legal, tax, or regulatory obligations.</p>
+        <p>When you delete your account in the app, we remove the account record and directly associated data, including synced meals, goals, diets, conversations saved on the server, friendships, challenges, feed, notification tokens, and linked files under our control. Information strictly necessary to comply with a legal obligation, prevent fraud, or exercise rights may be retained for the applicable period. Backups are deleted or overwritten according to their technical lifecycle.</p>
+        <p>Data stored only on the device may be removed when you delete the account, clear app data, or uninstall the app, depending on the operating system.</p>
+      </section>
+
+      <section id="security">
+        <h2>10. Security</h2>
+        <p>We use HTTPS for transmission, token-based authentication, hashed password protection, app integrity validation, access controls, and infrastructure measures to reduce the risks of unauthorized access, alteration, loss, or disclosure. No system is completely immune to incidents; if a relevant event occurs, we will take the appropriate legal and technical measures.</p>
+      </section>
+
+      <section id="rights">
+        <h2>11. Your rights</h2>
+        <p>Under the LGPD, you may request, where applicable:</p>
+        <ul>
+          <li>confirmation of whether processing exists and access to the data;</li>
+          <li>correction of incomplete, inaccurate, or outdated data;</li>
+          <li>anonymization, blocking, or deletion of unnecessary, excessive, or unlawfully processed data;</li>
+          <li>portability, subject to applicable regulations and commercial and industrial secrets;</li>
+          <li>information about sharing and the possibility of refusing consent;</li>
+          <li>withdrawal of consent and deletion of data processed on that basis, subject to legal retention exceptions;</li>
+          <li>objection to unlawful processing and review of automated decisions, where applicable;</li>
+          <li>petitioning Brazil's National Data Protection Authority — ANPD — and consumer protection bodies.</li>
+        </ul>
+        <p>You can correct some data directly in the app. To delete your account, go to <strong>Settings → Delete account</strong> or visit the <a href="/account-deletion.html">account deletion page</a>. For other requests, email <a href="mailto:suporte@snapdark.com?subject=Privacy%20-%20Nutro%20AI">suporte@snapdark.com</a>. We may request information to confirm your identity and protect the account.</p>
+      </section>
+
+      <section id="children">
+        <h2>12. Children and teenagers</h2>
+        <p>Nutro AI is not directed at children. People under 18 must use the service with the knowledge and supervision of a responsible adult, always in accordance with their best interests. If you are a parent or guardian and believe that a child's or teenager's data was handled improperly, contact us for review and, where appropriate, deletion.</p>
+      </section>
+
+      <section id="website">
+        <h2>13. Website, local storage, and external links</h2>
+        <p>The website may record technical access data and use local storage strictly necessary for the web app to function. Infrastructure and security services may use cookies or technical identifiers to prevent abuse. External links are governed by the policies of the respective services.</p>
+        <p>For information about the practices of key service providers, see the policies of <a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google</a>, <a href="https://openrouter.ai/privacy" rel="noopener noreferrer">OpenRouter</a>, and <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener noreferrer">Cloudflare</a>.</p>
+      </section>
+
+      <section id="changes">
+        <h2>14. Changes to this Policy</h2>
+        <p>This Policy may be updated to reflect changes to the app, service providers, or the law. The current version will remain available at this address with its update date. Material changes may also be communicated in the app or through another appropriate channel.</p>
+      </section>
+
+      <section id="contact">
+        <h2>15. Contact us</h2>
+        <p>Privacy questions, requests, or complaints can be sent to <a href="mailto:suporte@snapdark.com?subject=Privacy%20-%20Nutro%20AI">suporte@snapdark.com</a>. Include only the information necessary for us to identify your account and handle the request securely.</p>
+      </section>
+    </main>
+
+    <aside aria-label="In this policy">
+      <strong>In this policy</strong>
+      <ol>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#data">Data processed</a></li>
+        <li><a href="#permissions">Permissions</a></li>
+        <li><a href="#purposes">Purposes</a></li>
+        <li><a href="#legal-bases">Legal bases</a></li>
+        <li><a href="#ai">Artificial intelligence</a></li>
+        <li><a href="#sharing">Sharing</a></li>
+        <li><a href="#international-transfers">International transfers</a></li>
+        <li><a href="#retention">Retention</a></li>
+        <li><a href="#security">Security</a></li>
+        <li><a href="#rights">Your rights</a></li>
+        <li><a href="#children">Children and teenagers</a></li>
+        <li><a href="#website">Website and links</a></li>
+        <li><a href="#changes">Changes</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ol>
+    </aside>
+  </div>
+
+  <footer>© 2026 Snapdark Apps · Nutro AI</footer>
+</body>
+</html>

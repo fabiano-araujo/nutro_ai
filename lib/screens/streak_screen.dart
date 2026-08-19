@@ -5,17 +5,20 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../controllers/navigation_controller.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../providers/daily_meals_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/streak_provider.dart';
 import '../services/social_service.dart';
+import '../services/streak_widget_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../utils/streak_helper.dart';
 import '../widgets/diet_style_message_state.dart';
 import 'friends_screen.dart';
+import 'streak_widget_onboarding_screen.dart';
 
 Color _streakInputFillColor(bool isDarkMode) => isDarkMode
     ? AppTheme.darkComponentColor
@@ -207,7 +210,7 @@ class _StreakScreenState extends State<StreakScreen> {
               : 'streak_share_message_other',
         )
         .replaceAll('{count}', count.toString());
-    await Share.share(message);
+    await SharePlus.instance.share(ShareParams(text: message));
   }
 
   void _openFriends() {
@@ -216,6 +219,12 @@ class _StreakScreenState extends State<StreakScreen> {
         builder: (_) => const FriendsScreen(isEmbedded: false),
       ),
     );
+  }
+
+  void _completeCommitment() {
+    HapticFeedback.mediumImpact();
+    navigationController.changeTab(0);
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -263,32 +272,92 @@ class _StreakScreenState extends State<StreakScreen> {
         scrolledUnderElevation: 0,
         elevation: 0,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          _StreakModeTabs(
-            selectedIndex: _selectedTab,
-            onChanged: (index) => setState(() => _selectedTab = index),
+          Column(
+            children: [
+              _StreakModeTabs(
+                selectedIndex: _selectedTab,
+                onChanged: (index) => setState(() => _selectedTab = index),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _refreshData,
+                  color: _streakPrimaryColor(isDarkMode),
+                  child: _selectedTab == 0
+                      ? _PersonalStreakTab(
+                          key: const ValueKey('personal-streak-tab'),
+                          visibleMonth: _visibleMonth,
+                          calendarMode: _calendarMode,
+                          onPreviousMonth: _previousMonth,
+                          onNextMonth: _nextMonth,
+                          onCalendarModeChanged: _setCalendarMode,
+                        )
+                      : _FriendsStreakTab(
+                          key: const ValueKey('friends-streak-tab'),
+                          onInviteFriends: _openFriends,
+                        ),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshData,
-              color: _streakPrimaryColor(isDarkMode),
-              child: _selectedTab == 0
-                  ? _PersonalStreakTab(
-                      key: const ValueKey('personal-streak-tab'),
-                      visibleMonth: _visibleMonth,
-                      calendarMode: _calendarMode,
-                      onPreviousMonth: _previousMonth,
-                      onNextMonth: _nextMonth,
-                      onCalendarModeChanged: _setCalendarMode,
-                    )
-                  : _FriendsStreakTab(
-                      key: const ValueKey('friends-streak-tab'),
-                      onInviteFriends: _openFriends,
-                    ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _StreakCommitmentBar(
+              onPressed: _completeCommitment,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StreakCommitmentBar extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _StreakCommitmentBar({
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
+
+    return ColoredBox(
+      color: background.withValues(alpha: 0.98),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(24, 10, 24, 14),
+        child: SizedBox(
+          width: double.infinity,
+          height: 58,
+          child: FilledButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(
+              Icons.local_fire_department_rounded,
+              size: 22,
+            ),
+            label: Text(context.tr.translate('streak_commit_cta')),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 2,
+              shadowColor: AppTheme.primaryDarkColor.withValues(alpha: 0.35),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -440,7 +509,7 @@ class _PersonalStreakTab extends StatelessWidget {
 
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 124),
           children: [
             if (isLoading)
               const SizedBox(
@@ -448,31 +517,54 @@ class _PersonalStreakTab extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               )
             else ...[
-              _PersonalHeroCard(
-                streakProvider: streakProvider,
+              _StreakCelebrationHero(
                 registrationStreak: effectiveStreak,
               ),
-              const SizedBox(height: 12),
-              _FreezeStatusCard(streakProvider: streakProvider),
-              const SizedBox(height: 12),
-              _StreakStatsGrid(
+              const SizedBox(height: 24),
+              _SectionTitle(
+                title: context.tr.translate('streak_challenge_section'),
+              ),
+              const SizedBox(height: 10),
+              _MilestoneChallengeCard(streak: effectiveStreak),
+              const SizedBox(height: 24),
+              _SectionTitle(
+                title: context.tr.translate('streak_overview_section'),
+              ),
+              const SizedBox(height: 10),
+              _RollingWeekCard(mealsProvider: mealsProvider),
+              const SizedBox(height: 24),
+              _SectionTitle(
+                title: context.tr.translate('streak_summary_section'),
+              ),
+              const SizedBox(height: 10),
+              _StreakSummaryCard(
+                bestStreak: math.max(
+                  streakProvider.streak?.registrationBestStreak ?? 0,
+                  effectiveStreak,
+                ),
+                freezesAvailable: streakProvider.freezesAvailable,
+              ),
+              _StreakHomeWidgetCard(
+                mealsProvider: mealsProvider,
+                streak: effectiveStreak,
+              ),
+              _StreakDetailsExpansion(
                 proteinStreak: effectiveProteinStreak,
                 calorieStreak: effectiveCalorieStreak,
                 selectedMode: calendarMode,
                 onModeSelected: onCalendarModeChanged,
-              ),
-              const SizedBox(height: 12),
-              _StreakCalendarCard(
-                visibleMonth: visibleMonth,
-                mealsProvider: mealsProvider,
-                goalsProvider: goalsProvider,
-                mode: calendarMode,
-                registrationLastDate:
-                    streakProvider.streak?.registrationLastDate,
-                proteinLastDate: streakProvider.streak?.proteinLastDate,
-                calorieLastDate: streakProvider.streak?.goalLastDate,
-                onPreviousMonth: onPreviousMonth,
-                onNextMonth: onNextMonth,
+                calendar: _StreakCalendarCard(
+                  visibleMonth: visibleMonth,
+                  mealsProvider: mealsProvider,
+                  goalsProvider: goalsProvider,
+                  mode: calendarMode,
+                  registrationLastDate:
+                      streakProvider.streak?.registrationLastDate,
+                  proteinLastDate: streakProvider.streak?.proteinLastDate,
+                  calorieLastDate: streakProvider.streak?.goalLastDate,
+                  onPreviousMonth: onPreviousMonth,
+                  onNextMonth: onNextMonth,
+                ),
               ),
             ],
           ],
@@ -482,103 +574,130 @@ class _PersonalStreakTab extends StatelessWidget {
   }
 }
 
-class _PersonalHeroCard extends StatelessWidget {
-  final StreakProvider streakProvider;
+const _streakFlameOrange = Color(0xFFFF7A32);
+
+class _StreakCelebrationHero extends StatelessWidget {
   final int registrationStreak;
 
-  const _PersonalHeroCard({
-    required this.streakProvider,
-    required this.registrationStreak,
-  });
+  const _StreakCelebrationHero({required this.registrationStreak});
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final mainStreak = registrationStreak;
-    final bestStreak = math.max(streakProvider.bestOverallStreak, mainStreak);
-    final dayLabel = mainStreak == 1
-        ? context.tr.translate('streak_hero_day_singular')
-        : context.tr.translate('streak_hero_day_plural');
+    final hasStarted = registrationStreak > 0;
+    final messageKey = registrationStreak == 0
+        ? 'streak_hero_start_hint'
+        : registrationStreak == 1
+            ? 'streak_hero_started'
+            : 'streak_hero_continue';
 
-    return _SocialStyleCard(
-      child: Row(
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF176E69), Color(0xFF4E45B8), Color(0xFF8C69E8)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4E45B8).withValues(alpha: 0.26),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Stack(
         children: [
-          Expanded(
+          const Positioned(
+            right: -34,
+            top: -46,
+            child: _HeroGlow(size: 190),
+          ),
+          Positioned(
+            left: -80,
+            bottom: -120,
+            child: _HeroGlow(
+              size: 220,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  context.tr.translate('streak_hero_title'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _streakMutedTextColor(isDarkMode),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(
-                      '$mainStreak',
-                      style: TextStyle(
-                        fontSize: 56,
-                        fontWeight: FontWeight.w800,
-                        height: 0.95,
-                        color: isDarkMode
-                            ? Colors.white
-                            : AppTheme.textPrimaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        dayLabel,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: _streakMutedTextColor(isDarkMode),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$registrationStreak',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 68,
+                              height: 0.9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -2,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            context.tr.translate(
+                              registrationStreak == 1
+                                  ? 'streak_widget_day_one'
+                                  : 'streak_widget_days_other',
+                            ),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              height: 1,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    _AnimatedHeroFlame(active: hasStarted),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  mainStreak == 0
-                      ? context.tr.translate('streak_hero_start_hint')
-                      : context.tr
-                          .translate(
-                            bestStreak == 1
-                                ? 'streak_hero_record_one'
-                                : 'streak_hero_record_other',
-                          )
-                          .replaceAll('{count}', bestStreak.toString()),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _streakMutedTextColor(isDarkMode),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 15,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141918).withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        hasStarted ? '🎉' : '🍽️',
+                        style: const TextStyle(fontSize: 26),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          context.tr.translate(messageKey),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            height: 1.28,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ),
-          ),
-          Container(
-            width: 96,
-            height: 96,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: MacroTheme.caloriesColor.withValues(
-                alpha: isDarkMode ? 0.18 : 0.12,
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              MacroTheme.caloriesIcon,
-              color: mainStreak > 0
-                  ? MacroTheme.caloriesColor
-                  : _streakMutedTextColor(isDarkMode).withValues(alpha: 0.5),
-              size: 54,
             ),
           ),
         ],
@@ -587,110 +706,678 @@ class _PersonalHeroCard extends StatelessWidget {
   }
 }
 
-class _FreezeStatusCard extends StatelessWidget {
-  final StreakProvider streakProvider;
+class _AnimatedHeroFlame extends StatefulWidget {
+  final bool active;
 
-  const _FreezeStatusCard({required this.streakProvider});
+  const _AnimatedHeroFlame({required this.active});
+
+  @override
+  State<_AnimatedHeroFlame> createState() => _AnimatedHeroFlameState();
+}
+
+class _AnimatedHeroFlameState extends State<_AnimatedHeroFlame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _shouldAnimate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1650),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedHeroFlame oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) {
+      _syncAnimation();
+    }
+  }
+
+  void _syncAnimation() {
+    final shouldAnimate =
+        widget.active && !MediaQuery.disableAnimationsOf(context);
+    if (_shouldAnimate == shouldAnimate) return;
+    _shouldAnimate = shouldAnimate;
+    if (shouldAnimate) {
+      _controller.repeat();
+    } else {
+      _controller
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final phase = _controller.value * math.pi * 2;
+          final pulse = math.sin(phase);
+          final sway = _shouldAnimate ? math.sin(phase + (math.pi / 3)) : 0.0;
+
+          return Transform.translate(
+            key: const ValueKey('streak-animated-flame'),
+            offset: Offset(0, -2.5 * pulse),
+            child: Transform.rotate(
+              angle: sway * 0.025,
+              child: Transform.scale(
+                scale: 1 + (pulse * 0.035),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Opacity(
+                      opacity: widget.active ? 0.16 + (pulse * 0.035) : 0.06,
+                      child: Transform.scale(
+                        scale: 0.92 + (pulse * 0.04),
+                        child: Container(
+                          width: 124,
+                          height: 124,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [Color(0xFFFFD75B), Color(0x00FF7138)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFFFFE05B),
+                          Color(0xFFFF9D2E),
+                          Color(0xFFFF5B36),
+                        ],
+                      ).createShader(bounds),
+                      child: Icon(
+                        Icons.local_fire_department_rounded,
+                        color: widget.active
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.48),
+                        size: 124,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HeroGlow extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _HeroGlow({
+    required this.size,
+    this.color = const Color(0x26FFFFFF),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _MilestoneChallengeCard extends StatelessWidget {
+  final int streak;
+
+  const _MilestoneChallengeCard({required this.streak});
+
+  int get _target {
+    if (streak < 3) return 3;
+    if (streak < 7) return 7;
+    if (streak < 14) return 14;
+    return ((streak ~/ 7) + 1) * 7;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final target = _target;
+    final displayCurrent = streak.clamp(0, target);
+    final progress = target == 0 ? 0.0 : (displayCurrent / target);
+
+    return _SocialStyleCard(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.tr
+                      .translate('streak_challenge_next')
+                      .replaceAll('{target}', target.toString()),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                context.tr
+                    .translate('streak_challenge_day_progress')
+                    .replaceAll('{current}', displayCurrent.toString())
+                    .replaceAll('{target}', target.toString()),
+                style: TextStyle(
+                  color: _streakMutedTextColor(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 12,
+              color: _streakFlameOrange,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : const Color(0xFFE6E9ED),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              for (final milestone in const [3, 7, 14]) ...[
+                if (milestone != 3) const SizedBox(width: 8),
+                Expanded(
+                  child: _MilestoneChip(
+                    milestone: milestone,
+                    achieved: streak >= milestone,
+                    active: milestone == target,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MilestoneChip extends StatelessWidget {
+  final int milestone;
+  final bool achieved;
+  final bool active;
+
+  const _MilestoneChip({
+    required this.milestone,
+    required this.achieved,
+    required this.active,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primary = _streakPrimaryColor(isDarkMode);
-    final freezes = streakProvider.freezesAvailable;
-    final hasFreeze = freezes > 0;
-    final title = hasFreeze
-        ? context.tr
-            .translate(
-              freezes == 1
-                  ? 'streak_freeze_available_title_one'
-                  : 'streak_freeze_available_title_other',
-            )
-            .replaceAll('{count}', freezes.toString())
-        : context.tr.translate('streak_freeze_none_title');
-    final message = hasFreeze
-        ? context.tr.translate('streak_freeze_available_message')
-        : context.tr.translate('streak_freeze_none_message');
-
-    return _SocialStyleCard(
+    final color = achieved || active
+        ? _streakFlameOrange
+        : _streakMutedTextColor(isDarkMode);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: achieved ? 0.16 : 0.07),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: color.withValues(alpha: active ? 0.6 : 0.22)),
+      ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(
-              Icons.shield_rounded,
-              color: primary,
-              size: 30,
-            ),
+          Icon(
+            achieved ? Icons.check_circle_rounded : Icons.flag_rounded,
+            color: color,
+            size: 16,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color:
-                        isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                    height: 1.25,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _streakMutedTextColor(isDarkMode),
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: () => _showFreezeInfo(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: primary,
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      context.tr.translate('streak_get_more_freezes'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          const SizedBox(width: 5),
+          Text(
+            '$milestone',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  void _showFreezeInfo(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.tr.translate('streak_freeze_info_title')),
-        content: Text(context.tr.translate('streak_freeze_info_message')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(context.tr.translate('ok')),
+class _RollingWeekCard extends StatelessWidget {
+  final DailyMealsProvider mealsProvider;
+
+  const _RollingWeekCard({required this.mealsProvider});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final days = List.generate(
+      7,
+      (index) => today.subtract(Duration(days: 6 - index)),
+    );
+
+    return _SocialStyleCard(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 18),
+      child: Row(
+        children: [
+          for (final day in days)
+            Expanded(
+              child: _RollingWeekDay(
+                label: _weekdayLabel(context, day.weekday),
+                logged: mealsProvider.hasMealsOn(day),
+                isToday: day == today,
+                isDarkMode: isDarkMode,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _weekdayLabel(BuildContext context, int weekday) {
+    final keys = <int, String>{
+      DateTime.monday: 'day_mon_short',
+      DateTime.tuesday: 'day_tue_short',
+      DateTime.wednesday: 'day_wed_short',
+      DateTime.thursday: 'day_thu_short',
+      DateTime.friday: 'day_fri_short',
+      DateTime.saturday: 'day_sat_short',
+      DateTime.sunday: 'day_sun_short',
+    };
+    return context.tr.translate(keys[weekday]!);
+  }
+}
+
+class _RollingWeekDay extends StatelessWidget {
+  final String label;
+  final bool logged;
+  final bool isToday;
+  final bool isDarkMode;
+
+  const _RollingWeekDay({
+    required this.label,
+    required this.logged,
+    required this.isToday,
+    required this.isDarkMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final inactive = _streakMutedTextColor(isDarkMode).withValues(alpha: 0.42);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          style: TextStyle(
+            color: isToday ? _streakFlameOrange : inactive,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Icon(
+          Icons.local_fire_department_rounded,
+          color: logged ? _streakFlameOrange : inactive,
+          size: 34,
+        ),
+        const SizedBox(height: 5),
+        Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(
+            color: isToday ? _streakFlameOrange : Colors.transparent,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StreakSummaryCard extends StatelessWidget {
+  final int bestStreak;
+  final int freezesAvailable;
+
+  const _StreakSummaryCard({
+    required this.bestStreak,
+    required this.freezesAvailable,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final protectionKey = freezesAvailable == 1
+        ? 'streak_protection_one'
+        : 'streak_protection_other';
+    return _SocialStyleCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          _StreakSummaryRow(
+            icon: Icons.local_fire_department_rounded,
+            iconColor: _streakFlameOrange,
+            label: context.tr.translate('streak_best_registration'),
+            value: '$bestStreak',
+          ),
+          Divider(
+            height: 1,
+            color: _streakBorderColor(
+              Theme.of(context).brightness == Brightness.dark,
+            ),
+          ),
+          _StreakSummaryRow(
+            icon: Icons.shield_rounded,
+            iconColor: const Color(0xFF66C8FF),
+            label: context.tr
+                .translate(protectionKey)
+                .replaceAll('{count}', freezesAvailable.toString()),
+            value: '$freezesAvailable/2',
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StreakSummaryRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+
+  const _StreakSummaryRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.13),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: iconColor, size: 27),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StreakHomeWidgetCard extends StatefulWidget {
+  final DailyMealsProvider mealsProvider;
+  final int streak;
+
+  const _StreakHomeWidgetCard({
+    required this.mealsProvider,
+    required this.streak,
+  });
+
+  @override
+  State<_StreakHomeWidgetCard> createState() => _StreakHomeWidgetCardState();
+}
+
+class _StreakHomeWidgetCardState extends State<_StreakHomeWidgetCard>
+    with WidgetsBindingObserver {
+  bool? _isSupported;
+  bool _isAdded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshState();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _refreshState() async {
+    final supported = await StreakWidgetService.isSupported();
+    final added = supported && await StreakWidgetService.isAdded();
+    if (!mounted) return;
+    setState(() {
+      _isSupported = supported;
+      _isAdded = added;
+    });
+  }
+
+  Future<void> _openWidgetSetup() async {
+    final now = DateTime.now();
+    final nutrition = widget.mealsProvider.getNutritionSnapshotForDate(now);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => StreakWidgetOnboardingScreen(
+          initialStep: 1,
+          calories: (nutrition['calories'] as num?)?.round() ?? 0,
+          calorieGoal: (nutrition['calorieGoal'] as num?)?.round() ??
+              widget.mealsProvider.caloriesGoal,
+          streak: widget.streak,
+        ),
+      ),
+    );
+    await _refreshState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Depois que o launcher confirma a instalação, não mantemos um card de
+    // status ocupando espaço. O widget passa a ser acessível pela tela
+    // inicial do Android e o CTA de compromisso continua fixo abaixo.
+    if (_isSupported != true || _isAdded) return const SizedBox.shrink();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primary = _streakPrimaryColor(isDarkMode);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 16),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              primary.withValues(alpha: isDarkMode ? 0.24 : 0.14),
+              const Color(0xFF6251D7).withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: primary.withValues(alpha: 0.36)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                Icons.widgets_rounded,
+                color: primary,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr.translate('streak_widget_card_title'),
+                    style: TextStyle(
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.tr.translate('streak_widget_card_body'),
+                    style: TextStyle(
+                      color: _streakMutedTextColor(isDarkMode),
+                      fontSize: 12,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: _openWidgetSetup,
+                    icon: const Icon(
+                      Icons.add_to_home_screen_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      context.tr.translate('streak_intro_widget_cta'),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor:
+                          isDarkMode ? const Color(0xFF10201F) : Colors.white,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StreakDetailsExpansion extends StatelessWidget {
+  final int proteinStreak;
+  final int calorieStreak;
+  final _StreakCalendarMode selectedMode;
+  final ValueChanged<_StreakCalendarMode> onModeSelected;
+  final Widget calendar;
+
+  const _StreakDetailsExpansion({
+    required this.proteinStreak,
+    required this.calorieStreak,
+    required this.selectedMode,
+    required this.onModeSelected,
+    required this.calendar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      type: MaterialType.transparency,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+          childrenPadding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          iconColor: _streakPrimaryColor(isDarkMode),
+          collapsedIconColor: _streakMutedTextColor(isDarkMode),
+          title: Text(
+            context.tr.translate('streak_details_title'),
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          children: [
+            _StreakStatsGrid(
+              proteinStreak: proteinStreak,
+              calorieStreak: calorieStreak,
+              selectedMode: selectedMode,
+              onModeSelected: onModeSelected,
+            ),
+            const SizedBox(height: 12),
+            calendar,
+          ],
+        ),
       ),
     );
   }
@@ -1287,7 +1974,7 @@ class _FriendsStreakTab extends StatelessWidget {
 
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 124),
           children: [
             _FriendsOverviewCard(
               friendCount: friendsProvider.friendCount,

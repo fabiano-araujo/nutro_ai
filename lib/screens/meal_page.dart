@@ -20,29 +20,35 @@ import 'food_page.dart';
 
 class MealPage extends StatefulWidget {
   final _MealPageData meal;
+  final bool showFiber;
 
   const MealPage._({
     super.key,
     required this.meal,
+    required this.showFiber,
   });
 
   factory MealPage.fromMeal({
     Key? key,
     required Meal meal,
+    bool showFiber = false,
   }) {
     return MealPage._(
       key: key,
       meal: _MealPageData.fromMeal(meal),
+      showFiber: showFiber,
     );
   }
 
   factory MealPage.fromPlannedMeal({
     Key? key,
     required PlannedMeal meal,
+    bool showFiber = false,
   }) {
     return MealPage._(
       key: key,
       meal: _MealPageData.fromPlannedMeal(meal),
+      showFiber: showFiber,
     );
   }
 
@@ -127,6 +133,9 @@ class _MealPageState extends State<MealPage> {
               '- ${food.name} (${food.amountLabel}, ${food.calories.toStringAsFixed(0)} kcal)',
         )
         .join('\n');
+    final fiberLine = widget.showFiber
+        ? '\nFibra: ${meal.fiber.toStringAsFixed(1)} g${meal.fiberIsEstimated ? ' (estimada)' : ''}'
+        : '';
 
     return '''
 Analise a refeição abaixo e responda APENAS com JSON válido.
@@ -137,8 +146,7 @@ Horário: $subtitle
 Calorias: ${meal.calories.toStringAsFixed(0)} kcal
 Proteína: ${meal.protein.toStringAsFixed(1)} g
 Carboidratos: ${meal.carbs.toStringAsFixed(1)} g
-Gorduras: ${meal.fat.toStringAsFixed(1)} g
-Fibra: ${meal.fiber.toStringAsFixed(1)} g${meal.fiberIsEstimated ? ' (estimada)' : ''}
+Gorduras: ${meal.fat.toStringAsFixed(1)} g$fiberLine
 Score nutricional local: ${_analysis.score.round()}/100
 Categoria local: ${l10n.translate(_analysis.quality.labelKey)}
 Alimentos:
@@ -436,6 +444,36 @@ Regras:
                 secondaryColor,
               ),
             ),
+            _buildMacroDivider(isDarkMode),
+            Expanded(
+              key: const ValueKey('meal-fiber-macro'),
+              child: Tooltip(
+                message: widget.showFiber
+                    ? l10n.translate('fiber')
+                    : l10n.translate('tap_for_premium'),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: widget.showFiber
+                        ? null
+                        : () =>
+                            Navigator.of(context).pushNamed('/subscription'),
+                    borderRadius: BorderRadius.circular(12),
+                    child: _buildMacroStat(
+                      widget.showFiber
+                          ? MacroTheme.fiberIcon
+                          : Icons.workspace_premium_rounded,
+                      widget.showFiber
+                          ? '${meal.fiber.toStringAsFixed(0)}g'
+                          : l10n.translate('premium'),
+                      l10n.translate('fiber'),
+                      MacroTheme.fiberColor,
+                      secondaryColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -455,12 +493,16 @@ Regras:
           iconSize: 15,
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: color,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ),
         Text(
@@ -557,18 +599,20 @@ Regras:
             color: MacroTheme.proteinColor,
             isDarkMode: isDarkMode,
           ),
-          const SizedBox(height: 14),
-          _LevelBar(
-            label: l10n.translate('fiber_level'),
-            value: _analysis.fiberRatio,
-            amountLabel:
-                '${widget.meal.fiber.toStringAsFixed(1)} g${widget.meal.fiberIsEstimated ? ' • ${l10n.translate('estimated')}' : ''}',
-            valueLabel: l10n.translate(_analysis.fiberLevelKey),
-            leftLabel: l10n.translate('low'),
-            rightLabel: l10n.translate('high'),
-            color: MacroTheme.fatColor,
-            isDarkMode: isDarkMode,
-          ),
+          if (widget.showFiber) ...[
+            const SizedBox(height: 14),
+            _LevelBar(
+              label: l10n.translate('fiber_level'),
+              value: _analysis.fiberRatio,
+              amountLabel:
+                  '${widget.meal.fiber.toStringAsFixed(1)} g${widget.meal.fiberIsEstimated ? ' • ${l10n.translate('estimated')}' : ''}',
+              valueLabel: l10n.translate(_analysis.fiberLevelKey),
+              leftLabel: l10n.translate('low'),
+              rightLabel: l10n.translate('high'),
+              color: MacroTheme.fiberColor,
+              isDarkMode: isDarkMode,
+            ),
+          ],
         ],
       ),
     );
@@ -624,7 +668,9 @@ Regras:
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => FoodPage(food: food.foodPageModel),
+              builder: (_) => FoodPage(
+                food: food.foodPageModel,
+              ),
             ),
           );
         },
@@ -1107,10 +1153,13 @@ class _MealPageData {
 
   factory _MealPageData.fromPlannedMeal(PlannedMeal meal) {
     var totalFiber = 0.0;
+    final hasStoredFiber =
+        meal.mealTotals.fiber > 0 || meal.foods.any((food) => food.fiber > 0);
 
     final foods = meal.foods.map((food) {
-      final estimatedFiber = _estimateFiberForFood(food.name);
-      totalFiber += estimatedFiber;
+      final fiber =
+          hasStoredFiber ? food.fiber : _estimateFiberForFood(food.name);
+      totalFiber += fiber;
 
       return _MealPageFood(
         name: food.name,
@@ -1130,7 +1179,7 @@ class _MealPageData {
               protein: food.protein,
               carbohydrate: food.carbs,
               fat: food.fat,
-              dietaryFiber: estimatedFiber,
+              dietaryFiber: fiber,
             ),
           ],
         ),
@@ -1147,7 +1196,7 @@ class _MealPageData {
       carbs: meal.mealTotals.carbs,
       fat: meal.mealTotals.fat,
       fiber: totalFiber,
-      fiberIsEstimated: true,
+      fiberIsEstimated: !hasStoredFiber,
       foods: foods,
     );
   }

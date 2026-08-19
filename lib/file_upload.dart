@@ -12,7 +12,7 @@ class FileUploadHelper {
     bool allowMultiple = false,
   }) async {
     try {
-      return await FilePicker.platform.pickFiles(
+      return await FilePicker.pickFiles(
         type: type,
         allowedExtensions: allowedExtensions,
         allowMultiple: allowMultiple,

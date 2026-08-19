@@ -35,6 +35,7 @@ class MealCard extends StatefulWidget {
   final Function(Meal)? onMealUpdated;
   final VoidCallback? onDelete;
   final double topContentPadding;
+  final bool showFiber;
 
   const MealCard({
     Key? key,
@@ -47,6 +48,7 @@ class MealCard extends StatefulWidget {
     this.onMealUpdated,
     this.onDelete,
     this.topContentPadding = 16,
+    this.showFiber = false,
   }) : super(key: key);
 
   @override
@@ -96,6 +98,9 @@ class _MealCardState extends State<MealCard> {
       if (x.protein != y.protein) return true;
       if (x.carbs != y.carbs) return true;
       if (x.fat != y.fat) return true;
+      if (x.primaryNutrient?.dietaryFiber != y.primaryNutrient?.dietaryFiber) {
+        return true;
+      }
     }
     return false;
   }
@@ -808,105 +813,57 @@ class _MealCardState extends State<MealCard> {
   }
 
   /// Macro horizontal (ícone ao lado + valor colorido + unidade).
+  /// Divisor vertical fino entre macros — mesmo estilo do card "Minha Dieta".
+  Widget _buildMacroDivider({required bool isDarkMode}) {
+    return Container(
+      width: 1,
+      height: 42,
+      color: isDarkMode
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.07),
+    );
+  }
+
+  /// Macro no formato do card "Minha Dieta": badge circular + valor em destaque.
   Widget _buildCompactMacro({
     required IconData icon,
     required String value,
     String? unit,
     required Color color,
     required bool isDarkMode,
+    VoidCallback? onTap,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        MacroTheme.iconBadge(
-          icon: icon,
-          color: color,
-          isDarkMode: isDarkMode,
-          size: 24,
-          iconSize: 14,
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: FittedBox(
+    final textValue = unit != null && unit.isNotEmpty ? '$value $unit' : value;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDarkMode ? 0.18 : 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
             fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                    height: 1,
-                  ),
-                ),
-                if (unit != null && unit.isNotEmpty) ...[
-                  const SizedBox(width: 3),
-                  Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              textValue,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+                color: color,
+              ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMealTypeSelector({
-    required bool isDarkMode,
-    required Color secondaryTextColor,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _showMealTypeBottomSheet,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    getMealTypeName(_currentMeal.type),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: isDarkMode
-                          ? AppTheme.darkTextColor
-                          : AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 24,
-                color: secondaryTextColor.withValues(alpha: 0.65),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -937,96 +894,198 @@ class _MealCardState extends State<MealCard> {
     }
   }
 
-  /// Badge arredondado com o emoji do tipo de refeição — identidade visual
-  /// imediata do card, tanto recolhido quanto expandido.
-  Widget _buildMealTypeBadge({
-    required bool isDarkMode,
-    double size = 42,
-  }) {
+  /// Caixa com gradiente + emoji do tipo de refeição — mesmo estilo do card
+  /// da tela "Minha Dieta".
+  Widget _buildMealEmojiBox({required bool isDarkMode}) {
     final primary = Theme.of(context).colorScheme.primary;
     return Container(
-      width: size,
-      height: size,
+      width: 48,
+      height: 48,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: primary.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-        borderRadius: BorderRadius.circular(13),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            primary.withValues(alpha: isDarkMode ? 0.30 : 0.20),
+            primary.withValues(alpha: isDarkMode ? 0.12 : 0.07),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: primary.withValues(alpha: isDarkMode ? 0.28 : 0.16),
+        ),
       ),
       child: Text(
         _getMealTypeEmoji(),
-        style: TextStyle(fontSize: size * 0.52, height: 1),
+        style: const TextStyle(fontSize: 23, height: 1),
       ),
     );
   }
 
-  /// Resumo compacto dos macros para o card recolhido:
-  /// bolinha colorida + valor, um para cada macro.
-  Widget _buildMiniMacro({
-    required double value,
-    required Color color,
+  /// Botão circular discreto (mesmo estilo dos botões do card "Minha Dieta").
+  Widget _buildRoundActionButton({
+    required Widget child,
+    required VoidCallback onTap,
+    required bool isDarkMode,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '${value.toStringAsFixed(0)} g',
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: color,
-            height: 1,
+    return Material(
+      color: isDarkMode
+          ? Colors.white.withValues(alpha: 0.07)
+          : Colors.black.withValues(alpha: 0.045),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(padding: const EdgeInsets.all(6), child: child),
+      ),
+    );
+  }
+
+  /// Pílula discreta centralizada (estilo "Mostrar menos" / "Ver detalhes").
+  Widget _buildActionPill({
+    required String label,
+    required Color secondaryTextColor,
+    required bool isDarkMode,
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: (isDarkMode ? Colors.white : Colors.black)
+            .withValues(alpha: isDarkMode ? 0.06 : 0.04),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: secondaryTextColor.withValues(alpha: 0.85),
+            ),
           ),
+          if (icon != null) ...[
+            const SizedBox(width: 2),
+            Icon(icon,
+                size: 18, color: secondaryTextColor.withValues(alpha: 0.7)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Coluna de cabeçalho: título (ou seletor) + linha de kcal/quantidade.
+  Widget _buildMealHeaderInfo({
+    required Widget title,
+    required bool isDarkMode,
+    required Color secondaryTextColor,
+  }) {
+    final foodCount = _currentMeal.foods.length;
+    final foodCountLabel = context.tr
+        .translate(
+          foodCount == 1 ? 'meal_item_count_one' : 'meal_item_count_other',
+        )
+        .replaceAll('{count}', foodCount.toString());
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        title,
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(
+              MacroTheme.caloriesIcon,
+              size: 13,
+              color: MacroTheme.caloriesColor,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              _currentMeal.totalCalories.toStringAsFixed(0),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: MacroTheme.caloriesColor,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Text(
+              'kcal',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: secondaryTextColor.withValues(alpha: 0.8),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Container(
+                width: 3,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: secondaryTextColor.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Flexible(
+              child: Text(
+                foodCountLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: secondaryTextColor.withValues(alpha: 0.85),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  /// Barra segmentada mostrando a proporção calórica de cada macro
-  /// (proteína ×4, carboidrato ×4, gordura ×9). Visual e intuitivo.
-  Widget _buildMacroDistributionBar({required bool isDarkMode}) {
-    final proteinKcal = _currentMeal.totalProtein * 4;
-    final carbsKcal = _currentMeal.totalCarbs * 4;
-    final fatKcal = _currentMeal.totalFat * 9;
-    final total = proteinKcal + carbsKcal + fatKcal;
-
-    final trackColor = (isDarkMode ? Colors.white : Colors.black)
-        .withValues(alpha: isDarkMode ? 0.10 : 0.06);
-
-    if (total <= 0) {
-      return Container(
-        height: 5,
-        decoration: BoxDecoration(
-          color: trackColor,
-          borderRadius: BorderRadius.circular(3),
-        ),
-      );
-    }
-
-    Widget segment(double kcal, Color color) {
-      if (kcal <= 0) return const SizedBox.shrink();
-      return Flexible(
-        flex: (kcal / total * 1000).round().clamp(1, 1000),
-        child: Container(height: 5, color: color),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
-      child: Container(
-        color: trackColor,
-        child: Row(
-          children: [
-            segment(proteinKcal, MacroTheme.proteinColor),
-            segment(carbsKcal, MacroTheme.carbsColor),
-            segment(fatKcal, MacroTheme.fatColor),
-          ],
+  Widget _buildMealTypeSelector({
+    required bool isDarkMode,
+    required Color secondaryTextColor,
+  }) {
+    final textColor =
+        isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _showMealTypeBottomSheet,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  getMealTypeName(_currentMeal.type),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.1,
+                    color: textColor,
+                    height: 1.15,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18,
+                color: secondaryTextColor.withValues(alpha: 0.65),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1062,23 +1121,16 @@ class _MealCardState extends State<MealCard> {
     required bool isDarkMode,
     required double topPadding,
   }) {
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
-
     return Container(
       margin: const EdgeInsets.only(top: 0, bottom: 12),
+      decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 20),
       child: Material(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
-        elevation: AppTheme.standardCardElevation(isDarkMode),
-        shadowColor: AppTheme.standardCardShadowColor(isDarkMode),
         child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: AppTheme.standardCardBorder(isDarkMode),
-          ),
           padding: EdgeInsets.fromLTRB(
-              16, topPadding == 0 ? 16 : topPadding, 16, 16),
+              16, topPadding == 0 ? 14 : topPadding, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1087,27 +1139,37 @@ class _MealCardState extends State<MealCard> {
                 children: [
                   _buildSkeletonBlock(
                     isDarkMode,
-                    width: 72,
-                    height: 28,
-                    radius: 8,
+                    width: 48,
+                    height: 48,
+                    radius: 15,
                   ),
-                  const SizedBox(width: 18),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Center(
-                      child: _buildSkeletonBlock(
-                        isDarkMode,
-                        width: 128,
-                        height: 24,
-                        radius: 8,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSkeletonBlock(
+                          isDarkMode,
+                          width: 120,
+                          height: 16,
+                          radius: 7,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildSkeletonBlock(
+                          isDarkMode,
+                          width: 90,
+                          height: 12,
+                          radius: 6,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
                   _buildSkeletonBlock(
                     isDarkMode,
-                    width: 34,
-                    height: 34,
-                    radius: 17,
+                    width: 32,
+                    height: 32,
+                    radius: 16,
                   ),
                 ],
               ),
@@ -1240,21 +1302,24 @@ class _MealCardState extends State<MealCard> {
     }
 
     final cardColor = isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
+
     final card = Container(
       margin: const EdgeInsets.only(top: 0, bottom: 12),
+      decoration: BoxDecoration(
+        color: _simpleView ? null : AppTheme.profileCardColor(isDarkMode),
+        borderRadius: BorderRadius.circular(20),
+        // Contorno usado pelo card antigo no chat.
+        border: AppTheme.standardCardBorder(isDarkMode),
+        boxShadow: _simpleView ? null : AppTheme.profileCardShadow(isDarkMode),
+      ),
       child: Material(
-        color: isDarkMode
-            ? cardColor
-            : (_simpleView ? Colors.transparent : cardColor),
-        borderRadius: BorderRadius.circular(16),
+        color: _simpleView
+            ? (isDarkMode ? cardColor : Colors.transparent)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
-        elevation: _simpleView ? 0 : AppTheme.standardCardElevation(isDarkMode),
-        shadowColor: AppTheme.standardCardShadowColor(isDarkMode),
         child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: AppTheme.standardCardBorder(isDarkMode),
-          ),
+          decoration: const BoxDecoration(),
           child: AnimatedSize(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOut,
@@ -1269,7 +1334,7 @@ class _MealCardState extends State<MealCard> {
               transitionBuilder: (child, animation) {
                 return FadeTransition(opacity: animation, child: child);
               },
-              // ── RECOLHIDO: linha única estilo balão (como era antes) ──
+              // ── RECOLHIDO: cabeçalho estilo "Minha Dieta" + "Ver detalhes" ──
               child: _simpleView
                   ? KeyedSubtree(
                       key: const ValueKey('meal-card-collapsed'),
@@ -1277,77 +1342,85 @@ class _MealCardState extends State<MealCard> {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () => setState(() => _simpleView = false),
-                          borderRadius: BorderRadius.circular(16),
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                                16, topPadding == 0 ? 14 : topPadding, 8, 12),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(16,
+                                    topPadding == 0 ? 14 : topPadding, 8, 12),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.baseline,
-                                        textBaseline: TextBaseline.alphabetic,
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            _currentMeal.totalCalories
-                                                .toStringAsFixed(0),
-                                            style: TextStyle(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.w700,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                            ),
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.baseline,
+                                            textBaseline:
+                                                TextBaseline.alphabetic,
+                                            children: [
+                                              Text(
+                                                _currentMeal.totalCalories
+                                                    .toStringAsFixed(0),
+                                                style: TextStyle(
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                  height: 1.0,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'kcal',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: isDarkMode
+                                                      ? Colors.white54
+                                                      : Colors.black54,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(height: 2),
                                           Text(
-                                            'kcal',
+                                            _currentMeal.foods.isEmpty
+                                                ? getMealTypeName(
+                                                    _currentMeal.type)
+                                                : '${_currentMeal.foods.map((f) => f.name).join(' · ')} · ${getMealTypeName(_currentMeal.type)}',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              fontSize: 13,
+                                              fontSize: 12,
                                               color: isDarkMode
-                                                  ? Colors.white54
+                                                  ? Colors.white60
                                                   : Colors.black54,
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _currentMeal.foods.isEmpty
-                                            ? getMealTypeName(_currentMeal.type)
-                                            : '${_currentMeal.foods.map((f) => f.name).join(' · ')} · ${getMealTypeName(_currentMeal.type)}',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8),
+                                      child: Text(
+                                        context.tr.translate('view_details'),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: isDarkMode
-                                              ? Colors.white60
+                                              ? Colors.white70
                                               : Colors.black54,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 8),
-                                  child: Text(
-                                    context.tr.translate('view_details'),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDarkMode
-                                          ? Colors.white70
-                                          : Colors.black54,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -1360,122 +1433,55 @@ class _MealCardState extends State<MealCard> {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () => setState(() => _simpleView = true),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Linha 1: Calorias grandes + Spinner da refeição (à direita)
+                              // Linha 1: cabeçalho estilo "Minha Dieta"
                               Padding(
-                                padding: EdgeInsets.fromLTRB(16,
-                                    topPadding == 0 ? 12 : topPadding, 16, 8),
+                                padding: EdgeInsets.fromLTRB(14,
+                                    topPadding == 0 ? 13 : topPadding, 12, 8),
                                 child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    // Calorias grandes (mesma tipografia do colapsado)
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.baseline,
-                                      textBaseline: TextBaseline.alphabetic,
-                                      children: [
-                                        Text(
-                                          _currentMeal.totalCalories
-                                              .toStringAsFixed(0),
-                                          style: TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w700,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                            height: 1,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'kcal',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: isDarkMode
-                                                ? Colors.white54
-                                                : Colors.black54,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 18),
-                                    // Seletor real do tipo de refeição.
+                                    _buildMealEmojiBox(isDarkMode: isDarkMode),
+                                    const SizedBox(width: 12),
                                     Expanded(
-                                      child: _buildMealTypeSelector(
+                                      child: _buildMealHeaderInfo(
+                                        title: _buildMealTypeSelector(
+                                          isDarkMode: isDarkMode,
+                                          secondaryTextColor:
+                                              secondaryTextColor,
+                                        ),
                                         isDarkMode: isDarkMode,
                                         secondaryTextColor: secondaryTextColor,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    IconButton(
-                                      onPressed: _showMoreOptionsMenu,
-                                      visualDensity: VisualDensity.compact,
-                                      padding: const EdgeInsets.all(6),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 36,
-                                        minHeight: 36,
+                                    _buildRoundActionButton(
+                                      isDarkMode: isDarkMode,
+                                      onTap: () =>
+                                          setState(() => _simpleView = true),
+                                      child: AnimatedRotation(
+                                        turns: 0.5,
+                                        duration:
+                                            const Duration(milliseconds: 200),
+                                        child: Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          size: 19,
+                                          color: secondaryTextColor.withValues(
+                                              alpha: 0.85),
+                                        ),
                                       ),
-                                      icon: Icon(
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _buildRoundActionButton(
+                                      isDarkMode: isDarkMode,
+                                      onTap: _showMoreOptionsMenu,
+                                      child: Icon(
                                         Icons.more_horiz_rounded,
-                                        size: 22,
+                                        size: 19,
                                         color: secondaryTextColor.withValues(
-                                            alpha: 0.78),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Linha 2: macros sem cartões, só alinhados.
-                              Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildCompactMacro(
-                                        icon: MacroTheme.proteinIcon,
-                                        value: context.tr
-                                            .translate('protein_grams_short')
-                                            .replaceAll(
-                                              '{value}',
-                                              _currentMeal.totalProtein
-                                                  .toStringAsFixed(1),
-                                            ),
-                                        color: MacroTheme.proteinColor,
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: _buildCompactMacro(
-                                        icon: MacroTheme.carbsIcon,
-                                        value: context.tr
-                                            .translate('carbs_grams_short')
-                                            .replaceAll(
-                                              '{value}',
-                                              _currentMeal.totalCarbs
-                                                  .toStringAsFixed(1),
-                                            ),
-                                        color: MacroTheme.carbsColor,
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: _buildCompactMacro(
-                                        icon: MacroTheme.fatIcon,
-                                        value: context.tr
-                                            .translate('fat_grams_short')
-                                            .replaceAll(
-                                              '{value}',
-                                              _currentMeal.totalFat
-                                                  .toStringAsFixed(1),
-                                            ),
-                                        color: MacroTheme.fatColor,
-                                        isDarkMode: isDarkMode,
+                                            alpha: 0.85),
                                       ),
                                     ),
                                   ],
@@ -1526,6 +1532,7 @@ class _MealCardState extends State<MealCard> {
                                               : _FoodItem(
                                                   food: food,
                                                   isDarkMode: isDarkMode,
+                                                  showFiber: widget.showFiber,
                                                   onRegenerateWithAI: (food,
                                                           description) =>
                                                       _regenerateFoodNutritionForItem(
@@ -1543,6 +1550,95 @@ class _MealCardState extends State<MealCard> {
                                   ),
                                 ),
                               ],
+                              // Linha de macros estilo "Minha Dieta"
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCompactMacro(
+                                        icon: MacroTheme.proteinIcon,
+                                        value: context.tr
+                                            .translate('protein_grams_short')
+                                            .replaceAll(
+                                              '{value}',
+                                              _currentMeal.totalProtein
+                                                  .toStringAsFixed(1),
+                                            ),
+                                        color: MacroTheme.proteinColor,
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    ),
+                                    _buildMacroDivider(isDarkMode: isDarkMode),
+                                    Expanded(
+                                      child: _buildCompactMacro(
+                                        icon: MacroTheme.carbsIcon,
+                                        value: context.tr
+                                            .translate('carbs_grams_short')
+                                            .replaceAll(
+                                              '{value}',
+                                              _currentMeal.totalCarbs
+                                                  .toStringAsFixed(1),
+                                            ),
+                                        color: MacroTheme.carbsColor,
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    ),
+                                    _buildMacroDivider(isDarkMode: isDarkMode),
+                                    Expanded(
+                                      child: _buildCompactMacro(
+                                        icon: MacroTheme.fatIcon,
+                                        value: context.tr
+                                            .translate('fat_grams_short')
+                                            .replaceAll(
+                                              '{value}',
+                                              _currentMeal.totalFat
+                                                  .toStringAsFixed(1),
+                                            ),
+                                        color: MacroTheme.fatColor,
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    ),
+                                    _buildMacroDivider(isDarkMode: isDarkMode),
+                                    Expanded(
+                                      child: Tooltip(
+                                        message: widget.showFiber
+                                            ? context.tr.translate('fiber')
+                                            : context.tr
+                                                .translate('tap_for_premium'),
+                                        child: _buildCompactMacro(
+                                          icon: widget.showFiber
+                                              ? MacroTheme.fiberIcon
+                                              : Icons.workspace_premium_rounded,
+                                          value: widget.showFiber
+                                              ? '${_currentMeal.totalFiber.toStringAsFixed(1)} g'
+                                              : context.tr.translate('premium'),
+                                          color: MacroTheme.fiberColor,
+                                          isDarkMode: isDarkMode,
+                                          onTap: widget.showFiber
+                                              ? null
+                                              : () => Navigator.of(context)
+                                                  .pushNamed('/subscription'),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Botão explícito para recolher o card.
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 2, 16, 10),
+                                child: Center(
+                                  child: _buildActionPill(
+                                    label: context.tr.translate('show_less'),
+                                    secondaryTextColor: secondaryTextColor,
+                                    isDarkMode: isDarkMode,
+                                    icon: Icons.keyboard_arrow_up_rounded,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -2331,6 +2427,7 @@ class _FoodDetailsEditSheetState extends State<_FoodDetailsEditSheet> {
 class _FoodItem extends StatefulWidget {
   final Food food;
   final bool isDarkMode;
+  final bool showFiber;
   final ValueChanged<Food>? onSwap;
   final Future<Food?> Function(Food food, String description)?
       onRegenerateWithAI;
@@ -2339,6 +2436,7 @@ class _FoodItem extends StatefulWidget {
     Key? key,
     required this.food,
     required this.isDarkMode,
+    required this.showFiber,
     this.onSwap,
     this.onRegenerateWithAI,
   }) : super(key: key);
@@ -3527,7 +3625,9 @@ class _FoodItemState extends State<_FoodItem> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => FoodPage(food: widget.food),
+        builder: (_) => FoodPage(
+          food: widget.food,
+        ),
       ),
     );
   }
@@ -3544,6 +3644,7 @@ class _FoodItemState extends State<_FoodItem> {
         return _ManualMacroEditorSheet(
           food: sourceFood,
           isDarkMode: widget.isDarkMode,
+          showFiber: widget.showFiber,
         );
       },
     );
@@ -3573,9 +3674,6 @@ class _FoodItemState extends State<_FoodItem> {
     final secondaryTextColor =
         isDarkMode ? Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
     final meta = _sourceMeta(context);
-    final iconBg = isDarkMode
-        ? Colors.white.withValues(alpha: 0.06)
-        : Colors.black.withValues(alpha: 0.04);
 
     return Material(
       color: Colors.transparent,
@@ -3596,13 +3694,10 @@ class _FoodItemState extends State<_FoodItem> {
                     onTap: _openFoodPage,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      width: 40,
-                      height: 40,
+                      width: 36,
+                      height: 36,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: iconBg,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: const BoxDecoration(),
                       child: FoodIcon(
                         name: food.name,
                         emoji: food.emoji,
@@ -4369,11 +4464,13 @@ class _SourceMoreButton extends StatelessWidget {
 class _ManualMacroEditorSheet extends StatefulWidget {
   final Food food;
   final bool isDarkMode;
+  final bool showFiber;
 
   const _ManualMacroEditorSheet({
     Key? key,
     required this.food,
     required this.isDarkMode,
+    required this.showFiber,
   }) : super(key: key);
 
   @override
@@ -4605,15 +4702,17 @@ class _ManualMacroEditorSheetState extends State<_ManualMacroEditorSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              _MacroField(
-                controller: _fiberCtrl,
-                label: context.tr.translate('fiber'),
-                suffix: 'g',
-                color: secondary,
-                icon: Icons.eco_rounded,
-                isDarkMode: isDark,
-              ),
+              if (widget.showFiber) ...[
+                const SizedBox(height: 10),
+                _MacroField(
+                  controller: _fiberCtrl,
+                  label: context.tr.translate('fiber'),
+                  suffix: 'g',
+                  color: MacroTheme.fiberColor,
+                  icon: MacroTheme.fiberIcon,
+                  isDarkMode: isDark,
+                ),
+              ],
               const SizedBox(height: 20),
               Row(
                 children: [

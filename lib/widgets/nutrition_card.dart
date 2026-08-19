@@ -7,6 +7,9 @@ import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 
 class NutritionCard extends StatefulWidget {
+  static const double standardHeight = 108;
+  static const double fiberHeight = 136;
+
   final int caloriesConsumed;
   final int caloriesGoal;
   final int proteinConsumed;
@@ -15,6 +18,9 @@ class NutritionCard extends StatefulWidget {
   final int carbsGoal;
   final int fatsConsumed;
   final int fatsGoal;
+  final int fiberConsumed;
+  final bool showFiber;
+  final VoidCallback? onFiberPremiumTap;
   final VoidCallback? onTap;
   final VoidCallback? onEditGoals;
   final VoidCallback? onMinimize;
@@ -31,6 +37,9 @@ class NutritionCard extends StatefulWidget {
     this.carbsGoal = 300,
     this.fatsConsumed = 45,
     this.fatsGoal = 70,
+    this.fiberConsumed = 0,
+    this.showFiber = false,
+    this.onFiberPremiumTap,
     this.onTap,
     this.onEditGoals,
     this.onMinimize,
@@ -43,7 +52,6 @@ class NutritionCard extends StatefulWidget {
 }
 
 class _NutritionCardState extends State<NutritionCard> {
-  static const double _headerSlotHeight = 108;
   static const double _outerVerticalPadding = 2;
 
   double _calorieValueFontSize(String value, bool compact) {
@@ -56,6 +64,7 @@ class _NutritionCardState extends State<NutritionCard> {
 
   @override
   Widget build(BuildContext context) {
+    const headerSlotHeight = NutritionCard.fiberHeight;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final isCaloriesExceeded = widget.caloriesConsumed > widget.caloriesGoal;
     final surfaceColor =
@@ -82,7 +91,7 @@ class _NutritionCardState extends State<NutritionCard> {
         onTap: widget.onTap,
         borderRadius: borderRadius,
         child: Ink(
-          height: _headerSlotHeight - (_outerVerticalPadding * 2),
+          height: headerSlotHeight - (_outerVerticalPadding * 2),
           decoration: BoxDecoration(
             color: widget.profileStyle ? Colors.transparent : surfaceColor,
             borderRadius: borderRadius,
@@ -269,6 +278,23 @@ class _NutritionCardState extends State<NutritionCard> {
                                 isDarkMode: isDarkMode,
                                 compact: compact,
                               ),
+                              SizedBox(height: macroGap),
+                              _MacroRow(
+                                label: context.tr.translate('fiber'),
+                                consumed: widget.fiberConsumed,
+                                unit: 'g',
+                                color: MacroTheme.fiberColor,
+                                icon: MacroTheme.fiberIcon,
+                                iconSize: iconSize,
+                                isDarkMode: isDarkMode,
+                                compact: compact,
+                                isLocked: !widget.showFiber,
+                                onTap: widget.showFiber
+                                    ? null
+                                    : widget.onFiberPremiumTap ??
+                                        () => Navigator.of(context)
+                                            .pushNamed('/subscription'),
+                              ),
                             ],
                           ),
                         ),
@@ -324,30 +350,35 @@ class _NutritionCardState extends State<NutritionCard> {
 class _MacroRow extends StatelessWidget {
   final String label;
   final int consumed;
-  final int goal;
+  final int? goal;
   final String unit;
   final Color color;
   final IconData icon;
   final double iconSize;
   final bool isDarkMode;
   final bool compact;
+  final bool isLocked;
+  final VoidCallback? onTap;
 
   const _MacroRow({
     Key? key,
     required this.label,
     required this.consumed,
-    required this.goal,
+    this.goal,
     required this.unit,
     required this.color,
     required this.icon,
     required this.iconSize,
     required this.isDarkMode,
     required this.compact,
+    this.isLocked = false,
+    this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final progress = goal > 0 ? consumed / goal : 0.0;
+    final progress =
+        !isLocked && goal != null && goal! > 0 ? consumed / goal! : 0.0;
     final isExceeded = progress > 1.0;
     final clampedProgress = progress.clamp(0.0, 1.0);
     const exceededColor = Color(0xFFE57373);
@@ -359,81 +390,102 @@ class _MacroRow extends StatelessWidget {
         isDarkMode ? const Color(0xFF2F2F2F) : const Color(0xFFF5F7FA);
     final accentColor = isExceeded ? exceededColor : color;
 
-    return Row(
-      children: [
-        MacroTheme.iconBadge(
-          icon: icon,
-          color: accentColor,
-          isDarkMode: isDarkMode,
-          size: iconSize,
-          iconSize: iconSize * 0.56,
-        ),
-        SizedBox(width: compact ? 7 : 9),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return Semantics(
+      button: isLocked,
+      label: isLocked
+          ? '$label, ${context.tr.translate('tap_for_premium')}'
+          : label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Row(
+          children: [
+            MacroTheme.iconBadge(
+              icon: isLocked ? Icons.workspace_premium_rounded : icon,
+              color: accentColor,
+              isDarkMode: isDarkMode,
+              size: iconSize,
+              iconSize: iconSize * 0.56,
+            ),
+            SizedBox(width: compact ? 7 : 9),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 11.5 : 12,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: compact ? 6 : 8),
-                  SizedBox(
-                    width: compact ? 64 : 70,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '${consumed}${unit}/${goal}${unit}',
-                        maxLines: 1,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: compact ? 10.5 : 11.5,
-                          fontWeight:
-                              isExceeded ? FontWeight.w700 : FontWeight.w500,
-                          color: isExceeded ? exceededColor : mutedTextColor,
-                          height: 1,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: compact ? 11.5 : 12,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                            height: 1,
+                          ),
                         ),
                       ),
-                    ),
+                      SizedBox(width: compact ? 6 : 8),
+                      SizedBox(
+                        width: compact ? 64 : 70,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            isLocked
+                                ? context.tr.translate('premium')
+                                : goal == null
+                                    ? '${consumed}${unit}'
+                                    : '${consumed}${unit}/${goal}${unit}',
+                            maxLines: 1,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: compact ? 10.5 : 11.5,
+                              fontWeight: isLocked || isExceeded
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isLocked
+                                  ? color
+                                  : isExceeded
+                                      ? exceededColor
+                                      : mutedTextColor,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: Stack(
-                  children: [
-                    Container(
-                      height: 4,
-                      color: trackColor,
-                    ),
-                    FractionallySizedBox(
-                      widthFactor: clampedProgress,
-                      child: Container(
-                        height: 4,
-                        color: accentColor.withValues(alpha: 0.7),
+                  if (!isLocked && goal != null) ...[
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 4,
+                            color: trackColor,
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: clampedProgress,
+                            child: Container(
+                              height: 4,
+                              color: accentColor.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

@@ -70,6 +70,28 @@ final Map<String, String> itITTranslations = {
   'email': 'Email',
   'password': 'Password',
   'forgot_password': 'Password dimenticata?',
+  'forgot_password_title': 'Recupera password',
+  'forgot_password_subtitle':
+      'Inserisci l’email del tuo account. Se esiste, invieremo un codice di recupero.',
+  'forgot_password_send_code': 'Invia codice',
+  'forgot_password_code_title': 'Inserisci il codice',
+  'forgot_password_code_subtitle':
+      'Abbiamo inviato un codice di 4 cifre alla tua email. È valido per 6 ore.',
+  'forgot_password_code_label': 'Codice',
+  'forgot_password_code_invalid': 'Inserisci il codice di 4 cifre',
+  'forgot_password_verify_code': 'Verifica codice',
+  'forgot_password_new_title': 'Nuova password',
+  'forgot_password_new_subtitle': 'Scegli una nuova password per il tuo account.',
+  'forgot_password_save': 'Salva password',
+  'forgot_password_send_error':
+      'Impossibile inviare l’email ora. Riprova.',
+  'forgot_password_invalid_code': 'Codice non valido o scaduto.',
+  'forgot_password_reset_error':
+      'Impossibile reimpostare la password. Riprova.',
+  'forgot_password_success':
+      'Password aggiornata. Accedi con la nuova password.',
+  'login_google_account_required':
+      'Questo account accede con Google. Usa l’accesso Google.',
   'login_button': 'Accedi',
   'no_account': 'Non hai un account?',
   'sign_up': 'Registrati',
@@ -85,6 +107,13 @@ final Map<String, String> itITTranslations = {
   'sign_out': 'Disconnetti',
   'logout': 'Disconnetti',
   'logout_confirmation': 'Sei sicuro di voler uscire dal tuo account?',
+  'delete_account': 'Elimina account',
+  'delete_account_subtitle': 'Cancella il tuo account e tutti i dati associati',
+  'delete_account_confirmation_title': 'Eliminare il tuo account?',
+  'delete_account_confirmation_message':
+      'Questa azione è permanente e cancellerà account, dati, chat, pasti e piani. Continuare?',
+  'delete_account_confirm': 'Elimina definitivamente',
+  'delete_account_error': 'Impossibile eliminare l’account ora.',
   'logout_pending_sync_title': 'Sincronizza prima di uscire',
   'logout_pending_sync_message':
       'Alcune modifiche su questo dispositivo non sono ancora state salvate nel tuo account. Connettiti a internet e sincronizza ora per non perdere nulla.',
@@ -1051,6 +1080,24 @@ final Map<String, String> itITTranslations = {
   'meal': 'Pasto',
   'select_meal_type': 'Seleziona tipo di pasto',
   'search_food': 'Cerca Cibo',
+  'food_input_actions_title': 'Aggiungi alimenti',
+  'food_input_audio_title': 'Pronuncia gli alimenti',
+  'food_input_audio_subtitle':
+      'Di cosa hai mangiato per identificare gli alimenti',
+  'food_input_camera_subtitle':
+      'Fotografa il pasto per identificare gli alimenti',
+  'food_input_gallery_subtitle': 'Scegli una foto dalla galleria',
+  'food_input_barcode_subtitle':
+      'Scansiona il codice di un prodotto confezionato',
+  'food_voice_sheet_title': 'Di cosa hai mangiato',
+  'food_voice_sheet_subtitle':
+      'Indica alimenti e quantità. Tocca stop quando hai finito.',
+  'food_voice_stop_action': 'Ferma e identifica',
+  'food_voice_retry_hint': 'Riprova a registrare gli alimenti.',
+  'ai_food_results': 'Alimenti identificati',
+  'no_food_detected': 'Nessun alimento è stato identificato',
+  'food_input_processing_error':
+      'Impossibile identificare gli alimenti. Riprova.',
   'what_did_you_eat': 'Cosa hai mangiato?',
   'recent': 'Recenti',
   'favorites': 'Preferiti',
@@ -1892,6 +1939,45 @@ final Map<String, String> itITTranslations = {
   'social_view_challenges': 'Vedi sfide',
   'social_public_challenges': 'Sfide pubbliche',
   'streak_in_danger_short': 'A rischio',
+  'streak_celebration_day_one': 'giorno di fila!',
+  'streak_celebration_days_other': 'giorni di fila!',
+  'streak_celebration_message': 'Domani puoi arrivare a {next} giorni di fila!',
+  'streak_celebration_continue': 'Continua',
+  'streak_celebration_freeze_title': 'Hai recuperato la tua protezione',
+  'streak_celebration_freeze_body': 'Ti aiuterà se salti un giorno.',
+  'streak_intro_challenge_title': 'Riesci ad arrivare a 3 giorni?',
+  'streak_intro_challenge_body':
+      'Chi registra gli alimenti per 3 giorni consecutivi ha più probabilità di raggiungere i propri obiettivi.',
+  'streak_intro_challenge_cta': 'Ce la faccio',
+  'streak_intro_widget_title': 'Hai paura di perdere la tua serie?',
+  'streak_intro_widget_body':
+      'Il nostro widget mostra sempre le calorie di oggi e la tua serie. Vuoi aggiungerlo alla schermata Home?',
+  'streak_intro_widget_cta': 'Sì, aggiungi il widget',
+  'streak_intro_not_now': 'Non ora',
+  'streak_widget_unavailable':
+      'Non è stato possibile aggiungere il widget su questo dispositivo.',
+  'streak_widget_card_title': 'Widget della serie',
+  'streak_widget_card_body':
+      'Guarda le calorie di oggi e la tua serie direttamente dalla schermata Home.',
+  'streak_widget_card_added': 'Aggiunto alla schermata Home',
+  'streak_commit_cta': 'Mi impegno',
+  'streak_commit_success': 'Impegno registrato. Continua così!',
+  'streak_widget_day_one': 'giorno',
+  'streak_widget_days_other': 'giorni',
+  'streak_widget_today': 'Oggi',
+  'streak_challenge_section': 'La mia sfida',
+  'streak_challenge_next': 'Prossimo obiettivo: {target} giorni',
+  'streak_challenge_day_progress': 'Giorno {current}/{target}',
+  'streak_overview_section': 'Panoramica',
+  'streak_summary_section': 'Riepilogo',
+  'streak_best_registration': 'Serie più lunga',
+  'streak_protection_one': '1 protezione della serie disponibile',
+  'streak_protection_other': '{count} protezioni della serie disponibili',
+  'streak_details_title': 'Altri dettagli',
+  'streak_hero_started':
+      'Complimenti, hai iniziato la tua serie! Continua così!',
+  'streak_hero_continue':
+      'La tua costanza sta crescendo. Continua a registrare gli alimenti ogni giorno.',
   'challenge_objective_label': 'Obiettivo',
   'challenge_days_completed': 'giorni',
   'challenge_today_metric': 'Oggi',

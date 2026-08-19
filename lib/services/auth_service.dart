@@ -16,9 +16,8 @@ class AuthService with ChangeNotifier {
   bool _isLoading = false;
   bool _authenticatedFromStoredSession = false;
   String? _errorMessage; // Para armazenar mensagens de erro
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: kIsWeb ? _webGoogleClientId : null,
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _googleSignInInitialized = false;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   User? get currentUser => _currentUser;
@@ -35,6 +34,13 @@ class AuthService with ChangeNotifier {
     _errorMessage = null; // Limpar mensagens de erro anteriores
     try {
       print('[AuthService] Inicializando serviço de autenticação');
+
+      if (!_googleSignInInitialized) {
+        await _googleSignIn.initialize(
+          clientId: kIsWeb ? _webGoogleClientId : null,
+        );
+        _googleSignInInitialized = true;
+      }
 
       // Verificar se há dados salvos no armazenamento seguro
       final savedToken = await _storage.read(key: 'auth_token');
@@ -81,9 +87,21 @@ class AuthService with ChangeNotifier {
       print('[AuthService] Iniciando login com Google');
 
       // Iniciar o processo de login do Google
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount googleUser;
+      if (_googleSignIn.supportsAuthenticate()) {
+        googleUser = await _googleSignIn.authenticate();
+      } else {
+        final lightweightUser =
+            await _googleSignIn.attemptLightweightAuthentication();
+        if (lightweightUser == null) {
+          print('[AuthService] Login interativo não disponível nesta plataforma');
+          _errorMessage = 'Login do Google indisponível nesta plataforma';
+          return false;
+        }
+        googleUser = lightweightUser;
+      }
 
-      if (googleUser == null) {
+      if (googleUser.email.isEmpty) {
         print('[AuthService] Usuário cancelou o login com Google');
         _errorMessage = 'Login cancelado pelo usuário';
         return false; // Usuário cancelou o login
@@ -251,6 +269,55 @@ class AuthService with ChangeNotifier {
 
     print('[AuthService] Logout realizado com sucesso');
     _setLoading(false);
+  }
+
+  /// Exclui a conta no servidor antes de remover a sessão local.
+  /// Não sincroniza alterações pendentes: a intenção é apagar os dados.
+  Future<bool> deleteAccount() async {
+    if (!isAuthenticated || _token == null) {
+      _errorMessage = 'Sessão inválida. Faça login novamente.';
+      notifyListeners();
+      return false;
+    }
+
+    final tokenToDelete = _token!;
+    _setLoading(true);
+    _errorMessage = null;
+
+    try {
+      final response = await ApiService.deleteOwnAccount(tokenToDelete);
+      if (response['success'] != true) {
+        _errorMessage = response['message']?.toString() ??
+            'Não foi possível excluir a conta agora';
+        notifyListeners();
+        return false;
+      }
+
+      // O registro do token FCM já é removido em cascata no servidor. A
+      // tentativa aqui é apenas uma limpeza complementar para instalações
+      // que ainda estejam usando uma versão antiga da API.
+      await _unregisterFcmToken(tokenToDelete);
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+        print('[AuthService] Erro ao sair do Google após exclusão: $e');
+      }
+      await _storage.delete(key: 'auth_token');
+      await _storage.delete(key: 'user_data');
+
+      _currentUser = null;
+      _token = null;
+      _authenticatedFromStoredSession = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage =
+          'Não foi possível excluir a conta: ${e.toString().split('\n')[0]}';
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   // Método para atualizar o usuário localmente sem chamar API

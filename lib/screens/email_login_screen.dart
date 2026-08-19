@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../services/api_service.dart';
 import 'email_register_screen.dart';
+import 'forgot_password_screen.dart';
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({Key? key}) : super(key: key);
@@ -116,7 +117,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
         }
       } else {
         setState(() {
-          _errorMessage = context.tr.translate('login_failed_credentials');
+          if (data['code'] == 'GOOGLE_AUTH_REQUIRED') {
+            _errorMessage = context.tr.translate('login_google_account_required');
+          } else {
+            _errorMessage = context.tr.translate('login_failed_credentials');
+          }
         });
       }
     } catch (_) {
@@ -459,7 +464,15 @@ class _EmailLoginScreenState extends State<EmailLoginScreen>
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ForgotPasswordScreen(
+                initialEmail: _emailController.text.trim(),
+              ),
+            ),
+          );
+        },
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

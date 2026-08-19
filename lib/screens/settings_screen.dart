@@ -9,11 +9,13 @@ import '../i18n/app_localizations_extension.dart';
 import '../widgets/rate_app_bottom_sheet.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/diet_plan_provider.dart';
 import '../models/notification_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/account_data_cleanup_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import 'notification_settings_screen.dart';
@@ -30,6 +32,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   static const double _listItemTitleFontSize = 14;
   static const double _listItemSubtitleFontSize = 12;
+  static final Uri _privacyPolicyUri =
+      Uri.parse('https://nutro.snapdark.com/privacy.html');
 
   final StorageService _storageService = StorageService();
   String _selectedLanguage = 'en';
@@ -37,6 +41,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   NotificationPreferences _notificationPreferences =
       NotificationPreferences.defaults;
   String _appVersion = '--';
+  bool _isDeletingAccount = false;
+
+  Future<void> _openPrivacyPolicy() async {
+    try {
+      await launchUrl(
+        _privacyPolicyUri,
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (error) {
+      debugPrint('[SettingsScreen] Falha ao abrir política: $error');
+    }
+  }
 
   Color _primaryTextColor(bool isDarkMode) =>
       isDarkMode ? Colors.white : AppTheme.textPrimaryColor;
@@ -607,163 +623,191 @@ class _SettingsScreenState extends State<SettingsScreen> {
         scrolledUnderElevation: 0,
         elevation: 0,
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-            children: [
-              _buildSectionCard(
-                theme: theme,
-                colorScheme: colorScheme,
-                title: context.tr.translate('account'),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Column(
                 children: [
-                  _buildAccountRow(
-                    context.tr.translate('name'),
-                    authService.isAuthenticated
-                        ? authService.currentUser?.name ??
-                            context.tr.translate('user')
-                        : context.tr.translate('not_logged_in'),
-                    Icons.person_outline,
-                    theme,
-                    onTap: authService.isAuthenticated
-                        ? () => _showEditNameDialog(
-                            authService.currentUser?.name ?? '')
-                        : null,
+                  _buildSectionCard(
+                    theme: theme,
+                    colorScheme: colorScheme,
+                    title: context.tr.translate('account'),
+                    children: [
+                      _buildAccountRow(
+                        context.tr.translate('name'),
+                        authService.isAuthenticated
+                            ? authService.currentUser?.name ??
+                                context.tr.translate('user')
+                            : context.tr.translate('not_logged_in'),
+                        Icons.person_outline,
+                        theme,
+                        onTap: authService.isAuthenticated
+                            ? () => _showEditNameDialog(
+                                authService.currentUser?.name ?? '')
+                            : null,
+                      ),
+                      _buildAccountRow(
+                        context.tr.translate('age'),
+                        '${nutritionProvider.age}${context.tr.translate('years_suffix')}',
+                        Icons.cake_outlined,
+                        theme,
+                        onTap: () => _showEditAgeDialog(nutritionProvider.age),
+                      ),
+                      _buildAccountRow(
+                        context.tr.translate('gender'),
+                        nutritionProvider.sex == 'male'
+                            ? context.tr.translate('male')
+                            : context.tr.translate('female'),
+                        Icons.wc_outlined,
+                        theme,
+                        onTap: () =>
+                            _showEditGenderDialog(nutritionProvider.sex),
+                      ),
+                      _buildAccountRow(
+                        context.tr.translate('height'),
+                        nutritionProvider.getFormattedHeight(),
+                        Icons.height,
+                        theme,
+                        onTap: () => _showEditHeightDialog(nutritionProvider),
+                      ),
+                      _buildAccountRow(
+                        context.tr.translate('weight'),
+                        nutritionProvider.getFormattedWeight(),
+                        Icons.monitor_weight_outlined,
+                        theme,
+                        onTap: () => _showEditWeightDialog(nutritionProvider),
+                      ),
+                    ],
                   ),
-                  _buildAccountRow(
-                    context.tr.translate('age'),
-                    '${nutritionProvider.age}${context.tr.translate('years_suffix')}',
-                    Icons.cake_outlined,
-                    theme,
-                    onTap: () => _showEditAgeDialog(nutritionProvider.age),
+                  const SizedBox(height: 22),
+                  _buildSectionCard(
+                    theme: theme,
+                    colorScheme: colorScheme,
+                    title: context.tr.translate('diet'),
+                    children: [
+                      _buildAccountRow(
+                        context.tr.translate('goal'),
+                        nutritionProvider.getFitnessGoalName(
+                            nutritionProvider.fitnessGoal, context),
+                        Icons.track_changes,
+                        theme,
+                        onTap: () =>
+                            _showEditGoalDialog(theme, nutritionProvider),
+                      ),
+                      _buildAccountRow(
+                        context.tr.translate('activity_level'),
+                        nutritionProvider.getActivityLevelName(
+                            nutritionProvider.activityLevel, context),
+                        Icons.directions_run,
+                        theme,
+                        onTap: () => _showEditActivityLevelDialog(
+                            theme, nutritionProvider),
+                      ),
+                      _buildAccountRow(
+                        context.tr.translate('diet'),
+                        nutritionProvider.getDietTypeName(
+                            nutritionProvider.dietType, context),
+                        Icons.restaurant_menu,
+                        theme,
+                        onTap: () =>
+                            _showEditDietTypeDialog(theme, nutritionProvider),
+                      ),
+                      _buildDietAiModelRow(theme, dietProvider),
+                      _buildFormulaRow(theme),
+                      if (nutritionProvider.formula ==
+                          CalculationFormula.katchMcArdle)
+                        _buildAccountRow(
+                          context.tr.translate('body_fat_percentage'),
+                          nutritionProvider.bodyFat != null
+                              ? '${nutritionProvider.bodyFat!.toStringAsFixed(1)}%'
+                              : context.tr.translate('not_informed'),
+                          Icons.fitness_center,
+                          theme,
+                          onTap: () =>
+                              _showBodyFatDialog(theme, nutritionProvider),
+                        ),
+                    ],
                   ),
-                  _buildAccountRow(
-                    context.tr.translate('gender'),
-                    nutritionProvider.sex == 'male'
-                        ? context.tr.translate('male')
-                        : context.tr.translate('female'),
-                    Icons.wc_outlined,
-                    theme,
-                    onTap: () => _showEditGenderDialog(nutritionProvider.sex),
+                  const SizedBox(height: 22),
+                  _buildSectionCard(
+                    theme: theme,
+                    colorScheme: colorScheme,
+                    title: context.tr.translate('preferences'),
+                    children: [
+                      _buildThemeRow(theme, colorScheme),
+                      _buildLanguageRow(theme),
+                      _buildNotificationRow(theme, colorScheme),
+                    ],
                   ),
-                  _buildAccountRow(
-                    context.tr.translate('height'),
-                    nutritionProvider.getFormattedHeight(),
-                    Icons.height,
-                    theme,
-                    onTap: () => _showEditHeightDialog(nutritionProvider),
+                  const SizedBox(height: 22),
+                  _buildSectionCard(
+                    theme: theme,
+                    colorScheme: colorScheme,
+                    title: context.tr.translate('about'),
+                    children: [
+                      _buildNavigationRow(
+                        context.tr.translate('app_version'),
+                        _appVersion,
+                        Icons.info_outline,
+                        theme,
+                        onTap: null,
+                      ),
+                      _buildNavigationRow(
+                        context.tr.translate('privacy_policy'),
+                        '',
+                        Icons.privacy_tip_outlined,
+                        theme,
+                        onTap: () async {
+                          await _openPrivacyPolicy();
+                        },
+                      ),
+                      _buildNavigationRow(
+                        context.tr.translate('rate_app'),
+                        '',
+                        Icons.star_outline,
+                        theme,
+                        onTap: () {
+                          RateAppBottomSheet.show(context);
+                        },
+                      ),
+                      _buildNavigationRow(
+                        context.tr.translate('share_app'),
+                        '',
+                        Icons.share_outlined,
+                        theme,
+                        onTap: () async {
+                          await _shareApp();
+                        },
+                      ),
+                    ],
                   ),
-                  _buildAccountRow(
-                    context.tr.translate('weight'),
-                    nutritionProvider.getFormattedWeight(),
-                    Icons.monitor_weight_outlined,
-                    theme,
-                    onTap: () => _showEditWeightDialog(nutritionProvider),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              _buildSectionCard(
-                theme: theme,
-                colorScheme: colorScheme,
-                title: context.tr.translate('diet'),
-                children: [
-                  _buildAccountRow(
-                    context.tr.translate('goal'),
-                    nutritionProvider.getFitnessGoalName(
-                        nutritionProvider.fitnessGoal, context),
-                    Icons.track_changes,
-                    theme,
-                    onTap: () => _showEditGoalDialog(theme, nutritionProvider),
-                  ),
-                  _buildAccountRow(
-                    context.tr.translate('activity_level'),
-                    nutritionProvider.getActivityLevelName(
-                        nutritionProvider.activityLevel, context),
-                    Icons.directions_run,
-                    theme,
-                    onTap: () =>
-                        _showEditActivityLevelDialog(theme, nutritionProvider),
-                  ),
-                  _buildAccountRow(
-                    context.tr.translate('diet'),
-                    nutritionProvider.getDietTypeName(
-                        nutritionProvider.dietType, context),
-                    Icons.restaurant_menu,
-                    theme,
-                    onTap: () =>
-                        _showEditDietTypeDialog(theme, nutritionProvider),
-                  ),
-                  _buildDietAiModelRow(theme, dietProvider),
-                  _buildFormulaRow(theme),
-                  if (nutritionProvider.formula ==
-                      CalculationFormula.katchMcArdle)
-                    _buildAccountRow(
-                      context.tr.translate('body_fat_percentage'),
-                      nutritionProvider.bodyFat != null
-                          ? '${nutritionProvider.bodyFat!.toStringAsFixed(1)}%'
-                          : context.tr.translate('not_informed'),
-                      Icons.fitness_center,
-                      theme,
-                      onTap: () => _showBodyFatDialog(theme, nutritionProvider),
+                  if (authService.isAuthenticated) ...[
+                    const SizedBox(height: 22),
+                    _buildSectionCard(
+                      theme: theme,
+                      colorScheme: colorScheme,
+                      title: context.tr.translate('delete_account'),
+                      children: [
+                        _buildAccountRow(
+                          context.tr.translate('delete_account'),
+                          context.tr.translate('delete_account_subtitle'),
+                          Icons.delete_forever_rounded,
+                          theme,
+                          iconColor: colorScheme.error,
+                          labelColor: colorScheme.error,
+                          onTap: () => _handleDeleteAccount(authService),
+                        ),
+                      ],
                     ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 22),
-              _buildSectionCard(
-                theme: theme,
-                colorScheme: colorScheme,
-                title: context.tr.translate('preferences'),
-                children: [
-                  _buildThemeRow(theme, colorScheme),
-                  _buildLanguageRow(theme),
-                  _buildNotificationRow(theme, colorScheme),
-                ],
-              ),
-              const SizedBox(height: 22),
-              _buildSectionCard(
-                theme: theme,
-                colorScheme: colorScheme,
-                title: context.tr.translate('about'),
-                children: [
-                  _buildNavigationRow(
-                    context.tr.translate('app_version'),
-                    _appVersion,
-                    Icons.info_outline,
-                    theme,
-                    onTap: null,
-                  ),
-                  _buildNavigationRow(
-                    context.tr.translate('privacy_policy'),
-                    '',
-                    Icons.privacy_tip_outlined,
-                    theme,
-                    onTap: () {},
-                  ),
-                  _buildNavigationRow(
-                    context.tr.translate('rate_app'),
-                    '',
-                    Icons.star_outline,
-                    theme,
-                    onTap: () {
-                      RateAppBottomSheet.show(context);
-                    },
-                  ),
-                  _buildNavigationRow(
-                    context.tr.translate('share_app'),
-                    '',
-                    Icons.share_outlined,
-                    theme,
-                    onTap: () async {
-                      await _shareApp();
-                    },
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -940,8 +984,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildLeadingIcon(IconData icon, ThemeData theme) {
-    final iconColor = theme.colorScheme.primary;
+  Widget _buildLeadingIcon(
+    IconData icon,
+    ThemeData theme, {
+    Color? color,
+  }) {
+    final iconColor = color ?? theme.colorScheme.primary;
 
     return Container(
       width: 40,
@@ -1208,6 +1256,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<bool> _confirmDeleteAccount(ColorScheme colorScheme) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          dialogContext.tr.translate('delete_account_confirmation_title'),
+        ),
+        content: Text(
+          dialogContext.tr.translate('delete_account_confirmation_message'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.tr.translate('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+            ),
+            child: Text(
+              dialogContext.tr.translate('delete_account_confirm'),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _handleDeleteAccount(AuthService authService) async {
+    if (_isDeletingAccount || !authService.isAuthenticated) return;
+
+    final shouldDelete = await _confirmDeleteAccount(
+      Theme.of(context).colorScheme,
+    );
+    if (!shouldDelete || !mounted) return;
+
+    final cleanupDependencies = AccountDataCleanupService.capture(context);
+    setState(() => _isDeletingAccount = true);
+
+    final deleted = await authService.deleteAccount();
+    if (!deleted) {
+      if (!mounted) return;
+      setState(() => _isDeletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            authService.errorMessage ??
+                context.tr.translate('delete_account_error'),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    await AccountDataCleanupService.clearAllUserData(cleanupDependencies);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
   Widget _buildNavigationRow(
     String label,
     String trailing,
@@ -1231,6 +1342,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ThemeData theme, {
     VoidCallback? onTap,
     bool isAction = false,
+    Color? iconColor,
+    Color? labelColor,
   }) {
     final isDarkMode = theme.brightness == Brightness.dark;
     final textColor = _primaryTextColor(isDarkMode);
@@ -1249,7 +1362,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Row(
             children: [
-              _buildLeadingIcon(icon, theme),
+              _buildLeadingIcon(icon, theme, color: iconColor),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1263,7 +1376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(
                         fontSize: _listItemTitleFontSize,
                         fontWeight: FontWeight.w700,
-                        color: textColor,
+                        color: labelColor ?? textColor,
                         height: 1.18,
                       ),
                     ),
@@ -1271,9 +1384,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 3),
                       Text(
                         value,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        softWrap: false,
                         style: TextStyle(
                           fontSize: _listItemSubtitleFontSize,
                           color: valueColor,

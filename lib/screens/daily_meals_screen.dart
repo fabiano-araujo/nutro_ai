@@ -8,18 +8,19 @@ import '../providers/daily_meals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../models/meal_model.dart';
-import '../models/food_model.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../widgets/month_calendar_sheet.dart';
-import '../widgets/food_icon.dart';
 import '../widgets/daily_activity_water_section.dart';
 import 'manage_meal_types_screen.dart';
 import 'nutrition_goals_screen.dart';
 import 'food_search_screen.dart';
-import 'food_page.dart';
+import 'meal_page.dart';
 import '../i18n/app_localizations.dart';
 import '../utils/meal_type_localization.dart';
+import '../utils/premium_access.dart';
+import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
 
 class DailyMealsScreen extends StatefulWidget {
   final bool showBackButton;
@@ -34,8 +35,6 @@ class DailyMealsScreen extends StatefulWidget {
 }
 
 class _DailyMealsScreenState extends State<DailyMealsScreen> {
-  final Map<MealType, bool> _expandedMeals = {};
-
   void _showDatePickerSheet(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -68,6 +67,12 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final purchaseService = context.watch<PurchaseService?>();
+    final authService = context.watch<AuthService?>();
+    final showFiber = hasPremiumAccess(
+      purchaseService: purchaseService,
+      authService: authService,
+    );
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
     final textColor =
@@ -98,6 +103,8 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                   carbsGoal: goalsProvider.carbsGoal,
                   fatsConsumed: mealsProvider.totalFat.toInt(),
                   fatsGoal: goalsProvider.fatGoal,
+                  fiberConsumed: mealsProvider.totalFiber.round(),
+                  showFiber: showFiber,
                   isDarkMode: isDarkMode,
                   textColor: textColor,
                   showBackButton: widget.showBackButton,
@@ -173,7 +180,12 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 const SizedBox(height: 10),
 
                 // Meals list
-                _buildMealsList(mealsProvider, isDarkMode, textColor),
+                _buildMealsList(
+                  mealsProvider,
+                  isDarkMode,
+                  textColor,
+                  showFiber: showFiber,
+                ),
 
                 const SizedBox(height: 16),
 
@@ -187,7 +199,11 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 // Daily Nutrition Details Card
                 if (mealsProvider.todayMeals.isNotEmpty)
                   _buildDailyNutritionCard(
-                      mealsProvider, isDarkMode, textColor),
+                    mealsProvider,
+                    isDarkMode,
+                    textColor,
+                    showFiber: showFiber,
+                  ),
 
                 const SizedBox(height: 16),
               ],
@@ -201,8 +217,9 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
   Widget _buildMealsList(
     DailyMealsProvider provider,
     bool isDarkMode,
-    Color textColor,
-  ) {
+    Color textColor, {
+    required bool showFiber,
+  }) {
     return Consumer<MealTypesProvider>(
       builder: (context, mealTypesProvider, child) {
         final mealTypes = mealTypesProvider.mealTypes;
@@ -298,7 +315,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             );
 
             final hasFoods = meal != null && meal.foods.isNotEmpty;
-            final isExpanded = _expandedMeals[type] ?? false;
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -306,13 +322,18 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                 mealInfo: mealInfo,
                 meal: meal,
                 hasFoods: hasFoods,
-                isExpanded: isExpanded,
                 isDarkMode: isDarkMode,
                 textColor: textColor,
-                onExpand: () {
-                  setState(() {
-                    _expandedMeals[type] = !isExpanded;
-                  });
+                onOpenMeal: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MealPage.fromMeal(
+                        meal: meal!,
+                        showFiber: showFiber,
+                      ),
+                    ),
+                  );
                 },
                 onAddFood: () {
                   _showAddFoodDialog(type);
@@ -349,8 +370,9 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
   Widget _buildDailyNutritionCard(
     DailyMealsProvider provider,
     bool isDarkMode,
-    Color textColor,
-  ) {
+    Color textColor, {
+    required bool showFiber,
+  }) {
     // Aggregate all nutrients from all foods in all meals
     final allFoods = provider.todayMeals.expand((meal) => meal.foods).toList();
 
@@ -365,9 +387,9 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     final totalCarbs = provider.totalCarbs;
     final totalFat = provider.totalFat;
     final totalCalories = provider.totalCalories;
+    final totalFiber = provider.totalFiber;
 
     // Calculate micronutrients (sum from all foods)
-    double totalFiber = 0;
     double totalSugars = 0;
     double totalSaturatedFat = 0;
     double totalCholesterol = 0;
@@ -384,7 +406,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     for (var food in allFoods) {
       final nutrient = food.primaryNutrient;
       if (nutrient != null) {
-        totalFiber += nutrient.dietaryFiber ?? 0;
         totalSugars += nutrient.sugars ?? 0;
         totalSaturatedFat += nutrient.saturatedFat ?? 0;
         totalCholesterol += nutrient.cholesterol ?? 0;
@@ -401,10 +422,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
     }
 
     final microTiles = <_SummaryTileData>[
-      _SummaryTileData(
-        label: l10n.translate('dietary_fiber'),
-        value: '${totalFiber.toStringAsFixed(0)} g',
-      ),
       _SummaryTileData(
         label: l10n.translate('sugars'),
         value: '${totalSugars.toStringAsFixed(0)} g',
@@ -491,7 +508,6 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 16),
 
               // Macronutrients grid (2 x 2)
@@ -540,6 +556,29 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
                       isDarkMode: isDarkMode,
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SummaryMacroTile(
+                      icon: MacroTheme.fiberIcon,
+                      color: MacroTheme.fiberColor,
+                      label: l10n.translate('dietary_fiber'),
+                      value: showFiber
+                          ? '${totalFiber.toStringAsFixed(0)} g'
+                          : l10n.translate('premium'),
+                      isDarkMode: isDarkMode,
+                      isLocked: !showFiber,
+                      onTap: showFiber
+                          ? null
+                          : () =>
+                              Navigator.of(context).pushNamed('/subscription'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(child: SizedBox.shrink()),
                 ],
               ),
 
@@ -656,10 +695,9 @@ class _MealCard extends StatelessWidget {
   final MealTypeOption mealInfo;
   final Meal? meal;
   final bool hasFoods;
-  final bool isExpanded;
   final bool isDarkMode;
   final Color textColor;
-  final VoidCallback onExpand;
+  final VoidCallback onOpenMeal;
   final VoidCallback onAddFood;
 
   const _MealCard({
@@ -667,10 +705,9 @@ class _MealCard extends StatelessWidget {
     required this.mealInfo,
     required this.meal,
     required this.hasFoods,
-    required this.isExpanded,
     required this.isDarkMode,
     required this.textColor,
-    required this.onExpand,
+    required this.onOpenMeal,
     required this.onAddFood,
   }) : super(key: key);
 
@@ -694,7 +731,7 @@ class _MealCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: hasFoods ? onExpand : onAddFood,
+          onTap: hasFoods ? onOpenMeal : onAddFood,
           borderRadius: BorderRadius.circular(20),
           child: Column(
             children: [
@@ -769,8 +806,8 @@ class _MealCard extends StatelessWidget {
                                     width: 3,
                                     height: 3,
                                     decoration: BoxDecoration(
-                                      color: secondaryTextColor
-                                          .withValues(alpha: 0.5),
+                                      color: secondaryTextColor.withValues(
+                                          alpha: 0.5),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -797,36 +834,13 @@ class _MealCard extends StatelessWidget {
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: secondaryTextColor.withValues(alpha: 0.7),
+                                color:
+                                    secondaryTextColor.withValues(alpha: 0.7),
                               ),
                             ),
                         ],
                       ),
                     ),
-                    if (hasFoods)
-                      Material(
-                        color: isDarkMode
-                            ? Colors.white.withValues(alpha: 0.07)
-                            : Colors.black.withValues(alpha: 0.045),
-                        borderRadius: BorderRadius.circular(10),
-                        child: InkWell(
-                          onTap: onExpand,
-                          borderRadius: BorderRadius.circular(10),
-                          child: Padding(
-                            padding: const EdgeInsets.all(6),
-                            child: AnimatedRotation(
-                              turns: isExpanded ? 0.5 : 0,
-                              duration: const Duration(milliseconds: 200),
-                              child: Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 19,
-                                color:
-                                    secondaryTextColor.withValues(alpha: 0.85),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                     if (hasFoods) const SizedBox(width: 8),
                     Container(
                       decoration: BoxDecoration(
@@ -867,274 +881,9 @@ class _MealCard extends StatelessWidget {
                   ],
                 ),
               ),
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: hasFoods
-                    ? _buildExpandedFoodList(context, secondaryTextColor)
-                    : const SizedBox.shrink(),
-                crossFadeState: isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
-              ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildExpandedFoodList(
-    BuildContext context,
-    Color secondaryTextColor,
-  ) {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          height: 1,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.transparent,
-                (isDarkMode ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.08),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Column(
-            children: meal!.foods
-                .map(
-                    (food) => _buildFoodItem(food, context, secondaryTextColor))
-                .toList(),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 2, 14, 14),
-          child: _MealMacroSummary(
-            calories: meal!.totalCalories,
-            protein: meal!.totalProtein,
-            carbs: meal!.totalCarbs,
-            fat: meal!.totalFat,
-            isDarkMode: isDarkMode,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFoodItem(
-      Food food, BuildContext context, Color secondaryTextColor) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FoodPage(food: food),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 36,
-                height: 36,
-                child: Center(
-                  child: FoodIcon(name: food.name, emoji: food.emoji, size: 27),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      food.name,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: textColor.withValues(alpha: 0.9),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      food.amount ?? '',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: secondaryTextColor.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                '${food.calories} kcal',
-                textAlign: TextAlign.right,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: textColor.withValues(alpha: 0.7),
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.remove_circle_outline,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 18,
-                ),
-                onPressed: () {
-                  Provider.of<DailyMealsProvider>(context, listen: false)
-                      .removeFoodFromMeal(mealInfo.type, food);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MealMacroSummary extends StatelessWidget {
-  final int calories;
-  final double protein;
-  final double carbs;
-  final double fat;
-  final bool isDarkMode;
-
-  const _MealMacroSummary({
-    required this.calories,
-    required this.protein,
-    required this.carbs,
-    required this.fat,
-    required this.isDarkMode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final dividerColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.07);
-
-    Widget divider() => Container(
-          width: 1,
-          height: 42,
-          color: dividerColor,
-        );
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(
-        children: [
-          _MealMacroStat(
-            icon: MacroTheme.caloriesIcon,
-            color: MacroTheme.caloriesColor,
-            value: '$calories',
-            label: 'kcal',
-            isDarkMode: isDarkMode,
-          ),
-          divider(),
-          _MealMacroStat(
-            icon: MacroTheme.proteinIcon,
-            color: MacroTheme.proteinColor,
-            value: '${protein.toStringAsFixed(1)} g',
-            label: l10n.translate('protein_short'),
-            isDarkMode: isDarkMode,
-          ),
-          divider(),
-          _MealMacroStat(
-            icon: MacroTheme.carbsIcon,
-            color: MacroTheme.carbsColor,
-            value: '${carbs.toStringAsFixed(1)} g',
-            label: l10n.translate('carbs_short'),
-            isDarkMode: isDarkMode,
-          ),
-          divider(),
-          _MealMacroStat(
-            icon: MacroTheme.fatIcon,
-            color: MacroTheme.fatColor,
-            value: '${fat.toStringAsFixed(1)} g',
-            label: l10n.translate('fats_short'),
-            isDarkMode: isDarkMode,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MealMacroStat extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String value;
-  final String label;
-  final bool isDarkMode;
-
-  const _MealMacroStat({
-    required this.icon,
-    required this.color,
-    required this.value,
-    required this.label,
-    required this.isDarkMode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final secondaryColor =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
-
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-                color: color,
-              ),
-            ),
-          ),
-          const SizedBox(height: 1),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: secondaryColor.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1153,6 +902,8 @@ class _SummaryMacroTile extends StatelessWidget {
   final String label;
   final String value;
   final bool isDarkMode;
+  final bool isLocked;
+  final VoidCallback? onTap;
 
   const _SummaryMacroTile({
     required this.icon,
@@ -1160,6 +911,8 @@ class _SummaryMacroTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.isDarkMode,
+    this.isLocked = false,
+    this.onTap,
   });
 
   @override
@@ -1167,53 +920,65 @@ class _SummaryMacroTile extends StatelessWidget {
     final textColor =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDarkMode ? 0.14 : 0.08),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          MacroTheme.iconBadge(
-            icon: icon,
-            color: color,
-            isDarkMode: isDarkMode,
-            size: 28,
-            iconSize: 15,
+    final borderRadius = BorderRadius.circular(14);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: borderRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDarkMode ? 0.14 : 0.08),
+            borderRadius: borderRadius,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: textColor.withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: 1),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: textColor.withValues(alpha: 0.92),
+          child: Row(
+            children: [
+              MacroTheme.iconBadge(
+                icon: isLocked ? Icons.workspace_premium_rounded : icon,
+                color: color,
+                isDarkMode: isDarkMode,
+                size: 28,
+                iconSize: 15,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: textColor.withValues(alpha: 0.6),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 1),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: isLocked
+                              ? color
+                              : textColor.withValues(alpha: 0.92),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1281,6 +1046,8 @@ class _DiaryNutritionHero extends StatelessWidget {
   final int carbsGoal;
   final int fatsConsumed;
   final int fatsGoal;
+  final int fiberConsumed;
+  final bool showFiber;
   final bool isDarkMode;
   final Color textColor;
   final bool showBackButton;
@@ -1301,6 +1068,8 @@ class _DiaryNutritionHero extends StatelessWidget {
     required this.carbsGoal,
     required this.fatsConsumed,
     required this.fatsGoal,
+    required this.fiberConsumed,
+    required this.showFiber,
     required this.isDarkMode,
     required this.textColor,
     required this.showBackButton,
@@ -1520,6 +1289,22 @@ class _DiaryNutritionHero extends StatelessWidget {
                   isDarkMode: isDarkMode,
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _DiaryMacroCard(
+                  key: const ValueKey('diary-fiber-card'),
+                  label: l10n.translate('fiber'),
+                  consumed: fiberConsumed,
+                  color: MacroTheme.fiberColor,
+                  surfaceColor: surfaceColor,
+                  textColor: textColor,
+                  isDarkMode: isDarkMode,
+                  isLocked: !showFiber,
+                  onTap: showFiber
+                      ? null
+                      : () => Navigator.of(context).pushNamed('/subscription'),
+                ),
+              ),
             ],
           ),
         ],
@@ -1610,74 +1395,110 @@ class _DiarySideMetric extends StatelessWidget {
 class _DiaryMacroCard extends StatelessWidget {
   final String label;
   final int consumed;
-  final int goal;
+  final int? goal;
   final Color color;
   final Color surfaceColor;
   final Color textColor;
   final bool isDarkMode;
+  final bool isLocked;
+  final VoidCallback? onTap;
 
   const _DiaryMacroCard({
+    super.key,
     required this.label,
     required this.consumed,
-    required this.goal,
+    this.goal,
     required this.color,
     required this.surfaceColor,
     required this.textColor,
     required this.isDarkMode,
+    this.isLocked = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = goal <= 0 ? 0.0 : (consumed / goal).clamp(0.0, 1.0);
+    final progress =
+        goal == null || goal! <= 0 ? 0.0 : (consumed / goal!).clamp(0.0, 1.0);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.07)
-              : Colors.white.withValues(alpha: 0.9),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              color: textColor.withValues(alpha: 0.86),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+    final borderRadius = BorderRadius.circular(16);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: borderRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.white.withValues(alpha: 0.9),
             ),
           ),
-          const SizedBox(height: 5),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '$consumed/$goal g',
-              style: GoogleFonts.inter(
-                color: textColor.withValues(alpha: 0.62),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        color: textColor.withValues(alpha: 0.86),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (isLocked)
+                    Icon(
+                      Icons.workspace_premium_rounded,
+                      key: const ValueKey('diary-fiber-premium-icon'),
+                      size: 14,
+                      color: color,
+                    ),
+                ],
               ),
-            ),
+              const SizedBox(height: 5),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  isLocked
+                      ? AppLocalizations.of(context).translate('premium')
+                      : goal == null
+                          ? '$consumed g'
+                          : '$consumed/$goal g',
+                  style: GoogleFonts.inter(
+                    color: isLocked ? color : textColor.withValues(alpha: 0.62),
+                    fontSize: 11,
+                    fontWeight: isLocked ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (!isLocked && goal != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    backgroundColor: color.withValues(alpha: 0.14),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                  ),
+                )
+              else
+                const SizedBox(height: 5),
+            ],
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 5,
-              backgroundColor: color.withValues(alpha: 0.14),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1698,8 +1519,7 @@ class _CalorieRingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final strokeWidth = math.min(13.0, size.width * 0.075);
     final center = size.center(Offset.zero);
-    final radius =
-        (math.min(size.width, size.height) / 2) - (strokeWidth / 2);
+    final radius = (math.min(size.width, size.height) / 2) - (strokeWidth / 2);
     final rect = Rect.fromCircle(center: center, radius: radius);
     final trackPaint = Paint()
       ..color = trackColor

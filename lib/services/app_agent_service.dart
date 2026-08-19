@@ -5889,6 +5889,7 @@ $basePrompt
         'totalProtein': _round1(plan.totalNutrition.protein),
         'totalCarbs': _round1(plan.totalNutrition.carbs),
         'totalFat': _round1(plan.totalNutrition.fat),
+        'totalFiber': _round1(plan.totalNutrition.fiber),
         'mealCount': plan.meals.length,
         'dietPersonalization': _buildDietGenerationPreferencesPayload(
           dietProvider,
@@ -6108,12 +6109,14 @@ $basePrompt
       'name': meal.name,
       'time': meal.time,
       'calories': meal.mealTotals.calories,
+      'fiber': _round1(meal.mealTotals.fiber),
       'foods': meal.foods
           .map((food) => {
                 'name': food.name,
                 'amount': food.amount,
                 'unit': food.unit,
                 'calories': food.calories,
+                'fiber': _round1(food.fiber),
               })
           .toList(),
     };

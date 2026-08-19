@@ -8,8 +8,8 @@ This file guides coding agents working in this repository.
 - Backend API: Fastify + Prisma in `dieta_api/`.
 - App name: `nutro_ai` (`pubspec.yaml`).
 - API constants used by Flutter are defined in `lib/util/app_constants.dart`:
-  - `API_BASE_URL = https://nutro.snapdark.com`
-  - `DIET_API_BASE_URL = http://157.230.238.117:3000`
+  - `API_BASE_URL = https://nutro-api.snapdark.com`
+  - `DIET_API_BASE_URL = https://nutro-api.snapdark.com` (same origin as `API_BASE_URL`)
 
 ## 2) Architecture
 
@@ -65,6 +65,17 @@ This file guides coding agents working in this repository.
    - `GET /user/app-state` returns user profile/subscription, credits, server goal setup, macro targets, diet-generation preferences, and free-chat conversations.
    - `PUT /user/app-state` syncs pending nutrition goals and/or free-chat conversations saved locally while offline.
 12. OpenRouter chat prompt caching depends on a stable `sessionId` per logical chat. The Flutter chat may send `conversationMessages` (completed `user`/`assistant` turns) plus a `modelPrompt` containing only the current dynamic context/request; the backend forwards these as `messages` and `session_id` to OpenRouter.
+13. Food logging must always calculate and persist fiber for every user, including free users. Fiber visibility is a premium-only presentation rule; never gate `fiber`/`dietaryFiber` in AI food JSON parsing, meal models, local storage, or `/meals/sync`, so previously logged data becomes visible immediately after subscription.
+14. Registration streak check-ins are event-driven and idempotent:
+   - `POST /streak/checkin` receives the app's `localDate` (`YYYY-MM-DD`) and returns `data`, `didAdvance`, and an optional canonical `event`.
+   - `GET /streak/me` is a read-only projection (apart from first-row creation) and can return the oldest `pendingEvent`; it must never consume a protection or rewrite `registrationLastDate`.
+   - `POST /streak/events/:eventId/ack` acknowledges a celebration only after its fullscreen flow closes.
+   - `StreakCheckInEvent` is unique by user/date. A one-day gap can emit `protectedMissedDate` and `freezesRecovered`; retries must not increment or create another event.
+15. Email/password recovery uses the same 3-step flow as Whatlisten:
+   - `POST /email/forgot-password` with `{ email, lang }` sends a 4-digit code and never reveals whether the account exists.
+   - `POST /auth/verify-reset-code` with `{ email, code }` validates the code.
+   - `POST /auth/reset-password` with `{ email, code, newPassword }` updates the hashed password and consumes the code.
+16. Admin email dashboard is served at `/admin/login` and `/admin/email`. Auth uses `ADMIN_EMAIL` / `ADMIN_PASSWORD` and an `admin_session` cookie. Email send counts live in `email_stats` / `email_log`.
 
 ## 4) Main Commands
 
@@ -73,6 +84,7 @@ This file guides coding agents working in this repository.
 ```bash
 flutter pub get
 flutter run
+flutter build apk --release --split-per-abi
 flutter analyze
 flutter test
 flutter test test/ai_service_stream_test.dart
@@ -149,6 +161,13 @@ npx prisma studio
 ### Auth and credits
 
 - `lib/services/auth_service.dart`
+- `lib/screens/email_login_screen.dart`
+- `lib/screens/email_register_screen.dart`
+- `lib/screens/forgot_password_screen.dart`
+- `dieta_api/src/routes/auth.routes.ts`
+- `dieta_api/src/routes/email.routes.ts`
+- `dieta_api/src/routes/email.dashboard.routes.ts`
+- `dieta_api/src/services/email.service.ts`
 - `lib/services/purchase_service.dart`
 - `lib/providers/credit_provider.dart`
 - `dieta_api/src/routes/auth.routes.ts`

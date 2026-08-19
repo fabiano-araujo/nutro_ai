@@ -427,7 +427,7 @@ function processAllPortions() {
 }
 
 async function sendPostRequest(data) {
-    let url = `https://nutro.snapdark.com/food/script?region=BR&language=&source=mobile`;
+    let url = `https://nutro-api.snapdark.com/food/script?region=BR&language=&source=mobile`;
 
     try {
         console.log('Enviando dados para o servidor (fonte: mobile)...');

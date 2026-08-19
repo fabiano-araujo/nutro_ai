@@ -20,6 +20,7 @@ import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
 import '../services/food_catalog_service.dart';
 import '../services/ad_manager.dart';
+import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../helpers/webview_helper.dart';
@@ -29,6 +30,7 @@ import '../widgets/micro_nutrient_row.dart';
 import '../widgets/food_icon.dart';
 import '../utils/ui_utils.dart';
 import '../utils/meal_type_localization.dart';
+import '../utils/premium_access.dart';
 
 class FoodPage extends StatefulWidget {
   final Food food;
@@ -577,39 +579,55 @@ class _FoodPageState extends State<FoodPage> {
     required String unit,
     required Color color,
     required bool isDarkMode,
+    bool isLocked = false,
+    VoidCallback? onTap,
   }) {
     final secondaryColor =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        MacroTheme.iconBadge(
-          icon: icon,
-          color: color,
-          isDarkMode: isDarkMode,
-          size: 26,
-          iconSize: 15,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: color,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              MacroTheme.iconBadge(
+                icon: isLocked ? Icons.workspace_premium_rounded : icon,
+                color: color,
+                isDarkMode: isDarkMode,
+                size: 26,
+                iconSize: 15,
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: GoogleFonts.inter(
+                    fontSize: isLocked ? 11 : 15,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+              Text(
+                unit,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  color: secondaryColor,
+                ),
+              ),
+            ],
           ),
         ),
-        Text(
-          unit,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            color: secondaryColor,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -940,6 +958,8 @@ class _FoodPageState extends State<FoodPage> {
     required double protein,
     required double carbs,
     required double fat,
+    required double fiber,
+    required bool showFiber,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -986,6 +1006,28 @@ class _FoodPageState extends State<FoodPage> {
                   unit: context.tr.translate('fat'),
                   color: MacroTheme.fatColor,
                   isDarkMode: isDarkMode,
+                ),
+              ),
+              _buildMacroDivider(isDarkMode),
+              Expanded(
+                child: Tooltip(
+                  message: showFiber
+                      ? context.tr.translate('fiber')
+                      : context.tr.translate('tap_for_premium'),
+                  child: _buildMacroCardCompact(
+                    icon: MacroTheme.fiberIcon,
+                    value: showFiber
+                        ? '${fiber.toStringAsFixed(1)}g'
+                        : context.tr.translate('premium'),
+                    unit: context.tr.translate('fiber'),
+                    color: MacroTheme.fiberColor,
+                    isDarkMode: isDarkMode,
+                    isLocked: !showFiber,
+                    onTap: showFiber
+                        ? null
+                        : () =>
+                            Navigator.of(context).pushNamed('/subscription'),
+                  ),
                 ),
               ),
             ],
@@ -1634,6 +1676,12 @@ class _FoodPageState extends State<FoodPage> {
 
   @override
   Widget build(BuildContext context) {
+    final purchaseService = context.watch<PurchaseService?>();
+    final authService = context.watch<AuthService?>();
+    final showFiber = hasPremiumAccess(
+      purchaseService: purchaseService,
+      authService: authService,
+    );
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor =
         isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor;
@@ -1655,6 +1703,7 @@ class _FoodPageState extends State<FoodPage> {
     final protein = _getScaledValue(nutrient?.protein);
     final carbs = _getScaledValue(nutrient?.carbohydrate);
     final fat = _getScaledValue(nutrient?.fat);
+    final fiber = _getScaledValue(nutrient?.dietaryFiber);
 
     // Whether alternative portions exist (controls Unit field interactivity)
     final availablePortions = _portionsFor(currentFood);
@@ -1895,6 +1944,8 @@ class _FoodPageState extends State<FoodPage> {
                             protein: protein,
                             carbs: carbs,
                             fat: fat,
+                            fiber: fiber,
+                            showFiber: showFiber,
                           ),
 
                           if (_hasNutritionClaims(currentFood)) ...[
@@ -1964,8 +2015,7 @@ class _FoodPageState extends State<FoodPage> {
                                       value: '${carbs.toStringAsFixed(0)} g',
                                       isDarkMode: isDarkMode,
                                     ),
-                                    if (nutrient?.dietaryFiber != null ||
-                                        nutrient?.sugars != null)
+                                    if (nutrient?.sugars != null)
                                       Container(
                                         margin:
                                             EdgeInsets.only(left: 0, top: 8),
@@ -1980,14 +2030,6 @@ class _FoodPageState extends State<FoodPage> {
                                         ),
                                         child: Column(
                                           children: [
-                                            if (nutrient?.dietaryFiber != null)
-                                              SubNutrientRow(
-                                                label: context.tr
-                                                    .translate('dietary_fiber'),
-                                                value:
-                                                    '${_getScaledValue(nutrient?.dietaryFiber).toStringAsFixed(0)} g',
-                                                isDarkMode: isDarkMode,
-                                              ),
                                             if (nutrient?.sugars != null)
                                               SubNutrientRow(
                                                 label: context.tr
@@ -1999,6 +2041,86 @@ class _FoodPageState extends State<FoodPage> {
                                           ],
                                         ),
                                       ),
+
+                                    SizedBox(height: 12),
+
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: showFiber
+                                            ? null
+                                            : () => Navigator.of(context)
+                                                .pushNamed('/subscription'),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 2,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  context.tr.translate(
+                                                    'dietary_fiber',
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: textColor.withValues(
+                                                      alpha: 0.85,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              if (showFiber)
+                                                Text(
+                                                  '${fiber.toStringAsFixed(0)} g',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: textColor.withValues(
+                                                      alpha: 0.85,
+                                                    ),
+                                                  ),
+                                                )
+                                              else
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .workspace_premium_rounded,
+                                                      size: 18,
+                                                      color:
+                                                          MacroTheme.fiberColor,
+                                                    ),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      context.tr.translate(
+                                                        'premium',
+                                                      ),
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: MacroTheme
+                                                            .fiberColor,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
 
                                     SizedBox(height: 12),
 

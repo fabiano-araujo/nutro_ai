@@ -410,7 +410,7 @@ class AIService {
     try {
       final imageBase64 = base64Encode(imageBytes);
       final systemContent =
-          'Você é um assistente de nutrição. Analise a imagem do alimento e forneça informações nutricionais detalhadas (calorias, proteínas, carboidratos, gorduras). Você deve responder no idioma: $languageCode';
+          'Você é um assistente de nutrição. Analise a imagem do alimento e forneça informações nutricionais detalhadas (calorias, proteínas, carboidratos, gorduras e fibras). Sempre estime a fibra em gramas para a porção informada e use zero somente quando ela realmente não existir. Você deve responder no idioma: $languageCode';
 
       print('\n📤 ENVIANDO IMAGEM COM PROMPT:');
       print('----------------------------------------');

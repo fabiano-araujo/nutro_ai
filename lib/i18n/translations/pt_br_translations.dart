@@ -72,6 +72,27 @@ final Map<String, String> ptBRTranslations = {
   'email': 'Email',
   'password': 'Senha',
   'forgot_password': 'Esqueceu a senha?',
+  'forgot_password_title': 'Recuperar senha',
+  'forgot_password_subtitle':
+      'Informe o email da sua conta. Se ele existir, enviaremos um código de recuperação.',
+  'forgot_password_send_code': 'Enviar código',
+  'forgot_password_code_title': 'Digite o código',
+  'forgot_password_code_subtitle':
+      'Enviamos um código de 4 dígitos para o seu email. Ele vale por 6 horas.',
+  'forgot_password_code_label': 'Código',
+  'forgot_password_code_invalid': 'Informe o código de 4 dígitos',
+  'forgot_password_verify_code': 'Verificar código',
+  'forgot_password_new_title': 'Nova senha',
+  'forgot_password_new_subtitle': 'Escolha uma senha nova para a sua conta.',
+  'forgot_password_save': 'Salvar senha',
+  'forgot_password_send_error':
+      'Não foi possível enviar o email agora. Tente novamente.',
+  'forgot_password_invalid_code': 'Código inválido ou expirado.',
+  'forgot_password_reset_error':
+      'Não foi possível redefinir a senha. Tente novamente.',
+  'forgot_password_success': 'Senha alterada. Entre com a nova senha.',
+  'login_google_account_required':
+      'Esta conta entra com Google. Use o login do Google.',
   'login_button': 'Entrar',
   'no_account': 'Ainda não tem uma conta?',
   'sign_up': 'Cadastre-se',
@@ -87,6 +108,13 @@ final Map<String, String> ptBRTranslations = {
   'sign_out': 'Sair da Conta',
   'logout': 'Sair',
   'logout_confirmation': 'Tem certeza que deseja sair da sua conta?',
+  'delete_account': 'Excluir conta',
+  'delete_account_subtitle': 'Apagar sua conta e todos os dados associados',
+  'delete_account_confirmation_title': 'Excluir sua conta?',
+  'delete_account_confirmation_message':
+      'Essa ação é permanente e apagará sua conta, dados, conversas, refeições e planos. Deseja continuar?',
+  'delete_account_confirm': 'Excluir definitivamente',
+  'delete_account_error': 'Não foi possível excluir a conta agora.',
   'logout_pending_sync_title': 'Sincronizar antes de sair',
   'logout_pending_sync_message':
       'Há alterações neste aparelho que ainda não foram salvas na sua conta. Para sair sem perder nada, conecte-se à internet e sincronize agora.',
@@ -1171,6 +1199,22 @@ final Map<String, String> ptBRTranslations = {
 
   // Food Search
   'search_food': 'Buscar Alimento',
+  'food_input_actions_title': 'Adicionar alimentos',
+  'food_input_audio_title': 'Falar alimentos',
+  'food_input_audio_subtitle': 'Diga o que comeu para identificar os alimentos',
+  'food_input_camera_subtitle':
+      'Fotografe a refeição para identificar os alimentos',
+  'food_input_gallery_subtitle': 'Escolha uma foto da sua galeria',
+  'food_input_barcode_subtitle': 'Leia o código de um produto embalado',
+  'food_voice_sheet_title': 'Diga o que você comeu',
+  'food_voice_sheet_subtitle':
+      'Fale os alimentos e as quantidades. Toque em parar quando terminar.',
+  'food_voice_stop_action': 'Parar e identificar',
+  'food_voice_retry_hint': 'Tente novamente para gravar os alimentos.',
+  'ai_food_results': 'Alimentos identificados',
+  'no_food_detected': 'Nenhum alimento foi identificado',
+  'food_input_processing_error':
+      'Não foi possível identificar os alimentos. Tente novamente.',
   'what_did_you_eat': 'O que você comeu?',
   'recent': 'Recentes',
   'favorites': 'Favoritos',
@@ -2058,6 +2102,46 @@ final Map<String, String> ptBRTranslations = {
   'social_view_challenges': 'Ver todos',
   'social_public_challenges': 'Desafios abertos para participar',
   'streak_in_danger_short': 'Em risco',
+  'streak_celebration_day_one': 'dia seguido!',
+  'streak_celebration_days_other': 'dias seguidos!',
+  'streak_celebration_message':
+      'Amanhã você pode chegar a {next} dias seguidos!',
+  'streak_celebration_continue': 'Continuar',
+  'streak_celebration_freeze_title': 'Você recuperou seu gelo',
+  'streak_celebration_freeze_body': 'Isso ajudará caso você perca um dia.',
+  'streak_intro_challenge_title': 'Consegue chegar a 3 dias?',
+  'streak_intro_challenge_body':
+      'Quem registra alimentos por 3 dias seguidos tem mais chances de alcançar seus objetivos.',
+  'streak_intro_challenge_cta': 'Eu consigo',
+  'streak_intro_widget_title': 'Tem receio de perder sua sequência?',
+  'streak_intro_widget_body':
+      'Nosso widget mantém as calorias de hoje e sua sequência sempre à vista. Quer adicioná-lo à Tela inicial?',
+  'streak_intro_widget_cta': 'Sim, adicionar o widget',
+  'streak_intro_not_now': 'Agora não',
+  'streak_widget_unavailable':
+      'Não foi possível adicionar o widget neste dispositivo.',
+  'streak_widget_card_title': 'Widget da sequência',
+  'streak_widget_card_body':
+      'Veja as calorias de hoje e sua sequência direto na Tela inicial.',
+  'streak_widget_card_added': 'Adicionado à Tela inicial',
+  'streak_commit_cta': 'Estou comprometido',
+  'streak_commit_success': 'Compromisso registrado. Continue assim!',
+  'streak_widget_day_one': 'dia',
+  'streak_widget_days_other': 'dias',
+  'streak_widget_today': 'Hoje',
+  'streak_challenge_section': 'Meu desafio',
+  'streak_challenge_next': 'Próxima meta: {target} dias',
+  'streak_challenge_day_progress': 'Dia {current}/{target}',
+  'streak_overview_section': 'Visão geral',
+  'streak_summary_section': 'Resumo',
+  'streak_best_registration': 'Maior sequência',
+  'streak_protection_one': '1 proteção de sequência disponível',
+  'streak_protection_other': '{count} proteções de sequência disponíveis',
+  'streak_details_title': 'Mais detalhes',
+  'streak_hero_started':
+      'Parabéns, você iniciou sua sequência! Continue assim!',
+  'streak_hero_continue':
+      'Sua consistência está crescendo. Continue registrando todos os dias.',
   'challenge_objective_label': 'Objetivo',
   'challenge_days_completed': 'dias',
   'challenge_today_metric': 'Hoje',

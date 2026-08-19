@@ -7,6 +7,8 @@ import '../utils/food_json_parser.dart';
 import '../providers/daily_meals_provider.dart';
 import '../utils/ai_interaction_helper.dart';
 import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
+import '../utils/premium_access.dart';
 import '../services/favorite_food_service.dart';
 import '../services/ad_manager.dart';
 import 'meal_card.dart';
@@ -499,6 +501,10 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final showFiber = hasPremiumAccess(
+      purchaseService: context.watch<PurchaseService>(),
+      authService: context.watch<AuthService>(),
+    );
     final visibleMeals = _meals.where((meal) => meal.foods.isNotEmpty).toList();
     if (!_loggedFirstBuild) {
       _loggedFirstBuild = true;
@@ -524,6 +530,7 @@ class _FoodJsonDisplayState extends State<FoodJsonDisplay>
           child: MealCard(
             key: ValueKey('food-json-meal-${meal.id}'),
             meal: meal,
+            showFiber: showFiber,
             onMealTypeChanged: (newType) =>
                 _handleMealTypeChanged(mealIndex, newType),
             onMealUpdated: (updatedMeal) =>

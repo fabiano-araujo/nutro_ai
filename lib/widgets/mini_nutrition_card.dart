@@ -266,7 +266,7 @@ class _MiniCaloriesBlock extends StatelessWidget {
 
 class _MiniMacroBlock extends StatelessWidget {
   final int value;
-  final int goal;
+  final int? goal;
   final Color color;
   final IconData icon;
   final double iconSize;
@@ -277,7 +277,7 @@ class _MiniMacroBlock extends StatelessWidget {
   const _MiniMacroBlock({
     Key? key,
     required this.value,
-    required this.goal,
+    this.goal,
     required this.color,
     required this.icon,
     required this.iconSize,
@@ -288,7 +288,7 @@ class _MiniMacroBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = goal > 0 ? value / goal : 0.0;
+    final progress = goal != null && goal! > 0 ? value / goal! : 0.0;
     final isExceeded = progress > 1.0;
     final clampedProgress = progress.clamp(0.0, 1.0);
     final accentColor = isExceeded ? AppTheme.errorColor : color;
@@ -317,7 +317,7 @@ class _MiniMacroBlock extends StatelessWidget {
                 '${value}g',
                 maxLines: 1,
                 style: TextStyle(
-                  fontSize: compact ? 10.5 : 11.5,
+                  fontSize: compact ? 9.5 : 10.5,
                   height: 1,
                   fontWeight: FontWeight.w600,
                   color: isExceeded ? AppTheme.errorColor : textColor,
@@ -326,22 +326,24 @@ class _MiniMacroBlock extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: Stack(
-            children: [
-              Container(height: 4, color: trackColor),
-              FractionallySizedBox(
-                widthFactor: clampedProgress,
-                child: Container(
-                  height: 4,
-                  color: accentColor.withValues(alpha: 0.7),
+        if (goal != null) ...[
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: Stack(
+              children: [
+                Container(height: 4, color: trackColor),
+                FractionallySizedBox(
+                  widthFactor: clampedProgress,
+                  child: Container(
+                    height: 4,
+                    color: accentColor.withValues(alpha: 0.7),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

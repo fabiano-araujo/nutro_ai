@@ -3,4 +3,14 @@
     <string name="ad_attribution">Annonce</string>
     <string name="health_permissions_privacy_title">Politique de confidentialité</string>
     <string name="health_permissions_privacy_body">Nutro AI utilise les données de Health Connect uniquement pour afficher dans l’application les calories dépensées, les pas et les exercices utiles à votre suivi nutritionnel. Ces données ne sont pas vendues. Vous pouvez autoriser, refuser ou retirer l’accès à tout moment dans les paramètres de Health Connect.</string>
+    <string name="widget_name">Nutro AI — Série</string>
+    <string name="widget_description">Calories du jour et série quotidienne</string>
+    <string name="widget_today">Aujourd’hui</string>
+    <string name="widget_calories_unit">kcal</string>
+    <string name="widget_goal_format">%1$d sur %2$d kcal</string>
+    <string name="widget_tap_to_open">Touchez pour ouvrir</string>
+    <plurals name="widget_streak_days">
+        <item quantity="one">%d jour</item>
+        <item quantity="other">%d jours</item>
+    </plurals>
 </resources>

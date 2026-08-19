@@ -110,6 +110,10 @@ class Food {
     return primaryNutrient?.fat ?? 0.0;
   }
 
+  double get fiber {
+    return primaryNutrient?.dietaryFiber ?? 0.0;
+  }
+
   String? get imageUrl => photo;
 
   factory Food.fromJson(Map<String, dynamic> json) {

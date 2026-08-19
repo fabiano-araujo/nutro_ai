@@ -1783,6 +1783,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       protein: plannedFood.protein,
       carbohydrate: plannedFood.carbs,
       fat: plannedFood.fat,
+      dietaryFiber: plannedFood.fiber,
     );
 
     return Food(
@@ -2516,6 +2517,15 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                     MacroTheme.fatColor,
                     secondaryColor),
               ),
+              _buildMacroDivider(isDarkMode),
+              Expanded(
+                child: _buildMacroStat(
+                    MacroTheme.fiberIcon,
+                    '${nutrition.fiber.toStringAsFixed(0)}g',
+                    l10n.translate('fiber'),
+                    MacroTheme.fiberColor,
+                    secondaryColor),
+              ),
             ],
           ),
         ),
@@ -2959,6 +2969,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                 l10n.translate('fats_short'),
                 isDarkMode,
               ),
+              _buildMacroDivider(isDarkMode),
+              _buildMealMacroStat(
+                MacroTheme.fiberIcon,
+                MacroTheme.fiberColor,
+                '${meal.mealTotals.fiber.toStringAsFixed(1)} g',
+                l10n.translate('fiber'),
+                isDarkMode,
+              ),
             ],
           ),
         ),
@@ -3189,6 +3207,14 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                         MacroTheme.fatColor,
                         '${meal.mealTotals.fat.toStringAsFixed(1)} g',
                         l10n.translate('fats_short'),
+                        isDarkMode,
+                      ),
+                      _buildMacroDivider(isDarkMode),
+                      _buildMealMacroStat(
+                        MacroTheme.fiberIcon,
+                        MacroTheme.fiberColor,
+                        '${meal.mealTotals.fiber.toStringAsFixed(1)} g',
+                        l10n.translate('fiber'),
                         isDarkMode,
                       ),
                     ],

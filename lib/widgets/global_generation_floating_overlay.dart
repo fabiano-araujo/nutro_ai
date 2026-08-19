@@ -48,8 +48,8 @@ class _FloatingGenerationCards extends StatefulWidget {
 }
 
 class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
-  static const _leftMargin = 16.0;
-  static const _rightMargin = 12.0;
+  static const _leftMargin = 8.0;
+  static const _rightMargin = 8.0;
   static const _topMargin = 12.0;
   static const _phoneHomeInitialBottom = 154.0;
   static const _phoneTabInitialBottom = 92.0;
@@ -57,8 +57,20 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
   static const _cardHeight = 46.0;
   static const _cardSpacing = 8.0;
 
+  final GlobalKey _cardKey = GlobalKey();
   Offset? _position;
   bool _isDragging = false;
+
+  Size _currentCardSize({
+    required double fallbackWidth,
+    required double fallbackHeight,
+  }) {
+    final renderObject = _cardKey.currentContext?.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      return renderObject.size;
+    }
+    return Size(fallbackWidth, fallbackHeight);
+  }
 
   Offset _defaultPosition({
     required Size overlaySize,
@@ -101,8 +113,35 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
     );
   }
 
-  void _handlePanStart(DragStartDetails details) {
+  void _handlePanStart({
+    required Size overlaySize,
+    required EdgeInsets safeInsets,
+    required double fallbackCardWidth,
+    required double fallbackCardHeight,
+    required int selectedTabIndex,
+  }) {
+    final cardSize = _currentCardSize(
+      fallbackWidth: fallbackCardWidth,
+      fallbackHeight: fallbackCardHeight,
+    );
+    final initialPosition = _clampPosition(
+      position: _position ??
+          _defaultPosition(
+            overlaySize: overlaySize,
+            safeInsets: safeInsets,
+            cardWidth: cardSize.width,
+            cardHeight: cardSize.height,
+            isWide: overlaySize.width >= 720,
+            selectedTabIndex: selectedTabIndex,
+          ),
+      overlaySize: overlaySize,
+      safeInsets: safeInsets,
+      cardWidth: cardSize.width,
+      cardHeight: cardSize.height,
+    );
+
     setState(() {
+      _position = initialPosition;
       _isDragging = true;
     });
   }
@@ -111,16 +150,20 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
     required DragUpdateDetails details,
     required Size overlaySize,
     required EdgeInsets safeInsets,
-    required double cardWidth,
-    required double cardHeight,
+    required double fallbackCardWidth,
+    required double fallbackCardHeight,
     required int selectedTabIndex,
   }) {
+    final cardSize = _currentCardSize(
+      fallbackWidth: fallbackCardWidth,
+      fallbackHeight: fallbackCardHeight,
+    );
     final currentPosition = _position ??
         _defaultPosition(
           overlaySize: overlaySize,
           safeInsets: safeInsets,
-          cardWidth: cardWidth,
-          cardHeight: cardHeight,
+          cardWidth: cardSize.width,
+          cardHeight: cardSize.height,
           isWide: overlaySize.width >= 720,
           selectedTabIndex: selectedTabIndex,
         );
@@ -130,14 +173,48 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
         position: currentPosition + details.delta,
         overlaySize: overlaySize,
         safeInsets: safeInsets,
-        cardWidth: cardWidth,
-        cardHeight: cardHeight,
+        cardWidth: cardSize.width,
+        cardHeight: cardSize.height,
       );
     });
   }
 
-  void _handlePanEnd(DragEndDetails details) {
+  void _finishDrag({
+    required Size overlaySize,
+    required EdgeInsets safeInsets,
+    required double fallbackCardWidth,
+    required double fallbackCardHeight,
+  }) {
+    final currentPosition = _position;
+    if (currentPosition == null) {
+      setState(() {
+        _isDragging = false;
+      });
+      return;
+    }
+
+    final cardSize = _currentCardSize(
+      fallbackWidth: fallbackCardWidth,
+      fallbackHeight: fallbackCardHeight,
+    );
+    final boundedPosition = _clampPosition(
+      position: currentPosition,
+      overlaySize: overlaySize,
+      safeInsets: safeInsets,
+      cardWidth: cardSize.width,
+      cardHeight: cardSize.height,
+    );
+    final leftEdge = safeInsets.left + _leftMargin;
+    final rightEdge =
+        overlaySize.width - safeInsets.right - _rightMargin - cardSize.width;
+    final boundedRightEdge = rightEdge < leftEdge ? leftEdge : rightEdge;
+    final distanceFromLeft = (boundedPosition.dx - leftEdge).abs();
+    final distanceFromRight = (boundedRightEdge - boundedPosition.dx).abs();
+    final snappedLeft =
+        distanceFromLeft <= distanceFromRight ? leftEdge : boundedRightEdge;
+
     setState(() {
+      _position = Offset(snappedLeft, boundedPosition.dy);
       _isDragging = false;
     });
   }
@@ -187,20 +264,24 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
               final overlaySize =
                   Size(constraints.maxWidth, constraints.maxHeight);
               final safeInsets = MediaQuery.paddingOf(context);
+              final cardSize = _currentCardSize(
+                fallbackWidth: maxCardWidth,
+                fallbackHeight: estimatedCardHeight,
+              );
               final resolvedPosition = _clampPosition(
                 position: _position ??
                     _defaultPosition(
                       overlaySize: overlaySize,
                       safeInsets: safeInsets,
-                      cardWidth: maxCardWidth,
-                      cardHeight: estimatedCardHeight,
+                      cardWidth: cardSize.width,
+                      cardHeight: cardSize.height,
                       isWide: isWide,
                       selectedTabIndex: selectedTabIndex,
                     ),
                 overlaySize: overlaySize,
                 safeInsets: safeInsets,
-                cardWidth: maxCardWidth,
-                cardHeight: estimatedCardHeight,
+                cardWidth: cardSize.width,
+                cardHeight: cardSize.height,
               );
 
               final cardColumn = ConstrainedBox(
@@ -220,22 +301,35 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
               );
 
               final positionedCard = GestureDetector(
+                key: _cardKey,
                 behavior: HitTestBehavior.translucent,
-                onPanStart: _handlePanStart,
+                onPanStart: (_) => _handlePanStart(
+                  overlaySize: overlaySize,
+                  safeInsets: safeInsets,
+                  fallbackCardWidth: maxCardWidth,
+                  fallbackCardHeight: estimatedCardHeight,
+                  selectedTabIndex: selectedTabIndex,
+                ),
                 onPanUpdate: (details) => _handlePanUpdate(
                   details: details,
                   overlaySize: overlaySize,
                   safeInsets: safeInsets,
-                  cardWidth: maxCardWidth,
-                  cardHeight: estimatedCardHeight,
+                  fallbackCardWidth: maxCardWidth,
+                  fallbackCardHeight: estimatedCardHeight,
                   selectedTabIndex: selectedTabIndex,
                 ),
-                onPanEnd: _handlePanEnd,
-                onPanCancel: () {
-                  setState(() {
-                    _isDragging = false;
-                  });
-                },
+                onPanEnd: (_) => _finishDrag(
+                  overlaySize: overlaySize,
+                  safeInsets: safeInsets,
+                  fallbackCardWidth: maxCardWidth,
+                  fallbackCardHeight: estimatedCardHeight,
+                ),
+                onPanCancel: () => _finishDrag(
+                  overlaySize: overlaySize,
+                  safeInsets: safeInsets,
+                  fallbackCardWidth: maxCardWidth,
+                  fallbackCardHeight: estimatedCardHeight,
+                ),
                 child: cardColumn,
               );
 
@@ -247,7 +341,10 @@ class _FloatingGenerationCardsState extends State<_FloatingGenerationCards> {
                         ? Duration.zero
                         : const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
-                    left: resolvedPosition.dx,
+                    left: _position == null ? null : resolvedPosition.dx,
+                    right: _position == null
+                        ? safeInsets.right + _rightMargin
+                        : null,
                     top: resolvedPosition.dy,
                     child: positionedCard,
                   ),

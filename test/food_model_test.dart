@@ -13,6 +13,7 @@ void main() {
     expect(emptyNutrients.protein, 0);
     expect(emptyNutrients.carbs, 0);
     expect(emptyNutrients.fat, 0);
+    expect(emptyNutrients.fiber, 0);
   });
 
   test('primaryNutrient returns first nutrient when available', () {
@@ -24,6 +25,7 @@ void main() {
       protein: 8,
       carbohydrate: 14,
       fat: 3,
+      dietaryFiber: 2.5,
     );
     final food = Food(name: 'Iogurte', nutrients: [nutrient]);
 
@@ -32,6 +34,10 @@ void main() {
     expect(food.protein, 8);
     expect(food.carbs, 14);
     expect(food.fat, 3);
+    expect(food.fiber, 2.5);
+
+    final restored = Food.fromJson(food.toJson());
+    expect(restored.fiber, 2.5);
   });
 
   test('manual source serializes and copyWith can clear source id', () {

@@ -15,6 +15,9 @@ import 'food_search_screen.dart';
 import 'unified_search_screen.dart';
 import 'free_chat_screen.dart';
 import 'social_hub_screen.dart';
+import 'streak_screen.dart';
+import 'streak_celebration_screen.dart';
+import 'streak_widget_onboarding_screen.dart';
 import '../services/rate_app_service.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
@@ -23,6 +26,7 @@ import '../services/daily_chat_sync_service.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import '../services/behavioral_reminder_planner.dart';
+import '../services/streak_widget_service.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../i18n/language_controller.dart';
 import '../providers/free_chat_provider.dart';
@@ -36,41 +40,16 @@ import '../providers/diet_plan_provider.dart';
 import '../providers/nutrition_goals_provider.dart';
 import '../providers/meal_types_provider.dart';
 import '../utils/meal_type_localization.dart';
+import '../utils/streak_helper.dart';
 import '../providers/food_history_provider.dart';
 import '../providers/profile_shape_preview_provider.dart';
 import '../models/user_model.dart';
 import '../theme/app_theme.dart';
 import '../utils/fabiano_access.dart';
 import '../widgets/app_debug_log_overlay.dart';
+import '../controllers/navigation_controller.dart';
 
-// Controlador global para gerenciar a navegação entre abas
-class NavigationController {
-  static final NavigationController _instance =
-      NavigationController._internal();
-
-  factory NavigationController() {
-    return _instance;
-  }
-
-  NavigationController._internal();
-
-  Function(int)? tabChangeCallback;
-  final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
-
-  void updateSelectedIndex(int index) {
-    if (selectedIndexNotifier.value != index) {
-      selectedIndexNotifier.value = index;
-    }
-  }
-
-  void changeTab(int index) {
-    if (tabChangeCallback != null) {
-      tabChangeCallback!(index);
-    }
-  }
-}
-
-final navigationController = NavigationController();
+export '../controllers/navigation_controller.dart';
 
 // Wrapper para a tela de perfil que decide qual tela mostrar
 class ProfileTabWrapper extends StatelessWidget {
@@ -140,6 +119,7 @@ class _MainNavigationState extends State<MainNavigation>
   Stopwatch? _authBootstrapStopwatch;
   Timer? _behavioralNotificationDebounce;
   Timer? _behavioralDayRolloverTimer;
+  Timer? _streakWidgetSyncDebounce;
   DailyMealsProvider? _notificationMealsProvider;
   MealTypesProvider? _notificationMealTypesProvider;
   StreakProvider? _notificationStreakProvider;
@@ -149,6 +129,17 @@ class _MainNavigationState extends State<MainNavigation>
   bool _forceBehavioralNotificationSync = false;
   bool _refreshBehavioralNotificationTimeZone = false;
   int _behavioralNotificationSessionRevision = 0;
+  StreamSubscription<void>? _streakWidgetOpenSubscription;
+  int? _lastObservedMealAdditionVersion;
+  String? _lastStreakWidgetSnapshotSignature;
+  bool _streakWidgetIntroCheckRunning = false;
+  bool _streakWidgetIntroVisible = false;
+  bool _streakScreenOpeningFromWidget = false;
+  bool _streakExperienceQueueRunning = false;
+  bool _streakWidgetIntroPending = false;
+  bool _waitingForStreakCheckInBeforeWidgetIntro = false;
+  Timer? _streakExperienceRetryTimer;
+  Timer? _streakWidgetIntroFallbackTimer;
 
   @override
   void initState() {
@@ -161,8 +152,8 @@ class _MainNavigationState extends State<MainNavigation>
     // Verificar se deve mostrar o diálogo de avaliação
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Aguardar um pouco para que o app seja carregado completamente
-      Future.delayed(Duration(seconds: 2), () {
-        RateAppService.promptForRating(context);
+      Future.delayed(const Duration(seconds: 2), () {
+        _promptForRatingWhenStreakExperienceIsIdle();
       });
 
       // Configurar sync de refeições com auth
@@ -170,6 +161,9 @@ class _MainNavigationState extends State<MainNavigation>
 
       // Reconciliar lembretes condicionais depois que os providers existem.
       _setupBehavioralNotifications();
+
+      // Mantém o widget Android sincronizado e trata abertura pelo launcher.
+      _setupStreakWidget();
 
       // Em modo desenvolvedor, oferecer login automático na conta de testes.
       _maybeOfferDevAutoLogin();
@@ -183,6 +177,8 @@ class _MainNavigationState extends State<MainNavigation>
         force: true,
         refreshTimeZone: true,
       );
+      _scheduleStreakWidgetSync(force: true);
+      unawaited(_refreshStreakAfterResume());
     }
   }
 
@@ -201,8 +197,320 @@ class _MainNavigationState extends State<MainNavigation>
     _scheduleBehavioralNotificationSync(force: true);
   }
 
+  void _setupStreakWidget() {
+    final mealsProvider = _notificationMealsProvider;
+    if (mealsProvider == null) return;
+
+    StreakWidgetService.initialize();
+    _lastObservedMealAdditionVersion = mealsProvider.mealAdditionVersion;
+    _streakWidgetOpenSubscription ??=
+        StreakWidgetService.openStreakRequests.listen((_) {
+      unawaited(_openStreakScreenFromWidget());
+    });
+
+    unawaited(
+      mealsProvider.ready.then((_) {
+        if (mounted) {
+          _scheduleStreakWidgetSync(force: true);
+        }
+      }),
+    );
+    unawaited(
+      StreakWidgetService.consumeInitialOpenRequest().then((shouldOpen) {
+        if (shouldOpen && mounted) {
+          unawaited(_openStreakScreenFromWidget());
+        }
+      }),
+    );
+  }
+
+  void _scheduleStreakWidgetSync({bool force = false}) {
+    if (!mounted || _notificationMealsProvider == null) return;
+    if (force) {
+      _lastStreakWidgetSnapshotSignature = null;
+    }
+    _streakWidgetSyncDebounce?.cancel();
+    _streakWidgetSyncDebounce = Timer(
+      const Duration(milliseconds: 180),
+      _syncStreakWidget,
+    );
+  }
+
+  Future<void> _syncStreakWidget() async {
+    final mealsProvider = _notificationMealsProvider;
+    final streakProvider = _notificationStreakProvider;
+    if (mealsProvider == null || streakProvider == null) return;
+
+    await mealsProvider.ready;
+    if (!mounted) return;
+
+    final now = DateTime.now();
+    final nutrition = mealsProvider.getNutritionSnapshotForDate(now);
+    final calories = (nutrition['calories'] as num?)?.round() ?? 0;
+    final calorieGoal = (nutrition['calorieGoal'] as num?)?.round() ??
+        mealsProvider.caloriesGoal;
+    final streak = effectiveRegistrationStreak(
+      streakProvider,
+      mealsProvider,
+    );
+    final dateKey = _notificationDateKey(now);
+    final signature = '$dateKey:$calories:$calorieGoal:$streak';
+    if (_lastStreakWidgetSnapshotSignature == signature) return;
+    _lastStreakWidgetSnapshotSignature = signature;
+
+    await StreakWidgetService.update(
+      StreakWidgetSnapshot(
+        calories: calories,
+        calorieGoal: calorieGoal,
+        streak: streak,
+        date: now,
+      ),
+    );
+  }
+
+  void _observeFirstStreakDay() {
+    final mealsProvider = _notificationMealsProvider;
+    if (mealsProvider == null) return;
+
+    final version = mealsProvider.mealAdditionVersion;
+    final previousVersion = _lastObservedMealAdditionVersion;
+    _lastObservedMealAdditionVersion = version;
+    final now = DateTime.now();
+    if (!shouldOfferStreakWidgetIntro(
+      previousMealAdditionVersion: previousVersion,
+      mealAdditionVersion: version,
+      lastMealAdditionDate: mealsProvider.lastMealAdditionDate,
+      now: now,
+      localRegistrationStreak: mealsProvider.getCurrentRegistrationStreak(),
+    )) {
+      return;
+    }
+
+    _streakWidgetIntroPending = true;
+    final authService = context.read<AuthService>();
+    if (authService.isAuthenticated) {
+      _waitingForStreakCheckInBeforeWidgetIntro = true;
+      _streakWidgetIntroFallbackTimer?.cancel();
+      _streakWidgetIntroFallbackTimer = Timer(const Duration(seconds: 8), () {
+        _waitingForStreakCheckInBeforeWidgetIntro = false;
+        _scheduleStreakExperienceDrain();
+      });
+      return;
+    }
+    _scheduleStreakExperienceDrain();
+  }
+
+  void _scheduleStreakExperienceDrain({
+    Duration delay = Duration.zero,
+  }) {
+    if (!mounted) return;
+    _streakExperienceRetryTimer?.cancel();
+    _streakExperienceRetryTimer = Timer(delay, () {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_drainStreakExperienceQueue());
+      });
+    });
+  }
+
+  Future<void> _drainStreakExperienceQueue() async {
+    if (!mounted || _streakExperienceQueueRunning) return;
+
+    final streakProvider = context.read<StreakProvider>();
+    final event = streakProvider.nextCelebrationEvent;
+    final canShowWidget =
+        _streakWidgetIntroPending && !_waitingForStreakCheckInBeforeWidgetIntro;
+    if (event == null && !canShowWidget) return;
+
+    final routeIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    if (_isBootstrappingAuthenticatedAppState ||
+        _pendingGuestLocalData != null) {
+      return;
+    }
+    if (!routeIsCurrent) {
+      _scheduleStreakExperienceDrain(
+        delay: const Duration(milliseconds: 600),
+      );
+      return;
+    }
+
+    _streakExperienceQueueRunning = true;
+    try {
+      while (true) {
+        if (!mounted) return;
+        final nextEvent = streakProvider.nextCelebrationEvent;
+        if (nextEvent != null) {
+          await Navigator.of(context).push<int>(
+            MaterialPageRoute(
+              fullscreenDialog: true,
+              builder: (_) => StreakCelebrationScreen(
+                event: StreakCelebrationEvent(
+                  eventId: nextEvent.id,
+                  currentStreak: nextEvent.currentStreak,
+                  effectiveDate: nextEvent.checkInDate,
+                  missedDates: [
+                    if (nextEvent.protectedMissedDate != null)
+                      nextEvent.protectedMissedDate!,
+                  ],
+                  freezeRecovered: nextEvent.freezeRecovered,
+                  freezesAvailable: nextEvent.freezesAfter,
+                ),
+              ),
+            ),
+          );
+          if (!mounted) return;
+          await streakProvider.completeCelebration(nextEvent.id);
+          continue;
+        }
+
+        if (_streakWidgetIntroPending &&
+            !_waitingForStreakCheckInBeforeWidgetIntro) {
+          _streakWidgetIntroPending = false;
+          await _maybeShowStreakWidgetIntro();
+        }
+        break;
+      }
+    } finally {
+      _streakExperienceQueueRunning = false;
+    }
+  }
+
+  Future<void> _performStreakCheckInAfterDateSync(
+    StreakProvider streakProvider,
+    DateTime syncedDate,
+  ) async {
+    final now = DateTime.now();
+    final todayOrdinal = DateTime.utc(now.year, now.month, now.day);
+    final syncedOrdinal = DateTime.utc(
+      syncedDate.year,
+      syncedDate.month,
+      syncedDate.day,
+    );
+    final daysAgo = todayOrdinal.difference(syncedOrdinal).inDays;
+
+    // Hoje é o fluxo normal. Ontem também é aceito para uploads offline que
+    // começaram antes da meia-noite. Datas mais antigas continuam sendo
+    // apenas histórico e não avançam retroativamente a sequência.
+    if (daysAgo < 0 || daysAgo > 1) return;
+
+    try {
+      await streakProvider.performCheckIn(localDate: syncedDate);
+    } finally {
+      if (daysAgo == 0) {
+        _waitingForStreakCheckInBeforeWidgetIntro = false;
+        _streakWidgetIntroFallbackTimer?.cancel();
+      }
+      _scheduleStreakExperienceDrain();
+    }
+  }
+
+  Future<void> _refreshStreakAfterResume() async {
+    if (!mounted) return;
+    final authService = context.read<AuthService>();
+    if (!authService.isAuthenticated) return;
+    final streakProvider = context.read<StreakProvider>();
+    final mealsProvider = context.read<DailyMealsProvider>();
+    await streakProvider.refresh();
+    await mealsProvider.ready;
+    if (!mounted) return;
+    await _recoverRecentStreakCheckIns(streakProvider, mealsProvider);
+  }
+
+  Future<void> _recoverRecentStreakCheckIns(
+    StreakProvider streakProvider,
+    DailyMealsProvider mealsProvider,
+  ) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final recentDates = <DateTime>[
+      DateTime(today.year, today.month, today.day - 1),
+      today,
+    ];
+
+    for (final date in recentDates) {
+      if (!mounted) return;
+      if (mealsProvider.hasMealsOn(date)) {
+        await _performStreakCheckInAfterDateSync(streakProvider, date);
+      }
+    }
+    _scheduleStreakExperienceDrain();
+  }
+
+  Future<void> _promptForRatingWhenStreakExperienceIsIdle() async {
+    if (!mounted) return;
+    final streakProvider = context.read<StreakProvider>();
+    if (_streakExperienceQueueRunning ||
+        _streakWidgetIntroPending ||
+        streakProvider.hasPendingCelebration ||
+        _isBootstrappingAuthenticatedAppState ||
+        _pendingGuestLocalData != null) {
+      return;
+    }
+    await RateAppService.promptForRating(context);
+  }
+
+  Future<void> _maybeShowStreakWidgetIntro() async {
+    if (_streakWidgetIntroCheckRunning || _streakWidgetIntroVisible) return;
+    _streakWidgetIntroCheckRunning = true;
+    try {
+      if (!await StreakWidgetService.isSupported() ||
+          await StreakWidgetService.isAdded()) {
+        return;
+      }
+
+      if (!mounted) return;
+      final authService = context.read<AuthService>();
+      final scope = authService.currentUser?.id.toString() ?? 'guest';
+      if (await StreakWidgetIntroStore.wasSeen(scope)) return;
+
+      // Grava antes da navegação para que notificações de novas refeições não
+      // empilhem o mesmo onboarding enquanto ele estiver aberto.
+      await StreakWidgetIntroStore.markSeen(scope);
+      if (!mounted) return;
+
+      final mealsProvider = context.read<DailyMealsProvider>();
+      final streakProvider = context.read<StreakProvider>();
+      final now = DateTime.now();
+      final nutrition = mealsProvider.getNutritionSnapshotForDate(now);
+      _streakWidgetIntroVisible = true;
+      await Navigator.of(context).push<StreakWidgetPinResult>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => StreakWidgetOnboardingScreen(
+            calories: (nutrition['calories'] as num?)?.round() ?? 0,
+            calorieGoal: (nutrition['calorieGoal'] as num?)?.round() ??
+                mealsProvider.caloriesGoal,
+            streak: effectiveRegistrationStreak(
+              streakProvider,
+              mealsProvider,
+            ),
+          ),
+        ),
+      );
+      _scheduleStreakWidgetSync(force: true);
+    } finally {
+      _streakWidgetIntroVisible = false;
+      _streakWidgetIntroCheckRunning = false;
+    }
+  }
+
+  Future<void> _openStreakScreenFromWidget() async {
+    if (!mounted || _streakScreenOpeningFromWidget) return;
+    _streakScreenOpeningFromWidget = true;
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const StreakScreen()),
+      );
+    } finally {
+      _streakScreenOpeningFromWidget = false;
+    }
+  }
+
   void _onBehavioralNotificationStateChanged() {
     _scheduleBehavioralNotificationSync();
+    _scheduleStreakWidgetSync();
+    _observeFirstStreakDay();
+    _scheduleStreakExperienceDrain();
   }
 
   void _onBehavioralNotificationLanguageChanged() {
@@ -354,6 +662,7 @@ class _MainNavigationState extends State<MainNavigation>
         force: true,
         refreshTimeZone: true,
       );
+      _scheduleStreakWidgetSync(force: true);
     });
   }
 
@@ -372,6 +681,10 @@ class _MainNavigationState extends State<MainNavigation>
     WidgetsBinding.instance.removeObserver(this);
     _behavioralNotificationDebounce?.cancel();
     _behavioralDayRolloverTimer?.cancel();
+    _streakWidgetSyncDebounce?.cancel();
+    _streakExperienceRetryTimer?.cancel();
+    _streakWidgetIntroFallbackTimer?.cancel();
+    _streakWidgetOpenSubscription?.cancel();
     _notificationMealsProvider
         ?.removeListener(_onBehavioralNotificationStateChanged);
     _notificationMealTypesProvider
@@ -566,10 +879,12 @@ class _MainNavigationState extends State<MainNavigation>
       print('[🔄 AUTH_DATA] Limpando auth de todos os providers...');
 
       dailyMealsProvider.clearAuth();
-      dailyMealsProvider.onTodaySynced = null;
+      dailyMealsProvider.onDateSynced = null;
       print('[🔄 AUTH_DATA] ✅ DailyMealsProvider limpo');
 
       streakProvider.clearAuth();
+      _streakWidgetIntroPending = false;
+      _waitingForStreakCheckInBeforeWidgetIntro = false;
       print('[🔄 AUTH_DATA] ✅ StreakProvider limpo');
 
       friendsProvider.clearAuth();
@@ -684,11 +999,24 @@ class _MainNavigationState extends State<MainNavigation>
     print('[🔄 AUTH_DATA] ✅ StreakProvider configurado');
 
     // Auto check-in de streak após sync de refeições do dia atual.
-    // O backend só aceita check-in quando há UserDailySummary com calorias > 0,
+    // O backend só aceita check-in quando há alimento persistido no resumo,
     // então disparar logo após o sync garante a sincronização das duas pontas.
-    dailyMealsProvider.onTodaySynced = () {
-      streakProvider.performCheckIn();
+    dailyMealsProvider.onDateSynced = (syncedDate) {
+      return _performStreakCheckInAfterDateSync(
+        streakProvider,
+        syncedDate,
+      );
     };
+
+    // Recupera a janela sync-concluído/check-in-pendente após um encerramento
+    // inesperado do app. O endpoint é idempotente por usuário e data.
+    unawaited(mealsAuthFuture.then((_) async {
+      if (!mounted) return;
+      await _recoverRecentStreakCheckIns(
+        streakProvider,
+        dailyMealsProvider,
+      );
+    }));
 
     friendsProvider.setToken(token);
     print('[🔄 AUTH_DATA] ✅ FriendsProvider configurado');
@@ -839,6 +1167,7 @@ class _MainNavigationState extends State<MainNavigation>
       _pendingGuestLocalData =
           guestSnapshot != null && guestSnapshot.hasData ? guestSnapshot : null;
     });
+    _scheduleStreakExperienceDrain();
     _logChatBootPerf('chat_screen_recreate_set_state_done');
     print('[🔄 AUTH_DATA] ✅ NutritionAssistantScreen será recriado');
   }
@@ -1282,6 +1611,7 @@ class _MainNavigationState extends State<MainNavigation>
         _pendingGuestLocalData = null;
         _isResolvingGuestLocalData = false;
       });
+      _scheduleStreakExperienceDrain();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.tr.translate('guest_local_data_saved')),
@@ -1325,6 +1655,7 @@ class _MainNavigationState extends State<MainNavigation>
         _pendingGuestLocalData = null;
         _isResolvingGuestLocalData = false;
       });
+      _scheduleStreakExperienceDrain();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.tr.translate('guest_local_data_discarded')),
@@ -1455,6 +1786,24 @@ class _MainNavigationState extends State<MainNavigation>
   }
 
   void _onItemTapped(int index) {
+    if (index == 0) {
+      final shouldResetDiary =
+          _currentMode != 'diary' || _currentFreeChatId != null;
+      if (_selectedIndex == 0 && !shouldResetDiary) {
+        return;
+      }
+      setState(() {
+        _selectedIndex = 0;
+        if (shouldResetDiary) {
+          _currentMode = 'diary';
+          _currentFreeChatId = null;
+          _nutritionAssistantKey = UniqueKey();
+        }
+      });
+      navigationController.updateSelectedIndex(0);
+      return;
+    }
+
     if (_selectedIndex == index) {
       return;
     }
@@ -1480,6 +1829,10 @@ class _MainNavigationState extends State<MainNavigation>
   /// Breakpoint a partir do qual o app exibe o layout de tela larga
   /// (menu lateral sempre visível, sem barra de navegação inferior).
   static const double _wideLayoutBreakpoint = 900;
+  static const double _wideSidePanelWidth = 252;
+
+  bool get _isWideLayout =>
+      MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint;
 
   void _openSocialOverview() {
     setState(() {
@@ -1491,23 +1844,54 @@ class _MainNavigationState extends State<MainNavigation>
     });
   }
 
+  void _openUnifiedSearch() {
+    _closeDrawerIfOpen();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UnifiedSearchScreen(
+          onOpenFreeChat: (id, title) => _openFreeChatFromSearch(id, title),
+          onOpenDiaryDate: (date) => _openDiaryForDate(date),
+        ),
+      ),
+    );
+  }
+
   void _startNewFreeChat() {
+    if (_isWideLayout) {
+      _openFreeChatInPlace();
+      return;
+    }
     _closeDrawerIfOpen();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const FreeChatScreen()),
     );
   }
 
-  void _switchToDiary() {
-    _closeDrawerIfOpen();
+  void _openFreeChatInPlace({String? chatId}) {
+    final resolvedId = chatId ??
+        context.read<FreeChatProvider>().createConversation(reuseEmpty: true);
+    final alreadyOpen = _selectedIndex == 0 &&
+        _currentMode == 'free_chat' &&
+        _currentFreeChatId == resolvedId;
+    if (alreadyOpen) {
+      return;
+    }
+
     setState(() {
-      _currentMode = 'diary';
-      _currentFreeChatId = null;
-      _nutritionAssistantKey = UniqueKey(); // Forçar recriação do widget
+      _selectedIndex = 0;
+      _currentMode = 'free_chat';
+      _currentFreeChatId = resolvedId;
+      _nutritionAssistantKey = UniqueKey();
     });
+    navigationController.updateSelectedIndex(0);
   }
 
   void _openFreeChat(String chatId, String title) {
+    if (_isWideLayout) {
+      _openFreeChatInPlace(chatId: chatId);
+      return;
+    }
     _closeDrawerIfOpen();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => FreeChatScreen(freeChatId: chatId)),
@@ -1515,6 +1899,10 @@ class _MainNavigationState extends State<MainNavigation>
   }
 
   void _openFreeChatFromSearch(String chatId, String title) {
+    if (_isWideLayout) {
+      _openFreeChatInPlace(chatId: chatId);
+      return;
+    }
     // Chamada depois que a search screen já fez pop
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => FreeChatScreen(freeChatId: chatId)),
@@ -1726,12 +2114,12 @@ class _MainNavigationState extends State<MainNavigation>
       body: Row(
         children: [
           SizedBox(
-            width: 304,
+            width: _wideSidePanelWidth,
             child: Material(
               color: isDarkMode
                   ? AppTheme.darkBackgroundColor
                   : AppTheme.backgroundColor,
-              child: _buildSidePanelBody(isDarkMode, isPersistent: true),
+              child: _buildSidePanelBody(isDarkMode),
             ),
           ),
           VerticalDivider(
@@ -1888,213 +2276,135 @@ class _MainNavigationState extends State<MainNavigation>
     return Drawer(
       backgroundColor:
           isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      child: _buildSidePanelBody(isDarkMode, isPersistent: false),
+      child: _buildSidePanelBody(isDarkMode),
     );
   }
 
   /// Conteúdo compartilhado entre o Drawer (mobile) e o painel lateral fixo
-  /// (tablet/desktop). Quando [isPersistent] for `true`, o FAB redundante é
-  /// omitido e os itens de navegação ficam fixos no rodapé do painel.
-  Widget _buildSidePanelBody(bool isDarkMode, {required bool isPersistent}) {
+  /// (tablet/desktop).
+  Widget _buildSidePanelBody(bool isDarkMode) {
     final authService = context.watch<AuthService>();
     final showDietBenchmark = canAccessDietBenchmark(authService.currentUser);
 
     return SafeArea(
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Nutro + search (sem avatar)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
-                child: Row(
-                  children: [
-                    Text(
-                      'Nutro',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: isDarkMode
-                            ? AppTheme.darkTextColor
-                            : Colors.black87,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? AppTheme.darkComponentColor
-                            : const Color(0xFFEFEFEF),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.search,
-                          size: 20,
-                          color: isDarkMode
-                              ? AppTheme.darkTextColor.withValues(alpha: 0.72)
-                              : Colors.black54,
-                        ),
-                        onPressed: () {
-                          _closeDrawerIfOpen();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => UnifiedSearchScreen(
-                                onOpenFreeChat: (id, title) =>
-                                    _openFreeChatFromSearch(id, title),
-                                onOpenDiaryDate: (date) =>
-                                    _openDiaryForDate(date),
-                              ),
-                            ),
-                          );
-                        },
-                        tooltip: context.tr.translate('search'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-              ),
-
-              // Cards de acesso rápido: Diário + Conversa livre
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _drawerQuickCard(
-                        icon: Icons.calendar_today,
-                        label: context.tr.translate('diary'),
-                        isDarkMode: isDarkMode,
-                        isSelected: _currentMode == 'diary',
-                        onTap: _switchToDiary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _drawerQuickCard(
-                        icon: Icons.chat_bubble_outline,
-                        label: context.tr.translate('free_chat'),
-                        isDarkMode: isDarkMode,
-                        isSelected: _currentMode == 'free_chat' &&
-                            _currentFreeChatId == null,
-                        onTap: _startNewFreeChat,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              if (showDietBenchmark)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: _drawerBenchmarkTile(isDarkMode),
-                ),
-
-              // Itens de navegação (apenas tela larga) — acima das conversas.
-              if (isPersistent) ...[
-                _buildSidePanelNavItems(isDarkMode),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: isDarkMode ? AppTheme.darkBorderColor : Colors.black12,
-                ),
-              ],
-
-              // Subtítulo Recentes (conversas livres)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                child: Text(
-                  context.tr.translate('recent'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 6, 10),
+            child: Row(
+              children: [
+                Text(
+                  'Nutro',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 17,
                     fontWeight: FontWeight.w600,
-                    color: isDarkMode
-                        ? AppTheme.darkMutedTextColor
-                        : Colors.black54,
+                    letterSpacing: -0.2,
+                    color: isDarkMode ? AppTheme.darkTextColor : Colors.black87,
                   ),
                 ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    Icons.search,
+                    size: 20,
+                    color: isDarkMode
+                        ? AppTheme.darkTextColor.withValues(alpha: 0.72)
+                        : Colors.black54,
+                  ),
+                  onPressed: _openUnifiedSearch,
+                  tooltip: context.tr.translate('search'),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: _buildNewChatButton(isDarkMode),
+          ),
+          if (showDietBenchmark)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: _drawerBenchmarkTile(isDarkMode),
+            ),
+          _buildSidePanelNavItems(isDarkMode),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 16, 6),
+            child: Text(
+              context.tr.translate('recent'),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.2,
+                color:
+                    isDarkMode ? AppTheme.darkMutedTextColor : Colors.black54,
               ),
+            ),
+          ),
+          Expanded(
+            child: Consumer<FreeChatProvider>(
+              builder: (context, freeChatProvider, child) {
+                final conversations = freeChatProvider.conversations;
 
-              // Lista de conversas livres (estilo ChatGPT: título puro)
-              Expanded(
-                child: Consumer<FreeChatProvider>(
-                  builder: (context, freeChatProvider, child) {
-                    final conversations = freeChatProvider.conversations;
+                if (conversations.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 4, 16, 8),
+                    child: Text(
+                      context.tr.translate('no_conversations'),
+                      style: TextStyle(
+                        color: isDarkMode
+                            ? AppTheme.darkDisabledTextColor
+                            : Colors.grey,
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  );
+                }
 
-                    if (conversations.isEmpty) {
-                      return Padding(
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+                  itemCount: conversations.length,
+                  itemBuilder: (context, index) {
+                    final chat = conversations[index];
+                    final isSelected = _currentMode == 'free_chat' &&
+                        _currentFreeChatId == chat.id;
+                    final selectedBg = isDarkMode
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06);
+                    return InkWell(
+                      onTap: () => _openFreeChat(chat.id, chat.title),
+                      onLongPress: () => _showDeleteConfirmation(
+                          chat.id, chat.title, freeChatProvider),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? selectedBg : null,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: Text(
-                          context.tr.translate('no_conversations'),
+                          _localizedConversationTitle(chat.title),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
+                            fontSize: 14,
                             color: isDarkMode
-                                ? AppTheme.darkDisabledTextColor
-                                : Colors.grey,
-                            fontSize: 13,
+                                ? AppTheme.darkTextColor
+                                : Colors.black87,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                         ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: EdgeInsets.only(
-                        bottom: isPersistent ? 8 : 90,
                       ),
-                      itemCount: conversations.length,
-                      itemBuilder: (context, index) {
-                        final chat = conversations[index];
-                        final isSelected = _currentMode == 'free_chat' &&
-                            _currentFreeChatId == chat.id;
-                        return InkWell(
-                          onTap: () => _openFreeChat(chat.id, chat.title),
-                          onLongPress: () => _showDeleteConfirmation(
-                              chat.id, chat.title, freeChatProvider),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
-                            color: isSelected
-                                ? Theme.of(context)
-                                    .primaryColor
-                                    .withValues(alpha: 0.12)
-                                : null,
-                            child: Text(
-                              _localizedConversationTitle(chat.title),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: isDarkMode
-                                    ? AppTheme.darkTextColor
-                                    : Colors.black87,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
                     );
                   },
-                ),
-              ),
-            ],
-          ),
-
-          // Botão flutuante "+ Chat" — só aparece no Drawer (mobile).
-          if (!isPersistent)
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: _buildNewChatFab(isDarkMode),
+                );
+              },
             ),
+          ),
         ],
       ),
     );
@@ -2144,38 +2454,37 @@ class _MainNavigationState extends State<MainNavigation>
     );
   }
 
-  Widget _buildNewChatFab(bool isDarkMode) {
+  Widget _buildNewChatButton(bool isDarkMode) {
+    final foreground = isDarkMode ? AppTheme.darkTextColor : Colors.black87;
+
     return Material(
-      elevation: 4,
-      borderRadius: BorderRadius.circular(100),
-      color: isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor,
+      color: isDarkMode ? AppTheme.darkCardColor : const Color(0xFFF5F5F5),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: InkWell(
         onTap: _startNewFreeChat,
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.edit_outlined,
                 size: 18,
-                color: AppTheme.onColor(
-                  isDarkMode
-                      ? AppTheme.primaryColorDarkMode
-                      : AppTheme.primaryColor,
-                ),
+                color: foreground,
               ),
-              const SizedBox(width: 8),
-              Text(
-                context.tr.translate('free_chat'),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.onColor(
-                    isDarkMode
-                        ? AppTheme.primaryColorDarkMode
-                        : AppTheme.primaryColor,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.tr.translate('new_conversation'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: foreground,
                   ),
                 ),
               ),
@@ -2186,8 +2495,7 @@ class _MainNavigationState extends State<MainNavigation>
     );
   }
 
-  /// Itens de navegação (Início, Diário, Minha Dieta e Perfil) exibidos no
-  /// rodapé do painel lateral quando o layout é de tela larga.
+  /// Itens de navegação (Início, Diário, Minha Dieta e Perfil).
   Widget _buildSidePanelNavItems(bool isDarkMode) {
     final items = <_SidePanelNavItem>[
       _SidePanelNavItem(
@@ -2213,7 +2521,7 @@ class _MainNavigationState extends State<MainNavigation>
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(items.length, (i) {
@@ -2221,7 +2529,9 @@ class _MainNavigationState extends State<MainNavigation>
           // O índice 3 do IndexedStack é a aba Social, que fica oculta na
           // navegação principal; o quarto item visível aponta para o índice 4.
           final tabIndex = i < 3 ? i : 4;
-          final selected = _selectedIndex == tabIndex;
+          final selected = tabIndex == 0
+              ? _selectedIndex == 0 && _currentMode == 'diary'
+              : _selectedIndex == tabIndex;
           final selectedBg = isDarkMode
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.06);
@@ -2230,13 +2540,16 @@ class _MainNavigationState extends State<MainNavigation>
               : Colors.black87;
 
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 1),
             child: InkWell(
-              onTap: () => _onItemTapped(tabIndex),
+              onTap: () {
+                _closeDrawerIfOpen();
+                _onItemTapped(tabIndex);
+              },
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: selected ? selectedBg : null,
                   borderRadius: BorderRadius.circular(10),
@@ -2245,10 +2558,10 @@ class _MainNavigationState extends State<MainNavigation>
                   children: [
                     Icon(
                       selected ? item.activeIcon : item.icon,
-                      size: 20,
+                      size: 19,
                       color: itemColor,
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         item.label,
@@ -2268,65 +2581,6 @@ class _MainNavigationState extends State<MainNavigation>
             ),
           );
         }),
-      ),
-    );
-  }
-
-  Widget _drawerQuickCard({
-    required IconData icon,
-    required String label,
-    required bool isDarkMode,
-    required VoidCallback onTap,
-    bool isSelected = false,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isDarkMode ? AppTheme.darkCardColor : const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(16),
-          border: isSelected
-              ? Border.all(color: Theme.of(context).primaryColor, width: 1.5)
-              : null,
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? AppTheme.darkComponentColor
-                    : const Color(0xFFE0E0E0),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: isSelected
-                    ? (isDarkMode
-                        ? AppTheme.primaryColorDarkMode
-                        : AppTheme.primaryColor)
-                    : (isDarkMode ? AppTheme.darkTextColor : Colors.black87),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: isSelected
-                    ? (isDarkMode
-                        ? AppTheme.primaryColorDarkMode
-                        : AppTheme.primaryColor)
-                    : (isDarkMode ? AppTheme.darkTextColor : Colors.black87),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -2354,7 +2608,7 @@ class _MainNavigationState extends State<MainNavigation>
               // Se estava vendo essa conversa, voltar para dieta
               if (_currentFreeChatId == chatId) {
                 setState(() {
-                  _currentMode = 'diet';
+                  _currentMode = 'diary';
                   _currentFreeChatId = null;
                   _nutritionAssistantKey = UniqueKey();
                 });

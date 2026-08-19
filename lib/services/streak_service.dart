@@ -86,15 +86,80 @@ class UserStreak {
   bool get isStreakInDanger => daysUntilStreakLoss == 1;
 }
 
+class StreakCheckInEvent {
+  final int id;
+  final DateTime checkInDate;
+  final int previousStreak;
+  final int currentStreak;
+  final DateTime? protectedMissedDate;
+  final int freezesUsed;
+  final int freezesRecovered;
+  final int freezesEarned;
+  final int freezesBefore;
+  final int freezesAfter;
+
+  const StreakCheckInEvent({
+    required this.id,
+    required this.checkInDate,
+    required this.previousStreak,
+    required this.currentStreak,
+    required this.protectedMissedDate,
+    required this.freezesUsed,
+    required this.freezesRecovered,
+    required this.freezesEarned,
+    required this.freezesBefore,
+    required this.freezesAfter,
+  });
+
+  bool get freezeRecovered => freezesRecovered > 0;
+
+  factory StreakCheckInEvent.fromJson(Map<String, dynamic> json) {
+    return StreakCheckInEvent(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      checkInDate: DateTime.parse(json['checkInDate'].toString()),
+      previousStreak: (json['previousStreak'] as num?)?.toInt() ?? 0,
+      currentStreak: (json['currentStreak'] as num?)?.toInt() ?? 1,
+      protectedMissedDate: json['protectedMissedDate'] == null
+          ? null
+          : DateTime.parse(json['protectedMissedDate'].toString()),
+      freezesUsed: (json['freezesUsed'] as num?)?.toInt() ?? 0,
+      freezesRecovered: (json['freezesRecovered'] as num?)?.toInt() ?? 0,
+      freezesEarned: (json['freezesEarned'] as num?)?.toInt() ?? 0,
+      freezesBefore: (json['freezesBefore'] as num?)?.toInt() ?? 0,
+      freezesAfter: (json['freezesAfter'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class StreakLoadResult {
+  final UserStreak streak;
+  final StreakCheckInEvent? pendingEvent;
+
+  const StreakLoadResult({required this.streak, this.pendingEvent});
+}
+
+class StreakCheckInResult {
+  final UserStreak streak;
+  final StreakCheckInEvent? event;
+  final bool didAdvance;
+
+  const StreakCheckInResult({
+    required this.streak,
+    this.event,
+    required this.didAdvance,
+  });
+}
+
 /// Service para operações de streak
 class StreakService {
   static const String baseUrl = AppConstants.API_BASE_URL;
 
   /// Buscar meus streaks
-  static Future<UserStreak?> getMyStreak({required String token}) async {
+  static Future<StreakLoadResult?> getMyStreak({required String token}) async {
     try {
+      final localDate = _formatDate(DateTime.now());
       final response = await http.get(
-        Uri.parse('$baseUrl/streak/me'),
+        Uri.parse('$baseUrl/streak/me?localDate=$localDate'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -104,7 +169,15 @@ class StreakService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          return UserStreak.fromJson(data['data']);
+          final pendingJson = data['pendingEvent'];
+          return StreakLoadResult(
+            streak: UserStreak.fromJson(data['data']),
+            pendingEvent: pendingJson is Map
+                ? StreakCheckInEvent.fromJson(
+                    pendingJson.cast<String, dynamic>(),
+                  )
+                : null,
+          );
         }
       }
 
@@ -116,7 +189,10 @@ class StreakService {
   }
 
   /// Realizar check-in
-  static Future<UserStreak?> performCheckIn({required String token}) async {
+  static Future<StreakCheckInResult?> performCheckIn({
+    required String token,
+    DateTime? localDate,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/streak/checkin'),
@@ -124,13 +200,26 @@ class StreakService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(<String, dynamic>{}),
+        body: jsonEncode(<String, dynamic>{
+          'localDate': _formatDate(localDate ?? DateTime.now()),
+          'timeZoneOffsetMinutes':
+              (localDate ?? DateTime.now()).timeZoneOffset.inMinutes,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          return UserStreak.fromJson(data['data']);
+          final eventJson = data['event'];
+          return StreakCheckInResult(
+            streak: UserStreak.fromJson(data['data']),
+            event: eventJson is Map
+                ? StreakCheckInEvent.fromJson(
+                    eventJson.cast<String, dynamic>(),
+                  )
+                : null,
+            didAdvance: data['didAdvance'] == true,
+          );
         }
       }
 
@@ -139,6 +228,32 @@ class StreakService {
       print('[StreakService] Erro ao fazer check-in: $e');
       return null;
     }
+  }
+
+  static Future<bool> acknowledgeEvent({
+    required String token,
+    required int eventId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/streak/events/$eventId/ack'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(<String, dynamic>{}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('[StreakService] Erro ao confirmar evento $eventId: $e');
+      return false;
+    }
+  }
+
+  static String _formatDate(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   /// Ativar freeze

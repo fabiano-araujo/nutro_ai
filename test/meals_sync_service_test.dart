@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nutro_ai/models/food_model.dart';
+import 'package:nutro_ai/models/meal_model.dart';
 import 'package:nutro_ai/services/meals_sync_service.dart';
 
 void main() {
@@ -53,10 +54,12 @@ void main() {
     expect(meal.totalProtein, 2.5);
     expect(meal.totalCarbs, 15);
     expect(meal.totalFat, 1);
+    expect(meal.totalFiber, 1.2);
     expect(food.calories, 80);
     expect(food.protein, 2.5);
     expect(food.carbs, 15);
     expect(food.fat, 1);
+    expect(food.fiber, 1.2);
     expect(food.primaryNutrient?.servingSize, 1);
     expect(food.primaryNutrient?.servingUnit, 'fatia');
     expect(food.primaryNutrient?.dietaryFiber, 1.2);
@@ -77,6 +80,42 @@ void main() {
     expect(food.protein, 2.5);
     expect(food.carbs, 15);
     expect(food.fat, 1);
+    expect(food.fiber, 1.2);
     expect(food.primaryNutrient?.servingUnit, 'fatia');
+  });
+
+  test('sync payload always sends dietary fiber for each food', () {
+    final meal = Meal(
+      id: 'meal-1',
+      type: MealType.lunch,
+      messageId: 'message-1',
+      dateTime: DateTime(2026, 8, 11, 12, 30),
+      foods: [
+        Food(name: 'feijão', emoji: '🫘').copyWithMacros(
+          calories: 120,
+          protein: 7,
+          carbs: 21,
+          fat: 1,
+          fiber: 6.4,
+          servingSize: 100,
+          servingUnit: 'g',
+        ),
+      ],
+    );
+
+    final payload = MealsSyncService.buildSyncDayPayload(
+      date: DateTime(2026, 8, 11),
+      meals: [meal],
+      waterGlasses: 3,
+      goals: MealGoals(calories: 2000, protein: 120, carbs: 250, fat: 70),
+    );
+    final meals = payload['meals'] as List<dynamic>;
+    final foods =
+        (meals.single as Map<String, dynamic>)['foods'] as List<dynamic>;
+    final food = foods.single as Map<String, dynamic>;
+
+    expect(payload['date'], '2026-08-11');
+    expect(food['name'], 'feijão');
+    expect(food['fiber'], 6.4);
   });
 }

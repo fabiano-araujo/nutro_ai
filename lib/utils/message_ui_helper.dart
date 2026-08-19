@@ -180,35 +180,39 @@ class MessageUIHelper {
       final bool imageOnly = imageBytes != null && message.trim().isEmpty;
       return GestureDetector(
         onLongPressStart: (details) => onLongPress(details.globalPosition),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.78,
-            ),
-            child: Container(
-              margin: EdgeInsets.only(bottom: safeBottomSpacing, left: 48),
-              padding: imageOnly
-                  ? EdgeInsets.zero
-                  : EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: imageOnly
-                  ? null
-                  : BoxDecoration(
-                      color: isDarkMode
-                          ? AppTheme.darkUserMessageColor
-                          : const Color(0xFFEFEFEF),
-                      borderRadius: BorderRadius.circular(18),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bubbleMaxWidth = constraints.maxWidth * 0.82;
+            return Align(
+              alignment: Alignment.centerRight,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: bubbleMaxWidth),
+                child: Container(
+                  margin: EdgeInsets.only(bottom: safeBottomSpacing),
+                  padding: imageOnly
+                      ? EdgeInsets.zero
+                      : EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: imageOnly
+                      ? null
+                      : BoxDecoration(
+                          color: isDarkMode
+                              ? AppTheme.darkUserMessageColor
+                              : const Color(0xFFEFEFEF),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                  child: DefaultTextStyle.merge(
+                    style: TextStyle(
+                      color:
+                          isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
                     ),
-              child: DefaultTextStyle.merge(
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
+                    child: messageContent,
+                  ),
                 ),
-                child: messageContent,
               ),
-            ),
-          ),
+            );
+          },
         ),
       );
     }

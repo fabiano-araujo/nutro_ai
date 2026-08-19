@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
@@ -24,9 +25,27 @@ import '../services/auth_service.dart';
 import '../services/favorite_food_service.dart';
 import '../services/food_catalog_service.dart';
 import '../services/ad_manager.dart';
+import '../services/ai_service.dart';
+import '../services/chat_audio_recorder.dart';
 import '../utils/product_barcode_utils.dart';
+import '../utils/audio_transcript_sanitizer.dart';
+import '../utils/food_json_parser.dart';
+import '../utils/media_picker_helper.dart';
 import '../utils/ui_utils.dart';
 import '../widgets/native_ad_widget.dart';
+import '../i18n/language_controller.dart';
+
+enum _FoodInputAction { audio, camera, gallery, barcode }
+
+class _RecordedFoodAudio {
+  const _RecordedFoodAudio({
+    required this.audio,
+    required this.duration,
+  });
+
+  final RecordedAudioData audio;
+  final Duration duration;
+}
 
 class FoodSearchScreen extends StatefulWidget {
   final MealType? selectedMealType;
@@ -130,6 +149,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
   final TextEditingController _searchController = TextEditingController();
   final ScraperHelper _scraperHelper = ScraperHelper();
+  final AIService _aiService = AIService();
   late TabController _tabController;
   MealType? _selectedMealType;
 
@@ -139,6 +159,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
   bool _isLoading = false;
   bool _isLoadingApi = false;
   bool _isLoadingWeb = false;
+  bool _isProcessingAiFoodInput = false;
+  bool _showingAiFoodResults = false;
   bool _activeSearchIsBarcode = false;
   bool _autoOpenBarcodeResult = false;
   bool _isOpeningBarcodeResult = false;
@@ -231,6 +253,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       _webResults = [];
       _isLoadingApi = true;
       _isLoadingWeb = !kIsWeb; // Only load web on mobile
+      _isProcessingAiFoodInput = false;
+      _showingAiFoodResults = false;
       _activeSearchIsBarcode = false;
       _autoOpenBarcodeResult = false;
       _isOpeningBarcodeResult = false;
@@ -253,6 +277,290 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       final url = _buildFatSecretSearchUrl(searchQuery);
       await _setWebViewSettings(WebViewHelper.getOptimizedSettings());
       await _scraperHelper.loadUrl(url);
+    }
+  }
+
+  Future<void> _showFoodInputActions() async {
+    if (_isProcessingAiFoodInput) return;
+
+    final action = await showModalBottomSheet<_FoodInputAction>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: Text(
+                context.tr.translate('food_input_actions_title'),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+            _buildFoodInputActionTile(
+              sheetContext: sheetContext,
+              action: _FoodInputAction.audio,
+              icon: Icons.mic_rounded,
+              titleKey: 'food_input_audio_title',
+              subtitleKey: 'food_input_audio_subtitle',
+            ),
+            if (!kIsWeb)
+              _buildFoodInputActionTile(
+                sheetContext: sheetContext,
+                action: _FoodInputAction.camera,
+                icon: Icons.photo_camera_rounded,
+                titleKey: 'take_photo',
+                subtitleKey: 'food_input_camera_subtitle',
+              ),
+            _buildFoodInputActionTile(
+              sheetContext: sheetContext,
+              action: _FoodInputAction.gallery,
+              icon: Icons.photo_library_rounded,
+              titleKey: 'photo_library',
+              subtitleKey: 'food_input_gallery_subtitle',
+            ),
+            if (!kIsWeb)
+              _buildFoodInputActionTile(
+                sheetContext: sheetContext,
+                action: _FoodInputAction.barcode,
+                icon: Icons.qr_code_scanner_rounded,
+                titleKey: 'barcode_scanner_title',
+                subtitleKey: 'food_input_barcode_subtitle',
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case _FoodInputAction.audio:
+        await _captureFoodsFromAudio();
+        break;
+      case _FoodInputAction.camera:
+        await _captureFoodsFromImage(ImageSource.camera);
+        break;
+      case _FoodInputAction.gallery:
+        await _captureFoodsFromImage(ImageSource.gallery);
+        break;
+      case _FoodInputAction.barcode:
+        await _openBarcodeScanner();
+        break;
+    }
+  }
+
+  Widget _buildFoodInputActionTile({
+    required BuildContext sheetContext,
+    required _FoodInputAction action,
+    required IconData icon,
+    required String titleKey,
+    required String subtitleKey,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: colorScheme.primaryContainer,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: colorScheme.onPrimaryContainer),
+      ),
+      title: Text(
+        context.tr.translate(titleKey),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(context.tr.translate(subtitleKey)),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onTap: () => Navigator.of(sheetContext).pop(action),
+    );
+  }
+
+  Future<void> _captureFoodsFromAudio() async {
+    final recorded = await showModalBottomSheet<_RecordedFoodAudio>(
+      context: context,
+      useSafeArea: true,
+      isDismissible: false,
+      enableDrag: false,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (_) => const _FoodVoiceRecorderSheet(),
+    );
+    if (!mounted || recorded == null) return;
+
+    _beginAiFoodProcessing();
+    try {
+      final languageCode = _currentLanguageCode();
+      final rawTranscription = await _aiService.processAudio(
+        recorded.audio.bytes,
+        mimeType: recorded.audio.mimeType,
+        languageCode: languageCode,
+        appLanguageCode: languageCode,
+        contextHint: 'food_search',
+        audioDurationMs: recorded.duration.inMilliseconds,
+      );
+      final transcription = sanitizeAudioTranscript(rawTranscription).trim();
+      if (!mounted) return;
+
+      if (transcription.isEmpty) {
+        _finishAiFoodProcessing(const []);
+        return;
+      }
+
+      _searchController.text = transcription;
+      final detection = await _detectFoodsFromText(transcription);
+      if (!mounted) return;
+      _finishAiFoodProcessing(
+        detection.foods,
+        showProcessingError:
+            detection.foods.isEmpty && !detection.hasFoodPayload,
+      );
+    } catch (error) {
+      debugPrint(
+          '[FoodSearch] Falha ao identificar alimentos por áudio: $error');
+      if (!mounted) return;
+      _finishAiFoodProcessing(const [], showProcessingError: true);
+    }
+  }
+
+  Future<void> _captureFoodsFromImage(ImageSource source) async {
+    final imageBytes = await MediaPickerHelper.pickImage(source, context);
+    if (!mounted || imageBytes == null) return;
+
+    _beginAiFoodProcessing();
+    try {
+      final languageCode = _currentLanguageCode();
+      final userId = Provider.of<AuthService>(context, listen: false)
+              .currentUser
+              ?.id
+              .toString() ??
+          '';
+      final response = StringBuffer();
+      await for (final chunk in _aiService.processImageStream(
+        imageBytes,
+        'Detect only visible foods and drinks. Return the food JSON only. '
+        'If there is no food or drink, return an empty foods list. '
+        'Never invent an item that is not visible.',
+        languageCode: languageCode,
+        quality: 'bom',
+        userId: userId,
+        agentType: 'free-image',
+      )) {
+        response.write(chunk);
+      }
+      if (!mounted) return;
+      final detection = _parseDetectedFoodResponse(response.toString());
+      _finishAiFoodProcessing(
+        detection.foods,
+        showProcessingError:
+            detection.foods.isEmpty && !detection.hasFoodPayload,
+      );
+    } catch (error) {
+      debugPrint(
+          '[FoodSearch] Falha ao identificar alimentos na imagem: $error');
+      if (!mounted) return;
+      _finishAiFoodProcessing(const [], showProcessingError: true);
+    }
+  }
+
+  Future<({List<Food> foods, bool hasFoodPayload})> _detectFoodsFromText(
+    String transcription,
+  ) async {
+    final languageCode = _currentLanguageCode();
+    final userId = Provider.of<AuthService>(context, listen: false)
+            .currentUser
+            ?.id
+            .toString() ??
+        '';
+    final response = StringBuffer();
+
+    await for (final chunk in _aiService.getAnswerStream(
+      'Prompt intent: food_detection\nUser: $transcription',
+      languageCode: languageCode,
+      quality: 'bom',
+      userId: userId,
+      agentType: 'nutrition',
+    )) {
+      if (!chunk.startsWith('[CONEXAO_ID]')) {
+        response.write(chunk);
+      }
+    }
+
+    return _parseDetectedFoodResponse(response.toString());
+  }
+
+  ({List<Food> foods, bool hasFoodPayload}) _parseDetectedFoodResponse(
+    String response,
+  ) {
+    final entries = FoodJsonParser.parseMealEntriesFromMessage(
+      response,
+      fallbackMealType: _selectedMealType,
+    );
+    final uniqueFoods = <String, Food>{};
+
+    for (final food in entries.expand((entry) => entry.foods)) {
+      final key = '${food.name.trim().toLowerCase()}|${food.amount ?? ''}';
+      uniqueFoods.putIfAbsent(key, () => food);
+    }
+
+    return (
+      foods: uniqueFoods.values.toList(growable: false),
+      hasFoodPayload: FoodJsonParser.hasFoodJsonSignal(response),
+    );
+  }
+
+  String _currentLanguageCode() {
+    final languageController =
+        Provider.of<LanguageController>(context, listen: false);
+    return languageController.localeToString(languageController.currentLocale);
+  }
+
+  void _beginAiFoodProcessing() {
+    setState(() {
+      _isProcessingAiFoodInput = true;
+      _showingAiFoodResults = true;
+      _isSearching = true;
+      _isLoading = true;
+      _isLoadingApi = false;
+      _isLoadingWeb = false;
+      _apiResults = [];
+      _webResults = [];
+      _activeSearchIsBarcode = false;
+    });
+  }
+
+  void _finishAiFoodProcessing(
+    List<Food> foods, {
+    bool showProcessingError = false,
+  }) {
+    setState(() {
+      _isProcessingAiFoodInput = false;
+      _isLoading = false;
+      _isLoadingApi = false;
+      _isLoadingWeb = false;
+      _apiResults = foods;
+    });
+
+    if (foods.isEmpty) {
+      UIUtils.showSimpleToast(
+        context,
+        context.tr.translate(
+          showProcessingError
+              ? 'food_input_processing_error'
+              : 'no_food_detected',
+        ),
+      );
     }
   }
 
@@ -281,6 +589,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       _webResults = [];
       _isLoadingApi = false;
       _isLoadingWeb = !kIsWeb;
+      _isProcessingAiFoodInput = false;
+      _showingAiFoodResults = false;
       _activeSearchIsBarcode = true;
       _autoOpenBarcodeResult = true;
       _isOpeningBarcodeResult = false;
@@ -1847,10 +2157,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                                   ),
                                 ),
                               ),
-                              if (!kIsWeb) ...[
-                                SizedBox(width: 10),
-                                _buildBarcodeScanButton(),
-                              ],
+                              const SizedBox(width: 10),
+                              _buildFoodInputActionsButton(),
                             ],
                           ),
                         ),
@@ -1924,25 +2232,33 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     );
   }
 
-  Widget _buildBarcodeScanButton() {
+  Widget _buildFoodInputActionsButton() {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Tooltip(
-      message: context.tr.translate('barcode_scanner_title'),
+      message: context.tr.translate('food_input_actions_title'),
       child: Material(
         color: colorScheme.primary,
         borderRadius: BorderRadius.circular(80),
         child: InkWell(
           borderRadius: BorderRadius.circular(80),
-          onTap: _openBarcodeScanner,
+          onTap: _isProcessingAiFoodInput ? null : _showFoodInputActions,
           child: SizedBox(
             width: 52,
             height: 52,
-            child: Icon(
-              Icons.qr_code_scanner,
-              color: colorScheme.onPrimary,
-              size: 24,
-            ),
+            child: _isProcessingAiFoodInput
+                ? Padding(
+                    padding: const EdgeInsets.all(15),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: colorScheme.onPrimary,
+                    ),
+                  )
+                : Icon(
+                    Icons.add_rounded,
+                    color: colorScheme.onPrimary,
+                    size: 28,
+                  ),
           ),
         ),
       ),
@@ -2065,13 +2381,18 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.search_off,
+              _showingAiFoodResults
+                  ? Icons.no_food_rounded
+                  : Icons.search_off_rounded,
               size: 64,
               color: secondaryTextColor.withValues(alpha: 0.5),
             ),
             SizedBox(height: 16),
             Text(
-              context.tr.translate('no_results_found'),
+              context.tr.translate(
+                _showingAiFoodResults ? 'no_food_detected' : 'no_results_found',
+              ),
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: secondaryTextColor,
                 fontSize: 16,
@@ -2089,8 +2410,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
         // API Results section
         if (hasApiResults) ...[
           _buildSectionHeader(
-            context.tr.translate('database_results'),
-            Icons.storage,
+            context.tr.translate(
+              _showingAiFoodResults ? 'ai_food_results' : 'database_results',
+            ),
+            _showingAiFoodResults ? Icons.auto_awesome_rounded : Icons.storage,
             isDarkMode,
             textColor,
           ),
@@ -2344,6 +2667,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
               protein: recent.protein,
               carbohydrate: recent.carbs,
               fat: recent.fat,
+              dietaryFiber: recent.fiber,
             ),
           ],
           foodRegions: [],
@@ -2399,6 +2723,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
               protein: fav.protein,
               carbohydrate: fav.carbs,
               fat: fav.fat,
+              dietaryFiber: fav.fiber,
             ),
           ],
           foodRegions: [],
@@ -2447,6 +2772,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
               protein: recent.protein,
               carbohydrate: recent.carbs,
               fat: recent.fat,
+              dietaryFiber: recent.fiber,
             ),
           ],
           foodRegions: [],
@@ -2591,6 +2917,258 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       case MealType.freeMeal:
         return context.tr.translate('free_meal');
     }
+  }
+}
+
+class _FoodVoiceRecorderSheet extends StatefulWidget {
+  const _FoodVoiceRecorderSheet();
+
+  @override
+  State<_FoodVoiceRecorderSheet> createState() =>
+      _FoodVoiceRecorderSheetState();
+}
+
+class _FoodVoiceRecorderSheetState extends State<_FoodVoiceRecorderSheet> {
+  final ChatAudioRecorder _recorder = ChatAudioRecorder();
+  final Stopwatch _stopwatch = Stopwatch();
+
+  Timer? _durationTimer;
+  bool _isStarting = true;
+  bool _isRecording = false;
+  bool _isStopping = false;
+  bool _cancelRequested = false;
+  String? _errorKey;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startRecording());
+  }
+
+  @override
+  void dispose() {
+    _durationTimer?.cancel();
+    _stopwatch.stop();
+    if (_isRecording || _isStarting) {
+      unawaited(_recorder.cancelRecording());
+    } else {
+      unawaited(_recorder.dispose());
+    }
+    super.dispose();
+  }
+
+  Future<void> _startRecording() async {
+    if (_isRecording || _isStopping) return;
+
+    setState(() {
+      _isStarting = true;
+      _errorKey = null;
+      _cancelRequested = false;
+    });
+
+    try {
+      await _recorder.init();
+      final hasPermission = await _recorder.hasPermission();
+      if (_cancelRequested) {
+        await _recorder.cancelRecording();
+        return;
+      }
+      if (!hasPermission) {
+        if (!mounted) return;
+        setState(() {
+          _isStarting = false;
+          _errorKey = 'microphone_permission_denied';
+        });
+        return;
+      }
+
+      await _recorder.startRecording(verifyPermission: false);
+      if (_cancelRequested) {
+        await _recorder.cancelRecording();
+        return;
+      }
+      if (!mounted) return;
+
+      _stopwatch
+        ..reset()
+        ..start();
+      _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+      setState(() {
+        _isStarting = false;
+        _isRecording = true;
+      });
+    } catch (error) {
+      debugPrint('[FoodSearch] Falha ao iniciar gravação: $error');
+      if (!mounted) return;
+      setState(() {
+        _isStarting = false;
+        _isRecording = false;
+        _errorKey = 'audio_recording_start_error';
+      });
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    if (!_isRecording || _isStopping) return;
+
+    setState(() => _isStopping = true);
+    _durationTimer?.cancel();
+    _stopwatch.stop();
+    final duration = _stopwatch.elapsed;
+
+    try {
+      final audio = await _recorder.stopRecording();
+      if (!mounted) return;
+      if (audio == null || audio.bytes.isEmpty) {
+        setState(() {
+          _isRecording = false;
+          _isStopping = false;
+          _errorKey = 'no_audio_captured';
+        });
+        return;
+      }
+
+      Navigator.of(context).pop(
+        _RecordedFoodAudio(audio: audio, duration: duration),
+      );
+    } catch (error) {
+      debugPrint('[FoodSearch] Falha ao finalizar gravação: $error');
+      if (!mounted) return;
+      setState(() {
+        _isRecording = false;
+        _isStopping = false;
+        _errorKey = 'no_audio_captured';
+      });
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    if (_isStopping) return;
+    _cancelRequested = true;
+    _durationTimer?.cancel();
+    _stopwatch.stop();
+    await _recorder.cancelRecording();
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  String _formattedDuration() {
+    final elapsed = _stopwatch.elapsed;
+    final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
+    final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasError = _errorKey != null;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        16,
+        24,
+        24 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            decoration: BoxDecoration(
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          const SizedBox(height: 28),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: _isRecording ? 92 : 82,
+            height: _isRecording ? 92 : 82,
+            decoration: BoxDecoration(
+              color: hasError
+                  ? colorScheme.errorContainer
+                  : colorScheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: _isStarting
+                ? Padding(
+                    padding: const EdgeInsets.all(27),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: colorScheme.primary,
+                    ),
+                  )
+                : Icon(
+                    hasError ? Icons.mic_off_rounded : Icons.mic_rounded,
+                    size: 42,
+                    color: hasError
+                        ? colorScheme.onErrorContainer
+                        : colorScheme.onPrimaryContainer,
+                  ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            context.tr.translate(
+              hasError ? _errorKey! : 'food_voice_sheet_title',
+            ),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.tr.translate(
+              hasError ? 'food_voice_retry_hint' : 'food_voice_sheet_subtitle',
+            ),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _formattedDuration(),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: hasError
+                  ? _startRecording
+                  : (_isRecording && !_isStopping ? _stopRecording : null),
+              icon: _isStopping
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colorScheme.onPrimary,
+                      ),
+                    )
+                  : Icon(hasError ? Icons.refresh_rounded : Icons.stop_rounded),
+              label: Text(
+                context.tr.translate(
+                  hasError ? 'try_again' : 'food_voice_stop_action',
+                ),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: _isStopping ? null : _cancelRecording,
+            child: Text(context.tr.translate('cancel')),
+          ),
+        ],
+      ),
+    );
   }
 }
 

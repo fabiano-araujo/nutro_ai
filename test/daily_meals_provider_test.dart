@@ -152,6 +152,37 @@ void main() {
     expect(provider.todayMeals.single.id, 'stored-meal-id');
   });
 
+  test('aggregates and restores fiber from local meal persistence', () async {
+    final provider = DailyMealsProvider();
+    await provider.ready;
+    final selectedDate = DateTime(2026, 7, 9);
+    provider.setSelectedDate(selectedDate);
+
+    final meal = Meal(
+      id: 'fiber-meal',
+      type: MealType.lunch,
+      foods: [
+        _food('feijao', fiber: 6.4),
+        _food('arroz integral', fiber: 2.1),
+      ],
+    );
+    provider.addMeal(meal);
+
+    expect(meal.totalFiber, 8.5);
+    expect(provider.totalFiber, 8.5);
+    expect(provider.getMacrosForDate(selectedDate)['fiber'], 8.5);
+    expect(provider.getNutritionSnapshotForDate(selectedDate)['fiber'], 8.5);
+
+    await pumpEventQueue();
+    final reloaded = DailyMealsProvider();
+    await reloaded.ready;
+    reloaded.setSelectedDate(selectedDate);
+
+    expect(reloaded.todayMeals, hasLength(1));
+    expect(reloaded.todayMeals.single.totalFiber, 8.5);
+    expect(reloaded.totalFiber, 8.5);
+  });
+
   test('matches chat meals when message index changes', () async {
     final provider = DailyMealsProvider();
     await provider.ready;
@@ -424,6 +455,7 @@ Food _food(
   double protein = 4,
   double carbs = 18,
   double fat = 2,
+  double fiber = 0,
 }) {
   return Food(
     id: name.hashCode,
@@ -437,6 +469,7 @@ Food _food(
         protein: protein,
         carbohydrate: carbs,
         fat: fat,
+        dietaryFiber: fiber,
       ),
     ],
   );

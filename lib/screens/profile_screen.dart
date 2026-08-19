@@ -1,22 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../services/purchase_service.dart';
-import '../services/storage_service.dart';
 import '../models/user_model.dart';
 import '../providers/nutrition_goals_provider.dart';
-import '../providers/daily_meals_provider.dart';
-import '../providers/activity_tracking_provider.dart';
-import '../providers/credit_provider.dart';
-import '../providers/essay_provider.dart';
-import '../providers/food_history_provider.dart';
-import '../providers/diet_plan_provider.dart';
-import '../providers/free_chat_provider.dart';
-import '../providers/meal_types_provider.dart';
-import '../services/daily_chat_sync_service.dart';
+import '../services/account_data_cleanup_service.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'nutrition_goals_wizard_screen.dart';
@@ -43,8 +35,10 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoggingOut = false;
-  static const double _listItemTitleFontSize = 14;
+  static const double _listItemTitleFontSize = 15;
   static const double _listItemSubtitleFontSize = 12;
+  static const double _contentMaxWidth = 640;
+  static const double _wideLayoutBreakpoint = 900;
   static const List<Shadow> _bannerTextShadow = [
     Shadow(
       color: Color(0x40000000),
@@ -91,23 +85,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  _LogoutCleanupDependencies _captureLogoutCleanupDependencies() {
-    return _LogoutCleanupDependencies(
-      storageService: StorageService(),
-      creditProvider: context.read<CreditProvider>(),
-      essayProvider: context.read<EssayProvider>(),
-      dailyMealsProvider: context.read<DailyMealsProvider>(),
-      activityTrackingProvider: context.read<ActivityTrackingProvider>(),
-      foodHistoryProvider: context.read<FoodHistoryProvider>(),
-      dietPlanProvider: context.read<DietPlanProvider>(),
-      freeChatProvider: context.read<FreeChatProvider>(),
-      nutritionGoalsProvider: context.read<NutritionGoalsProvider>(),
-      mealTypesProvider: context.read<MealTypesProvider>(),
-      dailyChatSyncService: DailyChatSyncService.instance,
-    );
+  AccountCleanupDependencies _captureLogoutCleanupDependencies() {
+    return AccountDataCleanupService.capture(context);
   }
 
-  bool _hasPendingLogoutSync(_LogoutCleanupDependencies deps) {
+  bool _hasPendingLogoutSync(AccountCleanupDependencies deps) {
     return deps.nutritionGoalsProvider.hasPendingServerSync ||
         deps.freeChatProvider.hasPendingServerSync ||
         deps.foodHistoryProvider.hasPendingServerSync ||
@@ -117,7 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<bool> _syncPendingBeforeLogout(
-    _LogoutCleanupDependencies deps,
+    AccountCleanupDependencies deps,
   ) async {
     try {
       await Future.wait([
@@ -162,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _performLogout(
     AuthService authService,
-    _LogoutCleanupDependencies cleanupDependencies,
+    AccountCleanupDependencies cleanupDependencies,
   ) async {
     if (!mounted) return;
     setState(() {
@@ -176,64 +158,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// Limpa todos os dados do usuário de todos os providers e storage
-  Future<void> _clearAllUserData(_LogoutCleanupDependencies deps) async {
-    print(
-        '[🔄 AUTH_DATA] ========== INICIANDO LOGOUT - LIMPEZA DE DADOS ==========');
-
-    try {
-      // Limpar dados do StorageService (histórico, favoritos, conversas, etc.)
-      print('[🔄 AUTH_DATA] 1/7 Limpando StorageService...');
-      await deps.storageService.clearAllUserData();
-      print('[🔄 AUTH_DATA] 1/7 ✅ StorageService limpo');
-
-      // Limpar CreditProvider
-      print('[🔄 AUTH_DATA] 2/7 Limpando CreditProvider...');
-      await deps.creditProvider.clearUserData();
-      print('[🔄 AUTH_DATA] 2/7 ✅ CreditProvider limpo');
-
-      // Limpar EssayProvider
-      print('[🔄 AUTH_DATA] 3/7 Limpando EssayProvider...');
-      deps.essayProvider.clearUserData();
-      print('[🔄 AUTH_DATA] 3/7 ✅ EssayProvider limpo');
-
-      // Limpar DailyMealsProvider (todas as refeições e dados de água)
-      print('[🔄 AUTH_DATA] 4/7 Limpando DailyMealsProvider...');
-      deps.dailyMealsProvider.clearAuth();
-      await deps.dailyMealsProvider.clearAllData();
-      print('[🔄 AUTH_DATA] 4/7 ✅ DailyMealsProvider limpo');
-
-      await deps.activityTrackingProvider.clearAllData();
-
-      // Limpar FoodHistoryProvider
-      print('[🔄 AUTH_DATA] 5/7 Limpando FoodHistoryProvider...');
-      await deps.foodHistoryProvider.clearAll(markPendingSync: false);
-      print('[🔄 AUTH_DATA] 5/7 ✅ FoodHistoryProvider limpo');
-
-      // Limpar DietPlanProvider (dietas personalizadas)
-      print('[🔄 AUTH_DATA] 6/7 Limpando DietPlanProvider...');
-      await deps.dietPlanProvider.clearAll();
-      print('[🔄 AUTH_DATA] 6/7 ✅ DietPlanProvider limpo');
-
-      // Limpar FreeChatProvider (conversas livres do AI Tutor)
-      print('[🔄 AUTH_DATA] 7/7 Limpando FreeChatProvider...');
-      await deps.freeChatProvider.clearAll();
-      print('[🔄 AUTH_DATA] 7/7 ✅ FreeChatProvider limpo');
-
-      // Limpar MealTypesProvider (configuração de refeições)
-      print('[🔄 AUTH_DATA] EXTRA: Limpando MealTypesProvider...');
-      await deps.mealTypesProvider.clearAllData();
-      print('[🔄 AUTH_DATA] EXTRA: ✅ MealTypesProvider limpo');
-
-      // Limpar NutritionGoalsProvider (metas nutricionais)
-      print('[🔄 AUTH_DATA] EXTRA: Limpando NutritionGoalsProvider...');
-      await deps.nutritionGoalsProvider.clearAllData();
-      print('[🔄 AUTH_DATA] EXTRA: ✅ NutritionGoalsProvider limpo');
-
-      print(
-          '[🔄 AUTH_DATA] ========== LOGOUT CONCLUÍDO - TODOS OS DADOS LIMPOS ==========');
-    } catch (e) {
-      print('[🔄 AUTH_DATA] ❌ ERRO durante limpeza de dados: $e');
-    }
+  Future<void> _clearAllUserData(AccountCleanupDependencies deps) {
+    return AccountDataCleanupService.clearAllUserData(deps);
   }
 
   @override
@@ -267,9 +193,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : null,
         title: Text(
           context.tr.translate('profile'),
-          style: theme.textTheme.titleLarge?.copyWith(
+          style: GoogleFonts.poppins(
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
             color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
-            fontWeight: FontWeight.w800,
           ),
         ),
         actions: isAuthenticated
@@ -309,31 +236,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final isWide = MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      padding: EdgeInsets.fromLTRB(16, isWide ? 12 : 4, 16, 32),
       children: [
-        // Profile Header (includes subscription + BMI chips)
-        _buildProfileHeader(user, theme, colorScheme, isDarkMode),
-        const SizedBox(height: 14),
-
-        // Goals section — show CTA when not configured, otherwise show goal cards
-        Consumer<NutritionGoalsProvider>(
-          builder: (context, nutritionProvider, child) {
-            if (!nutritionProvider.hasConfiguredGoals) {
-              return _buildCompleteGoalsCard(theme, colorScheme, isDarkMode);
-            }
-            return _buildGoalCard(theme, colorScheme, isDarkMode);
-          },
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
+            child: Column(
+              children: [
+                _buildProfileHeader(user, theme, colorScheme, isDarkMode),
+                SizedBox(height: isWide ? 22 : 16),
+                Consumer<NutritionGoalsProvider>(
+                  builder: (context, nutritionProvider, child) {
+                    if (!nutritionProvider.hasConfiguredGoals) {
+                      return _buildCompleteGoalsCard(
+                          theme, colorScheme, isDarkMode);
+                    }
+                    return _buildGoalCard(theme, colorScheme, isDarkMode);
+                  },
+                ),
+                const SizedBox(height: 18),
+                _buildSettingsSection(theme, colorScheme, isDarkMode),
+                const SizedBox(height: 14),
+                _buildLogoutButton(authService, theme, colorScheme),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
-
-        // Settings Section
-        _buildSettingsSection(theme, colorScheme, isDarkMode),
-        const SizedBox(height: 16),
-
-        // Logout
-        _buildLogoutButton(authService, theme, colorScheme),
-        const SizedBox(height: 40),
       ],
     );
   }
@@ -417,7 +349,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               user.name,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
+              style: GoogleFonts.poppins(
                 color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -514,7 +446,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(width: 7),
                   Text(
                     label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    style: GoogleFonts.inter(
                       color: accentColor,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -546,7 +478,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: RichText(
         text: TextSpan(
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: GoogleFonts.inter(
             color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -590,7 +522,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(22),
             child: AspectRatio(
-              aspectRatio: 2.22,
+              aspectRatio:
+                  MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint
+                      ? 2.55
+                      : 2.22,
               child: DecoratedBox(
                 decoration: const BoxDecoration(
                   image: DecorationImage(
@@ -693,7 +628,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 9),
             Text(
               label,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: GoogleFonts.inter(
                 color: Colors.white.withValues(alpha: 0.92),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -705,7 +640,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               value,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -737,7 +672,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: AspectRatio(
-          aspectRatio: 2.22,
+          aspectRatio: MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint
+              ? 2.55
+              : 2.22,
           child: DecoratedBox(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -782,7 +719,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         context.tr.translate('profile_complete_goals_title'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: GoogleFonts.inter(
                           color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -795,8 +732,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             .translate('profile_complete_goals_description'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style: GoogleFonts.inter(
                           color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                           height: 1.25,
                           shadows: _bannerTextShadow,
                         ),
@@ -899,7 +838,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
           child: Row(
             children: [
               Container(
@@ -925,24 +864,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
-                      style: theme.textTheme.bodyLarge?.copyWith(
+                      style: GoogleFonts.inter(
                         color: adaptiveColor,
                         fontWeight: FontWeight.w700,
                         fontSize: _listItemTitleFontSize,
-                        height: 1.18,
+                        letterSpacing: -0.1,
+                        height: 1.2,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: GoogleFonts.inter(
                         color: isDarkMode
                             ? AppTheme.darkMutedTextColor
                             : AppTheme.textSecondaryColor,
                         fontSize: _listItemSubtitleFontSize,
+                        fontWeight: FontWeight.w500,
                         height: 1.2,
                       ),
                     ),
@@ -977,18 +917,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildLogoutButton(
       AuthService authService, ThemeData theme, ColorScheme colorScheme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    final cardColor = isDarkMode ? AppTheme.darkCardColor : Colors.white;
 
     return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
-      ),
+      decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1049,7 +980,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Expanded(
                   child: Text(
                     context.tr.translate('logout'),
-                    style: theme.textTheme.bodyLarge?.copyWith(
+                    style: GoogleFonts.inter(
                       color: colorScheme.error,
                       fontWeight: FontWeight.w500,
                       fontSize: 15,
@@ -1069,68 +1000,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colorScheme = theme.colorScheme;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person_rounded,
-                size: 64,
-                color: colorScheme.primary.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              context.tr.translate('login_to_access_profile'),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              context.tr.translate('login_description'),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _navigateToLogin,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.login_rounded, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      context.tr.translate('sign_in'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
+                child: Icon(
+                  Icons.person_rounded,
+                  size: 64,
+                  color: colorScheme.primary.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                context.tr.translate('login_to_access_profile'),
+                style: GoogleFonts.poppins(
+                  color: colorScheme.onSurface,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                context.tr.translate('login_description'),
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _navigateToLogin,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ],
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.login_rounded, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.tr.translate('sign_in'),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1181,32 +1119,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return context.tr.translate('goal_maintain_weight');
     }
   }
-}
-
-class _LogoutCleanupDependencies {
-  final StorageService storageService;
-  final CreditProvider creditProvider;
-  final EssayProvider essayProvider;
-  final DailyMealsProvider dailyMealsProvider;
-  final ActivityTrackingProvider activityTrackingProvider;
-  final FoodHistoryProvider foodHistoryProvider;
-  final DietPlanProvider dietPlanProvider;
-  final FreeChatProvider freeChatProvider;
-  final NutritionGoalsProvider nutritionGoalsProvider;
-  final MealTypesProvider mealTypesProvider;
-  final DailyChatSyncService dailyChatSyncService;
-
-  const _LogoutCleanupDependencies({
-    required this.storageService,
-    required this.creditProvider,
-    required this.essayProvider,
-    required this.dailyMealsProvider,
-    required this.activityTrackingProvider,
-    required this.foodHistoryProvider,
-    required this.dietPlanProvider,
-    required this.freeChatProvider,
-    required this.nutritionGoalsProvider,
-    required this.mealTypesProvider,
-    required this.dailyChatSyncService,
-  });
 }

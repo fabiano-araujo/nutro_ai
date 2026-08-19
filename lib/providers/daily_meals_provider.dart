@@ -56,9 +56,10 @@ class DailyMealsProvider extends ChangeNotifier {
   int _mealAdditionVersion = 0;
   DateTime? _lastMealAdditionDate;
 
-  /// Callback disparado após sync bem-sucedido do dia atual.
-  /// Usado para auto check-in de streak (ver main_navigation.dart).
-  void Function()? onTodaySynced;
+  /// Callback disparado após o sync bem-sucedido de uma data.
+  /// A data explícita permite concluir o check-in de ontem quando um upload
+  /// offline atravessa a meia-noite, sem transformar datas antigas em backfill.
+  Future<void> Function(DateTime syncedDate)? onDateSynced;
 
   // Getters para estado de sync
   bool get isSyncing => _isSyncing;
@@ -331,13 +332,9 @@ class DailyMealsProvider extends ChangeNotifier {
       }
     }
 
-    if (synced && _isSameDay(syncDate, DateTime.now())) {
-      onTodaySynced?.call();
+    if (synced) {
+      await onDateSynced?.call(syncDate);
     }
-  }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   /// Força sincronização imediata (para uso manual)
@@ -427,6 +424,7 @@ class DailyMealsProvider extends ChangeNotifier {
         );
         _markDateSynced(dateKey);
         _loadedDetailDateKeys.add(dateKey);
+        await onDateSynced?.call(snapshot.date);
       }
       synced++;
     }
@@ -605,11 +603,14 @@ class DailyMealsProvider extends ChangeNotifier {
     final localCarbs =
         meals.fold<double>(0, (sum, meal) => sum + meal.totalCarbs);
     final localFat = meals.fold<double>(0, (sum, meal) => sum + meal.totalFat);
+    final localFiber =
+        meals.fold<double>(0, (sum, meal) => sum + meal.totalFiber);
     final hasLocalMealData = meals.any((meal) => meal.foods.isNotEmpty) ||
         localCalories > 0 ||
         localProtein > 0 ||
         localCarbs > 0 ||
-        localFat > 0;
+        localFat > 0 ||
+        localFiber > 0;
     final goals = summary?.goals ??
         MealGoals(
           calories: caloriesGoal,
@@ -626,7 +627,7 @@ class DailyMealsProvider extends ChangeNotifier {
       'protein': summary?.totalProtein ?? localProtein,
       'carbs': summary?.totalCarbs ?? localCarbs,
       'fat': summary?.totalFat ?? localFat,
-      'fiber': summary?.totalFiber ?? getMacrosForDate(date)['fiber'] ?? 0.0,
+      'fiber': summary?.totalFiber ?? localFiber,
       'waterGlasses': _waterByDate[dateKey] ?? summary?.waterGlasses ?? 0,
       'waterGoal': summary?.waterGoal ?? waterGoal,
       'calorieGoal': goals.calories,
@@ -678,6 +679,8 @@ class DailyMealsProvider extends ChangeNotifier {
       todayMeals.fold(0.0, (sum, meal) => sum + meal.totalCarbs);
   double get totalFat =>
       todayMeals.fold(0.0, (sum, meal) => sum + meal.totalFat);
+  double get totalFiber =>
+      todayMeals.fold(0.0, (sum, meal) => sum + meal.totalFiber);
 
   // Remaining values
   int get caloriesRemaining => caloriesGoal - totalCalories;
@@ -1781,16 +1784,7 @@ class DailyMealsProvider extends ChangeNotifier {
       'protein': meals.fold(0.0, (sum, meal) => sum + meal.totalProtein),
       'carbs': meals.fold(0.0, (sum, meal) => sum + meal.totalCarbs),
       'fat': meals.fold(0.0, (sum, meal) => sum + meal.totalFat),
-      'fiber': meals.fold(0.0, (sum, meal) {
-        double fiberSum = 0;
-        for (var food in meal.foods) {
-          final nutrients = food.nutrients;
-          if (nutrients != null && nutrients.isNotEmpty) {
-            fiberSum += nutrients.first.dietaryFiber ?? 0;
-          }
-        }
-        return sum + fiberSum;
-      }),
+      'fiber': meals.fold(0.0, (sum, meal) => sum + meal.totalFiber),
     };
   }
 
@@ -2047,7 +2041,8 @@ class _StoredDailySummary {
           summary.totalCalories > 0 ||
           summary.totalProtein > 0 ||
           summary.totalCarbs > 0 ||
-          summary.totalFat > 0,
+          summary.totalFat > 0 ||
+          summary.totalFiber > 0,
     );
   }
 

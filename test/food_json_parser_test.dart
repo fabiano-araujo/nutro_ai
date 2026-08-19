@@ -137,6 +137,51 @@ void main() {
       expect(FoodJsonParser.hasFoodJsonSignal(incomplete), isTrue);
       expect(FoodJsonParser.hasCompleteFoodJson(incomplete), isFalse);
     });
+
+    test('recognizes an explicit empty detection without creating foods', () {
+      const noFoodPayload = '{"meals":[]}';
+
+      expect(FoodJsonParser.hasFoodJsonSignal(noFoodPayload), isTrue);
+      expect(
+        FoodJsonParser.parseMealEntriesFromMessage(noFoodPayload),
+        isEmpty,
+      );
+      expect(FoodJsonParser.containsFoodJson(noFoodPayload), isFalse);
+    });
+
+    test('accepts every supported fiber field name', () {
+      const aliases = <String, double>{
+        'fiber': 5.5,
+        'dietaryFiber': 4.25,
+        'dietary_fiber': 3.75,
+      };
+
+      for (final entry in aliases.entries) {
+        final payload = '''
+        {
+          "mealType": "snack",
+          "foods": [
+            {
+              "name": "pera",
+              "portion": "1 unidade",
+              "macros": {
+                "calories": 96,
+                "protein": 0.6,
+                "carbohydrate": 26,
+                "fat": 0.2,
+                "${entry.key}": ${entry.value}
+              }
+            }
+          ]
+        }
+        ''';
+
+        final foods = FoodJsonParser.parseFoodJson(payload);
+
+        expect(foods, isNotNull, reason: 'alias ${entry.key}');
+        expect(foods!.single.fiber, entry.value, reason: 'alias ${entry.key}');
+      }
+    });
   });
 
   group('FoodJsonParser.parseServingFromPortion', () {

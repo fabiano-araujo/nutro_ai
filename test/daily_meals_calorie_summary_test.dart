@@ -67,6 +67,11 @@ void main() {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            routes: {
+              '/subscription': (_) => const Scaffold(
+                    body: Text('Tela de assinatura'),
+                  ),
+            },
             home: const DailyMealsScreen(showBackButton: false),
           ),
         ),
@@ -94,6 +99,28 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('2320'), findsOneWidget);
+
+      final fiberCard = find.byKey(const ValueKey('diary-fiber-card'));
+      expect(fiberCard, findsOneWidget);
+      expect(
+        find.descendant(of: fiberCard, matching: find.text('Fibra')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: fiberCard, matching: find.text('Premium')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: fiberCard,
+          matching: find.byIcon(Icons.workspace_premium_rounded),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(fiberCard);
+      await tester.pumpAndSettle();
+      expect(find.text('Tela de assinatura'), findsOneWidget);
     },
   );
 }

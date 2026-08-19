@@ -3,4 +3,14 @@
     <string name="ad_attribution">Anuncio</string>
     <string name="health_permissions_privacy_title">Política de privacidad</string>
     <string name="health_permissions_privacy_body">Nutro AI usa los datos de Health Connect únicamente para mostrar dentro de la aplicación las calorías quemadas, los pasos y los ejercicios que ayudan a controlar tu nutrición. Estos datos no se venden. Puedes permitir, denegar o retirar el acceso en cualquier momento desde los ajustes de Health Connect.</string>
+    <string name="widget_name">Nutro AI — Racha</string>
+    <string name="widget_description">Calorías de hoy y racha diaria</string>
+    <string name="widget_today">Hoy</string>
+    <string name="widget_calories_unit">kcal</string>
+    <string name="widget_goal_format">%1$d de %2$d kcal</string>
+    <string name="widget_tap_to_open">Toca para abrir</string>
+    <plurals name="widget_streak_days">
+        <item quantity="one">%d día</item>
+        <item quantity="other">%d días</item>
+    </plurals>
 </resources>

@@ -11,16 +11,16 @@ void main() {
             'breakfast',
             '08:00',
             [
-              ['Pão francês', 100, 'g', 300, 9, 58, 3],
-              ['Ovo mexido', 2, 'un', 180, 12, 1, 14],
+              ['Pão francês', 100, 'g', 300, 9, 58, 3, 2.5],
+              ['Ovo mexido', 2, 'un', 180, 12, 1, 14, 0],
             ],
           ],
           [
             'lunch',
             '12:30',
             [
-              ['Arroz branco', 200, 'g', 260, 5, 56, 1],
-              ['Frango grelhado', 150, 'g', 245, 45, 0, 6],
+              ['Arroz branco', 200, 'g', 260, 5, 56, 1, 1.2],
+              ['Frango grelhado', 150, 'g', 245, 45, 0, 6, 0],
             ],
           ],
         ],
@@ -43,6 +43,7 @@ void main() {
     expect(dietPlan.totalNutrition.protein, 71);
     expect(dietPlan.totalNutrition.carbs, 115);
     expect(dietPlan.totalNutrition.fat, 24);
+    expect(dietPlan.totalNutrition.fiber, 3.7);
   });
 
   test('PlannedMeal.fromAiJson keeps legacy format compatibility', () {

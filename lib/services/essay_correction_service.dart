@@ -287,7 +287,7 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
         return EssayCorrection(
           id: _uuid.v4(),
           essayId: essay.id,
-          totalScore: data['totalScore'] ?? 0,
+          totalScore: (data['totalScore'] as num?)?.toInt() ?? 0,
           competencyScores: Map<String, int>.from(data['competencyScores'] ?? {}),
           feedback: _processFeedbackData(data['feedback'] ?? []),
           suggestions: [], // Será preenchido separadamente
@@ -308,7 +308,7 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
     return feedbackData.map((item) {
       return DetailedFeedback(
         competency: item['competency'] ?? 'Geral',
-        score: item['score'] ?? 0,
+        score: (item['score'] as num?)?.toInt() ?? 0,
         summary: item['summary'] ?? 'Análise não disponível',
         comments: _processCommentsData(item['comments'] ?? []),
         tips: _processTipsData(item['tips'] ?? []),
@@ -320,9 +320,10 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
   List<SpecificComment> _processCommentsData(List<dynamic> commentsData) {
     return commentsData.map((item) {
       return SpecificComment(
-        aspect: item['aspect'] ?? 'Geral',
-        comment: item['comment'] ?? '',
+        text: item['comment'] ?? item['text'] ?? '',
         type: _parseCommentType(item['type']),
+        startPosition: (item['startPosition'] as num?)?.toInt(),
+        endPosition: (item['endPosition'] as num?)?.toInt(),
       );
     }).toList();
   }
@@ -331,8 +332,9 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
   List<ImprovementTip> _processTipsData(List<dynamic> tipsData) {
     return tipsData.map((item) {
       return ImprovementTip(
+        title: item['title'] ?? item['category'] ?? 'Geral',
+        description: item['description'] ?? item['tip'] ?? '',
         category: item['category'] ?? 'Geral',
-        tip: item['tip'] ?? '',
         priority: _parseTipPriority(item['priority']),
       );
     }).toList();
@@ -352,13 +354,13 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
           final item = entry.value;
           
           return EssaySuggestion(
-            id: _uuid.v4(),
             type: _parseSuggestionType(item['type']),
             originalText: item['originalText'] ?? '',
             suggestedText: item['suggestedText'] ?? '',
             explanation: item['explanation'] ?? '',
             startPosition: index * 10, // Posição aproximada
-            endPosition: (index * 10) + (item['originalText']?.length ?? 10),
+            endPosition: (index * 10) +
+                ((item['originalText'] as String?)?.length ?? 10),
             priority: _parseSuggestionPriority(item['priority']),
           );
         }).toList();
@@ -437,8 +439,7 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
   List<EssaySuggestion> _generateFallbackSuggestions(Essay? essay) {
     return [
       EssaySuggestion(
-        id: _uuid.v4(),
-        type: SuggestionType.structure,
+        type: 'structure',
         originalText: 'Estrutura geral',
         suggestedText: 'Melhore a organização dos parágrafos',
         explanation: 'Uma boa estrutura facilita a compreensão do texto',
@@ -447,8 +448,7 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
         priority: SuggestionPriority.medium,
       ),
       EssaySuggestion(
-        id: _uuid.v4(),
-        type: SuggestionType.content,
+        type: 'content',
         originalText: 'Argumentação',
         suggestedText: 'Adicione mais exemplos e fundamentação',
         explanation: 'Argumentos bem fundamentados tornam o texto mais convincente',
@@ -493,16 +493,18 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
         summary: 'Análise da ${entry.key}: ${_getScoreDescription(entry.value)}',
         comments: [
           SpecificComment(
-            aspect: 'Geral',
-            comment: analysis.length > 100 ? analysis.substring(0, 100) + '...' : analysis,
-            type: CommentType.neutral,
+            text: analysis.length > 100
+                ? '${analysis.substring(0, 100)}...'
+                : analysis,
+            type: 'neutral',
           ),
         ],
         tips: [
           ImprovementTip(
+            title: 'Sugestão',
+            description: _getTipForScore(entry.value),
             category: 'Geral',
-            tip: _getTipForScore(entry.value),
-            priority: TipPriority.medium,
+            priority: 3,
           ),
         ],
       );
@@ -525,31 +527,31 @@ CRITÉRIOS GERAIS DE AVALIAÇÃO:
   }
 
   /// Métodos de parsing para enums
-  CommentType _parseCommentType(String? type) {
+  String _parseCommentType(String? type) {
     switch (type?.toLowerCase()) {
-      case 'positive': return CommentType.positive;
-      case 'negative': return CommentType.negative;
-      default: return CommentType.neutral;
+      case 'positive': return 'positive';
+      case 'negative': return 'negative';
+      default: return 'neutral';
     }
   }
 
-  TipPriority _parseTipPriority(String? priority) {
+  int _parseTipPriority(String? priority) {
     switch (priority?.toLowerCase()) {
-      case 'low': return TipPriority.low;
-      case 'high': return TipPriority.high;
-      case 'critical': return TipPriority.critical;
-      default: return TipPriority.medium;
+      case 'critical': return 1;
+      case 'high': return 2;
+      case 'low': return 5;
+      default: return 3;
     }
   }
 
-  SuggestionType _parseSuggestionType(String? type) {
+  String _parseSuggestionType(String? type) {
     switch (type?.toLowerCase()) {
-      case 'grammar': return SuggestionType.grammar;
-      case 'style': return SuggestionType.style;
-      case 'structure': return SuggestionType.structure;
-      case 'content': return SuggestionType.content;
-      case 'vocabulary': return SuggestionType.vocabulary;
-      default: return SuggestionType.style;
+      case 'grammar': return 'grammar';
+      case 'style': return 'style';
+      case 'structure': return 'structure';
+      case 'content': return 'content';
+      case 'vocabulary': return 'vocabulary';
+      default: return 'style';
     }
   }
 

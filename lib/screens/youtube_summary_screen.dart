@@ -31,7 +31,7 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
   @override
   void dispose() {
     _urlController.dispose();
-    _youtubeController?.dispose();
+    _youtubeController?.close();
     super.dispose();
   }
 
@@ -44,11 +44,12 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
   // Inicializar o player do YouTube
   void _initializeYoutubePlayer(String videoId) {
     final captionLanguage = Localizations.localeOf(context).languageCode;
-    _youtubeController = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
+    _youtubeController = YoutubePlayerController.fromVideoId(
+      videoId: videoId,
+      autoPlay: false,
+      params: YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: true,
         captionLanguage: captionLanguage,
       ),
     );
@@ -84,7 +85,7 @@ class _YoutubeSummaryScreenState extends State<YoutubeSummaryScreen> {
       _isPlayingVideo = false;
       _showFullTranscript = false;
       if (_youtubeController != null) {
-        _youtubeController!.dispose();
+        _youtubeController!.close();
         _youtubeController = null;
       }
     });
@@ -324,10 +325,6 @@ Por favor, forneça:
                   _isPlayingVideo
                       ? YoutubePlayer(
                           controller: _youtubeController!,
-                          showVideoProgressIndicator: true,
-                          onReady: () {
-                            // O player está pronto
-                          },
                         )
                       : GestureDetector(
                           onTap: _toggleVideoPlayer,

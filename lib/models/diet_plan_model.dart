@@ -47,12 +47,14 @@ DailyNutrition _sumFoods(List<PlannedFood> foods) {
   var protein = 0.0;
   var carbs = 0.0;
   var fat = 0.0;
+  var fiber = 0.0;
 
   for (final food in foods) {
     calories += food.calories;
     protein += food.protein;
     carbs += food.carbs;
     fat += food.fat;
+    fiber += food.fiber;
   }
 
   return DailyNutrition(
@@ -60,6 +62,7 @@ DailyNutrition _sumFoods(List<PlannedFood> foods) {
     protein: protein,
     carbs: carbs,
     fat: fat,
+    fiber: fiber,
   );
 }
 
@@ -68,12 +71,14 @@ DailyNutrition _sumMeals(List<PlannedMeal> meals) {
   var protein = 0.0;
   var carbs = 0.0;
   var fat = 0.0;
+  var fiber = 0.0;
 
   for (final meal in meals) {
     calories += meal.mealTotals.calories;
     protein += meal.mealTotals.protein;
     carbs += meal.mealTotals.carbs;
     fat += meal.mealTotals.fat;
+    fiber += meal.mealTotals.fiber;
   }
 
   return DailyNutrition(
@@ -81,6 +86,7 @@ DailyNutrition _sumMeals(List<PlannedMeal> meals) {
     protein: protein,
     carbs: carbs,
     fat: fat,
+    fiber: fiber,
   );
 }
 
@@ -132,7 +138,8 @@ class DietPlan {
     final totalNutrition = plan.totalNutrition.calories == 0 &&
             plan.totalNutrition.protein == 0 &&
             plan.totalNutrition.carbs == 0 &&
-            plan.totalNutrition.fat == 0
+            plan.totalNutrition.fat == 0 &&
+            plan.totalNutrition.fiber == 0
         ? _sumMeals(plan.meals)
         : plan.totalNutrition;
 
@@ -192,12 +199,14 @@ class DailyNutrition {
   final double protein;
   final double carbs;
   final double fat;
+  final double fiber;
 
   DailyNutrition({
     required this.calories,
     required this.protein,
     required this.carbs,
     required this.fat,
+    this.fiber = 0,
   });
 
   factory DailyNutrition.fromJson(Map<String, dynamic> json) {
@@ -206,6 +215,7 @@ class DailyNutrition {
       protein: (json['protein'] ?? 0).toDouble(),
       carbs: (json['carbs'] ?? 0).toDouble(),
       fat: (json['fat'] ?? 0).toDouble(),
+      fiber: _readDouble(json, ['fiber', 'dietaryFiber', 'dietary_fiber']),
     );
   }
 
@@ -215,6 +225,7 @@ class DailyNutrition {
       'protein': protein,
       'carbs': carbs,
       'fat': fat,
+      'fiber': fiber,
     };
   }
 
@@ -249,6 +260,7 @@ DailyNutrition? _readGeneratedNutrition(Map<String, dynamic> json) {
     protein: _readDouble(json, ['generatedForProtein']),
     carbs: _readDouble(json, ['generatedForCarbs']),
     fat: _readDouble(json, ['generatedForFat']),
+    fiber: _readDouble(json, ['generatedForFiber']),
   );
 }
 
@@ -314,7 +326,8 @@ class PlannedMeal {
       final totals = meal.mealTotals.calories == 0 &&
               meal.mealTotals.protein == 0 &&
               meal.mealTotals.carbs == 0 &&
-              meal.mealTotals.fat == 0
+              meal.mealTotals.fat == 0 &&
+              meal.mealTotals.fiber == 0
           ? _sumFoods(meal.foods)
           : meal.mealTotals;
       return meal.copyWith(mealTotals: totals);
@@ -371,6 +384,7 @@ class PlannedFood {
   final double protein;
   final double carbs;
   final double fat;
+  final double fiber;
 
   PlannedFood({
     required this.name,
@@ -381,6 +395,7 @@ class PlannedFood {
     required this.protein,
     required this.carbs,
     required this.fat,
+    this.fiber = 0,
   });
 
   factory PlannedFood.fromJson(Map<String, dynamic> json) {
@@ -398,6 +413,7 @@ class PlannedFood {
       protein: (json['protein'] ?? 0).toDouble(),
       carbs: (json['carbs'] ?? 0).toDouble(),
       fat: (json['fat'] ?? 0).toDouble(),
+      fiber: _readDouble(json, ['fiber', 'dietaryFiber', 'dietary_fiber']),
     );
   }
 
@@ -424,6 +440,9 @@ class PlannedFood {
         fat: raw.length > 6 && raw[6] is num
             ? (raw[6] as num).toDouble()
             : double.tryParse(raw.length > 6 ? raw[6].toString() : '') ?? 0,
+        fiber: raw.length > 7 && raw[7] is num
+            ? (raw[7] as num).toDouble()
+            : double.tryParse(raw.length > 7 ? raw[7].toString() : '') ?? 0,
       );
     }
 
@@ -447,6 +466,7 @@ class PlannedFood {
       protein: _readDouble(raw, ['p']),
       carbs: _readDouble(raw, ['c']),
       fat: _readDouble(raw, ['g']),
+      fiber: _readDouble(raw, ['i', 'fiber', 'dietaryFiber', 'dietary_fiber']),
     );
   }
 
@@ -460,6 +480,7 @@ class PlannedFood {
       'protein': protein,
       'carbs': carbs,
       'fat': fat,
+      'fiber': fiber,
     };
   }
 }

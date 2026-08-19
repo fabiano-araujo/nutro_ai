@@ -454,8 +454,9 @@ class FoodJsonParser {
         saturatedFat:
             _parseDouble(macros['saturated_fat'] ?? macros['saturatedFat']),
         transFat: _parseDouble(macros['trans_fat'] ?? macros['transFat']),
-        dietaryFiber:
-            _parseDouble(macros['dietary_fiber'] ?? macros['dietaryFiber']),
+        dietaryFiber: _parseDouble(
+          macros['fiber'] ?? macros['dietaryFiber'] ?? macros['dietary_fiber'],
+        ),
         sugars: _parseDouble(macros['sugars']),
         cholesterol: _parseDouble(macros['cholesterol']),
         sodium: _parseDouble(macros['sodium']),

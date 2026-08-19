@@ -11,6 +11,7 @@ import 'package:nutro_ai/models/meal_model.dart';
 import 'package:nutro_ai/providers/daily_meals_provider.dart';
 import 'package:nutro_ai/providers/meal_types_provider.dart';
 import 'package:nutro_ai/services/auth_service.dart';
+import 'package:nutro_ai/theme/macro_theme.dart';
 import 'package:nutro_ai/widgets/meal_card.dart';
 
 void main() {
@@ -67,7 +68,122 @@ void main() {
     expect(find.text('35.0 g prot'), findsOneWidget);
     expect(find.text('102.0 g carb'), findsOneWidget);
     expect(find.text('23.0 g gord'), findsOneWidget);
+    expect(find.byIcon(MacroTheme.fiberIcon), findsNothing);
+    expect(find.byIcon(Icons.workspace_premium_rounded), findsOneWidget);
+    expect(find.text('Premium'), findsOneWidget);
+    expect(find.text('12.0 g'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('premium expanded meal shows fiber on narrow chat cards',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => MealTypesProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+          ),
+          home: Scaffold(
+            body: SizedBox(
+              width: 344,
+              child: MealCard(
+                meal: _overflowRegressionMeal(),
+                showFiber: true,
+                onDelete: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(MacroTheme.fiberIcon), findsOneWidget);
+    expect(find.text('12.0 g'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('free manual macro editor hides and preserves historical fiber',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Meal? updatedMeal;
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthService()),
+          ChangeNotifierProvider(create: (_) => MealTypesProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+          ),
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: MealCard(
+                meal: _overflowRegressionMeal(),
+                onMealUpdated: (meal) => updatedMeal = meal,
+                onDelete: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('feijao').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Editar manualmente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fibra'), findsNothing);
+    expect(find.byType(TextField), findsNWidgets(4));
+
+    await tester.enterText(find.byType(TextField).first, '361');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(updatedMeal, isNotNull);
+    expect(updatedMeal!.foods.first.calories, 361);
+    expect(updatedMeal!.foods.first.fiber, 7);
   });
 
   testWidgets('editing all foods applies typed food name immediately',
@@ -579,6 +695,7 @@ Meal _overflowRegressionMeal() {
         protein: 21,
         carbs: 60,
         fat: 8,
+        fiber: 7,
         source: FoodSource.recent,
       ),
       _food(
@@ -589,6 +706,7 @@ Meal _overflowRegressionMeal() {
         protein: 8,
         carbs: 12,
         fat: 5,
+        fiber: 3,
       ),
       _food(
         name: 'acai',
@@ -598,6 +716,7 @@ Meal _overflowRegressionMeal() {
         protein: 6,
         carbs: 30,
         fat: 10,
+        fiber: 2,
       ),
     ],
   );
@@ -677,6 +796,7 @@ Food _food({
   required double protein,
   required double carbs,
   required double fat,
+  double fiber = 0,
   FoodSource source = FoodSource.ai,
   List<Nutrient>? aiNutrients,
 }) {
@@ -695,6 +815,7 @@ Food _food({
         protein: protein,
         carbohydrate: carbs,
         fat: fat,
+        dietaryFiber: fiber,
       ),
     ],
   );

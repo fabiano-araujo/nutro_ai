@@ -57,6 +57,8 @@ import '../widgets/header_streak_badge.dart';
 import '../widgets/reward_ad_dialog.dart';
 import '../services/app_agent_service.dart';
 import '../services/auth_service.dart';
+import '../services/purchase_service.dart';
+import '../utils/premium_access.dart';
 import '../utils/chat_timeline_builder.dart';
 
 // Singleton para gerenciar o estado da tela NutritionAssistant em toda a aplicação
@@ -152,6 +154,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         TextToSpeechMixin,
         WidgetsBindingObserver {
   static const bool _useCompactNutritionHeaderByDefault = true;
+  static const double _wideLayoutBreakpoint = 900;
+  static const double _wideChatComposerMaxWidth = 768;
+  static const double _chatMessageMinSidePadding = 12;
+  static const double _chatMessageMaxSidePadding = 40;
 
   // Controller que gerenciará o estado e lógica (será inicializado no initState)
   late NutritionAssistantController _chatController;
@@ -2454,6 +2460,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     final brightness = Theme.of(context).brightness;
     final isDarkMode = brightness == Brightness.dark;
     final appLocalizations = AppLocalizations.of(context);
+    final showFiber = hasPremiumAccess(
+      purchaseService: context.watch<PurchaseService>(),
+      authService: context.watch<AuthService>(),
+    );
 
     // Usar a constante diretamente para garantir a cor
     final Color currentScaffoldBackgroundColor =
@@ -2548,6 +2558,24 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
           _handleChatAutoScroll(messages, isLoading);
           _scheduleHeaderVisibilityCheck();
 
+          final isWideLayout =
+              MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint;
+          final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+          final isWelcomeEmptySurface = !shouldBlockChatContent &&
+              messages.isEmpty &&
+              _suggestions.isEmpty &&
+              reconstructedDayMeals.isEmpty;
+          final floatWideComposer =
+              isWideLayout && isWelcomeEmptySurface && !keyboardVisible;
+          final composerBottomPadding = !isWideLayout
+              ? 6.0
+              : keyboardVisible
+                  ? 12.0
+                  : floatWideComposer
+                      ? (MediaQuery.sizeOf(context).height * 0.30)
+                          .clamp(168.0, 280.0)
+                      : 32.0;
+
           return PopScope(
             canPop: _suggestions.isEmpty,
             onPopInvokedWithResult: (didPop, result) {
@@ -2588,7 +2616,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   final nutritionHeight = hasMeals
                                       ? (isNutritionHeaderCompact
                                           ? 56.0
-                                          : 108.0)
+                                          : NutritionCard.fiberHeight)
                                       : 0.0;
                                   final maxHeight =
                                       toolbarHeight + nutritionHeight;
@@ -2646,6 +2674,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                     final fatsConsumed =
                                                         mealsProvider.totalFat
                                                             .toInt();
+                                                    final fiberConsumed =
+                                                        mealsProvider.totalFiber
+                                                            .round();
 
                                                     void openDailyMeals() {
                                                       Navigator.push(
@@ -2712,6 +2743,9 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                       fatsGoal:
                                                           nutritionProvider
                                                               .fatGoal,
+                                                      fiberConsumed:
+                                                          fiberConsumed,
+                                                      showFiber: showFiber,
                                                       onTap: openDailyMeals,
                                                       onMinimize: () =>
                                                           _setNutritionHeaderCompact(
@@ -2740,7 +2774,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                           if (!shouldBlockChatContent && messages.isNotEmpty)
                             ListView.builder(
                               controller: _scrollController,
-                              padding: EdgeInsets.all(16),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               // Adicionar +1 para o card de ferramentas quando existir
                               itemCount: timelineItems.length +
                                   (_shouldShowToolCard ? 1 : 0) +
@@ -2808,6 +2842,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                 mealsProvider:
                                                     contentMealsProvider,
                                                 keyPrefix: 'missing-chat-meal',
+                                                showFiber: showFiber,
                                               ),
                                             )
                                             .toList(growable: false),
@@ -2825,7 +2860,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   'elapsedMs':
                                       itemStopwatch.elapsedMilliseconds,
                                 });
-                                return builtItem;
+                                return _constrainChatMessage(builtItem);
                               },
                             ),
 
@@ -2935,6 +2970,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                       isDarkMode: isDarkMode,
                                       backgroundColor:
                                           currentScaffoldBackgroundColor,
+                                      showFiber: showFiber,
                                     );
                                   }
 
@@ -2951,113 +2987,133 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                   return Container(
                                     color: currentScaffoldBackgroundColor,
                                     child: Align(
-                                      alignment: Alignment
-                                          .center, // Centralizado vertical e horizontalmente
+                                      alignment: floatWideComposer
+                                          ? Alignment.bottomCenter
+                                          : Alignment.center,
                                       child: SingleChildScrollView(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 16),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            // Saudação baseada no horário
-                                            Text(
-                                              _getTimeBasedGreeting(context),
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w600,
-                                                color:
-                                                    AppTheme.getSoftTextColor(
-                                                        isDarkMode),
-                                                height: 1.3,
+                                        padding: EdgeInsets.fromLTRB(
+                                          isWideLayout ? 40 : 16,
+                                          16,
+                                          isWideLayout ? 40 : 16,
+                                          floatWideComposer ? 20 : 16,
+                                        ),
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: _wideChatComposerMaxWidth,
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              // Saudação baseada no horário
+                                              Text(
+                                                _getTimeBasedGreeting(context),
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize:
+                                                      isWideLayout ? 30 : 20,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing:
+                                                      isWideLayout ? -0.5 : 0,
+                                                  color:
+                                                      AppTheme.getSoftTextColor(
+                                                          isDarkMode),
+                                                  height: 1.25,
+                                                ),
                                               ),
-                                            ),
-                                            SizedBox(height: 16),
-                                            // Chips de ação estilo ChatGPT (2 por linha, centralizados)
-                                            Consumer<NutritionGoalsProvider>(
-                                              builder: (context,
-                                                  nutritionProvider, child) {
-                                                final bool hasGoals =
-                                                    nutritionProvider
-                                                        .hasConfiguredGoals;
-                                                final List<Widget> chips = [
-                                                  _buildActionChip(
-                                                    icon: Icons.restaurant_menu,
-                                                    label: context.tr.translate(
-                                                        'ai_tutor_log_meal'),
-                                                    isDarkMode: isDarkMode,
-                                                    onTap: () {
-                                                      _showSuggestionsForAction(
-                                                          'registrar_refeicao');
-                                                    },
-                                                  ),
-                                                  _buildActionChip(
-                                                    icon: Icons.camera_alt,
-                                                    label: context.tr.translate(
-                                                        'profile_shape_take_photo'),
-                                                    isDarkMode: isDarkMode,
-                                                    onTap: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (context) =>
-                                                              CameraScanScreen(),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  if (hasGoals)
+                                              SizedBox(
+                                                  height:
+                                                      isWideLayout ? 22 : 16),
+                                              // Chips de ação estilo ChatGPT (2 por linha, centralizados)
+                                              Consumer<NutritionGoalsProvider>(
+                                                builder: (context,
+                                                    nutritionProvider, child) {
+                                                  final bool hasGoals =
+                                                      nutritionProvider
+                                                          .hasConfiguredGoals;
+                                                  final List<Widget> chips = [
                                                     _buildActionChip(
-                                                      icon: Icons
-                                                          .lightbulb_outline,
+                                                      icon:
+                                                          Icons.restaurant_menu,
                                                       label: context.tr.translate(
-                                                          'ai_tutor_meal_suggestions'),
+                                                          'ai_tutor_log_meal'),
                                                       isDarkMode: isDarkMode,
                                                       onTap: () {
                                                         _showSuggestionsForAction(
-                                                            'sugestoes_refeicoes');
+                                                            'registrar_refeicao');
                                                       },
                                                     ),
-                                                  if (hasGoals)
                                                     _buildActionChip(
-                                                      icon: Icons.help_outline,
+                                                      icon: Icons.camera_alt,
                                                       label: context.tr.translate(
-                                                          'ai_tutor_ask_nutrition'),
-                                                      isDarkMode: isDarkMode,
-                                                      onTap: () {
-                                                        _showSuggestionsForAction(
-                                                            'perguntar_nutricao');
-                                                      },
-                                                    ),
-                                                  if (!hasGoals)
-                                                    _buildActionChip(
-                                                      icon: Icons.flag_outlined,
-                                                      label: context.tr.translate(
-                                                          'ai_tutor_set_nutrition_goal'),
+                                                          'profile_shape_take_photo'),
                                                       isDarkMode: isDarkMode,
                                                       onTap: () {
                                                         Navigator.push(
                                                           context,
                                                           MaterialPageRoute(
                                                             builder: (context) =>
-                                                                const NutritionGoalsWizardScreen(),
+                                                                CameraScanScreen(),
                                                           ),
                                                         );
                                                       },
                                                     ),
-                                                ];
-                                                return Wrap(
-                                                  alignment:
-                                                      WrapAlignment.center,
-                                                  spacing: 8,
-                                                  runSpacing: 8,
-                                                  children: chips,
-                                                );
-                                              },
-                                            ),
-                                          ],
+                                                    if (hasGoals)
+                                                      _buildActionChip(
+                                                        icon: Icons
+                                                            .lightbulb_outline,
+                                                        label: context.tr.translate(
+                                                            'ai_tutor_meal_suggestions'),
+                                                        isDarkMode: isDarkMode,
+                                                        onTap: () {
+                                                          _showSuggestionsForAction(
+                                                              'sugestoes_refeicoes');
+                                                        },
+                                                      ),
+                                                    if (hasGoals)
+                                                      _buildActionChip(
+                                                        icon:
+                                                            Icons.help_outline,
+                                                        label: context.tr.translate(
+                                                            'ai_tutor_ask_nutrition'),
+                                                        isDarkMode: isDarkMode,
+                                                        onTap: () {
+                                                          _showSuggestionsForAction(
+                                                              'perguntar_nutricao');
+                                                        },
+                                                      ),
+                                                    if (!hasGoals)
+                                                      _buildActionChip(
+                                                        icon:
+                                                            Icons.flag_outlined,
+                                                        label: context.tr.translate(
+                                                            'ai_tutor_set_nutrition_goal'),
+                                                        isDarkMode: isDarkMode,
+                                                        onTap: () {
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (context) =>
+                                                                  const NutritionGoalsWizardScreen(),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                  ];
+                                                  return Wrap(
+                                                    alignment:
+                                                        WrapAlignment.center,
+                                                    spacing:
+                                                        isWideLayout ? 10 : 8,
+                                                    runSpacing:
+                                                        isWideLayout ? 10 : 8,
+                                                    children: chips,
+                                                  );
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -3070,636 +3126,700 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                     ),
 
                     // Área de input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: currentScaffoldBackgroundColor,
-                      ),
-                      padding: EdgeInsets.only(
-                          left: 16, right: 16, bottom: 6, top: 8),
-                      child: Column(
-                        children: [
-                          // Toast "Adicionado ao diário" (animado)
-                          if (!widget.isFreeChat)
-                            Consumer<DailyMealsProvider>(
-                              builder: (context, mealsProvider, _) {
-                                _maybeShowMealAddedToast(mealsProvider);
-                                final selectedDateKey = _formatMealToastDateKey(
-                                    mealsProvider.selectedDate);
-                                final shouldShowMealAddedToast =
-                                    _showMealAddedToast &&
-                                        _mealAddedToastDateKey ==
-                                            selectedDateKey;
-                                return AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 250),
-                                  transitionBuilder: (child, anim) =>
-                                      SizeTransition(
-                                    sizeFactor: anim,
-                                    child: FadeTransition(
-                                        opacity: anim, child: child),
-                                  ),
-                                  child: shouldShowMealAddedToast
-                                      ? Padding(
-                                          key: const ValueKey('meal-toast'),
-                                          padding:
-                                              const EdgeInsets.only(bottom: 8),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 14, vertical: 10),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green.withOpacity(
-                                                  isDarkMode ? 0.18 : 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(14),
-                                              border: Border.all(
-                                                  color: Colors.green
-                                                      .withOpacity(0.35)),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                const Icon(Icons.check_circle,
-                                                    color: Colors.green,
-                                                    size: 18),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    _mealAddedToastMessage(
-                                                        mealsProvider
-                                                            .selectedDate),
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      color: isDarkMode
-                                                          ? Colors.white
-                                                          : Colors.black87,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        )
-                                      : const SizedBox.shrink(
-                                          key: ValueKey('no-toast')),
-                                );
-                              },
-                            ),
-
-                          // Banner "Fazer login" discreto — só após enviar mensagem
-                          Consumer<AuthService>(
-                            builder: (context, auth, _) {
-                              final sentSomething = _chatController.messages
-                                  .any((m) =>
-                                      (m['isUser'] == true) ||
-                                      (m is Map && m['isUser'] == true));
-                              if (auth.isAuthenticated)
-                                return const SizedBox.shrink();
-                              if (_loginBannerDismissed)
-                                return const SizedBox.shrink();
-                              if (!sentSomething)
-                                return const SizedBox.shrink();
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? Colors.white.withOpacity(0.06)
-                                        : Colors.black.withOpacity(0.04),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.info_outline,
-                                          size: 16,
-                                          color: isDarkMode
-                                              ? Colors.white70
-                                              : Colors.black54),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          context.tr.translate(
-                                              'chat_login_save_progress'),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isDarkMode
-                                                ? Colors.white70
-                                                : Colors.black87,
-                                          ),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: _openLoginFromChat,
-                                        style: TextButton.styleFrom(
-                                          minimumSize: const Size(0, 28),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8),
-                                        ),
-                                        child: Text(
-                                          context.tr.translate('login'),
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.close,
-                                            size: 16,
-                                            color: isDarkMode
-                                                ? Colors.white54
-                                                : Colors.black45),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                            minWidth: 28, minHeight: 28),
-                                        onPressed: () => setState(
-                                            () => _loginBannerDismissed = true),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: _wideChatComposerMaxWidth,
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: currentScaffoldBackgroundColor,
                           ),
-
-                          if (!widget.isFreeChat)
-                            Consumer2<AuthService, NutritionGoalsProvider>(
-                              builder: (context, auth, goalsProvider, _) {
-                                if (!auth.isAuthenticated ||
-                                    goalsProvider.hasConfiguredGoals) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                return FutureBuilder<void>(
-                                  future: goalsProvider.ensureLoaded(),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState !=
-                                            ConnectionState.done ||
-                                        goalsProvider.hasConfiguredGoals) {
-                                      return const SizedBox.shrink();
-                                    }
-
-                                    final l10n = AppLocalizations.of(context);
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: _openGoalWizardFromChat,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 10),
-                                          decoration: BoxDecoration(
-                                            color: isDarkMode
-                                                ? Colors.white.withOpacity(0.06)
-                                                : Colors.black
-                                                    .withOpacity(0.04),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.tune_rounded,
-                                                size: 18,
-                                                color: isDarkMode
-                                                    ? Colors.white70
-                                                    : Colors.black54,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
+                          padding: EdgeInsets.only(
+                            left: isWideLayout ? 40 : 16,
+                            right: isWideLayout ? 40 : 16,
+                            bottom: composerBottomPadding,
+                            top: floatWideComposer
+                                ? 8
+                                : isWideLayout
+                                    ? 12
+                                    : 8,
+                          ),
+                          child: Column(
+                            children: [
+                              // Toast "Adicionado ao diário" (animado)
+                              if (!widget.isFreeChat)
+                                Consumer<DailyMealsProvider>(
+                                  builder: (context, mealsProvider, _) {
+                                    _maybeShowMealAddedToast(mealsProvider);
+                                    final selectedDateKey =
+                                        _formatMealToastDateKey(
+                                            mealsProvider.selectedDate);
+                                    final shouldShowMealAddedToast =
+                                        _showMealAddedToast &&
+                                            _mealAddedToastDateKey ==
+                                                selectedDateKey;
+                                    return AnimatedSwitcher(
+                                      duration:
+                                          const Duration(milliseconds: 250),
+                                      transitionBuilder: (child, anim) =>
+                                          SizeTransition(
+                                        sizeFactor: anim,
+                                        child: FadeTransition(
+                                            opacity: anim, child: child),
+                                      ),
+                                      child: shouldShowMealAddedToast
+                                          ? Padding(
+                                              key: const ValueKey('meal-toast'),
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 8),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 14,
+                                                        vertical: 10),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green
+                                                      .withOpacity(isDarkMode
+                                                          ? 0.18
+                                                          : 0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  border: Border.all(
+                                                      color: Colors.green
+                                                          .withOpacity(0.35)),
+                                                ),
+                                                child: Row(
                                                   children: [
-                                                    Text(
-                                                      l10n.translate(
-                                                          'chat_goals_setup_banner_title'),
-                                                      style: TextStyle(
-                                                        fontSize: 13,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: isDarkMode
-                                                            ? Colors.white
-                                                            : Colors.black87,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    Text(
-                                                      l10n.translate(
-                                                          'chat_goals_setup_banner_body'),
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: isDarkMode
-                                                            ? Colors.white70
-                                                            : Colors.black54,
+                                                    const Icon(
+                                                        Icons.check_circle,
+                                                        color: Colors.green,
+                                                        size: 18),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        _mealAddedToastMessage(
+                                                            mealsProvider
+                                                                .selectedDate),
+                                                        style: TextStyle(
+                                                          fontSize: 13,
+                                                          color: isDarkMode
+                                                              ? Colors.white
+                                                              : Colors.black87,
+                                                        ),
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                              TextButton(
-                                                onPressed:
-                                                    _openGoalWizardFromChat,
-                                                style: TextButton.styleFrom(
-                                                  minimumSize:
-                                                      const Size(0, 32),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 10),
-                                                ),
-                                                child: Text(
-                                                  l10n.translate(
-                                                      'chat_goals_setup_banner_button'),
-                                                  style: const TextStyle(
-                                                      fontSize: 13),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
+                                            )
+                                          : const SizedBox.shrink(
+                                              key: ValueKey('no-toast')),
                                     );
                                   },
-                                );
-                              },
-                            ),
+                                ),
 
-                          // Exibir miniatura da imagem selecionada
-                          if (hasSelectedImage && selectedImageBytes != null)
-                            Padding(
-                              padding: EdgeInsets.only(
-                                  left: 16, right: 16, bottom: 8),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? Color(0xFF303030)
-                                        : AppTheme.surfaceColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  width: 80,
-                                  height: 80,
-                                  child: Stack(
-                                    children: [
-                                      ClipRRect(
+                              // Banner "Fazer login" discreto — só após enviar mensagem
+                              Consumer<AuthService>(
+                                builder: (context, auth, _) {
+                                  final sentSomething = _chatController.messages
+                                      .any((m) =>
+                                          (m['isUser'] == true) ||
+                                          (m is Map && m['isUser'] == true));
+                                  if (auth.isAuthenticated)
+                                    return const SizedBox.shrink();
+                                  if (_loginBannerDismissed)
+                                    return const SizedBox.shrink();
+                                  if (!sentSomething)
+                                    return const SizedBox.shrink();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isDarkMode
+                                            ? Colors.white.withOpacity(0.06)
+                                            : Colors.black.withOpacity(0.04),
                                         borderRadius: BorderRadius.circular(12),
-                                        child: Image.memory(
-                                          selectedImageBytes,
-                                          height: 80,
-                                          width: 80,
-                                          fit: BoxFit.cover,
-                                        ),
                                       ),
-                                      Positioned(
-                                        top: 4,
-                                        right: 4,
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            _chatController
-                                                .clearSelectedImage();
-                                          },
-                                          child: Container(
-                                            padding: EdgeInsets.all(4),
-                                            decoration: BoxDecoration(
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.info_outline,
+                                              size: 16,
                                               color: isDarkMode
-                                                  ? Colors.black
-                                                      .withOpacity(0.6)
-                                                  : AppTheme.surfaceColor,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(
-                                              Icons.close,
-                                              color: isDarkMode
-                                                  ? Colors.white
-                                                  : AppTheme.textPrimaryColor,
-                                              size: 18,
+                                                  ? Colors.white70
+                                                  : Colors.black54),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              context.tr.translate(
+                                                  'chat_login_save_progress'),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isDarkMode
+                                                    ? Colors.white70
+                                                    : Colors.black87,
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                          TextButton(
+                                            onPressed: _openLoginFromChat,
+                                            style: TextButton.styleFrom(
+                                              minimumSize: const Size(0, 28),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8),
+                                            ),
+                                            child: Text(
+                                              context.tr.translate('login'),
+                                              style:
+                                                  const TextStyle(fontSize: 13),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.close,
+                                                size: 16,
+                                                color: isDarkMode
+                                                    ? Colors.white54
+                                                    : Colors.black45),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(
+                                                minWidth: 28, minHeight: 28),
+                                            onPressed: () => setState(() =>
+                                                _loginBannerDismissed = true),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              if (!widget.isFreeChat)
+                                Consumer2<AuthService, NutritionGoalsProvider>(
+                                  builder: (context, auth, goalsProvider, _) {
+                                    if (!auth.isAuthenticated ||
+                                        goalsProvider.hasConfiguredGoals) {
+                                      return const SizedBox.shrink();
+                                    }
+
+                                    return FutureBuilder<void>(
+                                      future: goalsProvider.ensureLoaded(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState !=
+                                                ConnectionState.done ||
+                                            goalsProvider.hasConfiguredGoals) {
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        final l10n =
+                                            AppLocalizations.of(context);
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: _openGoalWizardFromChat,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 10),
+                                              decoration: BoxDecoration(
+                                                color: isDarkMode
+                                                    ? Colors.white
+                                                        .withOpacity(0.06)
+                                                    : Colors.black
+                                                        .withOpacity(0.04),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.tune_rounded,
+                                                    size: 18,
+                                                    color: isDarkMode
+                                                        ? Colors.white70
+                                                        : Colors.black54,
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          l10n.translate(
+                                                              'chat_goals_setup_banner_title'),
+                                                          style: TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            color: isDarkMode
+                                                                ? Colors.white
+                                                                : Colors
+                                                                    .black87,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                            height: 2),
+                                                        Text(
+                                                          l10n.translate(
+                                                              'chat_goals_setup_banner_body'),
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: isDarkMode
+                                                                ? Colors.white70
+                                                                : Colors
+                                                                    .black54,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed:
+                                                        _openGoalWizardFromChat,
+                                                    style: TextButton.styleFrom(
+                                                      minimumSize:
+                                                          const Size(0, 32),
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 10),
+                                                    ),
+                                                    child: Text(
+                                                      l10n.translate(
+                                                          'chat_goals_setup_banner_button'),
+                                                      style: const TextStyle(
+                                                          fontSize: 13),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+
+                              // Exibir miniatura da imagem selecionada
+                              if (hasSelectedImage &&
+                                  selectedImageBytes != null)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                      left: 16, right: 16, bottom: 8),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: isDarkMode
+                                            ? Color(0xFF303030)
+                                            : AppTheme.surfaceColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      width: 80,
+                                      height: 80,
+                                      child: Stack(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            child: Image.memory(
+                                              selectedImageBytes,
+                                              height: 80,
+                                              width: 80,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                          Positioned(
+                                            top: 4,
+                                            right: 4,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                _chatController
+                                                    .clearSelectedImage();
+                                              },
+                                              child: Container(
+                                                padding: EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  color: isDarkMode
+                                                      ? Colors.black
+                                                          .withOpacity(0.6)
+                                                      : AppTheme.surfaceColor,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  Icons.close,
+                                                  color: isDarkMode
+                                                      ? Colors.white
+                                                      : AppTheme
+                                                          .textPrimaryColor,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          ValueListenableBuilder<AudioCaptureUiState>(
-                            valueListenable: audioCaptureUiStateListenable,
-                            builder: (context, audioState, _) {
-                              final isListening = audioState.isListening;
-                              final isTranscribingAudio =
-                                  audioState.isTranscribingAudio;
+                              ValueListenableBuilder<AudioCaptureUiState>(
+                                valueListenable: audioCaptureUiStateListenable,
+                                builder: (context, audioState, _) {
+                                  final isListening = audioState.isListening;
+                                  final isTranscribingAudio =
+                                      audioState.isTranscribingAudio;
 
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: isDarkMode
-                                      ? AppTheme.darkChatInputColor
-                                      : const Color(0xFFE5EEF0),
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 2),
-                                child: Row(
-                                  children: [
-                                    // Botão "+" — mídia e atalhos para alimentos
-                                    IconButton(
-                                      icon: Icon(Icons.add,
-                                          color: isDarkMode
-                                              ? Colors.grey[400]
-                                              : AppTheme.textSecondaryColor),
-                                      onPressed: isListening
-                                          ? null
-                                          : () {
-                                              showModalBottomSheet(
-                                                context: context,
-                                                backgroundColor: Theme.of(
-                                                        context)
-                                                    .scaffoldBackgroundColor,
-                                                shape:
-                                                    const RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.vertical(
-                                                          top: Radius.circular(
-                                                              20)),
-                                                ),
-                                                builder: (context) => SafeArea(
-                                                  child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      ListTile(
-                                                        leading: Icon(
-                                                            Icons.photo_library,
-                                                            color: isDarkMode
-                                                                ? Colors.white70
-                                                                : AppTheme
-                                                                    .textSecondaryColor),
-                                                        title: Text(
-                                                            context.tr
-                                                                .translate(
-                                                                    'gallery'),
-                                                            style: TextStyle(
-                                                                color: isDarkMode
-                                                                    ? Colors
-                                                                        .white
-                                                                    : AppTheme
-                                                                        .textPrimaryColor)),
-                                                        onTap: () {
-                                                          Navigator.pop(
-                                                              context);
-                                                          _handleImageSelection(
-                                                              ImageSource
-                                                                  .gallery);
-                                                        },
-                                                      ),
-                                                      ListTile(
-                                                        leading: Icon(
-                                                            Icons.camera_alt,
-                                                            color: isDarkMode
-                                                                ? Colors.white70
-                                                                : AppTheme
-                                                                    .textSecondaryColor),
-                                                        title: Text(
-                                                            context.tr
-                                                                .translate(
-                                                                    'camera'),
-                                                            style: TextStyle(
-                                                                color: isDarkMode
-                                                                    ? Colors
-                                                                        .white
-                                                                    : AppTheme
-                                                                        .textPrimaryColor)),
-                                                        onTap: () {
-                                                          Navigator.pop(
-                                                              context);
-                                                          Navigator.push(
-                                                            context,
-                                                            MaterialPageRoute(
-                                                              builder: (context) =>
-                                                                  CameraScanScreen(),
-                                                            ),
-                                                          );
-                                                        },
-                                                      ),
-                                                      ListTile(
-                                                        leading: Icon(
-                                                            Icons.history,
-                                                            color: isDarkMode
-                                                                ? Colors.white70
-                                                                : AppTheme
-                                                                    .textSecondaryColor),
-                                                        title: Text(
-                                                            '${context.tr.translate('recent')} · ${context.tr.translate('favorites')}',
-                                                            style: TextStyle(
-                                                                color: isDarkMode
-                                                                    ? Colors
-                                                                        .white
-                                                                    : AppTheme
-                                                                        .textPrimaryColor)),
-                                                        onTap: () {
-                                                          Navigator.pop(
-                                                              context);
-                                                          _openRecentFoodsSheet();
-                                                        },
-                                                      ),
-                                                      ListTile(
-                                                        leading: Icon(
-                                                            Icons
-                                                                .qr_code_scanner,
-                                                            color: isDarkMode
-                                                                ? Colors.white70
-                                                                : AppTheme
-                                                                    .textSecondaryColor),
-                                                        title: Text(
-                                                            context.tr
-                                                                .translate(
-                                                                    'barcode'),
-                                                            style: TextStyle(
-                                                                color: isDarkMode
-                                                                    ? Colors
-                                                                        .white
-                                                                    : AppTheme
-                                                                        .textPrimaryColor)),
-                                                        onTap: () {
-                                                          Navigator.pop(
-                                                              context);
-                                                          _openBarcodeScanner();
-                                                        },
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                      splashRadius: 20,
-                                      tooltip: context.tr.translate('add'),
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode
+                                          ? AppTheme.darkChatInputColor
+                                          : const Color(0xFFE5EEF0),
+                                      borderRadius: BorderRadius.circular(
+                                          isWideLayout ? 28 : 24),
                                     ),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isWideLayout ? 6 : 4,
+                                      vertical: isWideLayout ? 4 : 2,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Botão "+" — mídia e atalhos para alimentos
+                                        IconButton(
+                                          icon: Icon(Icons.add,
+                                              color: isDarkMode
+                                                  ? Colors.grey[400]
+                                                  : AppTheme
+                                                      .textSecondaryColor),
+                                          onPressed: isListening
+                                              ? null
+                                              : () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    backgroundColor: Theme.of(
+                                                            context)
+                                                        .scaffoldBackgroundColor,
+                                                    shape:
+                                                        const RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                              top: Radius
+                                                                  .circular(
+                                                                      20)),
+                                                    ),
+                                                    builder: (context) =>
+                                                        SafeArea(
+                                                      child: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          ListTile(
+                                                            leading: Icon(
+                                                                Icons
+                                                                    .photo_library,
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white70
+                                                                    : AppTheme
+                                                                        .textSecondaryColor),
+                                                            title: Text(
+                                                                context.tr
+                                                                    .translate(
+                                                                        'gallery'),
+                                                                style: TextStyle(
+                                                                    color: isDarkMode
+                                                                        ? Colors
+                                                                            .white
+                                                                        : AppTheme
+                                                                            .textPrimaryColor)),
+                                                            onTap: () {
+                                                              Navigator.pop(
+                                                                  context);
+                                                              _handleImageSelection(
+                                                                  ImageSource
+                                                                      .gallery);
+                                                            },
+                                                          ),
+                                                          ListTile(
+                                                            leading: Icon(
+                                                                Icons
+                                                                    .camera_alt,
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white70
+                                                                    : AppTheme
+                                                                        .textSecondaryColor),
+                                                            title: Text(
+                                                                context.tr
+                                                                    .translate(
+                                                                        'camera'),
+                                                                style: TextStyle(
+                                                                    color: isDarkMode
+                                                                        ? Colors
+                                                                            .white
+                                                                        : AppTheme
+                                                                            .textPrimaryColor)),
+                                                            onTap: () {
+                                                              Navigator.pop(
+                                                                  context);
+                                                              Navigator.push(
+                                                                context,
+                                                                MaterialPageRoute(
+                                                                  builder:
+                                                                      (context) =>
+                                                                          CameraScanScreen(),
+                                                                ),
+                                                              );
+                                                            },
+                                                          ),
+                                                          ListTile(
+                                                            leading: Icon(
+                                                                Icons.history,
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white70
+                                                                    : AppTheme
+                                                                        .textSecondaryColor),
+                                                            title: Text(
+                                                                '${context.tr.translate('recent')} · ${context.tr.translate('favorites')}',
+                                                                style: TextStyle(
+                                                                    color: isDarkMode
+                                                                        ? Colors
+                                                                            .white
+                                                                        : AppTheme
+                                                                            .textPrimaryColor)),
+                                                            onTap: () {
+                                                              Navigator.pop(
+                                                                  context);
+                                                              _openRecentFoodsSheet();
+                                                            },
+                                                          ),
+                                                          ListTile(
+                                                            leading: Icon(
+                                                                Icons
+                                                                    .qr_code_scanner,
+                                                                color: isDarkMode
+                                                                    ? Colors
+                                                                        .white70
+                                                                    : AppTheme
+                                                                        .textSecondaryColor),
+                                                            title: Text(
+                                                                context.tr
+                                                                    .translate(
+                                                                        'barcode'),
+                                                                style: TextStyle(
+                                                                    color: isDarkMode
+                                                                        ? Colors
+                                                                            .white
+                                                                        : AppTheme
+                                                                            .textPrimaryColor)),
+                                                            onTap: () {
+                                                              Navigator.pop(
+                                                                  context);
+                                                              _openBarcodeScanner();
+                                                            },
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                          splashRadius: 20,
+                                          tooltip: context.tr.translate('add'),
+                                        ),
 
-                                    // Campo de texto / visualizador de áudio
-                                    Expanded(
-                                      child: isListening
-                                          ? _buildInlineRecordingVisualizer(
-                                              isDarkMode)
-                                          : TextField(
-                                              controller: _messageController,
-                                              scrollController:
-                                                  _messageInputScrollController,
-                                              focusNode: _inputFocusNode,
-                                              scrollPhysics:
-                                                  const ClampingScrollPhysics(),
-                                              keyboardType:
-                                                  TextInputType.multiline,
-                                              decoration: InputDecoration(
-                                                hintText: context.tr.translate(
-                                                    'what_did_you_eat'),
-                                                hintStyle: TextStyle(
-                                                  fontSize: 15,
-                                                  color: isTranscribingAudio
+                                        // Campo de texto / visualizador de áudio
+                                        Expanded(
+                                          child: isListening
+                                              ? _buildInlineRecordingVisualizer(
+                                                  isDarkMode)
+                                              : TextField(
+                                                  controller:
+                                                      _messageController,
+                                                  scrollController:
+                                                      _messageInputScrollController,
+                                                  focusNode: _inputFocusNode,
+                                                  scrollPhysics:
+                                                      const ClampingScrollPhysics(),
+                                                  keyboardType:
+                                                      TextInputType.multiline,
+                                                  decoration: InputDecoration(
+                                                    hintText: context.tr
+                                                        .translate(
+                                                            'what_did_you_eat'),
+                                                    hintStyle: TextStyle(
+                                                      fontSize: 15,
+                                                      color: isTranscribingAudio
+                                                          ? (isDarkMode
+                                                              ? AppTheme
+                                                                  .primaryColorDarkMode
+                                                              : AppTheme
+                                                                  .primaryColor)
+                                                          : isDarkMode
+                                                              ? Colors.grey[500]
+                                                              : AppTheme
+                                                                  .textSecondaryColor,
+                                                    ),
+                                                    border: InputBorder.none,
+                                                    contentPadding:
+                                                        EdgeInsets.symmetric(
+                                                            vertical: 10,
+                                                            horizontal: 0),
+                                                    focusedBorder:
+                                                        InputBorder.none,
+                                                    enabledBorder:
+                                                        InputBorder.none,
+                                                    errorBorder:
+                                                        InputBorder.none,
+                                                    disabledBorder:
+                                                        InputBorder.none,
+                                                    fillColor:
+                                                        Colors.transparent,
+                                                    filled: false,
+                                                  ),
+                                                  style: TextStyle(
+                                                      color: isDarkMode
+                                                          ? Colors.white
+                                                          : AppTheme
+                                                              .textPrimaryColor),
+                                                  textCapitalization:
+                                                      TextCapitalization
+                                                          .sentences,
+                                                  minLines: 1,
+                                                  maxLines: 6,
+                                                  onChanged: (text) {
+                                                    if (_suggestions
+                                                        .isNotEmpty) {
+                                                      _clearSuggestions();
+                                                    }
+                                                  },
+                                                  enabled:
+                                                      true, // Sempre habilitado, mesmo durante o carregamento
+                                                  cursorColor: isDarkMode
+                                                      ? Colors.grey[400]
+                                                      : AppTheme
+                                                          .textPrimaryColor,
+                                                ),
+                                        ),
+
+                                        // Botão de microfone/parar/loading (sempre visível)
+                                        IconButton(
+                                          icon: isTranscribingAudio
+                                              ? SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2.2,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                            Color>(
+                                                      isDarkMode
+                                                          ? AppTheme
+                                                              .primaryColorDarkMode
+                                                          : AppTheme
+                                                              .primaryColor,
+                                                    ),
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  isListening
+                                                      ? Icons.stop_rounded
+                                                      : Icons.mic,
+                                                  color: isListening
                                                       ? (isDarkMode
                                                           ? AppTheme
                                                               .primaryColorDarkMode
                                                           : AppTheme
                                                               .primaryColor)
                                                       : isDarkMode
-                                                          ? Colors.grey[500]
+                                                          ? Colors.grey[400]
                                                           : AppTheme
                                                               .textSecondaryColor,
                                                 ),
-                                                border: InputBorder.none,
-                                                contentPadding:
-                                                    EdgeInsets.symmetric(
-                                                        vertical: 10,
-                                                        horizontal: 0),
-                                                focusedBorder: InputBorder.none,
-                                                enabledBorder: InputBorder.none,
-                                                errorBorder: InputBorder.none,
-                                                disabledBorder:
-                                                    InputBorder.none,
-                                                fillColor: Colors.transparent,
-                                                filled: false,
-                                              ),
-                                              style: TextStyle(
-                                                  color: isDarkMode
-                                                      ? Colors.white
-                                                      : AppTheme
-                                                          .textPrimaryColor),
-                                              textCapitalization:
-                                                  TextCapitalization.sentences,
-                                              minLines: 1,
-                                              maxLines: 6,
-                                              onChanged: (text) {
-                                                if (_suggestions.isNotEmpty) {
-                                                  _clearSuggestions();
-                                                }
-                                              },
-                                              enabled:
-                                                  true, // Sempre habilitado, mesmo durante o carregamento
-                                              cursorColor: isDarkMode
-                                                  ? Colors.grey[400]
-                                                  : AppTheme.textPrimaryColor,
-                                            ),
-                                    ),
-
-                                    // Botão de microfone/parar/loading (sempre visível)
-                                    IconButton(
-                                      icon: isTranscribingAudio
-                                          ? SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2.2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                        Color>(
-                                                  isDarkMode
-                                                      ? AppTheme
-                                                          .primaryColorDarkMode
-                                                      : AppTheme.primaryColor,
-                                                ),
-                                              ),
-                                            )
-                                          : Icon(
-                                              isListening
-                                                  ? Icons.stop_rounded
-                                                  : Icons.mic,
-                                              color: isListening
-                                                  ? (isDarkMode
-                                                      ? AppTheme
-                                                          .primaryColorDarkMode
-                                                      : AppTheme.primaryColor)
-                                                  : isDarkMode
-                                                      ? Colors.grey[400]
-                                                      : AppTheme
-                                                          .textSecondaryColor,
-                                            ),
-                                      onPressed: () async {
-                                        final micTapStopwatch = Stopwatch()
-                                          ..start();
-                                        debugPrint(
-                                          '[MIC_PERF] ${micTapStopwatch.elapsedMilliseconds}ms mic_button_pressed listening=$isListening transcribing=$isTranscribingAudio',
-                                        );
-                                        if (isTranscribingAudio) {
-                                          return;
-                                        }
-                                        if (isListening) {
-                                          await stopListening();
-                                        } else {
-                                          startListening(
-                                            performanceStopwatch:
-                                                micTapStopwatch,
-                                          );
-                                        }
-                                      },
-                                      splashRadius: 20,
-                                      tooltip: isListening
-                                          ? context.tr
-                                              .translate('stop_recording')
-                                          : context.tr.translate('microphone'),
-                                    ),
-
-                                    // Botão de enviar/parar (aparece quando há texto, imagem ou está gerando)
-                                    ValueListenableBuilder<bool>(
-                                      valueListenable: _hasInputTextNotifier,
-                                      builder: (context, hasInputText, _) {
-                                        if (isListening ||
-                                            (!isLoading &&
-                                                !hasInputText &&
-                                                !hasSelectedImage)) {
-                                          return const SizedBox.shrink();
-                                        }
-
-                                        return IconButton(
-                                          icon: Icon(
-                                            isLoading
-                                                ? Icons.stop_circle
-                                                : Icons.send,
-                                            color: isLoading
-                                                ? isDarkMode
-                                                    ? AppTheme
-                                                        .primaryColorDarkMode
-                                                    : AppTheme.primaryColor
-                                                : isDarkMode
-                                                    ? Colors.grey[400]
-                                                    : AppTheme
-                                                        .textSecondaryColor,
-                                          ),
                                           onPressed: () async {
-                                            if (isLoading) {
-                                              _chatController.stopGeneration();
+                                            final micTapStopwatch = Stopwatch()
+                                              ..start();
+                                            debugPrint(
+                                              '[MIC_PERF] ${micTapStopwatch.elapsedMilliseconds}ms mic_button_pressed listening=$isListening transcribing=$isTranscribingAudio',
+                                            );
+                                            if (isTranscribingAudio) {
+                                              return;
+                                            }
+                                            if (isListening) {
+                                              await stopListening();
                                             } else {
-                                              _handleSendMessage(
-                                                dismissKeyboard: true,
+                                              startListening(
+                                                performanceStopwatch:
+                                                    micTapStopwatch,
                                               );
                                             }
                                           },
                                           splashRadius: 20,
-                                        );
-                                      },
+                                          tooltip: isListening
+                                              ? context.tr
+                                                  .translate('stop_recording')
+                                              : context.tr
+                                                  .translate('microphone'),
+                                        ),
+
+                                        // Botão de enviar/parar (aparece quando há texto, imagem ou está gerando)
+                                        ValueListenableBuilder<bool>(
+                                          valueListenable:
+                                              _hasInputTextNotifier,
+                                          builder: (context, hasInputText, _) {
+                                            if (isListening ||
+                                                (!isLoading &&
+                                                    !hasInputText &&
+                                                    !hasSelectedImage)) {
+                                              return const SizedBox.shrink();
+                                            }
+
+                                            return IconButton(
+                                              icon: Icon(
+                                                isLoading
+                                                    ? Icons.stop_circle
+                                                    : Icons.send,
+                                                color: isLoading
+                                                    ? isDarkMode
+                                                        ? AppTheme
+                                                            .primaryColorDarkMode
+                                                        : AppTheme.primaryColor
+                                                    : isDarkMode
+                                                        ? Colors.grey[400]
+                                                        : AppTheme
+                                                            .textSecondaryColor,
+                                              ),
+                                              onPressed: () async {
+                                                if (isLoading) {
+                                                  _chatController
+                                                      .stopGeneration();
+                                                } else {
+                                                  _handleSendMessage(
+                                                    dismissKeyboard: true,
+                                                  );
+                                                }
+                                              },
+                                              splashRadius: 20,
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              );
-                            },
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
@@ -3922,6 +4042,33 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             ),
         ],
       ),
+    );
+  }
+
+  double _chatMessageSidePadding(double availableWidth) {
+    final t = ((availableWidth - 360) / (_wideChatComposerMaxWidth - 360))
+        .clamp(0.0, 1.0);
+    return _chatMessageMinSidePadding +
+        (_chatMessageMaxSidePadding - _chatMessageMinSidePadding) * t;
+  }
+
+  Widget _constrainChatMessage(Widget child) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sidePadding = _chatMessageSidePadding(constraints.maxWidth);
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: _wideChatComposerMaxWidth,
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: sidePadding),
+              child: child,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -4151,6 +4298,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
   }) {
     return Consumer<DailyMealsProvider>(
       builder: (context, mealsProvider, _) {
+        final showFiber = hasPremiumAccess(
+          purchaseService: context.watch<PurchaseService>(),
+          authService: context.watch<AuthService>(),
+        );
         final messageRecord =
             messageIndex >= 0 && messageIndex < _chatController.messages.length
                 ? _chatController.messages[messageIndex]
@@ -4197,6 +4348,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 child: MealCard(
                   key: ValueKey('persisted-$foodMessageId-${meal.id}'),
                   meal: meal,
+                  showFiber: showFiber,
                   topContentPadding: 16,
                   onMealUpdated: (updatedMeal) {
                     final updatedMeals = List<Meal>.from(visibleMeals);
@@ -4356,12 +4508,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required Meal meal,
     required DailyMealsProvider mealsProvider,
     required String keyPrefix,
+    required bool showFiber,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: MealCard(
         key: ValueKey('$keyPrefix-${meal.id}'),
         meal: meal,
+        showFiber: showFiber,
         topContentPadding: 16,
         onMealUpdated: (updatedMeal) {
           if (updatedMeal.foods.isEmpty) {
@@ -4390,6 +4544,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required DailyMealsProvider mealsProvider,
     required bool isDarkMode,
     required Color backgroundColor,
+    required bool showFiber,
   }) {
     return Container(
       color: backgroundColor,
@@ -4403,6 +4558,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
             meal: meal,
             mealsProvider: mealsProvider,
             keyPrefix: 'reconstructed',
+            showFiber: showFiber,
           );
         },
       ),
@@ -5126,12 +5282,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required bool isDarkMode,
     required VoidCallback onTap,
   }) {
+    final isWideLayout =
+        MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint;
     final surfaceColor =
         isDarkMode ? AppTheme.darkCardColor : AppTheme.cardColor;
 
     return Card(
       color: surfaceColor,
       elevation: AppTheme.standardCardElevation(isDarkMode),
+      margin: isWideLayout ? EdgeInsets.zero : const EdgeInsets.all(4),
       shadowColor: AppTheme.standardCardShadowColor(isDarkMode),
       surfaceTintColor:
           isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor,
@@ -5140,7 +5299,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         onTap: onTap,
         borderRadius: BorderRadius.circular(100),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: isWideLayout ? 16 : 14,
+            vertical: isWideLayout ? 11 : 10,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -5153,7 +5315,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: isWideLayout ? 13.5 : 14,
                   fontWeight: FontWeight.w500,
                   color: isDarkMode ? Colors.white : Colors.black87,
                 ),

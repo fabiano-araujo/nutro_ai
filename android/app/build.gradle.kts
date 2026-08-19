@@ -9,8 +9,8 @@ plugins {
 
 android {
     namespace = "br.com.snapdark.apps.nutreai"
-    compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    compileSdk = 37
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -47,8 +47,8 @@ android {
         release {
             // Configurando para usar a assinatura de release
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -78,23 +78,10 @@ android {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
-    // Adiciona apenas a dependência do Google ML Kit para reconhecimento de texto
-    implementation("com.google.mlkit:text-recognition:16.0.0")
-    
     // Adiciona appcompat para resolver problema de lStar
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-    
-    // Novas bibliotecas específicas do Google Play
-    implementation("com.google.android.play:feature-delivery:2.1.0")
-    implementation("com.google.android.play:asset-delivery:2.1.0")
-    implementation("com.google.android.play:review:2.0.1")
-    implementation("com.google.android.play:app-update:2.1.0")
-    // Versões Kotlin (KTX) das novas bibliotecas, se necessário
-    implementation("com.google.android.play:feature-delivery-ktx:2.1.0")
-    implementation("com.google.android.play:app-update-ktx:2.1.0")
-    implementation("com.google.android.play:review-ktx:2.0.1")
 }
 
 flutter {
