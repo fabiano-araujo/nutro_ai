@@ -4628,7 +4628,7 @@ class AppAgentService {
       r'\b(total|totais|diariamente|diario|diaria|diarios|diarias|por dia|no dia|ao dia|al dia|par jour|pro tag|al giorno|daily|per day|meta diaria|meta calorica|meta de calorias)\b',
     ).hasMatch(normalizedText);
     final explicitTargetsCue = RegExp(
-      r'\b(metas atuais|macros atuais|alvos atuais|minhas metas|meus macros|quais sao minhas metas|quais sao meus macros|objetivo de calorias|meta calorica total|meta diaria)\b',
+      r'\b(metas atuais|macros atuais|alvos atuais|minha meta|minhas metas|meu macro|meus macros|qual e a minha meta|quais sao minhas metas|qual e o meu macro|quais sao meus macros|objetivo de calorias|meta calorica total|meta diaria)\b',
     ).hasMatch(normalizedText);
     final remainingCue = RegExp(
       r'\b(ainda|resta|restam|sobrou|sobram|falta|faltam|livre|livres|restante|restantes|quedan|queda|reste|restait|ubrig|rimane|rimaste|remaining|left|available|hoje|hj|ontem|today|yesterday|hoy|ayer|aujourdhui|heute|gestern|oggi|ieri)\b',
@@ -4784,6 +4784,23 @@ class AppAgentService {
     }
   }
 
+  static _PromptIntent _resolvePromptIntentForAppState(String basePrompt) {
+    final inferredPromptIntent = _resolvePromptIntentFromBasePrompt(basePrompt);
+
+    if (basePrompt.contains('[APP_COMMAND_RESULTS_BEGIN]') ||
+        basePrompt.contains('[APP_COMMAND_RESULT_BEGIN]')) {
+      return _PromptIntent.commandResults;
+    }
+    if (basePrompt.contains('[APP_PENDING_ACTION_BEGIN]')) {
+      return _PromptIntent.pendingAction;
+    }
+
+    return inferredPromptIntent;
+  }
+
+  static bool shouldAttachCurrentAppState(String basePrompt) =>
+      _shouldAttachAppState(_resolvePromptIntentForAppState(basePrompt));
+
   static Future<String> buildFollowUpPrompt({
     required String originalUserMessage,
     required List<AppAgentExecutionResult> executionResults,
@@ -4837,15 +4854,7 @@ Reply in App reply language.
     required String basePrompt,
   }) async {
     final appReplyLanguage = _promptLanguageTag(context);
-    final inferredPromptIntent = _resolvePromptIntentFromBasePrompt(basePrompt);
-    final promptIntent = basePrompt.contains('[APP_COMMAND_RESULTS_BEGIN]') ||
-            basePrompt.contains('[APP_COMMAND_RESULT_BEGIN]')
-        ? _PromptIntent.commandResults
-        : basePrompt.contains('[APP_PENDING_ACTION_BEGIN]')
-            ? _PromptIntent.pendingAction
-            : inferredPromptIntent == _PromptIntent.foodLogging
-                ? _PromptIntent.foodLogging
-                : _PromptIntent.accountScoped;
+    final promptIntent = _resolvePromptIntentForAppState(basePrompt);
     final authService = Provider.of<AuthService>(context, listen: false);
     final intentLine = 'Prompt intent: ${_promptIntentTag(promptIntent)}.';
 

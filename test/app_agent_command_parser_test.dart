@@ -562,6 +562,40 @@ Posso recalcular suas metas para cutting com base no seu perfil. Posso seguir co
     );
   });
 
+  test('skips remote app state for simple chat and food logging', () {
+    expect(
+      AppAgentService.shouldAttachCurrentAppState('User request:\noi'),
+      isFalse,
+    );
+    expect(
+      AppAgentService.shouldAttachCurrentAppState(
+        'User request:\nQual é uma boa fonte de proteína?',
+      ),
+      isFalse,
+    );
+    expect(
+      AppAgentService.shouldAttachCurrentAppState(
+        'User request:\nComi pão com ovo',
+      ),
+      isFalse,
+    );
+  });
+
+  test('keeps remote app state for account-aware requests', () {
+    expect(
+      AppAgentService.shouldAttachCurrentAppState(
+        'User request:\nQuantas calorias ainda posso comer hoje?',
+      ),
+      isTrue,
+    );
+    expect(
+      AppAgentService.shouldAttachCurrentAppState(
+        'User request:\nQual é a minha meta de proteína?',
+      ),
+      isTrue,
+    );
+  });
+
   test('normalizes snake_case activity and slow gain goal variants', () {
     const response = '''
 {"app_command":{"name":"update_goal_setup_preferences","arguments":{"activityLevel":"moderately_active","fitnessGoal":"slow_weight_gain"}}}
