@@ -39,7 +39,7 @@ This file guides coding agents working in this repository.
   - Requires auth token, credits the authenticated user with the server-side rewarded ad amount, and returns the updated credit balance.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
   - Global default text model: `deepseek/deepseek-v4-flash-0731` for server fallbacks, text aliases, and My Diet generation.
-  - DeepSeek models (`deepseek/...`) use OpenRouter's default provider routing unless a provider is explicitly supplied by the caller.
+  - `deepseek/deepseek-v4-flash-0731` uses a dynamic OpenRouter endpoint ranking cached for 60 seconds; the server refreshes it in the background and falls back to price/performance preferences when metrics are unavailable.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.
 - Prisma access: `dieta_api/src/services/prisma.ts`, schema at `dieta_api/prisma/schema.prisma`.
@@ -125,7 +125,10 @@ npx prisma studio
 
 ### Backend deploy (`dieta_api`)
 
-- When the user asks to deploy the backend API, follow `dieta_api/deploy.md`.
+- `dieta_api/deploy.md` is the single source of truth for every backend deploy, restart, status check, and production log request in this repository. Read it completely before acting and follow its current host, SSH key, remote directory, package manager, build command, PM2 process name, and verification steps.
+- Do not use deploy instructions, skills, credentials, hosts, process names, or directories from another repository or service. In particular, instructions for `music_api`, Whatlisten, or a generic deploy skill do not apply to the Nutro backend.
+- If a generic or external deploy instruction conflicts with this repository, stop using it and follow this `AGENTS.md` plus `dieta_api/deploy.md`. If the project-specific file is missing or internally inconsistent, ask the user before deploying.
+- Current production identity for a sanity check: host `46.202.89.177`, user `root`, directory `/var/dieta_api`, PM2 process `nutro-api`, API `https://nutro-api.snapdark.com`, and local SSH key `C:\Users\Fabiano\Documents\server_oracle\private.ppk`. Treat `dieta_api/deploy.md` as canonical if these values are intentionally updated there, and update this section in the same change.
 - Deploys must use Git: commit and push the intended `dieta_api` changes, then update production with `git pull origin main`.
 - Do not use `pscp`, manual file copy, or direct server edits as an automatic fallback; ask the user before using any non-Git deploy path.
 - Preserve production data directories, especially `/var/dieta_api/data`.
@@ -211,4 +214,3 @@ Update this document whenever any of the following changes:
 - model alias/quality conventions
 - startup/build/test commands
 - main navigation tabs or provider bootstrap in `lib/main.dart`
-
