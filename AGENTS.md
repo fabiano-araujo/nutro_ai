@@ -40,6 +40,7 @@ This file guides coding agents working in this repository.
 - AI model mapping: `dieta_api/src/config/ai-models.config.ts`.
   - Global default text model: `deepseek/deepseek-v4-flash-0731` for server fallbacks, text aliases, and My Diet generation.
   - `deepseek/deepseek-v4-flash-0731` delegates dynamic provider selection to OpenRouter with price sorting, preferred p50 throughput of 60 TPS, preferred p50/p90 latency of 1s/3s, fallbacks enabled, and hard prompt/completion price limits of $0.14/$0.28 per million tokens. Do not add periodic endpoint-metadata polling for this routing.
+  - Automatic image analysis and profile-shape image generation use the same OpenRouter-managed provider policy. Explicit provider overrides remain supported.
 - Streaming connection lifecycle: `dieta_api/src/services/connection.service.ts`.
 - OpenRouter integration: `dieta_api/src/services/openrouter.service.ts`.
 - Prisma access: `dieta_api/src/services/prisma.ts`, schema at `dieta_api/prisma/schema.prisma`.
