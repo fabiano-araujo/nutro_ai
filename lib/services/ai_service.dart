@@ -29,6 +29,54 @@ class AIServiceException implements Exception {
   String toString() => 'AIServiceException($code)';
 }
 
+class MealAnalysisResult {
+  final String summary;
+  final String quality;
+  final List<String> highlights;
+  final List<String> improvements;
+  final String nextStep;
+
+  const MealAnalysisResult({
+    required this.summary,
+    required this.quality,
+    required this.highlights,
+    required this.improvements,
+    this.nextStep = '',
+  });
+
+  factory MealAnalysisResult.fromJson(Map<String, dynamic> json) {
+    List<String> parseList(dynamic value) {
+      if (value is! List) {
+        return const [];
+      }
+      return value
+          .map((item) => item?.toString().trim() ?? '')
+          .where((item) => item.isNotEmpty)
+          .take(3)
+          .toList();
+    }
+
+    final quality = (json['quality']?.toString() ?? 'needs_improvement')
+        .trim()
+        .toLowerCase()
+        .replaceAll('-', '_');
+
+    return MealAnalysisResult(
+      summary: json['summary']?.toString().trim() ?? '',
+      quality: quality == 'great' || quality == 'good'
+          ? quality
+          : 'needs_improvement',
+      highlights: parseList(
+        json['highlights'] ?? json['positive_points'] ?? json['positivePoints'],
+      ),
+      improvements: parseList(
+        json['improvements'] ?? json['can_improve'] ?? json['canImprove'],
+      ),
+      nextStep: (json['next_step'] ?? json['nextStep'])?.toString().trim() ?? '',
+    );
+  }
+}
+
 class AIService {
   static const String _model = "gpt-4o-mini";
 
@@ -1817,5 +1865,67 @@ $transcript
       print('❌ [AIServiceStop] Exceção ao interromper geração no servidor: $e');
       return false;
     }
+  }
+
+  Future<MealAnalysisResult> analyzeMeal({
+    required String name,
+    required String languageCode,
+    String userId = '',
+    String? time,
+    required double calories,
+    required double protein,
+    required double carbs,
+    required double fat,
+    double? fiber,
+    bool includeFiber = true,
+    required List<Map<String, dynamic>> foods,
+  }) async {
+    final endpoint = '${AppConstants.API_BASE_URL}/ai/analyze-meal';
+    final requestBody = {
+      'name': name,
+      'language': _normalizeLanguageHint(languageCode),
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'includeFiber': includeFiber,
+      'foods': foods,
+      if (time != null && time.trim().isNotEmpty) 'time': time.trim(),
+      if (fiber != null) 'fiber': fiber,
+      if (userId.trim().isNotEmpty) 'userId': userId.trim(),
+    };
+
+    final response = await _httpClient.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        ...await AppIntegrityService.appCheckHeaders(),
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    if (response.statusCode == 403) {
+      throw const AIServiceException('insufficient_credits');
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw const AIServiceException('meal_tips_error');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      throw const AIServiceException('meal_tips_error');
+    }
+
+    final data = decoded['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const AIServiceException('meal_tips_error');
+    }
+
+    final result = MealAnalysisResult.fromJson(data);
+    if (result.summary.isEmpty) {
+      throw const AIServiceException('meal_tips_error');
+    }
+    return result;
   }
 }
