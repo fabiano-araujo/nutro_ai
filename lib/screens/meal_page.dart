@@ -331,36 +331,42 @@ class _MealPageState extends State<MealPage> {
                     ),
                   ],
                 ),
-                if (timeLabel.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    timeLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: secondaryTextColor.withValues(alpha: 0.7),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    if (timeLabel.isNotEmpty)
+                      Text(
+                        timeLabel,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: secondaryTextColor.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: quality.color
+                            .withValues(alpha: isDarkMode ? 0.18 : 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        l10n.translate(quality.labelKey),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: quality.color,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: quality.color.withValues(alpha: isDarkMode ? 0.18 : 0.10),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              l10n.translate(quality.labelKey),
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: quality.color,
-              ),
             ),
           ),
         ],
@@ -555,127 +561,18 @@ class _MealPageState extends State<MealPage> {
     return Container(
       width: double.infinity,
       decoration: AppTheme.profileCardDecoration(isDarkMode, radius: 20),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Column(
-              children: [
-                for (var i = 0; i < widget.meal.foods.length; i++)
-                  _buildFoodRow(
-                    widget.meal.foods[i],
-                    textColor: textColor,
-                    secondaryTextColor: secondaryTextColor,
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            child: Row(
-              children: [
-                _buildMealMacroStat(
-                  MacroTheme.caloriesIcon,
-                  MacroTheme.caloriesColor,
-                  widget.meal.calories.toStringAsFixed(0),
-                  'kcal',
-                  isDarkMode,
-                ),
-                _buildMacroDivider(isDarkMode),
-                _buildMealMacroStat(
-                  MacroTheme.proteinIcon,
-                  MacroTheme.proteinColor,
-                  '${widget.meal.protein.toStringAsFixed(1)} g',
-                  l10n.translate('protein_short'),
-                  isDarkMode,
-                ),
-                _buildMacroDivider(isDarkMode),
-                _buildMealMacroStat(
-                  MacroTheme.carbsIcon,
-                  MacroTheme.carbsColor,
-                  '${widget.meal.carbs.toStringAsFixed(1)} g',
-                  l10n.translate('carbs_short'),
-                  isDarkMode,
-                ),
-                _buildMacroDivider(isDarkMode),
-                _buildMealMacroStat(
-                  MacroTheme.fatIcon,
-                  MacroTheme.fatColor,
-                  '${widget.meal.fat.toStringAsFixed(1)} g',
-                  l10n.translate('fats_short'),
-                  isDarkMode,
-                ),
-                _buildMacroDivider(isDarkMode),
-                _buildMealMacroStat(
-                  widget.showFiber
-                      ? MacroTheme.fiberIcon
-                      : Icons.workspace_premium_rounded,
-                  MacroTheme.fiberColor,
-                  widget.showFiber
-                      ? '${widget.meal.fiber.toStringAsFixed(1)} g'
-                      : l10n.translate('premium'),
-                  l10n.translate('fiber'),
-                  isDarkMode,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealMacroStat(
-    IconData icon,
-    Color color,
-    String value,
-    String label,
-    bool isDarkMode,
-  ) {
-    final secondaryColor =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
-
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-                color: color,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Column(
+          children: [
+            for (final food in widget.meal.foods)
+              _buildFoodRow(
+                food,
+                textColor: textColor,
+                secondaryTextColor: secondaryTextColor,
               ),
-            ),
-          ),
-          const SizedBox(height: 1),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: secondaryColor.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

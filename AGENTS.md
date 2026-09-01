@@ -33,6 +33,7 @@ This file guides coding agents working in this repository.
 - Route registry: `dieta_api/src/routes/index.ts`.
 - AI endpoints: `dieta_api/src/routes/ai.routes.ts`.
   - Includes `POST /ai/transcribe-audio` for chat audio transcription on the server.
+  - Includes `POST /ai/analyze-meal` for structured analysis of a logged meal (summary, highlights, improvements, next step).
 - Subscription purchase confirmation: `POST /subscription/google-play/confirm`
   - Validates the Google Play `purchaseToken` on the backend and upserts the user subscription as premium.
 - Rewarded ad credit grant: `POST /credits/rewarded-ad`
@@ -160,6 +161,8 @@ npx prisma studio
 - `lib/utils/conversation_helper.dart`
 - `dieta_api/src/controllers/ai.controller.ts`
 - `dieta_api/src/routes/ai.routes.ts`
+- `dieta_api/src/helpers/meal-analysis.helper.ts`
+- `lib/screens/meal_page.dart`
 - `lib/services/chat_audio_recorder.dart`
 
 ### Auth and credits

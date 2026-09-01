@@ -83,6 +83,11 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+    expect(find.text('Almoço'), findsWidgets);
+    expect(find.text('Alimentos da refeição'), findsOneWidget);
+    expect(find.text('Análise da IA'), findsOneWidget);
+    expect(find.text('Analisar refeição'), findsOneWidget);
+    expect(find.text('Feijão'), findsOneWidget);
   });
 
   testWidgets('MealPage locks fiber in the macro summary for free users',

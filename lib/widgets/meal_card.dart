@@ -810,58 +810,125 @@ class _MealCardState extends State<MealCard> {
     }
   }
 
-  /// Macro horizontal (ícone ao lado + valor colorido + unidade).
-  /// Divisor vertical fino entre macros — mesmo estilo do card "Minha Dieta".
-  Widget _buildMacroDivider({required bool isDarkMode}) {
-    return Container(
-      width: 1,
-      height: 42,
-      color: isDarkMode
-          ? Colors.white.withValues(alpha: 0.08)
-          : Colors.black.withValues(alpha: 0.07),
+  String _formatMacroGrams(double value) {
+    final rounded = (value * 10).round() / 10;
+    final text = rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
+    return '$text g';
+  }
+
+  /// Resumo nutricional: uma pílula por nutriente, na mesma linha.
+  Widget _buildMacroSummary({required bool isDarkMode}) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        _buildMacroPill(
+          color: MacroTheme.proteinColor,
+          value: _formatMacroGrams(_currentMeal.totalProtein),
+          label: context.tr.translate('protein_short'),
+          isDarkMode: isDarkMode,
+        ),
+        _buildMacroPill(
+          color: MacroTheme.carbsColor,
+          value: _formatMacroGrams(_currentMeal.totalCarbs),
+          label: context.tr.translate('carbs_short'),
+          isDarkMode: isDarkMode,
+        ),
+        _buildMacroPill(
+          color: MacroTheme.fatColor,
+          value: _formatMacroGrams(_currentMeal.totalFat),
+          label: context.tr.translate('fat_short'),
+          isDarkMode: isDarkMode,
+        ),
+        _buildMacroPill(
+          color: MacroTheme.fiberColor,
+          value: widget.showFiber
+              ? _formatMacroGrams(_currentMeal.totalFiber)
+              : null,
+          label: context.tr.translate('fiber'),
+          isDarkMode: isDarkMode,
+          locked: !widget.showFiber,
+        ),
+      ],
     );
   }
 
-  /// Macro no formato do card "Minha Dieta": badge circular + valor em destaque.
-  Widget _buildCompactMacro({
-    required IconData icon,
-    required String value,
-    String? unit,
+  /// Pílula de nutriente: fundo no tom do macro, valor + nome.
+  /// Sem Premium a fibra vira um botão com cadeado, mantendo o mesmo formato.
+  Widget _buildMacroPill({
     required Color color,
+    required String? value,
+    required String label,
     required bool isDarkMode,
-    VoidCallback? onTap,
+    bool locked = false,
   }) {
-    final textValue = unit != null && unit.isNotEmpty ? '$value $unit' : value;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Column(
+    final foreground = isDarkMode
+        ? Color.lerp(color, Colors.white, 0.22)!
+        : Color.lerp(color, Colors.black, 0.34)!;
+
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDarkMode ? 0.18 : 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              textValue,
-              maxLines: 1,
+          if (value != null) ...[
+            Text(
+              value,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-                color: color,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.1,
+                color: foreground,
               ),
             ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: value == null ? FontWeight.w700 : FontWeight.w500,
+              color: foreground.withValues(alpha: value == null ? 1 : 0.72),
+            ),
           ),
+          if (locked) ...[
+            const SizedBox(width: 5),
+            Icon(
+              Icons.lock_rounded,
+              size: 11,
+              color: foreground.withValues(alpha: 0.8),
+            ),
+          ],
         ],
+      ),
+    );
+
+    final background = color.withValues(alpha: isDarkMode ? 0.16 : 0.11);
+    final radius = BorderRadius.circular(20);
+
+    if (!locked) {
+      return Container(
+        decoration: BoxDecoration(color: background, borderRadius: radius),
+        child: content,
+      );
+    }
+
+    return Semantics(
+      button: true,
+      label: '$label, ${context.tr.translate('tap_for_premium')}',
+      child: Tooltip(
+        message: context.tr.translate('tap_for_premium'),
+        child: Material(
+          color: background,
+          borderRadius: radius,
+          child: InkWell(
+            onTap: () => Navigator.of(context).pushNamed('/subscription'),
+            borderRadius: radius,
+            child: content,
+          ),
+        ),
       ),
     );
   }
@@ -1513,81 +1580,11 @@ class _MealCardState extends State<MealCard> {
                                   ),
                                 ),
                               ],
-                              // Linha de macros estilo "Minha Dieta"
                               Padding(
                                 padding:
-                                    const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildCompactMacro(
-                                        icon: MacroTheme.proteinIcon,
-                                        value: context.tr
-                                            .translate('protein_grams_short')
-                                            .replaceAll(
-                                              '{value}',
-                                              _currentMeal.totalProtein
-                                                  .toStringAsFixed(1),
-                                            ),
-                                        color: MacroTheme.proteinColor,
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                    ),
-                                    _buildMacroDivider(isDarkMode: isDarkMode),
-                                    Expanded(
-                                      child: _buildCompactMacro(
-                                        icon: MacroTheme.carbsIcon,
-                                        value: context.tr
-                                            .translate('carbs_grams_short')
-                                            .replaceAll(
-                                              '{value}',
-                                              _currentMeal.totalCarbs
-                                                  .toStringAsFixed(1),
-                                            ),
-                                        color: MacroTheme.carbsColor,
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                    ),
-                                    _buildMacroDivider(isDarkMode: isDarkMode),
-                                    Expanded(
-                                      child: _buildCompactMacro(
-                                        icon: MacroTheme.fatIcon,
-                                        value: context.tr
-                                            .translate('fat_grams_short')
-                                            .replaceAll(
-                                              '{value}',
-                                              _currentMeal.totalFat
-                                                  .toStringAsFixed(1),
-                                            ),
-                                        color: MacroTheme.fatColor,
-                                        isDarkMode: isDarkMode,
-                                      ),
-                                    ),
-                                    _buildMacroDivider(isDarkMode: isDarkMode),
-                                    Expanded(
-                                      child: Tooltip(
-                                        message: widget.showFiber
-                                            ? context.tr.translate('fiber')
-                                            : context.tr
-                                                .translate('tap_for_premium'),
-                                        child: _buildCompactMacro(
-                                          icon: widget.showFiber
-                                              ? MacroTheme.fiberIcon
-                                              : Icons.workspace_premium_rounded,
-                                          value: widget.showFiber
-                                              ? '${_currentMeal.totalFiber.toStringAsFixed(1)} g'
-                                              : context.tr.translate('premium'),
-                                          color: MacroTheme.fiberColor,
-                                          isDarkMode: isDarkMode,
-                                          onTap: widget.showFiber
-                                              ? null
-                                              : () => Navigator.of(context)
-                                                  .pushNamed('/subscription'),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                    const EdgeInsets.fromLTRB(16, 2, 16, 12),
+                                child:
+                                    _buildMacroSummary(isDarkMode: isDarkMode),
                               ),
                               // Botão explícito para recolher o card.
                               Padding(
