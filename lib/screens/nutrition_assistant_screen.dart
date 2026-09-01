@@ -698,6 +698,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     });
   }
 
+  void _openMealPhotoCapture() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraScanScreen(),
+      ),
+    );
+  }
+
   // Método para limpar sugestões
   void _clearSuggestions() {
     if (mounted) {
@@ -2947,10 +2956,15 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                     );
                                   }
 
+                                  // Conversa Livre é só conversa: não reconstruir
+                                  // cards de refeição a partir do diário do dia.
                                   final reconstructedDayMeals =
-                                      reconstructMealsProvider.getMealsForDate(
-                                          reconstructMealsProvider
-                                              .selectedDate);
+                                      widget.isFreeChat
+                                          ? const <Meal>[]
+                                          : reconstructMealsProvider
+                                              .getMealsForDate(
+                                                  reconstructMealsProvider
+                                                      .selectedDate);
                                   if (reconstructedDayMeals.isNotEmpty) {
                                     _logChatSurfaceDecision(
                                       'reconstructed_meals_without_messages',
@@ -3006,9 +3020,11 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.center,
                                             children: [
-                                              // Saudação baseada no horário
                                               Text(
-                                                _getTimeBasedGreeting(context),
+                                                context.tr.translate(
+                                                    widget.isFreeChat
+                                                        ? 'ask_question'
+                                                        : 'ai_tutor_empty_hint'),
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   fontSize:
@@ -3025,40 +3041,38 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                               SizedBox(
                                                   height:
                                                       isWideLayout ? 22 : 16),
-                                              // Chips de ação estilo ChatGPT (2 por linha, centralizados)
                                               Consumer<NutritionGoalsProvider>(
                                                 builder: (context,
                                                     nutritionProvider, child) {
                                                   final bool hasGoals =
                                                       nutritionProvider
                                                           .hasConfiguredGoals;
-                                                  final List<Widget> chips = [
-                                                    _buildActionChip(
-                                                      icon:
-                                                          Icons.restaurant_menu,
-                                                      label: context.tr.translate(
-                                                          'ai_tutor_log_meal'),
-                                                      isDarkMode: isDarkMode,
-                                                      onTap: () {
-                                                        _showSuggestionsForAction(
-                                                            'registrar_refeicao');
-                                                      },
-                                                    ),
-                                                    _buildActionChip(
-                                                      icon: Icons.camera_alt,
-                                                      label: context.tr.translate(
-                                                          'profile_shape_take_photo'),
-                                                      isDarkMode: isDarkMode,
-                                                      onTap: () {
-                                                        Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder: (context) =>
-                                                                CameraScanScreen(),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ),
+                                                  final primaryChips = [
+                                                    if (!widget.isFreeChat)
+                                                      _buildActionChip(
+                                                        icon: Icons
+                                                            .restaurant_menu,
+                                                        label: context.tr.translate(
+                                                            'ai_tutor_log_meal'),
+                                                        isDarkMode: isDarkMode,
+                                                        expand: true,
+                                                        onTap: () {
+                                                          _showSuggestionsForAction(
+                                                              'registrar_refeicao');
+                                                        },
+                                                      ),
+                                                    if (!widget.isFreeChat)
+                                                      _buildActionChip(
+                                                        icon: Icons.camera_alt,
+                                                        label: context.tr.translate(
+                                                            'ai_tutor_photo_meal'),
+                                                        isDarkMode: isDarkMode,
+                                                        expand: true,
+                                                        onTap:
+                                                            _openMealPhotoCapture,
+                                                      ),
+                                                  ];
+                                                  final extraChips = [
                                                     if (hasGoals)
                                                       _buildActionChip(
                                                         icon: Icons
@@ -3101,14 +3115,54 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                         },
                                                       ),
                                                   ];
-                                                  return Wrap(
-                                                    alignment:
-                                                        WrapAlignment.center,
-                                                    spacing:
-                                                        isWideLayout ? 10 : 8,
-                                                    runSpacing:
-                                                        isWideLayout ? 10 : 8,
-                                                    children: chips,
+                                                  return Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      if (primaryChips
+                                                          .isNotEmpty)
+                                                        Row(
+                                                          children: [
+                                                            for (var i = 0;
+                                                                i <
+                                                                    primaryChips
+                                                                        .length;
+                                                                i++) ...[
+                                                              if (i > 0)
+                                                                SizedBox(
+                                                                    width:
+                                                                        isWideLayout
+                                                                            ? 10
+                                                                            : 8),
+                                                              Expanded(
+                                                                  child:
+                                                                      primaryChips[
+                                                                          i]),
+                                                            ],
+                                                          ],
+                                                        ),
+                                                      if (primaryChips
+                                                              .isNotEmpty &&
+                                                          extraChips.isNotEmpty)
+                                                        SizedBox(
+                                                            height: isWideLayout
+                                                                ? 10
+                                                                : 8),
+                                                      if (extraChips.isNotEmpty)
+                                                        Wrap(
+                                                          alignment:
+                                                              WrapAlignment
+                                                                  .center,
+                                                          spacing: isWideLayout
+                                                              ? 10
+                                                              : 8,
+                                                          runSpacing:
+                                                              isWideLayout
+                                                                  ? 10
+                                                                  : 8,
+                                                          children: extraChips,
+                                                        ),
+                                                    ],
                                                   );
                                                 },
                                               ),
@@ -3570,14 +3624,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                             onTap: () {
                                                               Navigator.pop(
                                                                   context);
-                                                              Navigator.push(
-                                                                context,
-                                                                MaterialPageRoute(
-                                                                  builder:
-                                                                      (context) =>
-                                                                          CameraScanScreen(),
-                                                                ),
-                                                              );
+                                                              _openMealPhotoCapture();
                                                             },
                                                           ),
                                                           ListTile(
@@ -3653,8 +3700,10 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                                                       TextInputType.multiline,
                                                   decoration: InputDecoration(
                                                     hintText: context.tr
-                                                        .translate(
-                                                            'what_did_you_eat'),
+                                                        .translate(widget
+                                                                .isFreeChat
+                                                            ? 'ask_question'
+                                                            : 'what_did_you_eat'),
                                                     hintStyle: TextStyle(
                                                       fontSize: 15,
                                                       color: isTranscribingAudio
@@ -5042,24 +5091,6 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     );
   }
 
-  // Retorna saudação e sugestão baseada no horário
-  String _getTimeBasedGreeting(BuildContext context) {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 10) {
-      return AppLocalizations.of(context).translate('greeting_breakfast');
-    } else if (hour >= 10 && hour < 12) {
-      return AppLocalizations.of(context).translate('greeting_morning_snack');
-    } else if (hour >= 12 && hour < 14) {
-      return AppLocalizations.of(context).translate('greeting_lunch');
-    } else if (hour >= 14 && hour < 18) {
-      return AppLocalizations.of(context).translate('greeting_afternoon');
-    } else if (hour >= 18 && hour < 21) {
-      return AppLocalizations.of(context).translate('greeting_dinner');
-    } else {
-      return AppLocalizations.of(context).translate('greeting_night');
-    }
-  }
-
   // Header minimalista estilo ChatGPT: ☰  Hoje ▾  🔍
   Widget _buildMinimalHeader(
     BuildContext context, {
@@ -5281,6 +5312,7 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     required String label,
     required bool isDarkMode,
     required VoidCallback onTap,
+    bool expand = false,
   }) {
     final isWideLayout =
         MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint;
@@ -5290,7 +5322,8 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
     return Card(
       color: surfaceColor,
       elevation: AppTheme.standardCardElevation(isDarkMode),
-      margin: isWideLayout ? EdgeInsets.zero : const EdgeInsets.all(4),
+      margin:
+          expand || isWideLayout ? EdgeInsets.zero : const EdgeInsets.all(4),
       shadowColor: AppTheme.standardCardShadowColor(isDarkMode),
       surfaceTintColor:
           isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor,
@@ -5299,12 +5332,14 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
         onTap: onTap,
         borderRadius: BorderRadius.circular(100),
         child: Container(
+          width: expand ? double.infinity : null,
           padding: EdgeInsets.symmetric(
-            horizontal: isWideLayout ? 16 : 14,
+            horizontal: isWideLayout ? 16 : (expand ? 10 : 14),
             vertical: isWideLayout ? 11 : 10,
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
@@ -5312,14 +5347,29 @@ class NutritionAssistantScreenState extends State<NutritionAssistantScreen>
                 color: isDarkMode ? Colors.white70 : Colors.black87,
               ),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: isWideLayout ? 13.5 : 14,
-                  fontWeight: FontWeight.w500,
-                  color: isDarkMode ? Colors.white : Colors.black87,
+              if (expand)
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: isWideLayout ? 13.5 : 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: isWideLayout ? 13.5 : 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

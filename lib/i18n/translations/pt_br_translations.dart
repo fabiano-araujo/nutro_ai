@@ -121,11 +121,12 @@ final Map<String, String> ptBRTranslations = {
   'logout_sync_and_leave': 'Sincronizar e sair',
   'logout_pending_sync_failed':
       'Não foi possível sincronizar. Você continua logado para não perder dados.',
-  'guest_local_data_title': 'Salvar dados deste aparelho?',
+  'guest_local_data_title': 'Encontramos dados neste aparelho',
   'guest_local_data_message':
-      'Encontramos informações criadas antes do login. Você pode salvar isso nesta conta ou descartar deste aparelho.',
+      'Você usou o app antes de entrar. Salve na conta para continuar de onde parou.',
+  'guest_local_data_items_label': 'O que encontramos',
   'guest_local_data_save_action': 'Salvar na conta',
-  'guest_local_data_discard_action': 'Não salvar',
+  'guest_local_data_discard_action': 'Descartar deste aparelho',
   'guest_local_data_saved': 'Dados locais salvos na sua conta.',
   'guest_local_data_save_failed':
       'Não foi possível salvar esses dados agora. Tente novamente online.',
@@ -1200,6 +1201,7 @@ final Map<String, String> ptBRTranslations = {
   // Food Search
   'search_food': 'Buscar Alimento',
   'food_input_actions_title': 'Adicionar alimentos',
+  'food_input_fab_label': 'Adicionar',
   'food_input_audio_title': 'Falar alimentos',
   'food_input_audio_subtitle': 'Diga o que comeu para identificar os alimentos',
   'food_input_camera_subtitle':
@@ -1481,18 +1483,20 @@ final Map<String, String> ptBRTranslations = {
   'ai_tutor_where_start': 'Como posso\najudar?',
   'ai_tutor_log_meal': 'Registrar refeição',
   'ai_tutor_analyze_photo': 'Analisar foto com IA',
+  'ai_tutor_photo_meal': 'Foto da refeição',
+  'ai_tutor_empty_hint': 'Escreva, fale ou fotografe sua refeição',
   'ai_tutor_fill_personal_info': 'Preencha suas informações pessoais',
   'ai_tutor_set_nutrition_goal': 'Defina seu objetivo nutricional',
   'ai_tutor_meal_suggestions': 'Sugestões de refeições',
   'ai_tutor_ask_nutrition': 'Perguntar sobre nutrição',
 
   // Saudações baseadas no horário
-  'greeting_breakfast': 'Bom dia!\nJá tomou café?',
-  'greeting_morning_snack': 'Hora do lanche\nda manhã!',
-  'greeting_lunch': 'Hora do\nalmoço!',
-  'greeting_afternoon': 'Boa tarde!\nComo posso ajudar?',
-  'greeting_dinner': 'Hora do\njantar!',
-  'greeting_night': 'Boa noite!\nComo posso ajudar?',
+  'greeting_breakfast': 'Bom dia!',
+  'greeting_morning_snack': 'Hora do lanche!',
+  'greeting_lunch': 'Hora do almoço!',
+  'greeting_afternoon': 'Boa tarde!',
+  'greeting_dinner': 'Hora do jantar!',
+  'greeting_night': 'Boa noite!',
 
   // Daily Meals Screen - Additional Keys
   'meals': 'Refeições',
@@ -1661,6 +1665,7 @@ final Map<String, String> ptBRTranslations = {
       'Deseja restaurar as refeições padrão? Isso irá remover todas as suas personalizações.',
   'restore': 'Restaurar',
   'select_emoji': 'Selecione um Emoji',
+  'reorder_meals_hint': 'Arraste o ícone para reordenar',
 
   // Nutrition Goals Wizard Screen
   'configure_goals': 'Configurar Metas',
@@ -2267,8 +2272,15 @@ final Map<String, String> ptBRTranslations = {
   'bmi_value': 'IMC {value}',
 
   // Login, cadastro e assinatura
+  'login_headline': 'Bem-vindo ao Nutro AI',
   'login_welcome_description':
       'Entre para salvar seu progresso e acessar todos os recursos do Nutro AI.',
+  'login_benefit_progress': 'Salve refeições, metas e histórico',
+  'login_benefit_sync': 'Sincronize em todos os seus dispositivos',
+  'login_benefit_features': 'Dieta, diário e recursos do app',
+  'login_privacy_note':
+      'Seus dados ficam protegidos. Você pode sair quando quiser.',
+  'sign_in_with_email_short': 'Entrar com email',
   'login_cancelled': 'Login cancelado.',
   'google_login_failed': 'Não foi possível entrar com o Google.',
   'login_failed_credentials': 'E-mail ou senha incorretos.',

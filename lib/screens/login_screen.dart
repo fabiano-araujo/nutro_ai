@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../i18n/app_localizations_extension.dart';
 import 'email_login_screen.dart';
-import '../widgets/credit_indicator.dart';
-import '../widgets/reward_ad_dialog.dart';
 import 'settings_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -31,11 +30,6 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _didAutoCloseAfterLogin = false;
 
-  Color _surfaceColor(bool isDarkMode) =>
-      isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF3F3F3);
-  Color _subtleBorderColor(bool isDarkMode) =>
-      isDarkMode ? Colors.white12 : Colors.black12;
-
   @override
   void initState() {
     super.initState();
@@ -52,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.16),
+      begin: const Offset(0, 0.12),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
@@ -86,6 +80,10 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleGoogleLogin() async {
+    if (_isLoading) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -148,6 +146,26 @@ class _LoginScreenState extends State<LoginScreen>
     return context.tr.translate('google_login_failed');
   }
 
+  Future<void> _openEmailLogin() async {
+    if (_isLoading) {
+      return;
+    }
+
+    final loginSucceeded = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => const EmailLoginScreen(),
+      ),
+    );
+
+    if (!mounted || loginSucceeded != true) {
+      return;
+    }
+
+    if (widget.popOnSuccess) {
+      _closeAfterSuccessfulLogin();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -167,10 +185,15 @@ class _LoginScreenState extends State<LoginScreen>
     final textPrimary =
         isDarkMode ? AppTheme.darkTextColor : AppTheme.textPrimaryColor;
     final textSecondary =
-        isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
+        isDarkMode ? AppTheme.darkMutedTextColor : AppTheme.textSecondaryColor;
     final primaryColor =
         isDarkMode ? AppTheme.primaryColorDarkMode : AppTheme.primaryColor;
     final onPrimary = AppTheme.onColor(primaryColor);
+    final surfaceColor =
+        isDarkMode ? AppTheme.darkComponentColor : const Color(0xFFF3F7F7);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
 
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -186,13 +209,12 @@ class _LoginScreenState extends State<LoginScreen>
             _buildMinimalHeader(
               canPop: canPop,
               textColor: textPrimary,
-              isDarkMode: isDarkMode,
             ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
                     child: ConstrainedBox(
                       constraints:
                           BoxConstraints(minHeight: constraints.maxHeight),
@@ -202,93 +224,70 @@ class _LoginScreenState extends State<LoginScreen>
                           child: SlideTransition(
                             position: _slideAnimation,
                             child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 520),
+                              constraints: const BoxConstraints(maxWidth: 420),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  _buildLoginMark(
-                                    textColor: textPrimary,
+                                  _LoginMark(
+                                    primaryColor: primaryColor,
                                     isDarkMode: isDarkMode,
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 20),
                                   Text(
                                     context.tr.translate('app_title'),
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
+                                    style: GoogleFonts.poppins(
                                       fontSize: 28,
                                       fontWeight: FontWeight.w700,
-                                      color:
-                                          AppTheme.getSoftTextColor(isDarkMode),
+                                      color: textPrimary,
                                       height: 1.15,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 10),
                                   Text(
                                     context.tr
                                         .translate('login_welcome_description'),
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
+                                    style: GoogleFonts.inter(
                                       fontSize: 15,
-                                      color:
-                                          textSecondary.withValues(alpha: 0.9),
-                                      height: 1.4,
+                                      color: textSecondary,
+                                      height: 1.45,
                                     ),
                                   ),
-                                  const SizedBox(height: 34),
-                                  if (_isLoading)
-                                    SizedBox(
-                                      height: 52,
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          color: primaryColor,
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    _SocialButton(
-                                      onPressed: _handleGoogleLogin,
-                                      icon: const Icon(
-                                        Icons.g_mobiledata,
-                                        size: 30,
-                                        color: Colors.red,
-                                      ),
-                                      label: context.tr
-                                          .translate('sign_in_with_google'),
-                                      backgroundColor: primaryColor,
-                                      borderColor: primaryColor,
-                                      textColor: onPrimary,
-                                    ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 36),
                                   _SocialButton(
-                                    onPressed: () async {
-                                      final loginSucceeded =
-                                          await Navigator.of(context)
-                                              .push<bool>(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const EmailLoginScreen(),
-                                        ),
-                                      );
-
-                                      if (!mounted || loginSucceeded != true) {
-                                        return;
-                                      }
-
-                                      if (widget.popOnSuccess) {
-                                        _closeAfterSuccessfulLogin();
-                                      }
-                                    },
+                                    onPressed:
+                                        _isLoading ? null : _handleGoogleLogin,
+                                    isLoading: _isLoading,
+                                    icon: Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const _GoogleGMark(size: 16),
+                                    ),
+                                    label: context.tr
+                                        .translate('sign_in_with_google'),
+                                    backgroundColor: primaryColor,
+                                    borderColor: primaryColor,
+                                    textColor: onPrimary,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _SocialButton(
+                                    onPressed:
+                                        _isLoading ? null : _openEmailLogin,
                                     icon: Icon(
-                                      Icons.email_outlined,
-                                      size: 19,
+                                      Icons.mail_outline_rounded,
+                                      size: 20,
                                       color: textPrimary,
                                     ),
                                     label: context.tr
-                                        .translate('sign_in_with_email'),
-                                    backgroundColor: _surfaceColor(isDarkMode),
-                                    borderColor: _subtleBorderColor(isDarkMode),
+                                        .translate('sign_in_with_email_short'),
+                                    backgroundColor: surfaceColor,
+                                    borderColor: borderColor,
                                     textColor: textPrimary,
                                   ),
                                 ],
@@ -311,82 +310,88 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildMinimalHeader({
     required bool canPop,
     required Color textColor,
-    required bool isDarkMode,
   }) {
-    return SizedBox(
-      height: 52,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: widget.onOpenDrawer != null
-                ? IconButton(
-                    icon: Icon(Icons.menu, color: textColor),
-                    onPressed: widget.onOpenDrawer,
-                    tooltip: context.tr.translate('menu'),
-                  )
-                : canPop
-                    ? IconButton(
-                        icon: Icon(Icons.arrow_back, color: textColor),
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        tooltip: context.tr.translate('back'),
-                      )
-                    : const SizedBox(width: 48),
-          ),
-          Center(
-            child: Text(
-              context.tr.translate('login_title'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: textColor,
+    final isProfileTab = widget.onOpenDrawer != null;
+    final title = context.tr.translate(
+      isProfileTab ? 'profile' : 'login_title',
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          children: [
+            if (widget.onOpenDrawer != null)
+              IconButton(
+                icon: Icon(Icons.menu_rounded, color: textColor),
+                onPressed: widget.onOpenDrawer,
+                tooltip: context.tr.translate('menu'),
+              )
+            else if (canPop)
+              IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: textColor),
+                onPressed: () => Navigator.of(context).maybePop(),
+                tooltip: context.tr.translate('back'),
+              )
+            else
+              const SizedBox(width: 48),
+            Expanded(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
               ),
             ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CreditIndicator(),
-                IconButton(
-                  icon: Icon(Icons.card_giftcard, color: textColor),
-                  tooltip: context.tr.translate('watch_ad_for_credits'),
-                  onPressed: () => RewardAdDialog.show(context),
-                ),
-                IconButton(
-                  icon: Icon(Icons.settings, color: textColor),
-                  tooltip: context.tr.translate('settings_title'),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => SettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.settings_rounded, color: textColor),
+              tooltip: context.tr.translate('settings_title'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => SettingsScreen(),
+                  ),
+                );
+              },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildLoginMark({
-    required Color textColor,
-    required bool isDarkMode,
-  }) {
+class _LoginMark extends StatelessWidget {
+  final Color primaryColor;
+  final bool isDarkMode;
+
+  const _LoginMark({
+    required this.primaryColor,
+    required this.isDarkMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: 56,
-      height: 56,
+      width: 88,
+      height: 88,
       decoration: BoxDecoration(
-        color: _surfaceColor(isDarkMode),
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: _subtleBorderColor(isDarkMode)),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: isDarkMode ? 0.22 : 0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: ClipOval(
         child: Image.asset(
@@ -394,9 +399,9 @@ class _LoginScreenState extends State<LoginScreen>
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Icon(
-              Icons.restaurant_menu,
-              size: 24,
-              color: textColor.withValues(alpha: 0.82),
+              Icons.restaurant_menu_rounded,
+              size: 36,
+              color: primaryColor,
             );
           },
         ),
@@ -406,12 +411,13 @@ class _LoginScreenState extends State<LoginScreen>
 }
 
 class _SocialButton extends StatelessWidget {
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Widget icon;
   final String label;
   final Color backgroundColor;
   final Color borderColor;
   final Color textColor;
+  final bool isLoading;
 
   const _SocialButton({
     required this.onPressed,
@@ -420,6 +426,7 @@ class _SocialButton extends StatelessWidget {
     required this.backgroundColor,
     required this.borderColor,
     required this.textColor,
+    this.isLoading = false,
   });
 
   @override
@@ -432,32 +439,98 @@ class _SocialButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: textColor,
+          disabledBackgroundColor: backgroundColor.withValues(alpha: 0.72),
           side: BorderSide(color: borderColor, width: 1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(100),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon,
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+        child: isLoading
+            ? SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
                   color: textColor,
                 ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  icon,
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
+}
+
+class _GoogleGMark extends StatelessWidget {
+  final double size;
+
+  const _GoogleGMark({this.size = 18});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: const CustomPaint(painter: _GoogleGPainter()),
+    );
+  }
+}
+
+class _GoogleGPainter extends CustomPainter {
+  const _GoogleGPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = size.width * 0.20;
+    final rect = Rect.fromLTWH(
+      stroke / 2,
+      stroke / 2,
+      size.width - stroke,
+      size.height - stroke,
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.butt;
+
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, -0.22, 1.25, false, paint);
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 0.95, 1.35, false, paint);
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, 2.28, 0.95, false, paint);
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, 3.25, 1.85, false, paint);
+
+    canvas.drawRect(
+      Rect.fromLTWH(
+        size.width / 2,
+        (size.height - stroke) / 2,
+        size.width / 2 - stroke * 0.18,
+        stroke,
+      ),
+      Paint()..color = const Color(0xFF4285F4),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

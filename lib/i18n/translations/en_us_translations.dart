@@ -87,7 +87,8 @@ final Map<String, String> enUSTranslations = {
       'Could not send the email right now. Try again.',
   'forgot_password_invalid_code': 'Invalid or expired code.',
   'forgot_password_reset_error': 'Could not reset the password. Try again.',
-  'forgot_password_success': 'Password updated. Sign in with your new password.',
+  'forgot_password_success':
+      'Password updated. Sign in with your new password.',
   'login_google_account_required':
       'This account uses Google sign-in. Use Google login.',
   'login_button': 'Login',
@@ -122,11 +123,12 @@ final Map<String, String> enUSTranslations = {
   'logout_sync_and_leave': 'Sync and log out',
   'logout_pending_sync_failed':
       'Could not sync. You are still logged in so your data is not lost.',
-  'guest_local_data_title': 'Save this device data?',
+  'guest_local_data_title': 'We found data on this device',
   'guest_local_data_message':
-      'We found information created before login. You can save it to this account or discard it from this device.',
+      'You used the app before signing in. Save it to your account to pick up where you left off.',
+  'guest_local_data_items_label': 'What we found',
   'guest_local_data_save_action': 'Save to account',
-  'guest_local_data_discard_action': 'Do not save',
+  'guest_local_data_discard_action': 'Discard from this device',
   'guest_local_data_saved': 'Local data saved to your account.',
   'guest_local_data_save_failed':
       'Could not save this data now. Try again when you are online.',
@@ -1011,6 +1013,7 @@ final Map<String, String> enUSTranslations = {
   // Food Search
   'search_food': 'Search Food',
   'food_input_actions_title': 'Add foods',
+  'food_input_fab_label': 'Add',
   'food_input_audio_title': 'Say foods',
   'food_input_audio_subtitle': 'Say what you ate to identify the foods',
   'food_input_camera_subtitle': 'Photograph your meal to identify the foods',
@@ -1288,18 +1291,20 @@ final Map<String, String> enUSTranslations = {
   'ai_tutor_where_start': 'How can I\nhelp?',
   'ai_tutor_log_meal': 'Log meal',
   'ai_tutor_analyze_photo': 'Analyze photo with AI',
+  'ai_tutor_photo_meal': 'Meal photo',
+  'ai_tutor_empty_hint': 'Write, speak, or photograph your meal',
   'ai_tutor_fill_personal_info': 'Fill in your personal information',
   'ai_tutor_set_nutrition_goal': 'Set your nutrition goal',
   'ai_tutor_meal_suggestions': 'Meal suggestions',
   'ai_tutor_ask_nutrition': 'Ask about nutrition',
 
   // Time-based greetings
-  'greeting_breakfast': 'Good morning!\nHad breakfast?',
-  'greeting_morning_snack': 'Morning snack\ntime!',
-  'greeting_lunch': 'Lunch\ntime!',
-  'greeting_afternoon': 'Good afternoon!\nHow can I help?',
-  'greeting_dinner': 'Dinner\ntime!',
-  'greeting_night': 'Good evening!\nHow can I help?',
+  'greeting_breakfast': 'Good morning!',
+  'greeting_morning_snack': 'Morning snack time!',
+  'greeting_lunch': 'Lunch time!',
+  'greeting_afternoon': 'Good afternoon!',
+  'greeting_dinner': 'Dinner time!',
+  'greeting_night': 'Good evening!',
 
   // Daily Meals Screen - Additional Keys
   'meals': 'Meals',
@@ -1466,6 +1471,7 @@ final Map<String, String> enUSTranslations = {
       'Do you want to restore default meals? This will remove all your customizations.',
   'restore': 'Restore',
   'select_emoji': 'Select an Emoji',
+  'reorder_meals_hint': 'Drag the handle to reorder',
 
   // Nutrition Goals Wizard Screen
   'configure_goals': 'Configure Goals',
@@ -2171,8 +2177,14 @@ final Map<String, String> enUSTranslations = {
   'previous_month': 'Previous month',
   'next_month': 'Next month',
   'bmi_value': 'BMI {value}',
+  'login_headline': 'Welcome to Nutro AI',
   'login_welcome_description':
       'Sign in to save your progress and access all Nutro AI features.',
+  'login_benefit_progress': 'Save meals, goals, and history',
+  'login_benefit_sync': 'Sync across all your devices',
+  'login_benefit_features': 'Diet, diary, and app features',
+  'login_privacy_note': 'Your data stays protected. You can sign out anytime.',
+  'sign_in_with_email_short': 'Sign in with email',
   'login_cancelled': 'Login cancelled.',
   'google_login_failed': 'Unable to sign in with Google.',
   'login_failed_credentials': 'Incorrect email or password.',

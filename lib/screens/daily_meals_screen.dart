@@ -19,6 +19,7 @@ import 'meal_page.dart';
 import '../i18n/app_localizations.dart';
 import '../utils/meal_type_localization.dart';
 import '../utils/premium_access.dart';
+import '../widgets/meal_type_icon.dart';
 import '../services/auth_service.dart';
 import '../services/purchase_service.dart';
 
@@ -319,6 +320,7 @@ class _DailyMealsScreenState extends State<DailyMealsScreen> {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: _MealCard(
+                mealTypeId: mealTypeConfig.id,
                 mealInfo: mealInfo,
                 meal: meal,
                 hasFoods: hasFoods,
@@ -692,6 +694,7 @@ class _HeaderActionButton extends StatelessWidget {
 }
 
 class _MealCard extends StatelessWidget {
+  final String mealTypeId;
   final MealTypeOption mealInfo;
   final Meal? meal;
   final bool hasFoods;
@@ -702,6 +705,7 @@ class _MealCard extends StatelessWidget {
 
   const _MealCard({
     Key? key,
+    required this.mealTypeId,
     required this.mealInfo,
     required this.meal,
     required this.hasFoods,
@@ -739,32 +743,7 @@ class _MealCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
                 child: Row(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            primaryColor.withValues(
-                                alpha: isDarkMode ? 0.30 : 0.20),
-                            primaryColor.withValues(
-                                alpha: isDarkMode ? 0.12 : 0.07),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: primaryColor.withValues(
-                              alpha: isDarkMode ? 0.28 : 0.16),
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        mealInfo.emoji,
-                        style: const TextStyle(fontSize: 23),
-                      ),
-                    ),
+                    MealTypeIcon(mealTypeId: mealTypeId),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

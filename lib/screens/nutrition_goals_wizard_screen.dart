@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nutrition_goals_provider.dart';
@@ -50,6 +52,7 @@ class _NutritionGoalsWizardScreenState
   final FocusNode _heightInchesFocusNode = FocusNode();
   final FocusNode _weightFocusNode = FocusNode();
   final FocusNode _weightPoundsFocusNode = FocusNode();
+  Timer? _profileAutoAdvanceTimer;
 
   // Activity and goal state
   ActivityLevel _selectedActivityLevel = ActivityLevel.moderatelyActive;
@@ -147,6 +150,124 @@ class _NutritionGoalsWizardScreenState
     if (mounted) setState(() {});
   }
 
+  void _selectSex(String sex) {
+    final shouldFocusAge = !_hasFilledAge;
+    setState(() => _selectedSex = sex);
+    if (shouldFocusAge) {
+      _scheduleProfileFocus(
+        _ageFocusNode,
+        delay: const Duration(milliseconds: 320),
+      );
+    }
+  }
+
+  void _scheduleProfileFocus(
+    FocusNode node, {
+    Duration delay = const Duration(milliseconds: 280),
+  }) {
+    _profileAutoAdvanceTimer?.cancel();
+    _profileAutoAdvanceTimer = Timer(delay, () => _focusProfileField(node));
+  }
+
+  void _cancelProfileAutoAdvance() {
+    _profileAutoAdvanceTimer?.cancel();
+    _profileAutoAdvanceTimer = null;
+  }
+
+  void _focusProfileField(FocusNode node) {
+    if (!mounted) return;
+
+    void tryFocus() {
+      if (!mounted || !node.canRequestFocus) return;
+      node.requestFocus();
+      final fieldContext = node.context;
+      if (fieldContext != null && fieldContext.mounted) {
+        Scrollable.ensureVisible(
+          fieldContext,
+          duration: const Duration(milliseconds: 240),
+          alignment: 0.12,
+          curve: Curves.easeOutCubic,
+        );
+      }
+    }
+
+    if (node.context != null) {
+      tryFocus();
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (node.context != null) {
+        tryFocus();
+        return;
+      }
+      _profileAutoAdvanceTimer?.cancel();
+      _profileAutoAdvanceTimer = Timer(
+        const Duration(milliseconds: 80),
+        tryFocus,
+      );
+    });
+  }
+
+  void _maybeAdvanceFromAge(String value, {required bool profileStyle}) {
+    if (!profileStyle) return;
+    final age = int.tryParse(value);
+    final isValid = age != null && age >= 10 && age <= 100;
+    if (isValid && !_hasFilledHeight) {
+      final digits = value.trim().length;
+      _scheduleProfileFocus(
+        _heightFocusNode,
+        delay: Duration(milliseconds: digits >= 3 ? 240 : 500),
+      );
+    } else if (!isValid) {
+      _cancelProfileAutoAdvance();
+    }
+  }
+
+  void _maybeAdvanceFromHeightCm(String value, {required bool profileStyle}) {
+    if (!profileStyle) return;
+    final height = double.tryParse(value);
+    final isValid = height != null && height >= 100 && height <= 250;
+    if (isValid && !_hasFilledWeight && value.trim().length >= 3) {
+      _scheduleProfileFocus(
+        _weightFocusNode,
+        delay: const Duration(milliseconds: 360),
+      );
+    } else if (!isValid) {
+      _cancelProfileAutoAdvance();
+    }
+  }
+
+  void _maybeAdvanceFromHeightFeet(String value, {required bool profileStyle}) {
+    if (!profileStyle) return;
+    final feet = int.tryParse(value);
+    if (feet != null &&
+        feet >= 4 &&
+        feet <= 8 &&
+        _heightInchesController.text.isEmpty) {
+      _scheduleProfileFocus(
+        _heightInchesFocusNode,
+        delay: const Duration(milliseconds: 280),
+      );
+    }
+  }
+
+  void _maybeAdvanceFromHeightInches({
+    required bool profileStyle,
+    required bool isValid,
+  }) {
+    if (!profileStyle) return;
+    if (isValid && !_hasFilledWeight) {
+      _scheduleProfileFocus(
+        _weightFocusNode,
+        delay: const Duration(milliseconds: 360),
+      );
+    } else if (!isValid) {
+      _cancelProfileAutoAdvance();
+    }
+  }
+
   Color _profileInputColor({
     required ThemeData theme,
     required bool isDarkMode,
@@ -211,6 +332,7 @@ class _NutritionGoalsWizardScreenState
 
   @override
   void dispose() {
+    _cancelProfileAutoAdvance();
     _pageController.dispose();
     _heightController.dispose();
     _heightInchesController.dispose();
@@ -430,7 +552,7 @@ class _NutritionGoalsWizardScreenState
               _buildProfileChoicePill(
                 label: context.tr.translate('male'),
                 isSelected: _selectedSex == 'male',
-                onTap: () => setState(() => _selectedSex = 'male'),
+                onTap: () => _selectSex('male'),
                 theme: theme,
                 isDarkMode: isDarkMode,
                 textColor: textColor,
@@ -439,7 +561,7 @@ class _NutritionGoalsWizardScreenState
               _buildProfileChoicePill(
                 label: context.tr.translate('female'),
                 isSelected: _selectedSex == 'female',
-                onTap: () => setState(() => _selectedSex = 'female'),
+                onTap: () => _selectSex('female'),
                 theme: theme,
                 isDarkMode: isDarkMode,
                 textColor: textColor,
@@ -943,6 +1065,9 @@ class _NutritionGoalsWizardScreenState
                   controller: _ageController,
                   focusNode: _ageFocusNode,
                   keyboardType: TextInputType.number,
+                  textInputAction: profileStyle
+                      ? TextInputAction.next
+                      : TextInputAction.done,
                   style: (profileStyle
                           ? theme.textTheme.displaySmall
                           : theme.textTheme.headlineSmall)
@@ -966,6 +1091,12 @@ class _NutritionGoalsWizardScreenState
                     } else {
                       setState(() => _hasFilledAge = false);
                     }
+                    _maybeAdvanceFromAge(value, profileStyle: profileStyle);
+                  },
+                  onSubmitted: (_) {
+                    if (!profileStyle || !_hasFilledAge) return;
+                    _cancelProfileAutoAdvance();
+                    _focusProfileField(_heightFocusNode);
                   },
                 ),
               ),
@@ -1058,6 +1189,9 @@ class _NutritionGoalsWizardScreenState
                     controller: _heightController,
                     focusNode: _heightFocusNode,
                     keyboardType: TextInputType.number,
+                    textInputAction: profileStyle
+                        ? TextInputAction.next
+                        : TextInputAction.done,
                     style: (profileStyle
                             ? theme.textTheme.displaySmall
                             : theme.textTheme.headlineSmall)
@@ -1082,6 +1216,15 @@ class _NutritionGoalsWizardScreenState
                       } else {
                         setState(() => _hasFilledHeight = false);
                       }
+                      _maybeAdvanceFromHeightCm(
+                        value,
+                        profileStyle: profileStyle,
+                      );
+                    },
+                    onSubmitted: (_) {
+                      if (!profileStyle || !_hasFilledHeight) return;
+                      _cancelProfileAutoAdvance();
+                      _focusProfileField(_weightFocusNode);
                     },
                   ),
                 ),
@@ -1092,6 +1235,9 @@ class _NutritionGoalsWizardScreenState
                     controller: _heightController,
                     focusNode: _heightFocusNode,
                     keyboardType: TextInputType.number,
+                    textInputAction: profileStyle
+                        ? TextInputAction.next
+                        : TextInputAction.done,
                     style: (profileStyle
                             ? theme.textTheme.displaySmall
                             : theme.textTheme.headlineSmall)
@@ -1121,6 +1267,15 @@ class _NutritionGoalsWizardScreenState
                       } else {
                         setState(() => _hasFilledHeight = false);
                       }
+                      _maybeAdvanceFromHeightFeet(
+                        value,
+                        profileStyle: profileStyle,
+                      );
+                    },
+                    onSubmitted: (_) {
+                      if (!profileStyle) return;
+                      _cancelProfileAutoAdvance();
+                      _focusProfileField(_heightInchesFocusNode);
                     },
                   ),
                 ),
@@ -1131,6 +1286,9 @@ class _NutritionGoalsWizardScreenState
                     controller: _heightInchesController,
                     focusNode: _heightInchesFocusNode,
                     keyboardType: TextInputType.number,
+                    textInputAction: profileStyle
+                        ? TextInputAction.next
+                        : TextInputAction.done,
                     style: (profileStyle
                             ? theme.textTheme.displaySmall
                             : theme.textTheme.headlineSmall)
@@ -1151,7 +1309,8 @@ class _NutritionGoalsWizardScreenState
                       final inches = int.tryParse(value) ?? 0;
                       final heightCm =
                           NutritionGoalsProvider.heightToCm(feet, inches);
-                      if (heightCm >= 100 && heightCm <= 250) {
+                      final isValid = heightCm >= 100 && heightCm <= 250;
+                      if (isValid) {
                         setState(() {
                           _height = heightCm;
                           _hasFilledHeight = true;
@@ -1159,6 +1318,15 @@ class _NutritionGoalsWizardScreenState
                       } else {
                         setState(() => _hasFilledHeight = false);
                       }
+                      _maybeAdvanceFromHeightInches(
+                        profileStyle: profileStyle,
+                        isValid: isValid,
+                      );
+                    },
+                    onSubmitted: (_) {
+                      if (!profileStyle || !_hasFilledHeight) return;
+                      _cancelProfileAutoAdvance();
+                      _focusProfileField(_weightFocusNode);
                     },
                   ),
                 ),
@@ -1277,6 +1445,7 @@ class _NutritionGoalsWizardScreenState
                     focusNode: _weightFocusNode,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.done,
                     style: (profileStyle
                             ? theme.textTheme.displaySmall
                             : theme.textTheme.headlineSmall)
@@ -1317,6 +1486,11 @@ class _NutritionGoalsWizardScreenState
                         }
                       } else {
                         setState(() => _hasFilledWeight = false);
+                      }
+                    },
+                    onSubmitted: (_) {
+                      if (profileStyle) {
+                        FocusScope.of(context).unfocus();
                       }
                     },
                   ),

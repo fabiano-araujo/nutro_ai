@@ -16,6 +16,7 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/macro_theme.dart';
 import '../widgets/food_icon.dart';
+import '../widgets/meal_type_icon.dart';
 import 'food_page.dart';
 
 class MealPage extends StatefulWidget {
@@ -301,26 +302,7 @@ Regras:
       decoration: AppTheme.profileCardDecoration(isDarkMode),
       child: Row(
         children: [
-          Container(
-            width: 82,
-            height: 82,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isDarkMode
-                  ? AppTheme.darkComponentColor
-                  : AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isDarkMode
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.05),
-              ),
-            ),
-            child: Text(
-              meal.emoji,
-              style: const TextStyle(fontSize: 38),
-            ),
-          ),
+          MealTypeIcon(mealTypeId: meal.typeId, size: 82, iconSize: 38),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -1086,7 +1068,7 @@ class _MealPageData {
   final bool titleIsTranslationKey;
   final String subtitle;
   final DateTime? dateTime;
-  final String emoji;
+  final String typeId;
   final double calories;
   final double protein;
   final double carbs;
@@ -1100,7 +1082,7 @@ class _MealPageData {
     required this.titleIsTranslationKey,
     required this.subtitle,
     this.dateTime,
-    required this.emoji,
+    required this.typeId,
     required this.calories,
     required this.protein,
     required this.carbs,
@@ -1140,7 +1122,7 @@ class _MealPageData {
       titleIsTranslationKey: true,
       subtitle: '',
       dateTime: meal.dateTime,
-      emoji: _mealEmojiFromType(meal.type.name),
+      typeId: meal.type.name,
       calories: meal.totalCalories.toDouble(),
       protein: meal.totalProtein,
       carbs: meal.totalCarbs,
@@ -1190,7 +1172,7 @@ class _MealPageData {
       title: meal.name.isNotEmpty ? meal.name : meal.type,
       titleIsTranslationKey: false,
       subtitle: meal.time,
-      emoji: _mealEmojiFromType(meal.type),
+      typeId: meal.type,
       calories: meal.mealTotals.calories.toDouble(),
       protein: meal.mealTotals.protein,
       carbs: meal.mealTotals.carbs,
@@ -1348,23 +1330,6 @@ String _formatAmount(double amount, String unit) {
   final rounded =
       amount % 1 == 0 ? amount.toStringAsFixed(0) : amount.toStringAsFixed(1);
   return '$rounded $unit';
-}
-
-String _mealEmojiFromType(String type) {
-  switch (type) {
-    case 'breakfast':
-      return '🌅';
-    case 'lunch':
-      return '☀️';
-    case 'dinner':
-      return '🌙';
-    case 'snack':
-      return '🍎';
-    case 'freeMeal':
-      return '🍽️';
-    default:
-      return '🍽️';
-  }
 }
 
 double _estimateFiberForFood(String foodName) {

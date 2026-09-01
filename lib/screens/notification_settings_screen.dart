@@ -7,6 +7,7 @@ import '../providers/meal_types_provider.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/meal_type_localization.dart';
+import '../widgets/meal_type_icon.dart';
 import 'manage_meal_types_screen.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -395,20 +396,7 @@ class _NotificationSettingsScreenState
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: _secondarySurfaceColor(isDarkMode),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Center(
-              child: Text(
-                mealType.emoji,
-                style: const TextStyle(fontSize: 21),
-              ),
-            ),
-          ),
+          MealTypeIcon(mealTypeId: mealType.id, size: 38),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -625,10 +613,6 @@ class _NotificationSettingsScreenState
     return isDarkMode
         ? AppTheme.darkMutedTextColor
         : AppTheme.textSecondaryColor;
-  }
-
-  Color _secondarySurfaceColor(bool isDarkMode) {
-    return isDarkMode ? AppTheme.darkComponentColor : AppTheme.surfaceColor;
   }
 
   Color _dividerColor(bool isDarkMode) {

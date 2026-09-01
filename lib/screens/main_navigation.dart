@@ -47,6 +47,7 @@ import '../models/user_model.dart';
 import '../theme/app_theme.dart';
 import '../utils/fabiano_access.dart';
 import '../widgets/app_debug_log_overlay.dart';
+import '../widgets/guest_local_data_prompt.dart';
 import '../controllers/navigation_controller.dart';
 
 export '../controllers/navigation_controller.dart';
@@ -1963,18 +1964,20 @@ class _MainNavigationState extends State<MainNavigation>
 
   /// Layout para celulares: Drawer + NavigationBar Material 3.
   Widget _buildNarrowLayout(bool isDarkMode) {
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: _buildDrawer(isDarkMode),
-      body: Stack(
-        children: [
-          AppDebugLogOverlay(
-            child: _buildTabStack(onOpenDrawer: _openDrawer),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Scaffold(
+            key: _scaffoldKey,
+            drawer: _buildDrawer(isDarkMode),
+            body: AppDebugLogOverlay(
+              child: _buildTabStack(onOpenDrawer: _openDrawer),
+            ),
+            bottomNavigationBar: _buildNavigationBar(isDarkMode),
           ),
-          _buildGuestLocalDataPrompt(isWide: false),
-        ],
-      ),
-      bottomNavigationBar: _buildNavigationBar(isDarkMode),
+        ),
+        _buildGuestLocalDataPrompt(isWide: false),
+      ],
     );
   }
 
@@ -1984,161 +1987,50 @@ class _MainNavigationState extends State<MainNavigation>
       return const SizedBox.shrink();
     }
 
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDarkMode = theme.brightness == Brightness.dark;
-    final labels = snapshot.summaryLabels(context);
-
-    return Positioned(
-      left: isWide ? 24 : 16,
-      right: isWide ? null : 16,
-      bottom: 16,
-      child: SafeArea(
-        top: false,
-        child: Align(
-          alignment: isWide ? Alignment.bottomLeft : Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
-            child: Material(
-              color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-              elevation: 10,
-              borderRadius: BorderRadius.circular(18),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color:
-                                AppTheme.primaryColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.cloud_upload_outlined,
-                            color: AppTheme.primaryColor,
-                            size: 21,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                context.tr.translate('guest_local_data_title'),
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                context.tr
-                                    .translate('guest_local_data_message'),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                  height: 1.25,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (labels.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        labels.join(' • '),
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton.icon(
-                          onPressed: _isResolvingGuestLocalData
-                              ? null
-                              : _discardGuestLocalData,
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          label: Text(
-                            context.tr
-                                .translate('guest_local_data_discard_action'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton.icon(
-                          onPressed: _isResolvingGuestLocalData
-                              ? null
-                              : _saveGuestLocalData,
-                          icon: _isResolvingGuestLocalData
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.check_rounded, size: 18),
-                          label: Text(
-                            context.tr
-                                .translate('guest_local_data_save_action'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return GuestLocalDataPrompt(
+      kinds: snapshot.kinds,
+      isResolving: _isResolvingGuestLocalData,
+      isWide: isWide,
+      onSave: _saveGuestLocalData,
+      onDiscard: _discardGuestLocalData,
     );
   }
 
   /// Layout para tablets/desktop: painel lateral fixo (sem Drawer) e sem
   /// NavigationBar — os itens de navegação ficam no rodapé do painel.
   Widget _buildWideLayout(bool isDarkMode) {
-    return Scaffold(
-      key: _scaffoldKey,
-      body: Row(
-        children: [
-          SizedBox(
-            width: _wideSidePanelWidth,
-            child: Material(
-              color: isDarkMode
-                  ? AppTheme.darkBackgroundColor
-                  : AppTheme.backgroundColor,
-              child: _buildSidePanelBody(isDarkMode),
-            ),
-          ),
-          VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: isDarkMode ? Colors.white12 : Colors.black12,
-          ),
-          Expanded(
-            child: Stack(
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Scaffold(
+            key: _scaffoldKey,
+            body: Row(
               children: [
-                AppDebugLogOverlay(
-                  child: _buildTabStack(onOpenDrawer: null),
+                SizedBox(
+                  width: _wideSidePanelWidth,
+                  child: Material(
+                    color: isDarkMode
+                        ? AppTheme.darkBackgroundColor
+                        : AppTheme.backgroundColor,
+                    child: _buildSidePanelBody(isDarkMode, showNavItems: true),
+                  ),
                 ),
-                _buildGuestLocalDataPrompt(isWide: true),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: isDarkMode ? Colors.white12 : Colors.black12,
+                ),
+                Expanded(
+                  child: AppDebugLogOverlay(
+                    child: _buildTabStack(onOpenDrawer: null),
+                  ),
+                ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        _buildGuestLocalDataPrompt(isWide: true),
+      ],
     );
   }
 
@@ -2276,13 +2168,14 @@ class _MainNavigationState extends State<MainNavigation>
     return Drawer(
       backgroundColor:
           isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
-      child: _buildSidePanelBody(isDarkMode),
+      child: _buildSidePanelBody(isDarkMode, showNavItems: false),
     );
   }
 
   /// Conteúdo compartilhado entre o Drawer (mobile) e o painel lateral fixo
-  /// (tablet/desktop).
-  Widget _buildSidePanelBody(bool isDarkMode) {
+  /// (tablet/desktop). No mobile a navegação fica na barra inferior, então
+  /// os atalhos Início/Diário/Minha Dieta/Perfil não entram no drawer.
+  Widget _buildSidePanelBody(bool isDarkMode, {bool showNavItems = true}) {
     final authService = context.watch<AuthService>();
     final showDietBenchmark = canAccessDietBenchmark(authService.currentUser);
 
@@ -2327,7 +2220,7 @@ class _MainNavigationState extends State<MainNavigation>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: _drawerBenchmarkTile(isDarkMode),
             ),
-          _buildSidePanelNavItems(isDarkMode),
+          if (showNavItems) _buildSidePanelNavItems(isDarkMode),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 16, 6),
             child: Text(
@@ -2662,24 +2555,24 @@ class _GuestLocalDataSnapshot {
       nutritionChatByDate.isNotEmpty ||
       dailyMeals.isNotEmpty;
 
-  List<String> summaryLabels(BuildContext context) {
-    final labels = <String>[];
+  List<GuestLocalDataKind> get kinds {
+    final items = <GuestLocalDataKind>[];
     if (goalSetup != null) {
-      labels.add(context.tr.translate('guest_local_data_summary_goals'));
+      items.add(GuestLocalDataKind.goals);
     }
     if (dailyMeals.isNotEmpty) {
-      labels.add(context.tr.translate('guest_local_data_summary_meals'));
+      items.add(GuestLocalDataKind.meals);
     }
     if (freeChatConversations.isNotEmpty || nutritionChatByDate.isNotEmpty) {
-      labels.add(context.tr.translate('guest_local_data_summary_chats'));
+      items.add(GuestLocalDataKind.chats);
     }
     if (foodHistory != null) {
-      labels.add(context.tr.translate('guest_local_data_summary_foods'));
+      items.add(GuestLocalDataKind.foods);
     }
     if (mealTypes.isNotEmpty || dietGenerationPreferences != null) {
-      labels.add(context.tr.translate('guest_local_data_summary_preferences'));
+      items.add(GuestLocalDataKind.preferences);
     }
-    return labels;
+    return items;
   }
 }
 

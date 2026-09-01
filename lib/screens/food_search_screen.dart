@@ -33,9 +33,10 @@ import '../utils/food_json_parser.dart';
 import '../utils/media_picker_helper.dart';
 import '../utils/ui_utils.dart';
 import '../widgets/native_ad_widget.dart';
+import '../widgets/food_icon.dart';
+import '../widgets/food_input_speed_dial.dart';
+import '../widgets/meal_type_icon.dart';
 import '../i18n/language_controller.dart';
-
-enum _FoodInputAction { audio, camera, gallery, barcode }
 
 class _RecordedFoodAudio {
   const _RecordedFoodAudio({
@@ -146,6 +147,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     'uk': 'UA',
     'zh': 'CN',
   };
+
+  static const double _fabListClearance = 96;
 
   final TextEditingController _searchController = TextEditingController();
   final ScraperHelper _scraperHelper = ScraperHelper();
@@ -280,111 +283,23 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     }
   }
 
-  Future<void> _showFoodInputActions() async {
+  Future<void> _onFoodInputAction(FoodInputAction action) async {
     if (_isProcessingAiFoodInput) return;
 
-    final action = await showModalBottomSheet<_FoodInputAction>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-              child: Text(
-                context.tr.translate('food_input_actions_title'),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ),
-            _buildFoodInputActionTile(
-              sheetContext: sheetContext,
-              action: _FoodInputAction.audio,
-              icon: Icons.mic_rounded,
-              titleKey: 'food_input_audio_title',
-              subtitleKey: 'food_input_audio_subtitle',
-            ),
-            if (!kIsWeb)
-              _buildFoodInputActionTile(
-                sheetContext: sheetContext,
-                action: _FoodInputAction.camera,
-                icon: Icons.photo_camera_rounded,
-                titleKey: 'take_photo',
-                subtitleKey: 'food_input_camera_subtitle',
-              ),
-            _buildFoodInputActionTile(
-              sheetContext: sheetContext,
-              action: _FoodInputAction.gallery,
-              icon: Icons.photo_library_rounded,
-              titleKey: 'photo_library',
-              subtitleKey: 'food_input_gallery_subtitle',
-            ),
-            if (!kIsWeb)
-              _buildFoodInputActionTile(
-                sheetContext: sheetContext,
-                action: _FoodInputAction.barcode,
-                icon: Icons.qr_code_scanner_rounded,
-                titleKey: 'barcode_scanner_title',
-                subtitleKey: 'food_input_barcode_subtitle',
-              ),
-          ],
-        ),
-      ),
-    );
-
-    if (!mounted || action == null) return;
-
     switch (action) {
-      case _FoodInputAction.audio:
+      case FoodInputAction.audio:
         await _captureFoodsFromAudio();
         break;
-      case _FoodInputAction.camera:
+      case FoodInputAction.camera:
         await _captureFoodsFromImage(ImageSource.camera);
         break;
-      case _FoodInputAction.gallery:
+      case FoodInputAction.gallery:
         await _captureFoodsFromImage(ImageSource.gallery);
         break;
-      case _FoodInputAction.barcode:
+      case FoodInputAction.barcode:
         await _openBarcodeScanner();
         break;
     }
-  }
-
-  Widget _buildFoodInputActionTile({
-    required BuildContext sheetContext,
-    required _FoodInputAction action,
-    required IconData icon,
-    required String titleKey,
-    required String subtitleKey,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      leading: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: colorScheme.primaryContainer,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: colorScheme.onPrimaryContainer),
-      ),
-      title: Text(
-        context.tr.translate(titleKey),
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(context.tr.translate(subtitleKey)),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      onTap: () => Navigator.of(sheetContext).pop(action),
-    );
   }
 
   Future<void> _captureFoodsFromAudio() async {
@@ -2030,6 +1945,15 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
     return Scaffold(
       backgroundColor: backgroundColor,
+      floatingActionButton: showBarcodeCaptchaWebView
+          ? null
+          : FoodInputSpeedDial(
+              isBusy: _isProcessingAiFoodInput,
+              showCamera: !kIsWeb,
+              showBarcode: !kIsWeb,
+              onSelected: _onFoodInputAction,
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Stack(
         children: [
           Positioned.fill(
@@ -2067,16 +1991,15 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                                   fontWeight: FontWeight.w600,
                                 ),
                                 items: MealType.values.map((mealType) {
-                                  final option =
-                                      DailyMealsProvider.getMealTypeOption(
-                                          mealType);
                                   return DropdownMenuItem<MealType>(
                                     value: mealType,
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(option.emoji,
-                                            style: TextStyle(fontSize: 20)),
+                                        MealTypeIcon.fromMealType(
+                                          mealType,
+                                          size: 28,
+                                        ),
                                         SizedBox(width: 8),
                                         Text(_mealTypeLabel(mealType),
                                             style: TextStyle(fontSize: 20)),
@@ -2103,63 +2026,50 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                       ),
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? textColor.withValues(alpha: 0.15)
-                                        : textColor.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(80),
-                                  ),
-                                  child: TextField(
-                                    controller: _searchController,
-                                    keyboardType: TextInputType.text,
-                                    textInputAction: TextInputAction.search,
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: context.tr
-                                          .translate('what_did_you_eat'),
-                                      hintStyle: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                      prefixIcon: Icon(
-                                        Icons.search,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        size: 22,
-                                      ),
-                                      filled: false,
-                                      fillColor: Colors.transparent,
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      errorBorder: InputBorder.none,
-                                      focusedErrorBorder: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 14,
-                                      ),
-                                    ),
-                                    onSubmitted: _onSearchSubmitted,
-                                  ),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? textColor.withValues(alpha: 0.15)
+                                  : textColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(80),
+                            ),
+                            child: TextField(
+                              controller: _searchController,
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.search,
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText:
+                                    context.tr.translate('what_did_you_eat'),
+                                hintStyle: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 22,
+                                ),
+                                filled: false,
+                                fillColor: Colors.transparent,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              _buildFoodInputActionsButton(),
-                            ],
+                              onSubmitted: _onSearchSubmitted,
+                            ),
                           ),
                         ),
                       ),
@@ -2226,39 +2136,6 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
               if (opened) return;
               await _extractFoodData();
             },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFoodInputActionsButton() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Tooltip(
-      message: context.tr.translate('food_input_actions_title'),
-      child: Material(
-        color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(80),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(80),
-          onTap: _isProcessingAiFoodInput ? null : _showFoodInputActions,
-          child: SizedBox(
-            width: 52,
-            height: 52,
-            child: _isProcessingAiFoodInput
-                ? Padding(
-                    padding: const EdgeInsets.all(15),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: colorScheme.onPrimary,
-                    ),
-                  )
-                : Icon(
-                    Icons.add_rounded,
-                    color: colorScheme.onPrimary,
-                    size: 28,
-                  ),
           ),
         ),
       ),
@@ -2405,7 +2282,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
 
     // Build list with sections
     return ListView(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: _fabListClearance),
       children: [
         // API Results section
         if (hasApiResults) ...[
@@ -2651,7 +2528,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       );
     }
     return ListView.builder(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: _fabListClearance),
       itemCount: _serverRecents.length,
       itemBuilder: (context, index) {
         final recent = _serverRecents[index];
@@ -2707,7 +2584,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     }
 
     return ListView.builder(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: _fabListClearance),
       itemCount: _serverFavorites.length,
       itemBuilder: (context, index) {
         final fav = _serverFavorites[index];
@@ -2756,7 +2633,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       );
     }
     return ListView.builder(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: _fabListClearance),
       itemCount: _serverFrequents.length,
       itemBuilder: (context, index) {
         final recent = _serverFrequents[index];
@@ -2884,9 +2761,8 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
               ),
               SizedBox(height: 16),
               ...MealType.values.map((mealType) {
-                final option = DailyMealsProvider.getMealTypeOption(mealType);
                 return ListTile(
-                  leading: Text(option.emoji, style: TextStyle(fontSize: 24)),
+                  leading: MealTypeIcon.fromMealType(mealType, size: 40),
                   title: Text(
                     _mealTypeLabel(mealType),
                     style: TextStyle(color: textColor),
@@ -3214,9 +3090,10 @@ class _FoodListItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Text(
-                    emoji,
-                    style: TextStyle(fontSize: 24),
+                  child: FoodIcon(
+                    name: name,
+                    emoji: emoji,
+                    size: 24,
                   ),
                 ),
               ),
@@ -3234,7 +3111,7 @@ class _FoodListItem extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         color: textColor,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4),

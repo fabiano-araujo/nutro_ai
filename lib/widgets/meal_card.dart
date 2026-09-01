@@ -21,6 +21,7 @@ import '../utils/food_json_parser.dart';
 import '../utils/food_edit_helper.dart';
 import '../utils/ui_utils.dart';
 import '../widgets/food_icon.dart';
+import '../widgets/meal_type_icon.dart';
 import '../utils/food_emoji_resolver.dart';
 import '../utils/meal_type_localization.dart';
 
@@ -236,10 +237,7 @@ class _MealCardState extends State<MealCard> {
                       ),
                       child: Row(
                         children: [
-                          Text(
-                            option.emoji,
-                            style: TextStyle(fontSize: 24),
-                          ),
+                          MealTypeIcon.fromMealType(option.type, size: 40),
                           SizedBox(width: 14),
                           Expanded(
                             child: Text(
@@ -868,59 +866,24 @@ class _MealCardState extends State<MealCard> {
     );
   }
 
-  /// Emoji configurado para o tipo de refeição atual (com fallback por enum).
-  String _getMealTypeEmoji() {
+  String _resolvedMealTypeId() {
     try {
       final provider = Provider.of<MealTypesProvider>(context, listen: false);
       for (final config in provider.mealTypes) {
         if (_getMealTypeFromId(config.id) == _currentMeal.type) {
-          return config.emoji;
+          return config.id;
         }
       }
     } catch (_) {
-      // Sem provider disponível: usa fallback por enum.
+      // Sem provider disponível: usa o enum da refeição.
     }
-    switch (_currentMeal.type) {
-      case MealType.breakfast:
-        return '🍳';
-      case MealType.lunch:
-        return '🍽️';
-      case MealType.snack:
-        return '🍎';
-      case MealType.dinner:
-        return '🍝';
-      case MealType.freeMeal:
-        return '🍽️';
-    }
+    return mealTypeIdFromMealType(_currentMeal.type);
   }
 
-  /// Caixa com gradiente + emoji do tipo de refeição — mesmo estilo do card
+  /// Caixa mint + ícone do tipo de refeição — mesmo estilo do card
   /// da tela "Minha Dieta".
-  Widget _buildMealEmojiBox({required bool isDarkMode}) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Container(
-      width: 48,
-      height: 48,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            primary.withValues(alpha: isDarkMode ? 0.30 : 0.20),
-            primary.withValues(alpha: isDarkMode ? 0.12 : 0.07),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: primary.withValues(alpha: isDarkMode ? 0.28 : 0.16),
-        ),
-      ),
-      child: Text(
-        _getMealTypeEmoji(),
-        style: const TextStyle(fontSize: 23, height: 1),
-      ),
-    );
+  Widget _buildMealTypeIcon() {
+    return MealTypeIcon(mealTypeId: _resolvedMealTypeId());
   }
 
   /// Botão circular discreto (mesmo estilo dos botões do card "Minha Dieta").
@@ -1443,7 +1406,7 @@ class _MealCardState extends State<MealCard> {
                                     topPadding == 0 ? 13 : topPadding, 12, 8),
                                 child: Row(
                                   children: [
-                                    _buildMealEmojiBox(isDarkMode: isDarkMode),
+                                    _buildMealTypeIcon(),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: _buildMealHeaderInfo(

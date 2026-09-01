@@ -28,6 +28,7 @@ import '../widgets/macro_nutrient_row.dart';
 import '../widgets/sub_nutrient_row.dart';
 import '../widgets/micro_nutrient_row.dart';
 import '../widgets/food_icon.dart';
+import '../widgets/meal_type_icon.dart';
 import '../utils/ui_utils.dart';
 import '../utils/meal_type_localization.dart';
 import '../utils/premium_access.dart';
@@ -1431,8 +1432,6 @@ class _FoodPageState extends State<FoodPage> {
                 const SizedBox(height: 12),
                 // Meal types list
                 ...MealType.values.map((mealType) {
-                  final option = DailyMealsProvider.getMealTypeOption(mealType);
-
                   return InkWell(
                     borderRadius: BorderRadius.circular(10),
                     onTap: () {
@@ -1450,8 +1449,7 @@ class _FoodPageState extends State<FoodPage> {
                       ),
                       child: Row(
                         children: [
-                          Text(option.emoji,
-                              style: const TextStyle(fontSize: 22)),
+                          MealTypeIcon.fromMealType(mealType, size: 40),
                           const SizedBox(width: 12),
                           Text(
                             _mealTypeLabel(mealType),
@@ -1818,16 +1816,15 @@ class _FoodPageState extends State<FoodPage> {
                               fontWeight: FontWeight.w600,
                             ),
                             items: MealType.values.map((mealType) {
-                              final option =
-                                  DailyMealsProvider.getMealTypeOption(
-                                      mealType);
                               return DropdownMenuItem<MealType>(
                                 value: mealType,
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(option.emoji,
-                                        style: const TextStyle(fontSize: 18)),
+                                    MealTypeIcon.fromMealType(
+                                      mealType,
+                                      size: 28,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       _mealTypeLabel(mealType),

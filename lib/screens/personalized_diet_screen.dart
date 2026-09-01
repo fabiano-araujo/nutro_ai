@@ -26,6 +26,7 @@ import '../i18n/app_localizations.dart';
 import '../i18n/app_localizations_extension.dart';
 import '../widgets/diet_style_message_state.dart';
 import '../widgets/food_icon.dart';
+import '../widgets/meal_type_icon.dart';
 import '../widgets/header_streak_badge.dart';
 import '../widgets/reward_ad_dialog.dart';
 import '../utils/meal_type_localization.dart';
@@ -1710,37 +1711,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
     return toBeginningOfSentenceCase(formatted) ?? formatted;
   }
 
-  String _getMealEmoji(String mealType) {
-    try {
-      final configuredEmoji =
-          Provider.of<MealTypesProvider>(context, listen: false)
-              .getMealTypeById(mealType)
-              ?.emoji
-              .trim();
-      if (configuredEmoji != null && configuredEmoji.isNotEmpty) {
-        return configuredEmoji;
-      }
-    } catch (_) {
-      // Keep the static fallback for isolated widget tests.
-    }
-
-    switch (mealType) {
-      case 'breakfast':
-        return '🍳';
-      case 'lunch':
-        return '🍽️';
-      case 'afternoon_snack':
-      case 'snack':
-        return '🍎';
-      case 'dinner':
-        return '🍝';
-      case 'supper':
-        return '🥛';
-      default:
-        return '🍴';
-    }
-  }
-
   String _getMealDisplayName(PlannedMeal meal, AppLocalizations l10n) {
     switch (meal.type) {
       case 'breakfast':
@@ -2715,7 +2685,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
       Color textColor, Color secondaryTextColor) {
     final hasFoods = meal.foods.isNotEmpty;
     final isExpanded = _expandedMeals.contains(meal.type);
-    final primaryColor = Theme.of(context).colorScheme.primary;
     final l10n = AppLocalizations.of(context);
     final foodCount = meal.foods.length;
     final foodCountLabel = l10n
@@ -2740,32 +2709,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
                 padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
                 child: Row(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            primaryColor.withValues(
-                                alpha: isDarkMode ? 0.30 : 0.20),
-                            primaryColor.withValues(
-                                alpha: isDarkMode ? 0.12 : 0.07),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: primaryColor.withValues(
-                              alpha: isDarkMode ? 0.28 : 0.16),
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        _getMealEmoji(meal.type),
-                        style: const TextStyle(fontSize: 23),
-                      ),
-                    ),
+                    MealTypeIcon(mealTypeId: meal.type),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -3053,7 +2997,6 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
   Widget _buildMealCard(PlannedMeal meal, bool isDarkMode) {
     final secondaryTextColor =
         isDarkMode ? const Color(0xFFAEB7CE) : AppTheme.textSecondaryColor;
-    final primaryColor = Theme.of(context).colorScheme.primary;
     final l10n = AppLocalizations.of(context);
     final cardBorderRadius = BorderRadius.circular(20);
     final expansionShape = RoundedRectangleBorder(
@@ -3072,29 +3015,7 @@ class _PersonalizedDietScreenState extends State<PersonalizedDietScreen>
           collapsedShape: expansionShape,
           tilePadding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
           childrenPadding: EdgeInsets.zero,
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  primaryColor.withValues(alpha: isDarkMode ? 0.30 : 0.20),
-                  primaryColor.withValues(alpha: isDarkMode ? 0.12 : 0.07),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: primaryColor.withValues(alpha: isDarkMode ? 0.28 : 0.16),
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              _getMealEmoji(meal.type),
-              style: const TextStyle(fontSize: 23),
-            ),
-          ),
+          leading: MealTypeIcon(mealTypeId: meal.type),
           title: Text(
             _getMealDisplayName(meal, l10n),
             style: GoogleFonts.inter(

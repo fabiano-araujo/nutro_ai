@@ -36,11 +36,11 @@ class MealSkeleton extends StatelessWidget {
                   baseColor: baseColor,
                   highlightColor: highlightColor,
                   child: Container(
-                    width: 36,
-                    height: 36,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                 ),
